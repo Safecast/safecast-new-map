@@ -4034,6 +4034,44 @@ async function openSpectrumModal(markerID, fallbackMarker) {
   }
 }
 
+// Isotope energy lookup table (keV)
+const isotopeEnergyTable = [
+  { isotope: 'H-3 (Tritium)', energy: 18.6 },
+  { isotope: 'Am-241', energy: 59.5 },
+  { isotope: 'Ba-133', energy: 81.0 },
+  { isotope: 'Ba-133', energy: 276.4 },
+  { isotope: 'Ba-133', energy: 302.9 },
+  { isotope: 'Ba-133', energy: 356.0 },
+  { isotope: 'Ba-133', energy: 383.8 },
+  { isotope: 'Ra-226', energy: 186.2 },
+  { isotope: 'Ra-226', energy: 242.0 },
+  { isotope: 'Th-232', energy: 238.6 },
+  { isotope: 'Ra-226', energy: 295.2 },
+  { isotope: 'Ra-226', energy: 351.9 },
+  { isotope: 'I-131', energy: 364.5 },
+  { isotope: 'Annihilation', energy: 511.0 },
+  { isotope: 'Th-232', energy: 583.2 },
+  { isotope: 'I-131', energy: 637.0 },
+  { isotope: 'Cs-137', energy: 661.7 },
+  { isotope: 'Th-232', energy: 911.2 },
+  { isotope: 'Co-60', energy: 1173.2 },
+  { isotope: 'Na-22', energy: 1274.5 },
+  { isotope: 'Co-60', energy: 1332.5 },
+  { isotope: 'K-40', energy: 1460.8 },
+  { isotope: 'Th-232', energy: 2614.5 }
+];
+
+function findIsotopeByEnergy(energy, tolerance = 10) {
+  // tolerance in keV - how close the energy needs to be to match
+  for (let i = 0; i < isotopeEnergyTable.length; i++) {
+    const entry = isotopeEnergyTable[i];
+    if (Math.abs(entry.energy - energy) <= tolerance) {
+      return entry.isotope;
+    }
+  }
+  return null;
+}
+
 function drawSpectrumChart(canvas, spectrum) {
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
@@ -4219,8 +4257,18 @@ function drawSpectrumChart(canvas, spectrum) {
     const energy = energies[closestIdx];
     const count = spectrum.channels[closestIdx];
 
+    // Check if energy matches known isotope
+    const isotope = findIsotopeByEnergy(energy, 10);
+
     // Update tooltip content and position
-    tooltipDiv.innerHTML = `<strong>${energy.toFixed(1)} keV</strong><br>Counts: ${count}`;
+    let tooltipContent = '';
+    if (isotope) {
+      tooltipContent = `<div style="color: #FFD700; font-weight: bold;">${isotope}</div><strong>${energy.toFixed(1)} keV</strong><br>Counts: ${count}`;
+    } else {
+      tooltipContent = `<strong>${energy.toFixed(1)} keV</strong><br>Counts: ${count}`;
+    }
+
+    tooltipDiv.innerHTML = tooltipContent;
     tooltipDiv.style.display = 'block';
     tooltipDiv.style.left = (e.clientX + 10) + 'px';
     tooltipDiv.style.top = (e.clientY + 10) + 'px';
