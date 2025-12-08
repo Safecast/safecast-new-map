@@ -2544,32 +2544,61 @@ func processN42File(
 		// Find the corresponding marker by matching coordinates and timestamp
 		// For simplicity, we'll assume the order is preserved
 		if i < len(markers) {
-			// Query for marker ID by location and timestamp
-			var markerID int64
-			query := "SELECT id FROM markers WHERE lat = ? AND lon = ? AND date = ? LIMIT 1"
+			// Query for ALL marker IDs with this location and timestamp (across all zoom levels)
+			query := "SELECT id FROM markers WHERE lat = ? AND lon = ? AND date = ?"
 			args := []interface{}{markers[i].Lat, markers[i].Lon, markers[i].Date}
 
 			if dbType == "pgx" {
-				query = "SELECT id FROM markers WHERE lat = $1 AND lon = $2 AND date = $3 LIMIT 1"
+				query = "SELECT id FROM markers WHERE lat = $1 AND lon = $2 AND date = $3"
 			}
 
-			err := db.DB.QueryRowContext(ctx, query, args...).Scan(&markerID)
+			rows, err := db.DB.QueryContext(ctx, query, args...)
 			if err != nil {
-				logT(trackID, "N42", "warning: could not find marker ID for spectrum %d: %v", i, err)
+				logT(trackID, "N42", "warning: could not query markers for spectrum %d: %v", i, err)
 				continue
 			}
 
-			spectra[i].MarkerID = markerID
+			var markerIDs []int64
+			for rows.Next() {
+				var mid int64
+				if err := rows.Scan(&mid); err != nil {
+					logT(trackID, "N42", "warning: failed to scan marker ID: %v", err)
+					continue
+				}
+				markerIDs = append(markerIDs, mid)
+			}
+			rows.Close()
+
+			if len(markerIDs) == 0 {
+				logT(trackID, "N42", "warning: no markers found for spectrum %d", i)
+				continue
+			}
+
+			// Insert spectrum using the first marker ID (typically zoom=0)
+			spectra[i].MarkerID = markerIDs[0]
 			spectra[i].RawData = raw // Store original N42 file
 
-			// Insert spectrum
 			spectrumID, err := db.InsertSpectrum(ctx, spectra[i])
 			if err != nil {
 				logT(trackID, "N42", "warning: failed to insert spectrum %d: %v", i, err)
 				continue
 			}
 
-			logT(trackID, "N42", "inserted spectrum %d for marker %d", spectrumID, markerID)
+			// Update has_spectrum flag for ALL markers at this location/time (all zoom levels)
+			updateQuery := "UPDATE markers SET has_spectrum = ? WHERE lat = ? AND lon = ? AND date = ?"
+			updateArgs := []interface{}{true, markers[i].Lat, markers[i].Lon, markers[i].Date}
+			if dbType == "pgx" {
+				updateQuery = "UPDATE markers SET has_spectrum = $1 WHERE lat = $2 AND lon = $3 AND date = $4"
+			}
+
+			result, err := db.DB.ExecContext(ctx, updateQuery, updateArgs...)
+			if err != nil {
+				logT(trackID, "N42", "warning: failed to update has_spectrum flags: %v", err)
+			} else {
+				if count, _ := result.RowsAffected(); count > 0 {
+					logT(trackID, "N42", "inserted spectrum %d for marker %d (updated %d zoom levels)", spectrumID, markerIDs[0], count)
+				}
+			}
 		}
 	}
 
@@ -4598,6 +4627,7 @@ func getMarkersHandler(w http.ResponseWriter, r *http.Request) {
 // aggregateMarkers chooses the most radioactive marker per grid cell while merging the
 // static query feed with an optional live stream. Keeping the grid map inside the goroutine
 // lets us reuse previous emissions and drop later duplicates without mutexes.
+// Markers with spectral data are prioritized over those without.
 func aggregateMarkers(ctx context.Context, base <-chan database.Marker, updates <-chan database.Marker, zoom int) <-chan database.Marker {
 	out := make(chan database.Marker)
 	go func() {
@@ -4609,7 +4639,17 @@ func aggregateMarkers(ctx context.Context, base <-chan database.Marker, updates 
 
 		emit := func(m database.Marker) {
 			key := fmt.Sprintf("%d:%d", int(m.Lat*scale), int(m.Lon*scale))
-			if prev, ok := cells[key]; !ok || m.DoseRate > prev.DoseRate {
+			prev, exists := cells[key]
+
+			// Decide if this marker should replace the previous one:
+			// 1. No previous marker exists, OR
+			// 2. New marker has spectrum and previous doesn't, OR
+			// 3. Both have same spectrum status and new has higher dose rate
+			shouldReplace := !exists ||
+				(m.HasSpectrum && !prev.HasSpectrum) ||
+				(m.HasSpectrum == prev.HasSpectrum && m.DoseRate > prev.DoseRate)
+
+			if shouldReplace {
 				cells[key] = m
 				select {
 				case out <- m:

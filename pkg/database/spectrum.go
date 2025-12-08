@@ -125,43 +125,94 @@ func (db *Database) GetSpectrum(ctx context.Context, markerID int64) (*Spectrum,
 }
 
 // getSpectrumSQL performs the actual SQL query.
+// It searches for spectrum by marker_id first, then falls back to finding spectrum
+// for any marker at the same location/time (handles multi-zoom duplicates).
 func (db *Database) getSpectrumSQL(ctx context.Context, conn *sql.DB, markerID int64) (*Spectrum, error) {
+	// Try direct marker_id lookup first
 	query := `
-		SELECT id, marker_id, channels, channel_count, energy_min_kev, energy_max_kev,
-		       live_time_sec, real_time_sec, device_model, calibration,
-		       source_format, raw_data, created_at
-		FROM spectra
-		WHERE marker_id = ?
+		SELECT s.id, s.marker_id, s.channels, s.channel_count, s.energy_min_kev, s.energy_max_kev,
+		       s.live_time_sec, s.real_time_sec, s.device_model, s.calibration,
+		       s.source_format, s.raw_data, s.created_at
+		FROM spectra s
+		WHERE s.marker_id = ?
 		LIMIT 1
 	`
+	args := []interface{}{markerID}
 
 	if db.Driver == "pgx" {
 		query = `
-			SELECT id, marker_id, channels, channel_count, energy_min_kev, energy_max_kev,
-			       live_time_sec, real_time_sec, device_model, calibration,
-			       source_format, raw_data, EXTRACT(EPOCH FROM created_at)::BIGINT
-			FROM spectra
-			WHERE marker_id = $1
+			SELECT s.id, s.marker_id, s.channels, s.channel_count, s.energy_min_kev, s.energy_max_kev,
+			       s.live_time_sec, s.real_time_sec, s.device_model, s.calibration,
+			       s.source_format, s.raw_data, EXTRACT(EPOCH FROM s.created_at)::BIGINT
+			FROM spectra s
+			WHERE s.marker_id = $1
 			LIMIT 1
 		`
 	}
 
 	var spectrum Spectrum
 	var channelsJSON, calibrationJSON string
-	var rawData []byte
-	var createdAt sql.NullInt64
+	var createdAt int64
 
-	err := conn.QueryRowContext(ctx, query, markerID).Scan(
+	err := conn.QueryRowContext(ctx, query, args...).Scan(
 		&spectrum.ID, &spectrum.MarkerID, &channelsJSON, &spectrum.ChannelCount,
 		&spectrum.EnergyMinKeV, &spectrum.EnergyMaxKeV, &spectrum.LiveTimeSec,
 		&spectrum.RealTimeSec, &spectrum.DeviceModel, &calibrationJSON,
-		&spectrum.SourceFormat, &rawData, &createdAt,
+		&spectrum.SourceFormat, &spectrum.RawData, &createdAt,
 	)
 
+	// If not found by marker_id, try finding by location/time
 	if err == sql.ErrNoRows {
-		return nil, nil // No spectrum found
+		// Get marker coordinates to search for spectrum at same location/time
+		var lat, lon float64
+		var date int64
+		markerQuery := "SELECT lat, lon, date FROM markers WHERE id = ?"
+		markerArgs := []interface{}{markerID}
+		if db.Driver == "pgx" {
+			markerQuery = "SELECT lat, lon, date FROM markers WHERE id = $1"
+		}
+
+		err = conn.QueryRowContext(ctx, markerQuery, markerArgs...).Scan(&lat, &lon, &date)
+		if err != nil {
+			return nil, fmt.Errorf("marker not found: %w", err)
+		}
+
+		// Find spectrum for any marker at this location/time
+		query = `
+			SELECT s.id, s.marker_id, s.channels, s.channel_count, s.energy_min_kev, s.energy_max_kev,
+			       s.live_time_sec, s.real_time_sec, s.device_model, s.calibration,
+			       s.source_format, s.raw_data, s.created_at
+			FROM spectra s
+			JOIN markers m ON s.marker_id = m.id
+			WHERE m.lat = ? AND m.lon = ? AND m.date = ?
+			LIMIT 1
+		`
+		args = []interface{}{lat, lon, date}
+
+		if db.Driver == "pgx" {
+			query = `
+				SELECT s.id, s.marker_id, s.channels, s.channel_count, s.energy_min_kev, s.energy_max_kev,
+				       s.live_time_sec, s.real_time_sec, s.device_model, s.calibration,
+				       s.source_format, s.raw_data, EXTRACT(EPOCH FROM s.created_at)::BIGINT
+				FROM spectra s
+				JOIN markers m ON s.marker_id = m.id
+				WHERE m.lat = $1 AND m.lon = $2 AND m.date = $3
+				LIMIT 1
+			`
+		}
+
+		err = conn.QueryRowContext(ctx, query, args...).Scan(
+			&spectrum.ID, &spectrum.MarkerID, &channelsJSON, &spectrum.ChannelCount,
+			&spectrum.EnergyMinKeV, &spectrum.EnergyMaxKeV, &spectrum.LiveTimeSec,
+			&spectrum.RealTimeSec, &spectrum.DeviceModel, &calibrationJSON,
+			&spectrum.SourceFormat, &spectrum.RawData, &createdAt,
+		)
 	}
+
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("no spectrum found")
+		}
 		return nil, fmt.Errorf("query spectrum: %w", err)
 	}
 
@@ -179,10 +230,7 @@ func (db *Database) getSpectrumSQL(ctx context.Context, conn *sql.DB, markerID i
 		spectrum.Calibration = &cal
 	}
 
-	spectrum.RawData = rawData
-	if createdAt.Valid {
-		spectrum.CreatedAt = createdAt.Int64
-	}
+	spectrum.CreatedAt = createdAt
 
 	return &spectrum, nil
 }
