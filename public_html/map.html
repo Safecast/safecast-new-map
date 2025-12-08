@@ -4162,6 +4162,82 @@ function drawSpectrumChart(canvas, spectrum) {
     }
   }
   ctx.stroke();
+
+  // Add interactive tooltip
+  let tooltipDiv = document.getElementById('spectrumTooltip');
+  if (!tooltipDiv) {
+    tooltipDiv = document.createElement('div');
+    tooltipDiv.id = 'spectrumTooltip';
+    tooltipDiv.style.cssText = `
+      position: absolute;
+      display: none;
+      background: var(--modal-bg);
+      color: var(--modal-text);
+      border: 1px solid var(--modal-text);
+      border-radius: 4px;
+      padding: 6px 10px;
+      font-size: var(--font-size-sm);
+      pointer-events: none;
+      z-index: 10000;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    `;
+    document.body.appendChild(tooltipDiv);
+  }
+
+  // Remove old event listeners if they exist
+  const oldMouseMove = canvas._spectrumMouseMove;
+  const oldMouseOut = canvas._spectrumMouseOut;
+  if (oldMouseMove) canvas.removeEventListener('mousemove', oldMouseMove);
+  if (oldMouseOut) canvas.removeEventListener('mouseout', oldMouseOut);
+
+  // Mouse move handler
+  const handleMouseMove = function(e) {
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    // Check if mouse is within plot area
+    if (mouseX < plotLeft || mouseX > plotRight || mouseY < plotTop || mouseY > plotBottom) {
+      tooltipDiv.style.display = 'none';
+      return;
+    }
+
+    // Convert mouse position to data coordinates
+    const dataX = minX + ((mouseX - plotLeft) / plotW) * rangeX;
+
+    // Find closest data point
+    let closestIdx = 0;
+    let minDist = Infinity;
+    for (let i = 0; i < energies.length; i++) {
+      const dist = Math.abs(energies[i] - dataX);
+      if (dist < minDist) {
+        minDist = dist;
+        closestIdx = i;
+      }
+    }
+
+    const energy = energies[closestIdx];
+    const count = spectrum.channels[closestIdx];
+
+    // Update tooltip content and position
+    tooltipDiv.innerHTML = `<strong>${energy.toFixed(1)} keV</strong><br>Counts: ${count}`;
+    tooltipDiv.style.display = 'block';
+    tooltipDiv.style.left = (e.clientX + 10) + 'px';
+    tooltipDiv.style.top = (e.clientY + 10) + 'px';
+  };
+
+  // Mouse out handler
+  const handleMouseOut = function() {
+    tooltipDiv.style.display = 'none';
+  };
+
+  // Store handlers on canvas so we can remove them later
+  canvas._spectrumMouseMove = handleMouseMove;
+  canvas._spectrumMouseOut = handleMouseOut;
+
+  // Add event listeners
+  canvas.addEventListener('mousemove', handleMouseMove);
+  canvas.addEventListener('mouseout', handleMouseOut);
 }
 
 
