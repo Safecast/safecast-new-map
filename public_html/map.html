@@ -5056,6 +5056,14 @@ function centerMapToLocation() {
                 lastTrackURL               = response.trackURL;   // remember
                 serverProcessing.innerText = translate('processing_complete');
                 serverProcessing.style.color = 'green';
+
+                // Check if this is a spectrum file without coordinates
+                if (response.needsCoordinates && response.trackID) {
+                  serverProcessing.innerText = '⚠ Needs location';
+                  serverProcessing.style.color = 'orange';
+                  // Show coordinate input dialog after all uploads complete
+                  pendingCoordinateUpdate = { trackID: response.trackID, fileName: file.name };
+                }
               } else if (response.status === 'processing') {
                 lastTrackURL               = null;
                 serverProcessing.innerText = translate('processing_complete');
@@ -5075,12 +5083,15 @@ function centerMapToLocation() {
             if (completedUploads === totalFiles) {
               setTimeout(() => {
                 fileOverlay.style.display = 'none';
-                /* redirect to last successfully processed track */
-                  if (lastTrackURL) {
-                    window.location.href = lastTrackURL;
-                  } else {
-                    updateMarkers();   // keep the map open for background imports
-                  }
+
+                // Show coordinate dialog if needed, otherwise redirect
+                if (pendingCoordinateUpdate) {
+                  showCoordinateDialog(pendingCoordinateUpdate.trackID, pendingCoordinateUpdate.fileName);
+                } else if (lastTrackURL) {
+                  window.location.href = lastTrackURL;
+                } else {
+                  updateMarkers();   // keep the map open for background imports
+                }
               }, 700);
             }
           };
