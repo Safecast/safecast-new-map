@@ -4021,6 +4021,13 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			"OpenStreetMap")
 	}
 
+	// Check if markers are at 0,0 (spectrum files without GPS coordinates)
+	needsCoordinates := false
+	if hasBounds && global.MinLat == 0 && global.MaxLat == 0 && global.MinLon == 0 && global.MaxLon == 0 {
+		needsCoordinates = true
+		logT(trackID, "Upload", "spectrum file uploaded without GPS coordinates - needs manual location")
+	}
+
 	status := "success"
 	if backgroundImport {
 		status = "processing"
@@ -4030,10 +4037,18 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(map[string]any{
+	response := map[string]any{
 		"status":   status,
 		"trackURL": trackURL,
-	}); err != nil {
+	}
+
+	// Add trackID and needsCoordinates flag if spectrum needs location
+	if needsCoordinates {
+		response["needsCoordinates"] = true
+		response["trackID"] = trackID
+	}
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
 		if isClientDisconnect(err) {
 			log.Printf("client disconnected while writing upload response")
 		} else {
@@ -4521,6 +4536,84 @@ func markersWithSpectraHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(markers)
+}
+
+// updateCoordinatesHandler updates marker coordinates for spectrum files uploaded without GPS.
+// POST /api/update-coordinates
+// Body: {"trackID": "...", "lat": 34.488, "lon": 136.166}
+func updateCoordinatesHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if db == nil || db.DB == nil {
+		http.Error(w, "Database not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Parse request body
+	var req struct {
+		TrackID string  `json:"trackID"`
+		Lat     float64 `json:"lat"`
+		Lon     float64 `json:"lon"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Validate inputs
+	if req.TrackID == "" {
+		http.Error(w, "trackID is required", http.StatusBadRequest)
+		return
+	}
+
+	if req.Lat < -90 || req.Lat > 90 {
+		http.Error(w, "Invalid latitude", http.StatusBadRequest)
+		return
+	}
+
+	if req.Lon < -180 || req.Lon > 180 {
+		http.Error(w, "Invalid longitude", http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+
+	// Update all markers with this trackID across all zoom levels
+	query := "UPDATE markers SET lat = ?, lon = ? WHERE trackID = ?"
+	args := []interface{}{req.Lat, req.Lon, req.TrackID}
+
+	if *dbType == "pgx" {
+		query = "UPDATE markers SET lat = $1, lon = $2 WHERE trackID = $3"
+	}
+
+	result, err := db.DB.ExecContext(ctx, query, args...)
+	if err != nil {
+		log.Printf("Error updating coordinates for track %s: %v", req.TrackID, err)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": "error",
+			"error":  "Failed to update coordinates",
+		})
+		return
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+
+	log.Printf("Updated coordinates for track %s: %d markers updated to (%.6f, %.6f)",
+		req.TrackID, rowsAffected, req.Lat, req.Lon)
+
+	// Return success
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":       "success",
+		"markersUpdated": rowsAffected,
+		"lat":          req.Lat,
+		"lon":          req.Lon,
+	})
 }
 
 // =====================
@@ -5613,6 +5706,7 @@ func main() {
 	http.HandleFunc("/api/docs", apiDocsHandler)
 	http.HandleFunc("/api/spectrum/", spectrumHandler)                  // GET /api/spectrum/{markerID} and /api/spectrum/{markerID}/download
 	http.HandleFunc("/api/markers/spectra", markersWithSpectraHandler)  // GET /api/markers/spectra
+	http.HandleFunc("/api/update-coordinates", updateCoordinatesHandler) // POST /api/update-coordinates
 
 	// API endpoints ship JSON/archives. Keeping registration close to other
 	// routes avoids surprises for operators scanning main() for handlers.
