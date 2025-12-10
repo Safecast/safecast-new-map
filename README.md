@@ -51,6 +51,27 @@ The project grows thanks to careful support from the **Safecast** community, the
 
 ---
 
+## 🔐 Admin Panel (optional)
+
+Manage your radiation map instance with powerful admin tools:
+- **Track Management:** View all tracks, bulk delete operations, database statistics
+- **Upload Tracking:** Monitor file uploads with audit trail (filename, size, IP, timestamp)
+- **Bulk Operations:** Select and delete multiple tracks or uploads at once
+- **Security:** Password-protected access with simple authentication
+
+Enable admin access by adding the `-admin-password` flag when starting the server:
+```bash
+./chicha-isotope-map -admin-password YOUR_SECURE_PASSWORD
+```
+
+Then access admin pages at:
+- All Tracks: `http://localhost:8765/admin/tracks`
+- Uploads: `http://localhost:8765/admin/uploads`
+
+👉 [Full Admin Documentation](ADMIN.md) — detailed guide with screenshots, security best practices, and advanced usage
+
+---
+
 ## 🚀 Quick start (beginner friendly)
 Fastest path: download the binary. No Docker, no databases, no extra tools — download, run, done.
 
@@ -65,8 +86,10 @@ chmod +x ./chicha-isotope-map
 
 Optional knobs:
 - `-port 8765` — local port.
-- `-domain maps.example.org` — HTTPS with Let’s Encrypt (needs 80/443).
+- `-domain maps.example.org` — HTTPS with Let's Encrypt (needs 80/443).
 - `-default-lat` / `-default-lon` / `-default-zoom` / `-default-layer` — opening map view.
+- `-admin-password PASSWORD` — enable admin panel for track and upload management.
+- `-safecast-realtime` — poll live Safecast sensor data worldwide.
 - Storage: `-db-type sqlite|duckdb|chai|clickhouse|pgx`, `-db-path` for file databases, `-db-conn` for network ones.
 
 ### Option 2. Public node with a domain
@@ -109,11 +132,13 @@ After it imports, rerun normally (or keep the same command in a systemd service)
 ---
 
 ## 🧠 Advanced options
-- Databases: built-in SQLite by default; you can switch to DuckDB, Chai, ClickHouse, or PostgreSQL (`pgx`).
-- Import: by URL or file; you can feed an archive directly.
-- Export: JSON archives, a single track, legacy `.cim` files supported.
-- Appearance: starting coordinates and layer (`-default-*`).
-- DuckDB startup slow? See the [performance notes](doc/DUCKDB_PERFORMANCE.md) for checkpoint/Parquet guidance.
+- **Databases:** built-in SQLite by default; you can switch to DuckDB, Chai, ClickHouse, or PostgreSQL (`pgx`).
+- **Import:** by URL or file; you can feed an archive directly.
+- **Export:** JSON archives, a single track, legacy `.cim` files supported.
+- **Appearance:** starting coordinates and layer (`-default-*`).
+- **Admin panel:** enable with `-admin-password YOUR_PASSWORD` for track and upload management. See [ADMIN.md](ADMIN.md).
+- **Safecast Realtime:** add `-safecast-realtime` to poll live sensor data from Safecast devices worldwide.
+- **DuckDB startup slow?** See the [performance notes](doc/DUCKDB_PERFORMANCE.md) for checkpoint/Parquet guidance.
 
 ---
 
