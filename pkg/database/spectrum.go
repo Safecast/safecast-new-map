@@ -60,33 +60,53 @@ func (db *Database) insertSpectrumSQL(ctx context.Context, conn *sql.DB, spectru
 		query = `
 			INSERT INTO spectra (marker_id, channels, channel_count, energy_min_kev, energy_max_kev,
 			                     live_time_sec, real_time_sec, device_model, calibration,
-			                     source_format, raw_data, created_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, to_timestamp($12))
+			                     source_format, filename, raw_data, created_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, to_timestamp($13))
 			RETURNING id
 		`
 		args = []interface{}{
 			spectrum.MarkerID, string(channelsJSON), spectrum.ChannelCount,
 			spectrum.EnergyMinKeV, spectrum.EnergyMaxKeV, spectrum.LiveTimeSec,
 			spectrum.RealTimeSec, spectrum.DeviceModel, string(calibrationJSON),
-			spectrum.SourceFormat, spectrum.RawData, createdAt,
+			spectrum.SourceFormat, spectrum.Filename, spectrum.RawData, createdAt,
 		}
 
 		var id int64
 		err := conn.QueryRowContext(ctx, query, args...).Scan(&id)
 		return id, err
 
-	case "sqlite", "chai", "duckdb":
+	case "duckdb":
 		query = `
 			INSERT INTO spectra (marker_id, channels, channel_count, energy_min_kev, energy_max_kev,
 			                     live_time_sec, real_time_sec, device_model, calibration,
-			                     source_format, raw_data, created_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			                     source_format, filename, raw_data, created_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, to_timestamp($13))
 		`
 		args = []interface{}{
 			spectrum.MarkerID, string(channelsJSON), spectrum.ChannelCount,
 			spectrum.EnergyMinKeV, spectrum.EnergyMaxKeV, spectrum.LiveTimeSec,
 			spectrum.RealTimeSec, spectrum.DeviceModel, string(calibrationJSON),
-			spectrum.SourceFormat, spectrum.RawData, createdAt,
+			spectrum.SourceFormat, spectrum.Filename, spectrum.RawData, createdAt,
+		}
+
+		result, err := conn.ExecContext(ctx, query, args...)
+		if err != nil {
+			return 0, err
+		}
+		return result.LastInsertId()
+
+	case "sqlite", "chai":
+		query = `
+			INSERT INTO spectra (marker_id, channels, channel_count, energy_min_kev, energy_max_kev,
+			                     live_time_sec, real_time_sec, device_model, calibration,
+			                     source_format, filename, raw_data, created_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`
+		args = []interface{}{
+			spectrum.MarkerID, string(channelsJSON), spectrum.ChannelCount,
+			spectrum.EnergyMinKeV, spectrum.EnergyMaxKeV, spectrum.LiveTimeSec,
+			spectrum.RealTimeSec, spectrum.DeviceModel, string(calibrationJSON),
+			spectrum.SourceFormat, spectrum.Filename, spectrum.RawData, createdAt,
 		}
 
 		result, err := conn.ExecContext(ctx, query, args...)
@@ -101,14 +121,14 @@ func (db *Database) insertSpectrumSQL(ctx context.Context, conn *sql.DB, spectru
 		query = `
 			INSERT INTO spectra (id, marker_id, channels, channel_count, energy_min_kev, energy_max_kev,
 			                     live_time_sec, real_time_sec, device_model, calibration,
-			                     source_format, raw_data, created_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, now())
+			                     source_format, filename, raw_data, created_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, now())
 		`
 		args = []interface{}{
 			id, spectrum.MarkerID, string(channelsJSON), spectrum.ChannelCount,
 			spectrum.EnergyMinKeV, spectrum.EnergyMaxKeV, spectrum.LiveTimeSec,
 			spectrum.RealTimeSec, spectrum.DeviceModel, string(calibrationJSON),
-			spectrum.SourceFormat, string(spectrum.RawData),
+			spectrum.SourceFormat, spectrum.Filename, string(spectrum.RawData),
 		}
 
 		_, err := conn.ExecContext(ctx, query, args...)
@@ -132,20 +152,21 @@ func (db *Database) getSpectrumSQL(ctx context.Context, conn *sql.DB, markerID i
 	query := `
 		SELECT s.id, s.marker_id, s.channels, s.channel_count, s.energy_min_kev, s.energy_max_kev,
 		       s.live_time_sec, s.real_time_sec, s.device_model, s.calibration,
-		       s.source_format, s.raw_data, s.created_at
+		       s.source_format, s.filename, s.raw_data, s.created_at
 		FROM spectra s
 		WHERE s.marker_id = ?
 		LIMIT 1
 	`
 	args := []interface{}{markerID}
 
-	if db.Driver == "pgx" {
+	if db.Driver == "pgx" || db.Driver == "duckdb" {
+		placeholder := "$1"
 		query = `
 			SELECT s.id, s.marker_id, s.channels, s.channel_count, s.energy_min_kev, s.energy_max_kev,
 			       s.live_time_sec, s.real_time_sec, s.device_model, s.calibration,
-			       s.source_format, s.raw_data, EXTRACT(EPOCH FROM s.created_at)::BIGINT
+			       s.source_format, s.filename, s.raw_data, EXTRACT(EPOCH FROM s.created_at)::BIGINT
 			FROM spectra s
-			WHERE s.marker_id = $1
+			WHERE s.marker_id = ` + placeholder + `
 			LIMIT 1
 		`
 	}
@@ -158,7 +179,7 @@ func (db *Database) getSpectrumSQL(ctx context.Context, conn *sql.DB, markerID i
 		&spectrum.ID, &spectrum.MarkerID, &channelsJSON, &spectrum.ChannelCount,
 		&spectrum.EnergyMinKeV, &spectrum.EnergyMaxKeV, &spectrum.LiveTimeSec,
 		&spectrum.RealTimeSec, &spectrum.DeviceModel, &calibrationJSON,
-		&spectrum.SourceFormat, &spectrum.RawData, &createdAt,
+		&spectrum.SourceFormat, &spectrum.Filename, &spectrum.RawData, &createdAt,
 	)
 
 	// If not found by marker_id, try finding by location/time
@@ -168,7 +189,7 @@ func (db *Database) getSpectrumSQL(ctx context.Context, conn *sql.DB, markerID i
 		var date int64
 		markerQuery := "SELECT lat, lon, date FROM markers WHERE id = ?"
 		markerArgs := []interface{}{markerID}
-		if db.Driver == "pgx" {
+		if db.Driver == "pgx" || db.Driver == "duckdb" {
 			markerQuery = "SELECT lat, lon, date FROM markers WHERE id = $1"
 		}
 
@@ -181,7 +202,7 @@ func (db *Database) getSpectrumSQL(ctx context.Context, conn *sql.DB, markerID i
 		query = `
 			SELECT s.id, s.marker_id, s.channels, s.channel_count, s.energy_min_kev, s.energy_max_kev,
 			       s.live_time_sec, s.real_time_sec, s.device_model, s.calibration,
-			       s.source_format, s.raw_data, s.created_at
+			       s.source_format, s.filename, s.raw_data, s.created_at
 			FROM spectra s
 			JOIN markers m ON s.marker_id = m.id
 			WHERE m.lat = ? AND m.lon = ? AND m.date = ?
@@ -189,11 +210,11 @@ func (db *Database) getSpectrumSQL(ctx context.Context, conn *sql.DB, markerID i
 		`
 		args = []interface{}{lat, lon, date}
 
-		if db.Driver == "pgx" {
+		if db.Driver == "pgx" || db.Driver == "duckdb" {
 			query = `
 				SELECT s.id, s.marker_id, s.channels, s.channel_count, s.energy_min_kev, s.energy_max_kev,
 				       s.live_time_sec, s.real_time_sec, s.device_model, s.calibration,
-				       s.source_format, s.raw_data, EXTRACT(EPOCH FROM s.created_at)::BIGINT
+				       s.source_format, s.filename, s.raw_data, EXTRACT(EPOCH FROM s.created_at)::BIGINT
 				FROM spectra s
 				JOIN markers m ON s.marker_id = m.id
 				WHERE m.lat = $1 AND m.lon = $2 AND m.date = $3
@@ -205,7 +226,7 @@ func (db *Database) getSpectrumSQL(ctx context.Context, conn *sql.DB, markerID i
 			&spectrum.ID, &spectrum.MarkerID, &channelsJSON, &spectrum.ChannelCount,
 			&spectrum.EnergyMinKeV, &spectrum.EnergyMaxKeV, &spectrum.LiveTimeSec,
 			&spectrum.RealTimeSec, &spectrum.DeviceModel, &calibrationJSON,
-			&spectrum.SourceFormat, &spectrum.RawData, &createdAt,
+			&spectrum.SourceFormat, &spectrum.Filename, &spectrum.RawData, &createdAt,
 		)
 	}
 
@@ -257,7 +278,7 @@ func (db *Database) getMarkersWithSpectraSQL(ctx context.Context, conn *sql.DB, 
 		true, bounds.MinLat, bounds.MaxLat, bounds.MinLon, bounds.MaxLon,
 	}
 
-	if db.Driver == "pgx" {
+	if db.Driver == "pgx" || db.Driver == "duckdb" {
 		query = `
 			SELECT id, doseRate, date, lon, lat, countRate, zoom, speed, trackID,
 			       altitude, detector, radiation, temperature, humidity, has_spectrum
@@ -301,7 +322,7 @@ func (db *Database) DeleteSpectrum(ctx context.Context, markerID int64) error {
 // deleteSpectrumSQL performs the actual SQL delete operation.
 func (db *Database) deleteSpectrumSQL(ctx context.Context, conn *sql.DB, markerID int64) error {
 	query := "DELETE FROM spectra WHERE marker_id = ?"
-	if db.Driver == "pgx" {
+	if db.Driver == "pgx" || db.Driver == "duckdb" {
 		query = "DELETE FROM spectra WHERE marker_id = $1"
 	}
 
@@ -324,7 +345,7 @@ func (db *Database) updateMarkerSpectrumFlagSQL(ctx context.Context, conn *sql.D
 	query := "UPDATE markers SET has_spectrum = ? WHERE id = ?"
 	args := []interface{}{hasSpectrum, markerID}
 
-	if db.Driver == "pgx" {
+	if db.Driver == "pgx" || db.Driver == "duckdb" {
 		query = "UPDATE markers SET has_spectrum = $1 WHERE id = $2"
 	}
 

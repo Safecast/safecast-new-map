@@ -32,5 +32,5 @@ import (
 	// We pull in the official duckdb-go driver through a replace directive so builds stay
 	// reproducible even when the network proxy blocks downloads. The underscore import
 	// ensures the driver registers with database/sql while keeping this file small.
-	_ "github.com/duckdb/duckdb-go/v4"
+	_ "github.com/marcboeker/go-duckdb"
 )

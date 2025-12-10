@@ -1692,8 +1692,7 @@ CREATE TABLE IF NOT EXISTS spectra (
   source_format   TEXT,
   filename        TEXT,
   raw_data        BLOB,
-  created_at      TIMESTAMP DEFAULT NOW(),
-  FOREIGN KEY (marker_id) REFERENCES markers(id) ON DELETE CASCADE
+  created_at      TIMESTAMP DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_spectra_marker_id ON spectra(marker_id);
 
@@ -1775,10 +1774,21 @@ ORDER BY (code);`,
   device_model    String,
   calibration     String,
   source_format   String,
+  filename        String,
   raw_data        String,
   created_at      DateTime DEFAULT now()
 ) ENGINE = MergeTree()
 ORDER BY (marker_id, id);`,
+			`CREATE TABLE IF NOT EXISTS uploads (
+  id         UInt64,
+  filename   String,
+  file_type  String,
+  track_id   String,
+  file_size  Int64,
+  upload_ip  String,
+  created_at DateTime DEFAULT now()
+) ENGINE = MergeTree()
+ORDER BY (created_at, id);`,
 		}
 
 	default:
@@ -1977,8 +1987,11 @@ func (db *Database) ensureSpectralDataIndexes(dbType string) error {
 	var indexStmt string
 
 	switch strings.ToLower(dbType) {
-	case "pgx", "duckdb":
+	case "pgx":
 		indexStmt = "CREATE INDEX IF NOT EXISTS idx_markers_has_spectrum ON markers(has_spectrum) WHERE has_spectrum = TRUE"
+	case "duckdb":
+		// DuckDB does not support partial indexes (indexes with WHERE clauses)
+		indexStmt = "CREATE INDEX IF NOT EXISTS idx_markers_has_spectrum ON markers(has_spectrum)"
 	case "sqlite", "chai":
 		indexStmt = "CREATE INDEX IF NOT EXISTS idx_markers_has_spectrum ON markers(has_spectrum) WHERE has_spectrum = 1"
 	case "clickhouse":
