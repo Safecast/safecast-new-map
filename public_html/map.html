@@ -4102,6 +4102,10 @@ async function openSpectrumModal(markerID, fallbackMarker) {
   try {
     const spectrum = await fetchSpectrum(markerID);
     if (spectrum && canvas) {
+      // Store spectrum data globally for redrawing with highlights
+      window.currentSpectrum = spectrum;
+      window.currentSpectrumCanvas = canvas;
+
       drawSpectrumChart(canvas, spectrum);
 
       // Display complete isotope reference list
@@ -4109,16 +4113,33 @@ async function openSpectrumModal(markerID, fallbackMarker) {
       const isotopeListEl = document.getElementById('spectrumIsotopeList');
 
       if (isotopeListEl) {
-        // Create two-column compact layout
+        // Create two-column compact layout with hover functionality
         isotopeListEl.innerHTML = isotopeList.map(item => {
           const isotopeColor = getIsotopeColor(item.name);
           return `
-          <div style="display: flex; align-items: baseline; gap: 6px; font-size: var(--font-size-sm); line-height: 1.6;">
+          <div class="isotope-item" data-isotope="${item.name}" style="display: flex; align-items: baseline; gap: 6px; font-size: var(--font-size-sm); line-height: 1.6; cursor: pointer; padding: 4px; border-radius: 4px; transition: background 0.2s;">
             <span style="font-weight: 600; color: ${isotopeColor}; min-width: 90px;">${item.name}:</span>
             <span style="font-family: monospace; color: var(--modal-text); opacity: 0.85;">${item.energies} keV</span>
           </div>
         `;
         }).join('');
+
+        // Add hover event listeners to isotope items
+        const isotopeItems = isotopeListEl.querySelectorAll('.isotope-item');
+        isotopeItems.forEach(item => {
+          item.addEventListener('mouseenter', function() {
+            const isotopeName = this.getAttribute('data-isotope');
+            highlightIsotopeOnChart(isotopeName);
+            // Add background highlight to the hovered item
+            this.style.background = 'var(--control-bg)';
+          });
+
+          item.addEventListener('mouseleave', function() {
+            clearIsotopeHighlight();
+            // Remove background highlight
+            this.style.background = 'transparent';
+          });
+        });
       }
     } else if (emptyEl) {
       emptyEl.textContent = 'No spectrum data available';
@@ -4227,7 +4248,26 @@ function buildIsotopeReferenceList() {
   return isotopes;
 }
 
-function drawSpectrumChart(canvas, spectrum) {
+// Highlight isotope peaks on chart
+function highlightIsotopeOnChart(isotopeName) {
+  if (!window.currentSpectrum || !window.currentSpectrumCanvas) return;
+
+  const energies = getIsotopeEnergies(isotopeName);
+  const color = getIsotopeColor(isotopeName);
+
+  // Redraw chart with highlights
+  drawSpectrumChart(window.currentSpectrumCanvas, window.currentSpectrum, energies, color);
+}
+
+// Clear isotope highlights
+function clearIsotopeHighlight() {
+  if (!window.currentSpectrum || !window.currentSpectrumCanvas) return;
+
+  // Redraw chart without highlights
+  drawSpectrumChart(window.currentSpectrumCanvas, window.currentSpectrum);
+}
+
+function drawSpectrumChart(canvas, spectrum, highlightEnergies = null, highlightColor = null) {
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
@@ -4355,6 +4395,39 @@ function drawSpectrumChart(canvas, spectrum) {
     }
   }
   ctx.stroke();
+
+  // Draw isotope energy highlights if provided
+  if (highlightEnergies && highlightEnergies.length > 0 && highlightColor) {
+    ctx.strokeStyle = highlightColor;
+    ctx.lineWidth = 3;
+    ctx.globalAlpha = 0.7;
+    ctx.setLineDash([8, 4]); // Dashed line pattern
+
+    highlightEnergies.forEach(energy => {
+      if (energy >= minX && energy <= maxX) {
+        const x = plotLeft + ((energy - minX) / rangeX) * plotW;
+
+        // Draw vertical line
+        ctx.beginPath();
+        ctx.moveTo(x, plotTop);
+        ctx.lineTo(x, plotBottom);
+        ctx.stroke();
+
+        // Draw energy label at top
+        ctx.globalAlpha = 1.0;
+        ctx.fillStyle = highlightColor;
+        ctx.font = 'bold ' + fonts.axisX;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(Math.round(energy) + ' keV', x, plotTop - 4);
+        ctx.globalAlpha = 0.7;
+      }
+    });
+
+    // Reset line dash and alpha
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1.0;
+  }
 
   // Add interactive tooltip
   let tooltipDiv = document.getElementById('spectrumTooltip');
