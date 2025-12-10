@@ -633,18 +633,23 @@ body, html {
         }
 
         .back-to-all-btn {
-          background-color: var(--control-bg);
-          border: var(--legend-border);
-          border-radius: 4px;
-          padding: 5px 10px;
+          background-color: #2196F3;
+          background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+          border: 2px solid #1976D2;
+          border-radius: 6px;
+          padding: 8px 16px;
           cursor: pointer;
           font-size: var(--font-size-base);
-          color: var(--modal-text);
-          box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+          font-weight: 600;
+          color: #ffffff;
+          box-shadow: 0 2px 8px rgba(33, 150, 243, 0.4), 0 1px 3px rgba(0,0,0,0.3);
+          transition: all 0.2s ease;
         }
 
         .back-to-all-btn:hover {
-          background-color: var(--control-bg-hover);
+          background: linear-gradient(135deg, #1E88E5 0%, #1565C0 100%);
+          box-shadow: 0 4px 12px rgba(33, 150, 243, 0.6), 0 2px 4px rgba(0,0,0,0.4);
+          transform: translateY(-1px);
         }
 
         /* Dedicated download container lives under the back button so
