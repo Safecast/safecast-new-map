@@ -4105,12 +4105,15 @@ async function openSpectrumModal(markerID, fallbackMarker) {
 
       if (isotopeListEl) {
         // Create two-column compact layout
-        isotopeListEl.innerHTML = isotopeList.map(item => `
+        isotopeListEl.innerHTML = isotopeList.map(item => {
+          const isotopeColor = getIsotopeColor(item.name);
+          return `
           <div style="display: flex; align-items: baseline; gap: 6px; font-size: var(--font-size-sm); line-height: 1.6;">
-            <span style="font-weight: 600; color: var(--isotope-highlight); min-width: 90px;">${item.name}:</span>
+            <span style="font-weight: 600; color: ${isotopeColor}; min-width: 90px;">${item.name}:</span>
             <span style="font-family: monospace; color: var(--modal-text); opacity: 0.85;">${item.energies} keV</span>
           </div>
-        `).join('');
+        `;
+        }).join('');
       }
     } else if (emptyEl) {
       emptyEl.textContent = 'No spectrum data available';
@@ -4152,6 +4155,27 @@ const isotopeEnergyTable = [
   { isotope: 'Th-232', energy: 2614.5 }
 ];
 
+// Get color for a specific isotope
+function getIsotopeColor(isotopeName) {
+  const isotopeColors = {
+    'K-40': '#FFD700',           // Gold
+    'Cs-137': '#00FF00',         // Green
+    'I-131': '#9370DB',          // Medium Purple
+    'Co-60': '#4169E1',          // Royal Blue
+    'Th-232': '#FF8C00',         // Dark Orange
+    'Ra-226': '#FF4500',         // Orange Red
+    'Ba-133': '#00CED1',         // Dark Turquoise
+    'Am-241': '#FF1493',         // Deep Pink
+    'Na-22': '#32CD32',          // Lime Green
+    'H-3 (Tritium)': '#87CEEB', // Sky Blue
+    'Annihilation': '#FFFFFF'    // White
+  };
+
+  const color = isotopeColors[isotopeName] || '#FFD700';
+  console.log('[COLOR DEBUG] Isotope:', isotopeName, '-> Color:', color);
+  return color;
+}
+
 function findIsotopeByEnergy(energy, tolerance = 10) {
   // tolerance in keV - how close the energy needs to be to match
   for (let i = 0; i < isotopeEnergyTable.length; i++) {
@@ -4161,6 +4185,18 @@ function findIsotopeByEnergy(energy, tolerance = 10) {
     }
   }
   return null;
+}
+
+// Get all energy peaks for a given isotope
+function getIsotopeEnergies(isotopeName) {
+  const energies = [];
+  for (let i = 0; i < isotopeEnergyTable.length; i++) {
+    const entry = isotopeEnergyTable[i];
+    if (entry.isotope === isotopeName) {
+      energies.push(entry.energy);
+    }
+  }
+  return energies;
 }
 
 function buildIsotopeReferenceList() {
@@ -4342,6 +4378,65 @@ function drawSpectrumChart(canvas, spectrum) {
   if (oldMouseMove) canvas.removeEventListener('mousemove', oldMouseMove);
   if (oldMouseOut) canvas.removeEventListener('mouseout', oldMouseOut);
 
+  // Save the original canvas image data for efficient redrawing
+  let baseChartImage = null;
+  // Capture the base chart after first draw
+  setTimeout(() => {
+    baseChartImage = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    console.log('[Spectrum DEBUG] Base chart image captured:', canvas.width, 'x', canvas.height);
+  }, 0);
+
+  // Track currently hovered isotope
+  let currentHoverIsotope = null;
+
+  // Function to draw energy peak markers for an isotope
+  const drawIsotopeMarkers = function(isotopeName) {
+    console.log('[Spectrum DEBUG] drawIsotopeMarkers called for:', isotopeName, 'baseChartImage exists:', !!baseChartImage);
+    if (!isotopeName || !baseChartImage) {
+      console.log('[Spectrum DEBUG] Returning early - no isotope or no base image');
+      return;
+    }
+
+    // Restore base chart
+    ctx.putImageData(baseChartImage, 0, 0);
+
+    const isotopeEnergies = getIsotopeEnergies(isotopeName);
+    console.log('[Spectrum DEBUG] Isotope energies for', isotopeName, ':', isotopeEnergies);
+    const colors = chartColors();
+    const isotopeColor = getIsotopeColor(isotopeName);
+    console.log('[Spectrum DEBUG] Using color for', isotopeName, ':', isotopeColor);
+
+    // Draw vertical lines for each energy peak
+    isotopeEnergies.forEach(peakEnergy => {
+      // Convert energy to canvas x position
+      const xPos = plotLeft + ((peakEnergy - minX) / rangeX) * plotW;
+
+      // Only draw if within visible range
+      if (xPos >= plotLeft && xPos <= plotRight) {
+        ctx.save();
+        ctx.strokeStyle = isotopeColor;
+        console.log('[Spectrum DEBUG] Drawing line with color:', ctx.strokeStyle, 'for', isotopeName);
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]); // Dashed line
+        ctx.globalAlpha = 0.7;
+
+        ctx.beginPath();
+        ctx.moveTo(xPos, plotTop);
+        ctx.lineTo(xPos, plotBottom);
+        ctx.stroke();
+
+        // Draw energy label at top
+        ctx.fillStyle = colors.text || '#e0e0e0';
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.globalAlpha = 1.0;
+        ctx.fillText(peakEnergy.toFixed(1) + ' keV', xPos, plotTop - 5);
+
+        ctx.restore();
+      }
+    });
+  };
+
   // Mouse move handler
   const handleMouseMove = function(e) {
     const rect = canvas.getBoundingClientRect();
@@ -4351,6 +4446,11 @@ function drawSpectrumChart(canvas, spectrum) {
     // Check if mouse is within plot area
     if (mouseX < plotLeft || mouseX > plotRight || mouseY < plotTop || mouseY > plotBottom) {
       tooltipDiv.style.display = 'none';
+      // Clear markers if moving out of plot area
+      if (currentHoverIsotope !== null && baseChartImage) {
+        currentHoverIsotope = null;
+        ctx.putImageData(baseChartImage, 0, 0); // Restore base chart
+      }
       return;
     }
 
@@ -4373,11 +4473,29 @@ function drawSpectrumChart(canvas, spectrum) {
 
     // Check if energy matches known isotope
     const isotope = findIsotopeByEnergy(energy, 10);
+    console.log('[Spectrum DEBUG] Hover at', energy.toFixed(1), 'keV, detected isotope:', isotope);
+
+    // If isotope changed, redraw markers
+    if (isotope !== currentHoverIsotope) {
+      console.log('[Spectrum DEBUG] Isotope changed from', currentHoverIsotope, 'to', isotope);
+      currentHoverIsotope = isotope;
+      // Draw markers for new isotope (or clear if null)
+      if (isotope) {
+        drawIsotopeMarkers(isotope);
+      } else if (baseChartImage) {
+        console.log('[Spectrum DEBUG] Clearing markers, restoring base chart');
+        ctx.putImageData(baseChartImage, 0, 0); // Restore base chart
+      }
+    }
 
     // Update tooltip content and position
     let tooltipContent = '';
     if (isotope) {
-      tooltipContent = `<div style="color: var(--isotope-highlight); font-weight: bold;">${isotope}</div><strong>${energy.toFixed(1)} keV</strong><br>Counts: ${count}`;
+      const allEnergies = getIsotopeEnergies(isotope);
+      const energyList = allEnergies.map(e => e.toFixed(1)).join(', ');
+      const isotopeColor = getIsotopeColor(isotope);
+      console.log('[Spectrum DEBUG] Building tooltip for', isotope, '- all energies:', energyList);
+      tooltipContent = `<div style="color: ${isotopeColor}; font-weight: bold;">${isotope}</div><strong>${energy.toFixed(1)} keV</strong><br>Counts: ${count}<br><span style="font-size: 0.9em;">Other peaks: ${energyList} keV</span>`;
     } else {
       tooltipContent = `<strong>${energy.toFixed(1)} keV</strong><br>Counts: ${count}`;
     }
@@ -4391,6 +4509,11 @@ function drawSpectrumChart(canvas, spectrum) {
   // Mouse out handler
   const handleMouseOut = function() {
     tooltipDiv.style.display = 'none';
+    // Clear markers when mouse leaves canvas
+    if (currentHoverIsotope !== null && baseChartImage) {
+      currentHoverIsotope = null;
+      ctx.putImageData(baseChartImage, 0, 0); // Restore base chart
+    }
   };
 
   // Store handlers on canvas so we can remove them later
