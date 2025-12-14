@@ -1291,13 +1291,13 @@ body, html {
 <!-- Unit Toggle Button -->
 <button id="unitToggle" aria-label="Toggle between µR/h and µSv/h" style="
   position: absolute;
-  bottom: 114px;
+  bottom: 113px;
   right: 114px;
   background: var(--control-bg);
   border: var(--legend-border);
   border-radius: 4px;
   box-shadow: 0 1px 5px rgba(0,0,0,0.65);
-  padding: 3px 10px;
+  padding: 3px 17px;
   font-size: var(--font-size-base);
   cursor: pointer;
   z-index: 1000;
@@ -1308,7 +1308,7 @@ body, html {
 <!-- Compact Legend (clickable) -->
 <div id="legend" role="button" tabindex="0" aria-label="{{translate "legend_button_tooltip"}}" style="
   position: absolute;
-  bottom: 20px;
+  bottom: 14px;
   right: 20px;
   background: var(--control-bg);
   border: var(--legend-border);
@@ -1326,7 +1326,7 @@ body, html {
     <span style="position:absolute; bottom:4px; left:0; right:0; display:flex; align-items:center; justify-content:center; writing-mode:vertical-rl; transform:rotate(180deg); color:#fff; font-size: var(--font-size-xxs);">{{translate "legend_safe"}}</span>
     <span style="position:absolute; top:4px; left:0; right:0; display:flex; align-items:center; justify-content:center; writing-mode:vertical-rl; transform:rotate(180deg); color:#000; font-size: var(--font-size-xxs);">{{translate "legend_danger"}}</span>
 </div>
-  <div>
+  <div style="min-width: 100px;">
     <strong>{{translate "legend_title"}}</strong><br>
     <div style="margin-bottom: 2px;"><span style="color:#FFFF00;">■</span> <span id="legend-range-4"></span></div>
     <div style="margin-bottom: 2px;"><span style="color:#FF0066;">■</span> <span id="legend-range-3"></span></div>
