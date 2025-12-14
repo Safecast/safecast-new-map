@@ -188,6 +188,29 @@ body, html {
           color-scheme: dark; /* Force dark scheme when manually selected */
         }
 
+        /* Brighten map tiles in dark mode to improve readability */
+        :root[data-theme='dark'] .leaflet-tile-pane {
+           filter: brightness(1.5) contrast(0.85);
+        }
+
+        @media (prefers-color-scheme: dark) {
+          .leaflet-tile-pane {
+            filter: brightness(1.5) contrast(0.85);
+          }
+        }
+        
+        /* Ensure filter is removed if forcibly switched to light mode */
+        :root[data-theme='light'] .leaflet-tile-pane {
+           filter: brightness(0.95) contrast(0.7);
+        }
+
+        @media (prefers-color-scheme: light) {
+          .leaflet-tile-pane {
+             /* Subtle darkening for light mode */
+             filter: brightness(0.95) contrast(0.7);
+          }
+        }
+
         /* Theme toggle switch */
         #themeToggle {
           position: absolute;
