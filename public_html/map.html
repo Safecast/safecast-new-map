@@ -214,8 +214,8 @@ body, html {
         /* Theme toggle switch */
         #themeToggle {
           position: absolute;
-          bottom: 113px;
-          right: 20px;
+          bottom: 20px;
+          right: 10px;
           background: var(--control-bg);
           border: var(--legend-border);
           border-radius: 4px;
@@ -1314,8 +1314,8 @@ body, html {
 <!-- Unit Toggle Button -->
 <button id="unitToggle" aria-label="Toggle between µR/h and µSv/h" style="
   position: absolute;
-  bottom: 114px;
-  right: 114px;
+  bottom: 20px;
+  right: 120px;
   background: var(--control-bg);
   border: var(--legend-border);
   border-radius: 4px;
@@ -1331,31 +1331,40 @@ body, html {
 <!-- Compact Legend (clickable) -->
 <div id="legend" role="button" tabindex="0" aria-label="{{translate "legend_button_tooltip"}}" style="
   position: absolute;
-  bottom: 20px;
-  right: 20px;
+  bottom: 50px;
+  right: 10px;
   background: var(--control-bg);
   border: var(--legend-border);
   border-radius: 4px;
   box-shadow: 0 1px 5px rgba(0,0,0,0.65);
-  padding: 10px 10px 10px 0;
+  padding: 5px;
   font-size: var(--font-size-sm);
-  line-height: 1.4em;
   cursor: pointer;
   z-index: 1000;
   font-family: var(--font-family-base);
-  display: flex;
-  overflow: hidden;">
-    <div style="width:16px; margin-left:6px; margin-right:6px; border-radius:4px 4px 4px 4px; overflow:hidden; background:linear-gradient(to top,#00008B,#4169E1,#87CEEB,#40E0D0,#9370DB,#FF1493,#FF0066,#FF4500,#FFA500,#FFFF00); position:relative;">
-    <span style="position:absolute; bottom:4px; left:0; right:0; display:flex; align-items:center; justify-content:center; writing-mode:vertical-rl; transform:rotate(180deg); color:#fff; font-size: var(--font-size-xxs);">{{translate "legend_safe"}}</span>
-    <span style="position:absolute; top:4px; left:0; right:0; display:flex; align-items:center; justify-content:center; writing-mode:vertical-rl; transform:rotate(180deg); color:#000; font-size: var(--font-size-xxs);">{{translate "legend_danger"}}</span>
-</div>
-  <div style="min-width: 85px;">
-    <strong>{{translate "legend_title"}}</strong><br>
-    <div><span style="color:#FFFF00;">■</span> <span id="legend-range-4"></span></div>
-    <div><span style="color:#FF0066;">■</span> <span id="legend-range-3"></span></div>
-  <div><span style="color:#9370DB;">■</span> <span id="legend-range-2"></span></div>
-   <div><span style="color:#4169E1;">■</span> <span id="legend-range-1"></span></div>
-  </div>
+  height: 500px;
+  display: flex;">
+    <div style="width:24px; margin-right:8px; border-radius:12px; border: 1px solid rgba(0,0,0,0.2); background:linear-gradient(to top, rgb(0,0,139), rgb(0,71,171), rgb(65,105,225), rgb(135,206,250), rgb(0,191,255), rgb(0,255,255), rgb(64,224,208), rgb(147,112,219), rgb(186,85,211), rgb(255,0,255), rgb(255,20,147), rgb(255,0,0), rgb(255,69,0), rgb(255,165,0), rgb(255,255,0));"></div>
+    <div style="display:flex; flex-direction:column; justify-content:space-between; height:100%; font-weight:bold; min-width:35px; text-align:left;">
+      <span id="legend-val-14"></span>
+      <span id="legend-val-13"></span>
+      <span id="legend-val-12"></span>
+      <span id="legend-val-11"></span>
+      <span id="legend-val-10"></span>
+      <span id="legend-val-9"></span>
+      <span id="legend-val-8"></span>
+      <span id="legend-val-7"></span>
+      <span id="legend-val-6"></span>
+      <span id="legend-val-5"></span>
+      <span id="legend-val-4"></span>
+      <span id="legend-val-3"></span>
+      <span id="legend-val-2"></span>
+      <span id="legend-val-1"></span>
+      <span id="legend-val-0"></span>
+    </div>
+    <div style="position:absolute; bottom:20px;right:5px;width:100%;text-align:center; font-size:15px; font-weight:bold; color:var(--modal-text); text-shadow: 0 0 2px var(--control-bg);">
+       <span id="legend-unit-label">µSv/h</span>
+    </div>
 </div>
 <!--
   Compact 4-bin legend with vertical gradient bar showing radiation levels.
@@ -1670,19 +1679,37 @@ body, html {
 
       // Compute marker color from radiation level
       // Based on world background radiation baseline of ~0.10 µSv/h (external only)
-      // Color scale: Dark Blue → Blue → Light Blue → Cyan → Purple → Magenta → Red → Orange → Yellow
+      // Defined globally for Map and Legend usage - 15 step scale
+      const radiationSteps = [
+        { uSv: 0.03, color: [0, 0, 139] },    // DarkBlue
+        { uSv: 0.05, color: [0, 71, 171] },   // Cobalt
+        { uSv: 0.08, color: [65, 105, 225] }, // RoyalBlue
+        { uSv: 0.12, color: [135, 206, 250] },// LightSkyBlue
+        { uSv: 0.16, color: [0, 191, 255] },  // DeepSkyBlue
+        { uSv: 0.23, color: [0, 255, 255] },  // Cyan
+        { uSv: 0.31, color: [64, 224, 208] }, // Turquoise
+        { uSv: 0.43, color: [147, 112, 219] },// MediumPurple
+        { uSv: 0.60, color: [186, 85, 211] }, // MediumOrchid
+        { uSv: 0.87, color: [255, 0, 255] },  // Magenta
+        { uSv: 1.31, color: [255, 20, 147] }, // DeepPink
+        { uSv: 2.13, color: [255, 0, 0] },    // Red
+        { uSv: 3.99, color: [255, 69, 0] },   // Red-Orange
+        { uSv: 10.09, color: [255, 165, 0] }, // Orange
+        { uSv: 65.54, color: [255, 255, 0] }  // Yellow
+      ];
+
       function getGradientColor(doseRate) {
-        if (doseRate <= 0.03) return '#00008B'; // Dark blue - very low
-        else if (doseRate <= 0.07) return interpolateColor([0, 0, 139], [65, 105, 225], (doseRate - 0.03) / (0.07 - 0.03)); // Dark blue to Blue
-        else if (doseRate <= 0.12) return interpolateColor([65, 105, 225], [135, 206, 250], (doseRate - 0.07) / (0.12 - 0.07)); // Blue to Light blue
-        else if (doseRate <= 0.20) return interpolateColor([135, 206, 250], [64, 224, 208], (doseRate - 0.12) / (0.20 - 0.12)); // Light blue to Cyan
-        else if (doseRate <= 0.33) return interpolateColor([64, 224, 208], [147, 112, 219], (doseRate - 0.20) / (0.33 - 0.20)); // Cyan to Purple
-        else if (doseRate <= 0.56) return interpolateColor([147, 112, 219], [255, 20, 147], (doseRate - 0.33) / (0.56 - 0.33)); // Purple to Magenta
-        else if (doseRate <= 0.99) return interpolateColor([255, 20, 147], [255, 0, 102], (doseRate - 0.56) / (0.99 - 0.56)); // Magenta to Red-Pink
-        else if (doseRate <= 2.01) return interpolateColor([255, 0, 102], [255, 69, 0], (doseRate - 0.99) / (2.01 - 0.99)); // Red-Pink to Red-Orange
-        else if (doseRate <= 5.71) return interpolateColor([255, 69, 0], [255, 165, 0], (doseRate - 2.01) / (5.71 - 2.01)); // Red-Orange to Orange
-        else if (doseRate <= 65.54) return interpolateColor([255, 165, 0], [255, 255, 0], (doseRate - 5.71) / (65.54 - 5.71)); // Orange to Yellow
-        else return '#FFFF00'; // Yellow for very high values
+          if (doseRate <= radiationSteps[0].uSv) return `rgb(${radiationSteps[0].color.join(',')})`;
+          if (doseRate >= radiationSteps[radiationSteps.length-1].uSv) return `rgb(${radiationSteps[radiationSteps.length-1].color.join(',')})`;
+
+          for (let i = 0; i < radiationSteps.length - 1; i++) {
+              const lower = radiationSteps[i];
+              const upper = radiationSteps[i+1];
+              if (doseRate >= lower.uSv && doseRate <= upper.uSv) {
+                  return interpolateColor(lower.color, upper.color, (doseRate - lower.uSv) / (upper.uSv - lower.uSv));
+              }
+          }
+          return '#FFFF00';
       }
 
 // Interpolate between two colors
@@ -2341,32 +2368,26 @@ var currentUnit = loadUnitPreference();
  * This updates both the range labels in the compact legend.
  */
 function updateLegendDisplay() {
-  // Define thresholds based on new color scale (0.10 µSv/h baseline)
-  const thresholds = {
-    uR: {
-      range1: '0–12 µR/h',      // 0-0.12 µSv/h - Blues (below/at background)
-      range2: '12–33 µR/h',     // 0.12-0.33 µSv/h - Cyan to Purple (above background)
-      range3: '33–99 µR/h',     // 0.33-0.99 µSv/h - Magenta to Red (elevated)
-      range4: '>99 µR/h'        // >0.99 µSv/h - Orange to Yellow (high)
-    },
-    uSv: {
-      range1: '0–0.12 µSv/h',   // Blues (below/at background)
-      range2: '0.12–0.33 µSv/h', // Cyan to Purple (above background)
-      range3: '0.33–0.99 µSv/h', // Magenta to Red (elevated)
-      range4: '>0.99 µSv/h'      // Orange to Yellow (high)
+  const isUSv = (currentUnit === 'uSv');
+  const unitLabel = document.getElementById('legend-unit-label');
+  if (unitLabel) unitLabel.textContent = isUSv ? 'µSv/h' : 'µR/h';
+
+  // radiationSteps is defined globally near getGradientColor
+  radiationSteps.forEach((step, index) => {
+    const el = document.getElementById('legend-val-' + index);
+    if (!el) return;
+    
+    let val = step.uSv;
+    if (!isUSv) {
+       // Convert to µR/h (approx factor 100)
+       val = val * 100;
+       // Rounding for clean display
+       if (val >= 100) val = Math.round(val);
+       else if (val >= 10) val = parseFloat(val.toFixed(1));
+       else val = parseFloat(val.toFixed(2));
     }
-  };
-
-  const ranges = thresholds[currentUnit];
-  const el1 = document.getElementById('legend-range-1');
-  const el2 = document.getElementById('legend-range-2');
-  const el3 = document.getElementById('legend-range-3');
-  const el4 = document.getElementById('legend-range-4');
-
-  if (el1) el1.textContent = ranges.range1;
-  if (el2) el2.textContent = ranges.range2;
-  if (el3) el3.textContent = ranges.range3;
-  if (el4) el4.textContent = ranges.range4;
+    el.textContent = val;
+  });
 }
 
 /**
