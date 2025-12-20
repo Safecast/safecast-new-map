@@ -1,4 +1,4 @@
-[![Latest stable release build](https://github.com/Safecast/chicha-isotope-map/actions/workflows/release.yml/badge.svg)](https://github.com/Safecast/chicha-isotope-map/actions/workflows/release.yml)
+[![Latest stable release build](https://github.com/Safecast/safecast-new-map/actions/workflows/release.yml/badge.svg)](https://github.com/Safecast/safecast-new-map/actions/workflows/release.yml)
 
 <img width="30%" align="left" alt="Safecast" src="https://avatars.githubusercontent.com/u/959637?s=400&v=4" />
 
@@ -21,19 +21,19 @@ Natural background radiation stays low. Danger appears only where the levels ris
 
 If this map protects even one person or animal, building it was worth it. Let it serve as a simple, clear guide for choosing a safer path.
 
-Live demo: [https://pelora.org/](https://pelora.org/) — your node will look the same.
+Live demo: [https://simplemap.safecast.org/](https://simplemap.safecast.org/) — your node will look the same.
 
-👉 [Unified download page](https://github.com/safecast/chicha-isotope-map/releases) (all platforms, latest builds)
+👉 [Unified download page](https://github.com/safecast/safecast-new-map/releases) (all platforms, latest builds)
 
-👉 [DeepWiki: Chicha Isotope Map](https://deepwiki.com/safecast/chicha-isotope-map)
+👉 [DeepWiki: Safecast New Map](https://deepwiki.com/safecast/safecast-new-map)
 
 ---
 
 ### 📸 Example view
 <p>
-  <a href="https://pelora.org" target="_blank"><img width="100%" alt="Fukushima view in chicha-isotope-map" src="https://github.com/user-attachments/assets/617a0ced-4280-41c2-9320-de1cfd33a61f" /></a><br />
-  <a href="https://pelora.org" target="_blank"><img width="100%" alt="Safecast realtime radiation sensors in chicha-isotope-map" src="https://github.com/user-attachments/assets/13256b23-744d-4d02-a26c-ae9aef5b0d87" /></a><br />
-  <a href="https://pelora.org" target="_blank"><img width="100%" alt="Air flights radiation in chicha-isotope-map" src="https://github.com/user-attachments/assets/cf0189c9-534f-4ff5-9d7a-ed5836e91ef5" /></a>
+  <a href="https://simplemap.safecast.org" target="_blank"><img width="100%" alt="Fukushima view in safecast-new-map" src="https://github.com/user-attachments/assets/617a0ced-4280-41c2-9320-de1cfd33a61f" /></a><br />
+  <a href="https://simplemap.safecast.org" target="_blank"><img width="100%" alt="Safecast realtime radiation sensors in safecast-new-map" src="https://github.com/user-attachments/assets/13256b23-744d-4d02-a26c-ae9aef5b0d87" /></a><br />
+  <a href="https://simplemap.safecast.org" target="_blank"><img width="100%" alt="Air flights radiation in safecast-new-map" src="https://github.com/user-attachments/assets/cf0189c9-534f-4ff5-9d7a-ed5836e91ef5" /></a>
 </p>
 
 ---
@@ -55,11 +55,11 @@ The project grows thanks to careful support from the **Safecast** community, the
 Fastest path: download the binary. No Docker, no databases, no extra tools — download, run, done.
 
 ### Option 1. Binary (recommended)
-1) Open the [releases page](https://github.com/safecast/chicha-isotope-map/releases) and download the build for your system.
+1) Open the [releases page](https://github.com/safecast/safecast-new-map/releases) and download the build for your system.
 2) Make it executable and run:
 ```bash
-chmod +x ./chicha-isotope-map
-./chicha-isotope-map
+chmod +x ./safecast-new-map
+./safecast-new-map
 ```
 3) Open [http://localhost:8765](http://localhost:8765) — the map is already live.
 
@@ -72,15 +72,15 @@ Optional knobs:
 ### Option 2. Public node with a domain
 1) Run the binary with your domain:
 ```bash
-./chicha-isotope-map -domain example.org
+./safecast-new-map -domain example.org
 ```
 2) Keep ports 80/443 open for Let’s Encrypt. After issuance, the map is at [https://example.org](https://example.org).
 
 ### Option 3. Docker (all packaged)
 1) Install Docker (Desktop or CLI).
-2) Find **matveynator/chicha-isotope-map** on Docker Hub and click **Run** (or execute one command):
+2) Find **Safecast/safecast-new-map** on Docker Hub and click **Run** (or execute one command):
 ```bash
-docker run -d -p 8765:8765 --name chicha-isotope-map safecastr/chicha-isotope-map:latest
+docker run -d -p 8765:8765 --name safecast-new-map safecastr/safecast-new-map:latest
 ```
 3) Open [http://localhost:8765](http://localhost:8765) — that’s it.
 
@@ -88,19 +88,19 @@ docker run -d -p 8765:8765 --name chicha-isotope-map safecastr/chicha-isotope-ma
 
 ## 📥 Import data
 - On the map page, click the green **Upload** button and drop your tracks (`.kml`, `.kmz`, `.json`, `.rctrk`, `.csv`, `.gpx`, bGeigie Nano/Zen `$BNRDD`, AtomFast, RadiaCode, Safecast, etc.).
-- Instant mirror of pelora.org: run `chicha-isotope-map -import-tgz-url https://pelora.org/api/json/weekly.tgz` once — it fetches the weekly archive, fills your database, and quits so the next launch starts fully populated.
-- Want the archive saved locally first? Download [https://pelora.org/api/json/weekly.tgz](https://pelora.org/api/json/weekly.tgz), point `-import-tgz-path /path/to/weekly.tgz`, and start with your own copy.
+- Instant mirror of simplemap.safecast.org: run `safecast-new-map -import-tgz-url https://simplemap.safecast.org/api/json/weekly.tgz` once — it fetches the weekly archive, fills your database, and quits so the next launch starts fully populated.
+- Want the archive saved locally first? Download [https://simplemap.safecast.org/api/json/weekly.tgz](https://simplemap.safecast.org/api/json/weekly.tgz), point `-import-tgz-path /path/to/weekly.tgz`, and start with your own copy.
 
 ### 🗺️ One-command first run with live data
 For a completely fresh install, this single command both preloads real-world tracks and serves the map right away:
 ```bash
-chicha-isotope-map -import-tgz-url https://pelora.org/api/json/weekly.tgz
+safecast-new-map -import-tgz-url https://simplemap.safecast.org/api/json/weekly.tgz
 ```
 After it imports, rerun normally (or keep the same command in a systemd service) — the map opens with real measurements visible at [http://localhost:8765](http://localhost:8765).
 
 ### 🛢️ Database options for import and regular use
-- **PostgreSQL (`pgx`)** — the fastest and most convenient with several users. Example: `chicha-isotope-map -db-type pgx -db-conn postgres://USER:PASS@HOST:PORT/DATABASE?sslmode=allow -import-tgz-url https://pelora.org/api/json/weekly.tgz`
-- **DuckDB / SQLite / Chai** — simple file databases for a single user. Concurrent writes can conflict, so keep them for personal maps. Example: `chicha-isotope-map -db-type duckdb -import-tgz-url https://pelora.org/api/json/weekly.tgz`
+- **PostgreSQL (`pgx`)** — the fastest and most convenient with several users. Example: `safecast-new-map -db-type pgx -db-conn postgres://USER:PASS@HOST:PORT/DATABASE?sslmode=allow -import-tgz-url https://simplemap.safecast.org/api/json/weekly.tgz`
+- **DuckDB / SQLite / Chai** — simple file databases for a single user. Concurrent writes can conflict, so keep them for personal maps. Example: `safecast-new-map -db-type duckdb -import-tgz-url https://simplemap.safecast.org/api/json/weekly.tgz`
 
 ## 📤 Export
 - Single track: `/api/track/{trackID}.json` (legacy `.cim` also works).
@@ -121,4 +121,4 @@ After it imports, rerun normally (or keep the same command in a systemd service)
 - We wanted anyone, without training, to see if radiation threatens where they live, grow food, or collect water.
 - The more nodes exist, the harder it is to miss contamination.
 
-Chicha-Isotope-Map was inspired by **Dmitry Ignatenko** and his forward steps in field research, and is deeply influenced by **Rob Oudendijk** and **Safecast**. Open data from the AtomFast and Radiacode communities keeps it useful. If the map spares even one life, it was not in vain.
+Safecast-Isotope-Map was inspired by **Dmitry Ignatenko** and his forward steps in field research, and is deeply influenced by **Rob Oudendijk** and **Safecast**. Open data from the AtomFast and Radiacode communities keeps it useful. If the map spares even one life, it was not in vain.

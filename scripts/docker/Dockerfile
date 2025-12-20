@@ -3,14 +3,14 @@ FROM postgres:16-bookworm
 # ----- утилиты + бинарь приложения -------------------------------
 RUN apt-get update && \
     apt-get install -y --no-install-recommends curl ca-certificates gosu && \
-    curl -L https://github.com/matveynator/chicha-isotope-map/releases/download/latest/chicha-isotope-map_linux_amd64 \
-      -o /usr/local/bin/chicha-isotope-map && \
-    chmod +x /usr/local/bin/chicha-isotope-map && \
+    curl -L https://github.com/Safecast/safecast-new-map/releases/download/latest/safecast-new-map_linux_amd64 \
+      -o /usr/local/bin/safecast-new-map && \
+    chmod +x /usr/local/bin/safecast-new-map && \
     rm -rf /var/lib/apt/lists/*
 
 # ----- ENV по умолчанию -----------------------------------------
-ENV DB_NAME=chicha_isotope_map \
-    DB_USER=chicha_isotope_map \
+ENV DB_NAME=safecast_new_map \
+    DB_USER=safecast_new_map \
     PGDATA=/var/lib/postgresql/data \
     DEFAULT_LAT=51.389 \
     DEFAULT_LON=30.099 \

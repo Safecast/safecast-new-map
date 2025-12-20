@@ -22,8 +22,8 @@ type StaticFetcher struct {
 // Latest performs a HEAD request so we avoid downloading the binary unless a new
 // version appears. Operators can expose custom headers:
 //
-//	X-Chicha-Version: semantic version for display and caching.
-//	X-Chicha-DB-Migration: "true" when the release requires a database backup.
+//	X-Safecast-Version: semantic version for display and caching.
+//	X-Safecast-DB-Migration: "true" when the release requires a database backup.
 func (f StaticFetcher) Latest(ctx context.Context) (Release, error) {
 	if strings.TrimSpace(f.URL) == "" {
 		return Release{}, errors.New("selfupgrade: download URL is empty")
@@ -49,7 +49,7 @@ func (f StaticFetcher) Latest(ctx context.Context) (Release, error) {
 		return Release{}, fmt.Errorf("selfupgrade: HEAD %s failed with %d", f.URL, resp.StatusCode)
 	}
 
-	version := strings.TrimSpace(resp.Header.Get("X-Chicha-Version"))
+	version := strings.TrimSpace(resp.Header.Get("X-Safecast-Version"))
 	if version == "" {
 		version = strings.Trim(resp.Header.Get("ETag"), "\"")
 	}
@@ -61,13 +61,13 @@ func (f StaticFetcher) Latest(ctx context.Context) (Release, error) {
 	}
 
 	needsBackup := false
-	if strings.EqualFold(strings.TrimSpace(resp.Header.Get("X-Chicha-DB-Migration")), "true") {
+	if strings.EqualFold(strings.TrimSpace(resp.Header.Get("X-Safecast-DB-Migration")), "true") {
 		needsBackup = true
 	}
 
 	assetName := filepath.Base(f.URL)
 	if strings.TrimSpace(assetName) == "" || assetName == "." || assetName == string(filepath.Separator) {
-		assetName = "chicha-isotope-map_linux_amd64"
+		assetName = "safecast-new-map_linux_amd64"
 	}
 
 	release := Release{

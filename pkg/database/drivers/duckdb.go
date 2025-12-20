@@ -21,7 +21,7 @@
 //	CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -tags duckdb
 //	CGO_ENABLED=1 GOOS=windows GOARCH=amd64 go build -tags duckdb
 //	CGO_ENABLED=1 GOOS=windows GOARCH=arm64 go build -tags duckdb
-//	go build -tags duckdb -o chicha-isotope-map
+//	go build -tags duckdb -o safecast-new-map
 //
 // Binaries that need DuckDB can import this package with the duckdb tag so the official
 // duckdb-go driver registers itself. We keep this file isolated to keep CGO optional

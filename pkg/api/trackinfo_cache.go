@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"chicha-isotope-map/pkg/database"
+	"safecast-new-map/pkg/database"
 )
 
 // ======================

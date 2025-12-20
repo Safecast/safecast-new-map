@@ -1,4 +1,4 @@
-package cimimport
+package mapimport
 
 import (
 	"bufio"
@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"chicha-isotope-map/pkg/database"
-	"chicha-isotope-map/pkg/trackjson"
+	"safecast-new-map/pkg/database"
+	"safecast-new-map/pkg/trackjson"
 )
 
 // ==========================

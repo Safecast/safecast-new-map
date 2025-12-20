@@ -1,6 +1,6 @@
-[![Соңғы тұрақты жинақ](https://github.com/matveynator/chicha-isotope-map/actions/workflows/release.yml/badge.svg)](https://github.com/matveynator/chicha-isotope-map/actions/workflows/release.yml)
+[![Соңғы тұрақты жинақ](https://github.com/Safecast/safecast-new-map/actions/workflows/release.yml/badge.svg)](https://github.com/Safecast/safecast-new-map/actions/workflows/release.yml)
 
-<img width="30%" align="left" alt="chicha-isotope-map" src="https://github.com/user-attachments/assets/39bfa7b1-03fb-43dd-89bd-8d6c516fd4db" />
+<img width="30%" align="left" alt="safecast-new-map" src="https://github.com/user-attachments/assets/39bfa7b1-03fb-43dd-89bd-8d6c516fd4db" />
 
 - [🇬🇧 English](/README.md)
 - [🇫🇷 Français](/doc/README_FR.md)
@@ -17,19 +17,19 @@
 # ☢️ Әлемдік радиация картасы
 Бұл карта арнайы дайындықсыз-ақ кез келген адамның қасындағы үйлер, егістер, ормандар немесе су көздері радиациядан қауіпті ме екендігін бірден көруі үшін жасалды. Таза орындар әдетте 2–3 µR/h шамасында; қара дақтар көбіне адам әрекетінен шығады. Карта Чехия, Ресей, Қазақстан, Моңғолиядағы уран кендері қалай ұзын із қалдырғанын; Фукусима Жапония жағалауында қара-қызыл «ісіктей» қалай ерекшеленетінін; Чернобыль мен Брянск өңірі жерді қалай белгілегенін; Франция, Чехия және Кавказ минерал сулары аймағындағы радон қабаттары тәуекелді қалай арттыратынын көрсетеді. Уран мен сирек жер элементтерінің шайылуы ерігіш тұз қалдырып, су қабаттарына сіңіп, ақырында суымыз бен тағамымызға жетеді. Бұл карта бір ғана адамды немесе жануарды қорғаса да, оны жасау құнды.
 
-Онлайн демо: [https://pelora.org/](https://pelora.org/) — сіздің түйініңіз дәл осылай көрінеді.
+Онлайн демо: [https://simplemap.safecast.org/](https://simplemap.safecast.org/) — сіздің түйініңіз дәл осылай көрінеді.
 
-👉 [Бірлескен жүктеу беті](https://github.com/matveynator/chicha-isotope-map/releases) (барлық платформалар, соңғы жинақтар)
+👉 [Бірлескен жүктеу беті](https://github.com/Safecast/safecast-new-map/releases) (барлық платформалар, соңғы жинақтар)
 
-👉 [DeepWiki: Chicha Isotope Map](https://deepwiki.com/matveynator/chicha-isotope-map)
+👉 [DeepWiki: Safecast New Map](https://deepwiki.com/Safecast/safecast-new-map)
 
 ---
 
 ### 📸 Үлгі көрініс
 <p>
-  <a href="https://pelora.org" target="_blank"><img width="100%" alt="Fukushima view in chicha-isotope-map" src="https://github.com/user-attachments/assets/617a0ced-4280-41c2-9320-de1cfd33a61f" /></a><br />
-  <a href="https://pelora.org" target="_blank"><img width="100%" alt="Safecast realtime radiation sensors in chicha-isotope-map" src="https://github.com/user-attachments/assets/13256b23-744d-4d02-a26c-ae9aef5b0d87" /></a><br />
-  <a href="https://pelora.org" target="_blank"><img width="100%" alt="Air flights radiation in chicha-isotope-map" src="https://github.com/user-attachments/assets/cf0189c9-534f-4ff5-9d7a-ed5836e91ef5" /></a>
+  <a href="https://simplemap.safecast.org" target="_blank"><img width="100%" alt="Fukushima view in safecast-new-map" src="https://github.com/user-attachments/assets/617a0ced-4280-41c2-9320-de1cfd33a61f" /></a><br />
+  <a href="https://simplemap.safecast.org" target="_blank"><img width="100%" alt="Safecast realtime radiation sensors in safecast-new-map" src="https://github.com/user-attachments/assets/13256b23-744d-4d02-a26c-ae9aef5b0d87" /></a><br />
+  <a href="https://simplemap.safecast.org" target="_blank"><img width="100%" alt="Air flights radiation in safecast-new-map" src="https://github.com/user-attachments/assets/cf0189c9-534f-4ff5-9d7a-ed5836e91ef5" /></a>
 </p>
 
 ---
@@ -48,11 +48,11 @@
 Ең жылдам жол: дайын бинарды жүктеңіз. Docker, дерекқор немесе қосымша құрал қажет емес — жүктеу, іске қосу, дайын.
 
 ### Нұсқа 1. Бинар (ұсынылады)
-1) [Релиздер бетіне](https://github.com/matveynator/chicha-isotope-map/releases) кіріп, жүйеңізге сәйкес жинақты жүктеңіз.
+1) [Релиздер бетіне](https://github.com/Safecast/safecast-new-map/releases) кіріп, жүйеңізге сәйкес жинақты жүктеңіз.
 2) Файлға орындау құқығын беріп, іске қосыңыз:
 ```bash
-chmod +x ./chicha-isotope-map
-./chicha-isotope-map
+chmod +x ./safecast-new-map
+./safecast-new-map
 ```
 3) [http://localhost:8765](http://localhost:8765) ашыңыз — карта жұмыс істеп тұр.
 
@@ -65,15 +65,15 @@ chmod +x ./chicha-isotope-map
 ### Нұсқа 2. Домені бар ашық түйін
 1) Бинарды доменмен қосыңыз:
 ```bash
-./chicha-isotope-map -domain example.org
+./safecast-new-map -domain example.org
 ```
 2) Let’s Encrypt үшін 80/443 порттарын ашық ұстаңыз. Шығарылған соң сайт [https://example.org](https://example.org) мекенжайында болады.
 
 ### Нұсқа 3. Docker (бәрі қапталған)
 1) Docker орнатыңыз (Desktop немесе CLI).
-2) Docker Hub-та **matveynator/chicha-isotope-map** іздеп, **Run** түймесін басыңыз (немесе команда орындаңыз):
+2) Docker Hub-та **Safecast/safecast-new-map** іздеп, **Run** түймесін басыңыз (немесе команда орындаңыз):
 ```bash
-docker run -d -p 8765:8765 --name chicha-isotope-map matveynator/chicha-isotope-map:latest
+docker run -d -p 8765:8765 --name safecast-new-map Safecast/safecast-new-map:latest
 ```
 3) [http://localhost:8765](http://localhost:8765) ашыңыз — бәрі дайын.
 
@@ -81,19 +81,19 @@ docker run -d -p 8765:8765 --name chicha-isotope-map matveynator/chicha-isotope-
 
 ## 📥 Деректерді импорттау
 - Карта бетінде жасыл **Upload** түймесін басып, тректерді жүктеңіз (`.kml`, `.kmz`, `.json`, `.rctrk`, `.csv`, `.gpx`, bGeigie Nano/Zen `$BNRDD`, AtomFast экспорты, RadiaCode, Safecast, т.б.).
-- pelora.org айнасы керек пе? Бір рет `chicha-isotope-map -import-tgz-url https://pelora.org/api/json/weekly.tgz` іске қосыңыз — апталық архивті жүктеп, дерекқорды толтырады да шығады, келесі қосу дайын дерекпен басталады.
-- Архивті алдын ала жүктегіңіз келе ме? [https://pelora.org/api/json/weekly.tgz](https://pelora.org/api/json/weekly.tgz) алып, `-import-tgz-path /path/to/weekly.tgz` параметрімен іске қосыңыз, жергілікті көшірмені қолданыңыз.
+- simplemap.safecast.org айнасы керек пе? Бір рет `safecast-new-map -import-tgz-url https://simplemap.safecast.org/api/json/weekly.tgz` іске қосыңыз — апталық архивті жүктеп, дерекқорды толтырады да шығады, келесі қосу дайын дерекпен басталады.
+- Архивті алдын ала жүктегіңіз келе ме? [https://simplemap.safecast.org/api/json/weekly.tgz](https://simplemap.safecast.org/api/json/weekly.tgz) алып, `-import-tgz-path /path/to/weekly.tgz` параметрімен іске қосыңыз, жергілікті көшірмені қолданыңыз.
 
 ### 🗺️ Бір командамен алғашқы іске қосу және нақты дерек
 Жаңа жүйеде мына команданы орындаңыз:
 ```bash
-chicha-isotope-map -import-tgz-url https://pelora.org/api/json/weekly.tgz
+safecast-new-map -import-tgz-url https://simplemap.safecast.org/api/json/weekly.tgz
 ```
 Импорттан кейін әдеттегідей қайта іске қосыңыз (немесе осы команданы systemd қызметіне қойыңыз) — [http://localhost:8765](http://localhost:8765) бетінде нақты өлшемдер көрінеді.
 
 ### 🛢️ Импорт пен күнделікті жұмысқа арналған дерекқор таңдау
-- **PostgreSQL (`pgx`)** — ең жылдам, бірнеше пайдаланушыға қолайлы. Мысал: `chicha-isotope-map -db-type pgx -db-conn postgres://USER:PASS@HOST:PORT/DATABASE?sslmode=allow -import-tgz-url https://pelora.org/api/json/weekly.tgz`
-- **DuckDB / SQLite / Chai** — бір пайдаланушыға ыңғайлы файлдық шешімдер. Бір мезгілде жазу қайшылық тудыруы мүмкін, сондықтан жеке карталарға лайық. Мысал: `chicha-isotope-map -db-type duckdb -import-tgz-url https://pelora.org/api/json/weekly.tgz`
+- **PostgreSQL (`pgx`)** — ең жылдам, бірнеше пайдаланушыға қолайлы. Мысал: `safecast-new-map -db-type pgx -db-conn postgres://USER:PASS@HOST:PORT/DATABASE?sslmode=allow -import-tgz-url https://simplemap.safecast.org/api/json/weekly.tgz`
+- **DuckDB / SQLite / Chai** — бір пайдаланушыға ыңғайлы файлдық шешімдер. Бір мезгілде жазу қайшылық тудыруы мүмкін, сондықтан жеке карталарға лайық. Мысал: `safecast-new-map -db-type duckdb -import-tgz-url https://simplemap.safecast.org/api/json/weekly.tgz`
 
 ## 📤 Экспорт
 - Бір трек: `/api/track/{trackID}.json` (ескі `.cim` та қолдайды).
@@ -113,4 +113,4 @@ chicha-isotope-map -import-tgz-url https://pelora.org/api/json/weekly.tgz
 - Біз әркім арнайы оқусыз-ақ өзі тұратын, егін егетін немесе су алатын жерде радиация бар-жоғын көре алсын дедік.
 - Түйін көп болса, жалпы көрініс сенімдірек болады және ластануды жіберіп алу ықтималдығы азаяды.
 
-Chicha‑Isotope‑Map жобасына **Dmitry Ignatenko** дала зерттеулері шабыт берді, әрі **Rob Oudendijk** пен **Safecast** әсер етті. AtomFast және Radiacode қауымдастықтарының ашық деректері картаны пайдалы ұстап тұр. Егер карта бір жанды құтқарса, ол бекер жасалған жоқ.
+Safecast‑Isotope‑Map жобасына **Dmitry Ignatenko** дала зерттеулері шабыт берді, әрі **Rob Oudendijk** пен **Safecast** әсер етті. AtomFast және Radiacode қауымдастықтарының ашық деректері картаны пайдалы ұстап тұр. Егер карта бір жанды құтқарса, ол бекер жасалған жоқ.

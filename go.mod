@@ -1,4 +1,4 @@
-module chicha-isotope-map
+module safecast-new-map
 
 go 1.24
 

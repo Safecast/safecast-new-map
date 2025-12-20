@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 docker login
-docker build -t matveynator/chicha-isotope-map:latest .
-docker push matveynator/chicha-isotope-map:latest
+docker build -t Safecast/safecast-new-map:latest .
+docker push Safecast/safecast-new-map:latest

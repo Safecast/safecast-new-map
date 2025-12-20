@@ -1,6 +1,6 @@
-[![Последний стабильный релиз](https://github.com/matveynator/chicha-isotope-map/actions/workflows/release.yml/badge.svg)](https://github.com/matveynator/chicha-isotope-map/actions/workflows/release.yml)
+[![Последний стабильный релиз](https://github.com/Safecast/safecast-new-map/actions/workflows/release.yml/badge.svg)](https://github.com/Safecast/safecast-new-map/actions/workflows/release.yml)
 
-<img width="30%" align="left" alt="chicha-isotope-map" src="https://github.com/user-attachments/assets/39bfa7b1-03fb-43dd-89bd-8d6c516fd4db" />
+<img width="30%" align="left" alt="safecast-new-map" src="https://github.com/user-attachments/assets/39bfa7b1-03fb-43dd-89bd-8d6c516fd4db" />
 
 * [🇬🇧 English](/README.md)
 * [🇫🇷 Français](/doc/README_FR.md)
@@ -21,19 +21,19 @@
 
 Если эта карта убережёт хотя бы одного человека или одно живое существо, значит, она создана не напрасно. Пусть она послужит простым и понятным ориентиром, помогающим выбирать безопасный путь.
 
-Живая демо: [https://pelora.org/](https://pelora.org/) — ваш узел будет выглядеть так же.
+Живая демо: [https://simplemap.safecast.org/](https://simplemap.safecast.org/) — ваш узел будет выглядеть так же.
 
-👉 [Единая страница скачивания](https://github.com/matveynator/chicha-isotope-map/releases) (все платформы, свежие версии)
+👉 [Единая страница скачивания](https://github.com/Safecast/safecast-new-map/releases) (все платформы, свежие версии)
 
-👉 [DeepWiki: Chicha Isotope Map](https://deepwiki.com/matveynator/chicha-isotope-map)
+👉 [DeepWiki: Safecast New Map](https://deepwiki.com/Safecast/safecast-new-map)
 
 ---
 
 ### 📸 Пример
 <p>
-  <a href="https://pelora.org" target="_blank"><img width="100%" alt="Fukushima view in chicha-isotope-map" src="https://github.com/user-attachments/assets/617a0ced-4280-41c2-9320-de1cfd33a61f" /></a><br />
-  <a href="https://pelora.org" target="_blank"><img width="100%" alt="Safecast realtime radiation sensors in chicha-isotope-map" src="https://github.com/user-attachments/assets/13256b23-744d-4d02-a26c-ae9aef5b0d87" /></a><br />
-  <a href="https://pelora.org" target="_blank"><img width="100%" alt="Air flights radiation in chicha-isotope-map" src="https://github.com/user-attachments/assets/cf0189c9-534f-4ff5-9d7a-ed5836e91ef5" /></a>
+  <a href="https://simplemap.safecast.org" target="_blank"><img width="100%" alt="Fukushima view in safecast-new-map" src="https://github.com/user-attachments/assets/617a0ced-4280-41c2-9320-de1cfd33a61f" /></a><br />
+  <a href="https://simplemap.safecast.org" target="_blank"><img width="100%" alt="Safecast realtime radiation sensors in safecast-new-map" src="https://github.com/user-attachments/assets/13256b23-744d-4d02-a26c-ae9aef5b0d87" /></a><br />
+  <a href="https://simplemap.safecast.org" target="_blank"><img width="100%" alt="Air flights radiation in safecast-new-map" src="https://github.com/user-attachments/assets/cf0189c9-534f-4ff5-9d7a-ed5836e91ef5" /></a>
 </p>
 
 ---
@@ -61,11 +61,11 @@
 Самый быстрый путь — готовый бинарник. Никакой Docker, БД или внешние инструменты не нужны: скачали, запустили, карта готова.
 
 ### Вариант 1. Готовый бинарник (рекомендуется)
-1. Откройте [страницу релизов](https://github.com/matveynator/chicha-isotope-map/releases) и скачайте файл под свою систему.
+1. Откройте [страницу релизов](https://github.com/Safecast/safecast-new-map/releases) и скачайте файл под свою систему.
 2. Сделайте файл исполняемым и запустите:
    ```bash
-   chmod +x ./chicha-isotope-map
-   ./chicha-isotope-map
+   chmod +x ./safecast-new-map
+   ./safecast-new-map
    ```
 3. Откройте [http://localhost:8765](http://localhost:8765) — карта уже работает.
 
@@ -78,15 +78,15 @@
 ### Вариант 2. Публичный узел с доменом
 1. Запустите бинарник с вашим доменом:
    ```bash
-   ./chicha-isotope-map -domain example.org
+   ./safecast-new-map -domain example.org
    ```
 2. Порты 80/443 понадобятся для сертификата Let’s Encrypt. После выпуска карта будет по адресу [https://example.org](https://example.org).
 
 ### Вариант 3. Docker (всё уже упаковано)
 1. Установите приложение Docker (Desktop или CLI).
-2. Найдите образ **matveynator/chicha-isotope-map** на Docker Hub и нажмите **Run** (или выполните одну команду):
+2. Найдите образ **Safecast/safecast-new-map** на Docker Hub и нажмите **Run** (или выполните одну команду):
    ```bash
-   docker run -d -p 8765:8765 --name chicha-isotope-map matveynator/chicha-isotope-map:latest
+   docker run -d -p 8765:8765 --name safecast-new-map Safecast/safecast-new-map:latest
    ```
 3. Откройте [http://localhost:8765](http://localhost:8765) — готово.
 
@@ -94,19 +94,19 @@
 
 ## 📥 Как наполнить данными
 - На странице карты нажмите зелёную кнопку **Upload** и загрузите свои треки (`.kml`, `.kmz`, `.json`, `.rctrk`, `.csv`, `.gpx`, логи bGeigie Nano/Zen `$BNRDD`, экспорт AtomFast, RadiaCode, Safecast и др.).
-- Хотите полную копию pelora.org? Один раз выполните `chicha-isotope-map -import-tgz-url https://pelora.org/api/json/weekly.tgz` — он скачает еженедельный архив, заполнит базу и завершится, чтобы следующий запуск сразу показывал живые точки.
-- Если удобнее скачать архив заранее: возьмите [https://pelora.org/api/json/weekly.tgz](https://pelora.org/api/json/weekly.tgz), запустите с `-import-tgz-path /путь/к/weekly.tgz` и поднимайте карту с локальной копией.
+- Хотите полную копию simplemap.safecast.org? Один раз выполните `safecast-new-map -import-tgz-url https://simplemap.safecast.org/api/json/weekly.tgz` — он скачает еженедельный архив, заполнит базу и завершится, чтобы следующий запуск сразу показывал живые точки.
+- Если удобнее скачать архив заранее: возьмите [https://simplemap.safecast.org/api/json/weekly.tgz](https://simplemap.safecast.org/api/json/weekly.tgz), запустите с `-import-tgz-path /путь/к/weekly.tgz` и поднимайте карту с локальной копией.
 
 ### 🗺️ Первый запуск с живыми данными одной командой
 На чистой системе введите только это — и карта сразу наполнится и откроется:
 ```bash
-chicha-isotope-map -import-tgz-url https://pelora.org/api/json/weekly.tgz
+safecast-new-map -import-tgz-url https://simplemap.safecast.org/api/json/weekly.tgz
 ```
 После импорта перезапустите обычным способом (или оставьте эту же команду в сервисе systemd). Откройте [http://localhost:8765](http://localhost:8765) — на карте сразу видны реальные измерения.
 
 ### 🛢️ Вариции с базами данных при импорте и в обычной работе:
-- **PostgreSQL (`pgx`)** — самая быстрая и удобная при нескольких пользователях. Пример: `chicha-isotope-map -db-type pgx -db-conn postgres://USER:PASS@HOST:PORT/DATABASE?sslmode=allow -import-tgz-url https://pelora.org/api/json/weekly.tgz`
-- **DuckDB / SQLite / Chai** — простые файловые базы для одного пользователя. При параллельной записи возможны конфликты, поэтому оставляйте их для персональных карт. Пример: `chicha-isotope-map -db-type duckdb -import-tgz-url https://pelora.org/api/json/weekly.tgz`
+- **PostgreSQL (`pgx`)** — самая быстрая и удобная при нескольких пользователях. Пример: `safecast-new-map -db-type pgx -db-conn postgres://USER:PASS@HOST:PORT/DATABASE?sslmode=allow -import-tgz-url https://simplemap.safecast.org/api/json/weekly.tgz`
+- **DuckDB / SQLite / Chai** — простые файловые базы для одного пользователя. При параллельной записи возможны конфликты, поэтому оставляйте их для персональных карт. Пример: `safecast-new-map -db-type duckdb -import-tgz-url https://simplemap.safecast.org/api/json/weekly.tgz`
 
 ## 📤 Экспорт
 - Один трек: `/api/track/{trackID}.json` (старые `.cim` тоже работают).
@@ -126,4 +126,4 @@ chicha-isotope-map -import-tgz-url https://pelora.org/api/json/weekly.tgz
 - Мы хотели, чтобы человек без подготовки мог увидеть: есть ли радиация там, где он живёт, растит еду или берёт воду.
 - Чем больше узлов, тем надёжнее общая картина и меньше шанс пропустить загрязнение.
 
-Chicha‑Isotope‑Map вдохновлена шагами **Дмитрия Игнатенко** в полевых исследованиях, а также идеями **Rob Oudendijk** и проекта **Safecast**. Открытые данные сообществ AtomFast и Radiacode помогают делать карту полезной. Если карта поможет спасти чью-то жизнь, значит, она сделана не зря.
+Safecast‑Isotope‑Map вдохновлена шагами **Дмитрия Игнатенко** в полевых исследованиях, а также идеями **Rob Oudendijk** и проекта **Safecast**. Открытые данные сообществ AtomFast и Radiacode помогают делать карту полезной. Если карта поможет спасти чью-то жизнь, значит, она сделана не зря.
