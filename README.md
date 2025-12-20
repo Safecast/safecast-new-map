@@ -131,11 +131,54 @@ You can customize the map view by adding parameters to the URL. This is useful f
 ---
 
 ## 🧠 Advanced options
-- Databases: built-in SQLite by default; you can switch to DuckDB, Chai, ClickHouse, or PostgreSQL (`pgx`).
-- Import: by URL or file; you can feed an archive directly.
-- Export: JSON archives, a single track, legacy `.cim` files supported.
-- Appearance: starting coordinates and layer (`-default-*`).
-- DuckDB startup slow? See the [performance notes](doc/DUCKDB_PERFORMANCE.md) for checkpoint/Parquet guidance.
+- **Databases:** built-in SQLite by default; you can switch to DuckDB, Chai, ClickHouse, or PostgreSQL (`pgx`).
+- **Import:** by URL or file; you can feed an archive directly.
+- **Export:** JSON archives, a single track, legacy `.cim` files supported.
+- **Appearance:** starting coordinates and layer (`-default-*`).
+- **Admin panel:** enable with `-admin-password YOUR_PASSWORD` for track and upload management. See [ADMIN.md](ADMIN.md).
+- **Safecast Realtime:** add `-safecast-realtime` to poll live sensor data from Safecast devices worldwide.
+- **Spectral Data:** Upload and analyze gamma spectrum files (`.spe`, `.n42`, `.rctrk`) for detailed isotope analysis.
+- **DuckDB startup slow?** See the [performance notes](doc/DUCKDB_PERFORMANCE.md) for checkpoint/Parquet guidance.
+
+---
+
+## 🔬 Spectral Data Support
+
+The map supports uploading and storing gamma spectrum files alongside radiation measurements for detailed isotope analysis.
+
+### Supported Formats
+- **`.spe`** - Maestro spectrum format
+- **`.n42`** - ANSI N42.42 standard format
+- **`.rctrk`** - RadiaCode track format with embedded spectra
+
+### Adding Spectral Support to Existing Database
+
+If you're upgrading an existing database to support spectral data, use the migration scripts:
+
+```bash
+# For PostgreSQL (recommended for production)
+./migrate_add_spectra_postgresql.sh
+
+# For SQLite
+./migrate_add_spectra_sqlite.sh /path/to/database.db
+
+# For DuckDB
+./migrate_add_spectra_duckdb.sh /path/to/database.duckdb
+```
+
+The migration safely adds:
+- `spectra` table for storing spectrum data
+- `has_spectrum` flag on the `markers` table
+- Indexes for fast spectrum lookups
+
+**📖 Full documentation:** See [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) for detailed migration instructions.
+
+### Features
+- **Automatic parsing** of spectrum files during track upload
+- **Energy calibration** support for accurate peak identification
+- **Isotope detection** from gamma spectrum peaks
+- **Spectrum visualization** on marker popups
+- **API access** to retrieve spectrum data for external analysis
 
 ---
 
