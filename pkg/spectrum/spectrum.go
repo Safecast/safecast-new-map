@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math"
 
-	"chicha-isotope-map/pkg/database"
+	"safecast-new-map/pkg/database"
 )
 
 // ChannelToEnergy converts a channel number to energy (keV) using calibration coefficients.

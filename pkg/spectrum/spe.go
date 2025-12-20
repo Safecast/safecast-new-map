@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"chicha-isotope-map/pkg/database"
+	"safecast-new-map/pkg/database"
 )
 
 // SPEFile represents parsed SPE format data

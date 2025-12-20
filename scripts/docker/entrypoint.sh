@@ -3,14 +3,14 @@ set -euo pipefail
 
 # ----------- переменные по умолчанию -----------
 PGDATA=${PGDATA:-/var/lib/postgresql/data}
-DB_NAME=${DB_NAME:-chicha_isotope_map}
-DB_USER=${DB_USER:-chicha_isotope_map}
+DB_NAME=${DB_NAME:-safecast_new_map}
+DB_USER=${DB_USER:-safecast_new_map}
 PORT=${PORT:-8765}
 CERT_DIR=/certs
 
-BIN_PATH=/usr/local/bin/chicha-isotope-map           # бинарь внутри образа (fallback)
-TMP_BIN=/tmp/chicha-isotope-map.new                  # куда качаем свежий
-DOWNLOAD_URL="https://github.com/matveynator/chicha-isotope-map/releases/download/latest/chicha-isotope-map_linux_amd64"
+BIN_PATH=/usr/local/bin/safecast-new-map           # бинарь внутри образа (fallback)
+TMP_BIN=/tmp/safecast-new-map.new                  # куда качаем свежий
+DOWNLOAD_URL="https://github.com/Safecast/safecast-new-map/releases/download/latest/safecast-new-map_linux_amd64"
 
 umask 022
 mkdir -p "$PGDATA" "$CERT_DIR"
@@ -21,7 +21,7 @@ fi
 
 # ----------- попытка скачать свежий бинарь ------
 RUN_BIN="$BIN_PATH"
-echo ">>> checking for latest chicha-isotope-map at: $DOWNLOAD_URL"
+echo ">>> checking for latest safecast-new-map at: $DOWNLOAD_URL"
 if curl -fsSL --connect-timeout 10 --max-time 60 "$DOWNLOAD_URL" -o "$TMP_BIN"; then
   if [[ -s "$TMP_BIN" ]]; then
     # проверим, что это ELF (не html-страница ошибки)
@@ -79,11 +79,11 @@ ARGS=(
 # если указан DOMAIN → HTTPS (80/443) и оставляем root для bind низких портов
 if [[ -n "${DOMAIN:-}" ]]; then
   ARGS+=( -domain "${DOMAIN}" )
-  echo ">>> starting chicha-isotope-map (HTTPS) for domain ${DOMAIN} using: ${RUN_BIN}"
+  echo ">>> starting safecast-new-map (HTTPS) for domain ${DOMAIN} using: ${RUN_BIN}"
   exec "${RUN_BIN}" "${ARGS[@]}"
 else
   ARGS+=( -port "${PORT}" )
-  echo ">>> starting chicha-isotope-map on port ${PORT} using: ${RUN_BIN}"
+  echo ">>> starting safecast-new-map on port ${PORT} using: ${RUN_BIN}"
   exec gosu postgres "${RUN_BIN}" "${ARGS[@]}"
 fi
 

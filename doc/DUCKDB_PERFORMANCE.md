@@ -6,7 +6,7 @@ Slow startups on large `.duckdb` files usually come from replaying the write-ahe
 1. Stop the server cleanly so the file is closed without an in-progress transaction.
 2. Run maintenance once on the data file:
    ```bash
-   duckdb /backup/pelora.org.duckdb \
+   duckdb /backup/simplemap.safecast.org.duckdb \
      "PRAGMA optimize; CHECKPOINT; VACUUM;"
    ```
    * `PRAGMA optimize` refreshes statistics so bounding-box filters stay selective.
@@ -20,6 +20,6 @@ Parquet is great for archival snapshots, but map tiles query by geography and ti
 ## When you still need Parquet
 If you want a secondary Parquet mirror for offline analytics, export directly from the live file without stopping the node:
 ```bash
-duckdb /backup/pelora.org.duckdb "EXPORT DATABASE 'parquet-export' (FORMAT PARQUET);"
+duckdb /backup/simplemap.safecast.org.duckdb "EXPORT DATABASE 'parquet-export' (FORMAT PARQUET);"
 ```
 The export is append-only and does not interfere with the running server. Consumers can read the Parquet directory, while the main map keeps its optimized `.duckdb` store.

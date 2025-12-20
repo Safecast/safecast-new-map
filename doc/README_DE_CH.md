@@ -1,6 +1,6 @@
-[![Letzter stabiler Build](https://github.com/matveynator/chicha-isotope-map/actions/workflows/release.yml/badge.svg)](https://github.com/matveynator/chicha-isotope-map/actions/workflows/release.yml)
+[![Letzter stabiler Build](https://github.com/Safecast/safecast-new-map/actions/workflows/release.yml/badge.svg)](https://github.com/Safecast/safecast-new-map/actions/workflows/release.yml)
 
-<img width="30%" align="left" alt="chicha-isotope-map" src="https://github.com/user-attachments/assets/39bfa7b1-03fb-43dd-89bd-8d6c516fd4db" />
+<img width="30%" align="left" alt="safecast-new-map" src="https://github.com/user-attachments/assets/39bfa7b1-03fb-43dd-89bd-8d6c516fd4db" />
 
 - [🇬🇧 English](/README.md)
 - [🇫🇷 Français](/doc/README_FR.md)
@@ -17,19 +17,19 @@
 # ☢️ Wältwyyti Strahlungskarte
 D Karte isch gmacht, dass jedi Persone ohni grosses Vorwissen grad gseht, ob Strahlig d Huus, d Fäld, d Wälder oder d Waasserstellig i dr Nöchi gföhrdet. Gsundi Orte ligged bi 2–3 µR/h; d dunklere Flecke chöme fasch immer vo menschliche Aktivität. D Karte zeigt, wie d Uranmine i Tschechie, Russland, Kasachstan und Mongolei langi Spure hingerlah hend; wie Fukushima als schwarz-rot „Tumor“ an dr japanische Chüscht ussticht; wie Tschernobyl und s Bryansk-Gbiet s Land präge; wie Radon-Aderä i Frankriich, Tschechie und bi dr Kaukasische Mineralquälle s Risiko erhöhe. Uslaug vo Uran und Rare Earths hinerlat löslichä Salze, wo i d Grundwaasser göh und denn i üses Trinkwasser und s Ässe cho. Wenn die Karte au nume ein Mensch oder Tier schützt, het sich s Boue glonnt.
 
-Live-Demo: [https://pelora.org/](https://pelora.org/) — dis Nödli luegt glich uus.
+Live-Demo: [https://simplemap.safecast.org/](https://simplemap.safecast.org/) — dis Nödli luegt glich uus.
 
-👉 [Eini Download-Site](https://github.com/matveynator/chicha-isotope-map/releases) (alli Plattformä, aktuellsti Builds)
+👉 [Eini Download-Site](https://github.com/Safecast/safecast-new-map/releases) (alli Plattformä, aktuellsti Builds)
 
-👉 [DeepWiki: Chicha Isotope Map](https://deepwiki.com/matveynator/chicha-isotope-map)
+👉 [DeepWiki: Safecast New Map](https://deepwiki.com/Safecast/safecast-new-map)
 
 ---
 
 ### 📸 Bsügg
 <p>
-  <a href="https://pelora.org" target="_blank"><img width="100%" alt="Fukushima view in chicha-isotope-map" src="https://github.com/user-attachments/assets/617a0ced-4280-41c2-9320-de1cfd33a61f" /></a><br />
-  <a href="https://pelora.org" target="_blank"><img width="100%" alt="Safecast realtime radiation sensors in chicha-isotope-map" src="https://github.com/user-attachments/assets/13256b23-744d-4d02-a26c-ae9aef5b0d87" /></a><br />
-  <a href="https://pelora.org" target="_blank"><img width="100%" alt="Air flights radiation in chicha-isotope-map" src="https://github.com/user-attachments/assets/cf0189c9-534f-4ff5-9d7a-ed5836e91ef5" /></a>
+  <a href="https://simplemap.safecast.org" target="_blank"><img width="100%" alt="Fukushima view in safecast-new-map" src="https://github.com/user-attachments/assets/617a0ced-4280-41c2-9320-de1cfd33a61f" /></a><br />
+  <a href="https://simplemap.safecast.org" target="_blank"><img width="100%" alt="Safecast realtime radiation sensors in safecast-new-map" src="https://github.com/user-attachments/assets/13256b23-744d-4d02-a26c-ae9aef5b0d87" /></a><br />
+  <a href="https://simplemap.safecast.org" target="_blank"><img width="100%" alt="Air flights radiation in safecast-new-map" src="https://github.com/user-attachments/assets/cf0189c9-534f-4ff5-9d7a-ed5836e91ef5" /></a>
 </p>
 
 ---
@@ -48,11 +48,11 @@ S Projekt wachst dank em Support vo **Safecast** und dr Community: viu gueti Ide
 Am schnällste: s Binary hole. Kei Docker, kei Datenbank, kei Extra-Wärchzüg — abelade, starte, fertig.
 
 ### Option 1. Binary (empfohle)
-1) Öffne d [Release-Site](https://github.com/matveynator/chicha-isotope-map/releases) und lad d Version für dis System ab.
+1) Öffne d [Release-Site](https://github.com/Safecast/safecast-new-map/releases) und lad d Version für dis System ab.
 2) Mach s ausführbar und starte:
 ```bash
-chmod +x ./chicha-isotope-map
-./chicha-isotope-map
+chmod +x ./safecast-new-map
+./safecast-new-map
 ```
 3) Mach [http://localhost:8765](http://localhost:8765) uuf — d Karte isch scho parat.
 
@@ -65,15 +65,15 @@ Nützligi Stellschraube:
 ### Option 2. Öffentleche Nöd mit Domain
 1) Starte s Binary mit diner Domain:
 ```bash
-./chicha-isotope-map -domain example.org
+./safecast-new-map -domain example.org
 ```
 2) Lueg, dass d Ports 80/443 frei sind für Let’s Encrypt. Nachher isch d Site uf [https://example.org](https://example.org).
 
 ### Option 3. Docker (alles verpackt)
 1) Docker installiere (Desktop oder CLI).
-2) Suech **matveynator/chicha-isotope-map** uf Docker Hub und druck **Run** (oder bruch dä Befehl):
+2) Suech **Safecast/safecast-new-map** uf Docker Hub und druck **Run** (oder bruch dä Befehl):
 ```bash
-docker run -d -p 8765:8765 --name chicha-isotope-map matveynator/chicha-isotope-map:latest
+docker run -d -p 8765:8765 --name safecast-new-map Safecast/safecast-new-map:latest
 ```
 3) Öffne [http://localhost:8765](http://localhost:8765) — fertig.
 
@@ -81,19 +81,19 @@ docker run -d -p 8765:8765 --name chicha-isotope-map matveynator/chicha-isotope-
 
 ## 📥 Date importiere
 - Uuf dr Kartä-Site dr grüne **Upload**-Button drucke und dini Tracks lade (`.kml`, `.kmz`, `.json`, `.rctrk`, `.csv`, `.gpx`, bGeigie Nano/Zen `$BNRDD`, AtomFast-Export, RadiaCode, Safecast, usw.).
-- Wotsch es Spiegel vo pelora.org? Einisch `chicha-isotope-map -import-tgz-url https://pelora.org/api/json/weekly.tgz` laufe lah — läd s wöchentlechi Archiv, füllt d DB und hört uf, dass dr nöchsti Start grad fertig isch.
-- Lieber s Archiv vorgängig hole? Nimm [https://pelora.org/api/json/weekly.tgz](https://pelora.org/api/json/weekly.tgz), starte mit `-import-tgz-path /pfad/zu/weekly.tgz` und laufe mit diner lokali Kopie.
+- Wotsch es Spiegel vo simplemap.safecast.org? Einisch `safecast-new-map -import-tgz-url https://simplemap.safecast.org/api/json/weekly.tgz` laufe lah — läd s wöchentlechi Archiv, füllt d DB und hört uf, dass dr nöchsti Start grad fertig isch.
+- Lieber s Archiv vorgängig hole? Nimm [https://simplemap.safecast.org/api/json/weekly.tgz](https://simplemap.safecast.org/api/json/weekly.tgz), starte mit `-import-tgz-path /pfad/zu/weekly.tgz` und laufe mit diner lokali Kopie.
 
 ### 🗺️ Erschte Start mit live Date i enem Befehl
 Uf ere frische Maschine langt dä Befehl:
 ```bash
-chicha-isotope-map -import-tgz-url https://pelora.org/api/json/weekly.tgz
+safecast-new-map -import-tgz-url https://simplemap.safecast.org/api/json/weekly.tgz
 ```
 Nach em Import nomol normal starte (oder dr gleiche Befehl i systemd) — d Karte isch uf [http://localhost:8765](http://localhost:8765) grad voll mit realä Messige.
 
 ### 🛢️ Datenbank-Wahl fürs Import und dr Alltag
-- **PostgreSQL (`pgx`)** — am schnällste und guet, wenn meh Lüüt schribe. Bispiel: `chicha-isotope-map -db-type pgx -db-conn postgres://USER:PASS@HOST:PORT/DATABASE?sslmode=allow -import-tgz-url https://pelora.org/api/json/weekly.tgz`
-- **DuckDB / SQLite / Chai** — eifachi Datei-Lösung für ein Benutzer. Glichziitig schribe cha konfliktiere, drum am beschte für persöndligi Karte. Bispiel: `chicha-isotope-map -db-type duckdb -import-tgz-url https://pelora.org/api/json/weekly.tgz`
+- **PostgreSQL (`pgx`)** — am schnällste und guet, wenn meh Lüüt schribe. Bispiel: `safecast-new-map -db-type pgx -db-conn postgres://USER:PASS@HOST:PORT/DATABASE?sslmode=allow -import-tgz-url https://simplemap.safecast.org/api/json/weekly.tgz`
+- **DuckDB / SQLite / Chai** — eifachi Datei-Lösung für ein Benutzer. Glichziitig schribe cha konfliktiere, drum am beschte für persöndligi Karte. Bispiel: `safecast-new-map -db-type duckdb -import-tgz-url https://simplemap.safecast.org/api/json/weekly.tgz`
 
 ## 📤 Exportiere
 - Einzlane Track: `/api/track/{trackID}.json` (au s alti `.cim`).
@@ -113,4 +113,4 @@ Nach em Import nomol normal starte (oder dr gleiche Befehl i systemd) — d Kart
 - Mir wend, dass jede ohni Spezialwüsse cha gseh, ob Strahlig dort isch, wo er wohnt, pflanzt oder Waasser holt.
 - Meh Nöd gäbed es zuverlässigers Gsammtbild und chöi Verschmutzig besser entdecke.
 
-Chicha‑Isotope‑Map isch inspiriert vo de Schrit vom **Dmitry Ignatenko** i dr Fäldforschig und stark beeinflusst vo **Rob Oudendijk** und **Safecast**. Offeni Date vo de Communities AtomFast und Radiacode mache d Karte nützli. Wenn d Karte e Läbe rette cha, isch si nöd umesüsch gmacht worde.
+Safecast‑Isotope‑Map isch inspiriert vo de Schrit vom **Dmitry Ignatenko** i dr Fäldforschig und stark beeinflusst vo **Rob Oudendijk** und **Safecast**. Offeni Date vo de Communities AtomFast und Radiacode mache d Karte nützli. Wenn d Karte e Läbe rette cha, isch si nöd umesüsch gmacht worde.

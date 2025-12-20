@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"chicha-isotope-map/pkg/database"
+	"safecast-new-map/pkg/database"
 )
 
 // RCTRKSpectrum represents a spectrum in the RadiaCode .rctrk format.

@@ -1,6 +1,6 @@
-[![Сүүлийн тогтвортой бүтээц](https://github.com/matveynator/chicha-isotope-map/actions/workflows/release.yml/badge.svg)](https://github.com/matveynator/chicha-isotope-map/actions/workflows/release.yml)
+[![Сүүлийн тогтвортой бүтээц](https://github.com/Safecast/safecast-new-map/actions/workflows/release.yml/badge.svg)](https://github.com/Safecast/safecast-new-map/actions/workflows/release.yml)
 
-<img width="30%" align="left" alt="chicha-isotope-map" src="https://github.com/user-attachments/assets/39bfa7b1-03fb-43dd-89bd-8d6c516fd4db" />
+<img width="30%" align="left" alt="safecast-new-map" src="https://github.com/user-attachments/assets/39bfa7b1-03fb-43dd-89bd-8d6c516fd4db" />
 
 - [🇬🇧 English](/README.md)
 - [🇫🇷 Français](/doc/README_FR.md)
@@ -17,19 +17,19 @@
 # ☢️ Дэлхийн цацрагийн газрын зураг
 Энэ зураг нь тусгай бэлтгэлгүй хүнд ч ойролцоох байшин, тариалан, ой, усны эх цацрагийн аюулд өртөж байгаа эсэхийг шууд харах боломж олгох зорилготой. Цэвэр бүсүүд ихэвчлэн 2–3 µR/h орчим байдаг; бараан толбонууд ихэнхдээ хүний үйл ажиллагаанаас үүдэлтэй. Газрын зураг Чех, Орос, Казахстан, Монголын ураны уурхайнууд хэрхэн урт мөр үлдээснийг; Фукушима Японы эрэг дээр хар-улаан “хавдар” мэт харагддагийг; Чернобыль, Брянскийн бүс нутаг хэрхэн ул мөр үлдээдгийг; Франц, Чех, Кавказын эрдэс усны бүсэд радоны судлууд эрсдэлийг хэрхэн нэмэгдүүлдгийг харуулна. Уран, ховор элементийн уусалт уусдаг давс үлдээж, усны давхаргад нэвчин эцэст нь ус, хоол хүнсэнд ордог. Хэрэв энэ зураг нэг ч гэсэн хүн эсвэл амьтныг хамгаалбал бүтээх нь утгатай.
 
-Онлайн демо: [https://pelora.org/](https://pelora.org/) — таны зангилаа яг ийм харагдана.
+Онлайн демо: [https://simplemap.safecast.org/](https://simplemap.safecast.org/) — таны зангилаа яг ийм харагдана.
 
-👉 [Нэгтгэсэн татах хуудас](https://github.com/matveynator/chicha-isotope-map/releases) (бүх платформ, хамгийн сүүлийн бүтээц)
+👉 [Нэгтгэсэн татах хуудас](https://github.com/Safecast/safecast-new-map/releases) (бүх платформ, хамгийн сүүлийн бүтээц)
 
-👉 [DeepWiki: Chicha Isotope Map](https://deepwiki.com/matveynator/chicha-isotope-map)
+👉 [DeepWiki: Safecast New Map](https://deepwiki.com/Safecast/safecast-new-map)
 
 ---
 
 ### 📸 Жишээ харагдац
 <p>
-  <a href="https://pelora.org" target="_blank"><img width="100%" alt="Fukushima view in chicha-isotope-map" src="https://github.com/user-attachments/assets/617a0ced-4280-41c2-9320-de1cfd33a61f" /></a><br />
-  <a href="https://pelora.org" target="_blank"><img width="100%" alt="Safecast realtime radiation sensors in chicha-isotope-map" src="https://github.com/user-attachments/assets/13256b23-744d-4d02-a26c-ae9aef5b0d87" /></a><br />
-  <a href="https://pelora.org" target="_blank"><img width="100%" alt="Air flights radiation in chicha-isotope-map" src="https://github.com/user-attachments/assets/cf0189c9-534f-4ff5-9d7a-ed5836e91ef5" /></a>
+  <a href="https://simplemap.safecast.org" target="_blank"><img width="100%" alt="Fukushima view in safecast-new-map" src="https://github.com/user-attachments/assets/617a0ced-4280-41c2-9320-de1cfd33a61f" /></a><br />
+  <a href="https://simplemap.safecast.org" target="_blank"><img width="100%" alt="Safecast realtime radiation sensors in safecast-new-map" src="https://github.com/user-attachments/assets/13256b23-744d-4d02-a26c-ae9aef5b0d87" /></a><br />
+  <a href="https://simplemap.safecast.org" target="_blank"><img width="100%" alt="Air flights radiation in safecast-new-map" src="https://github.com/user-attachments/assets/cf0189c9-534f-4ff5-9d7a-ed5836e91ef5" /></a>
 </p>
 
 ---
@@ -48,11 +48,11 @@
 Хамгийн хурдан зам: бэлэн бинарийг тат. Docker, өгөгдлийн сан, нэмэлт хэрэгсэл хэрэггүй — тат, ажиллуул, боллоо.
 
 ### Сонголт 1. Бинар (санал болгодог)
-1) [Релизийн хуудас](https://github.com/matveynator/chicha-isotope-map/releases)-ыг нээгээд өөрийн системд тохирох бүтээцийг тат.
+1) [Релизийн хуудас](https://github.com/Safecast/safecast-new-map/releases)-ыг нээгээд өөрийн системд тохирох бүтээцийг тат.
 2) Гүйцэтгэх эрх өгөөд ажиллуул:
 ```bash
-chmod +x ./chicha-isotope-map
-./chicha-isotope-map
+chmod +x ./safecast-new-map
+./safecast-new-map
 ```
 3) [http://localhost:8765](http://localhost:8765)-ыг нээгээд — зураг аль хэдийн ажиллаж байна.
 
@@ -65,15 +65,15 @@ chmod +x ./chicha-isotope-map
 ### Сонголт 2. Домэйнтай олон нийтэд нээлттэй зангилаа
 1) Бинарийг өөрийн домэйнтэй ажиллуул:
 ```bash
-./chicha-isotope-map -domain example.org
+./safecast-new-map -domain example.org
 ```
 2) Let’s Encrypt-д зориулж 80/443 портыг нээлттэй байлга. Дуусмагц сайт [https://example.org](https://example.org)-д байна.
 
 ### Сонголт 3. Docker (бүгд багцлагдсан)
 1) Docker-ийг суулга (Desktop эсвэл CLI).
-2) Docker Hub дээр **matveynator/chicha-isotope-map**-ийг хайж **Run** дээр дар (эсвэл энэ командыг ашигла):
+2) Docker Hub дээр **Safecast/safecast-new-map**-ийг хайж **Run** дээр дар (эсвэл энэ командыг ашигла):
 ```bash
-docker run -d -p 8765:8765 --name chicha-isotope-map matveynator/chicha-isotope-map:latest
+docker run -d -p 8765:8765 --name safecast-new-map Safecast/safecast-new-map:latest
 ```
 3) [http://localhost:8765](http://localhost:8765)-ыг нээ — бэлэн.
 
@@ -81,19 +81,19 @@ docker run -d -p 8765:8765 --name chicha-isotope-map matveynator/chicha-isotope-
 
 ## 📥 Өгөгдөл импортлох
 - Газрын зургийн хуудсан дээрх ногоон **Upload** товчийг дарж трекээ байршуул (`.kml`, `.kmz`, `.json`, `.rctrk`, `.csv`, `.gpx`, bGeigie Nano/Zen `$BNRDD`, AtomFast экспорт, RadiaCode, Safecast гэх мэт).
-- pelora.org-ийн толь хэрэгтэй юу? `chicha-isotope-map -import-tgz-url https://pelora.org/api/json/weekly.tgz`-ийг нэг удаа ажиллуул — долоо хоногийн архивыг татаж, өгөгдлийн санг дүүргээд гарах тул дараагийн эхлэл шууд өгөгдөлтэй болно.
-- Архивыг урьдчилж татахыг хүсвэл [https://pelora.org/api/json/weekly.tgz](https://pelora.org/api/json/weekly.tgz)-ийг авч, `-import-tgz-path /path/to/weekly.tgz`-тай ажиллуулж, локал хуулбараа ашигла.
+- simplemap.safecast.org-ийн толь хэрэгтэй юу? `safecast-new-map -import-tgz-url https://simplemap.safecast.org/api/json/weekly.tgz`-ийг нэг удаа ажиллуул — долоо хоногийн архивыг татаж, өгөгдлийн санг дүүргээд гарах тул дараагийн эхлэл шууд өгөгдөлтэй болно.
+- Архивыг урьдчилж татахыг хүсвэл [https://simplemap.safecast.org/api/json/weekly.tgz](https://simplemap.safecast.org/api/json/weekly.tgz)-ийг авч, `-import-tgz-path /path/to/weekly.tgz`-тай ажиллуулж, локал хуулбараа ашигла.
 
 ### 🗺️ Нэг командaar анхны ажиллуулалт ба амьд өгөгдөл
 Шинэ систем дээр дараахыг ажиллуул:
 ```bash
-chicha-isotope-map -import-tgz-url https://pelora.org/api/json/weekly.tgz
+safecast-new-map -import-tgz-url https://simplemap.safecast.org/api/json/weekly.tgz
 ```
 Импортын дараа хэвийн маягаар дахин ажиллуул (эсвэл мөн командыг systemd-д тавь) — [http://localhost:8765](http://localhost:8765) дээр бодит хэмжилтүүд шууд харагдана.
 
 ### 🛢️ Импорт ба өдөр тутмын хэрэглээнд тохирох өгөгдлийн сан
-- **PostgreSQL (`pgx`)** — хамгийн хурдан, олон хэрэглэгчтэй үед сайн. Жишээ: `chicha-isotope-map -db-type pgx -db-conn postgres://USER:PASS@HOST:PORT/DATABASE?sslmode=allow -import-tgz-url https://pelora.org/api/json/weekly.tgz`
-- **DuckDB / SQLite / Chai** — нэг хэрэглэгчид тохирох файлын шийдлүүд. Давхар бичилт зөрчилдөх тул хувийн зурагт тохиромжтой. Жишээ: `chicha-isotope-map -db-type duckdb -import-tgz-url https://pelora.org/api/json/weekly.tgz`
+- **PostgreSQL (`pgx`)** — хамгийн хурдан, олон хэрэглэгчтэй үед сайн. Жишээ: `safecast-new-map -db-type pgx -db-conn postgres://USER:PASS@HOST:PORT/DATABASE?sslmode=allow -import-tgz-url https://simplemap.safecast.org/api/json/weekly.tgz`
+- **DuckDB / SQLite / Chai** — нэг хэрэглэгчид тохирох файлын шийдлүүд. Давхар бичилт зөрчилдөх тул хувийн зурагт тохиромжтой. Жишээ: `safecast-new-map -db-type duckdb -import-tgz-url https://simplemap.safecast.org/api/json/weekly.tgz`
 
 ## 📤 Экспорт
 - Нэг трек: `/api/track/{trackID}.json` (хуучин `.cim` бас дэмжинэ).
@@ -113,4 +113,4 @@ chicha-isotope-map -import-tgz-url https://pelora.org/api/json/weekly.tgz
 - Бид хүн бүр сургалтгүйгээр өөрийн амьдардаг, тариалдаг, ус авч буй газарт цацрагийн аюул байгаа эсэхийг хараасай гэж хүссэн.
 - Зангилаа олшрох тусам нийт зураг илүү найдвартай болж, бохирдлыг алдах магадлал багасна.
 
-Chicha‑Isotope‑Map нь **Dmitry Ignatenko**-гийн талбайн судалгаанаас урам авч, **Rob Oudendijk** болон **Safecast**-ын нөлөөгөөр хөгжсөн. AtomFast, Radiacode олон нийтийн нээлттэй өгөгдөл энэ зургийг хэрэгтэй байлгана. Хэрэв энэ зураг нэг амь аварвал хий дэмий бүтээгдээгүй.
+Safecast‑Isotope‑Map нь **Dmitry Ignatenko**-гийн талбайн судалгаанаас урам авч, **Rob Oudendijk** болон **Safecast**-ын нөлөөгөөр хөгжсөн. AtomFast, Radiacode олон нийтийн нээлттэй өгөгдөл энэ зургийг хэрэгтэй байлгана. Хэрэв энэ зураг нэг амь аварвал хий дэмий бүтээгдээгүй.

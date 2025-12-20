@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"chicha-isotope-map/pkg/database"
+	"safecast-new-map/pkg/database"
 )
 
 // N42 XML structures based on ANSI N42.42 standard
