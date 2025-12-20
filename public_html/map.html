@@ -3240,6 +3240,12 @@ function createDateRangeSlider(){
     if (chartLink) metaBits.push(chartLink);
     const metaHtmlBlock = metaBits.length ? `<div class="live-popup-meta">${metaBits.join('')}</div>` : '';
 
+    const statusHtml = (typeof currentColoring !== 'undefined' && currentColoring === 'chicha')
+      ? `<div class="live-popup-dose-status" style="background:${doseColor};color:${statusTextColor};">
+           <a href="#" class="risk-link" style="color:${statusTextColor};">${escapeHtml(statusLabel)}</a>
+         </div>`
+      : '';
+
     return `
       <div class="custom-tooltip live-tooltip">
         <div class="live-tooltip-header">
@@ -3256,9 +3262,7 @@ function createDateRangeSlider(){
           <div class="live-popup-dose-secondary" style="color:${doseColor};">
             ${secondaryValue} ${secondaryUnit}
           </div>
-          <div class="live-popup-dose-status" style="background:${doseColor};color:${statusTextColor};">
-            <a href="#" class="risk-link" style="color:${statusTextColor};">${escapeHtml(statusLabel)}</a>
-          </div>
+          ${statusHtml}
         </div>
         ${climateHtml}
         ${metaHtmlBlock}
@@ -3292,13 +3296,15 @@ function createDateRangeSlider(){
     const primaryUnit = getPrimaryUnitLabel();
     const secondaryUnit = getSecondaryUnitLabel();
 
+    const statusHtml = (typeof currentColoring !== 'undefined' && currentColoring === 'chicha')
+      ? ` (<a href="#" class="risk-link">${translate(doseCategory(marker.doseRate))}</a>)`
+      : '';
+
     return `
       <div class="custom-tooltip">
         <div><strong>${translate('radiation_dose')}:</strong><br>
           ${primaryValue} ${primaryUnit} (${secondaryValue} ${secondaryUnit})
-          (<a href="#" class="risk-link">
-            ${translate(doseCategory(marker.doseRate))}
-          </a>)
+          ${statusHtml}
         </div>
         <div><strong>${translate('speed')}:</strong> ${speedText}</div>
         <div style="margin-top:4px">
@@ -3927,31 +3933,28 @@ function drawLiveChart(canvas, radiationPoints, extrasByKey, options) {
     extraKeys.forEach(key => findVisible(extras[key]));
 
     if (hasVisible) {
-      minY = visibleMinY;
+      minY = 0;
       maxY = visibleMaxY;
     } else {
       // Fallback if no points visible in this X range
-      minY = canvas._zoomRanges.minY;
+      minY = 0;
       maxY = canvas._zoomRanges.maxY;
     }
   } else {
-    // Original scaling logic
+    // Original scaling logic: Start at 0, end at max level
+    minY = 0;
+    let foundMax = -Infinity;
     if (hasRadiation) {
-      minY = radiationPoints[0].value;
-      maxY = radiationPoints[0].value;
       radiationPoints.forEach(function(point) {
-        if (point.value < minY) minY = point.value;
-        if (point.value > maxY) maxY = point.value;
+        if (point.value > foundMax) foundMax = point.value;
       });
-    } else {
+    } else if (extraKeys.length > 0) {
       const key = extraKeys[0];
-      minY = extras[key][0].value;
-      maxY = extras[key][0].value;
       extras[key].forEach(function(point) {
-        if (point.value < minY) minY = point.value;
-        if (point.value > maxY) maxY = point.value;
+        if (point.value > foundMax) foundMax = point.value;
       });
     }
+    maxY = (foundMax === -Infinity) ? 1.0 : foundMax;
   }
 
   if (minY === maxY) {
@@ -4136,7 +4139,7 @@ function drawLiveChart(canvas, radiationPoints, extrasByKey, options) {
   const getX = (ts) => plotLeft + ((ts - minX) / rangeX) * plotW;
   const getY = (val) => plotBottom - ((val - minY) / rangeY) * plotH;
 
-  // Smoothing tension (0.15 is subtle and prevents overshooting)
+  // Smoothing tension (0.15 is safe and prevents looping/overshooting)
   const tension = 0.15;
 
   if (hasRadiation && radiationPoints.length > 1) {
@@ -4151,34 +4154,57 @@ function drawLiveChart(canvas, radiationPoints, extrasByKey, options) {
       ts: p.timestamp
     }));
 
+    // Build paths for fill and stroke
+    const fillPath = new Path2D();
+    const linePath = new Path2D();
+    
+    fillPath.moveTo(pts[0].x, pts[0].y);
+    linePath.moveTo(pts[0].x, pts[0].y);
+
     for (let i = 0; i < pts.length - 1; i++) {
-      const p1 = pts[i];
-      const p2 = pts[i + 1];
-
-      // Skip segments entirely outside visible range
-      if (Math.max(p1.ts, p2.ts) < minX) continue;
-      if (Math.min(p1.ts, p2.ts) > maxX) continue;
-
-      const p0 = pts[i - 1] || p1;
-      const p3 = pts[i + 2] || p2;
-
-      const cp1x = p1.x + (p2.x - p0.x) * tension;
-      const cp1y = p1.y + (p2.y - p0.y) * tension;
-      const cp2x = p2.x - (p3.x - p1.x) * tension;
-      const cp2y = p2.y - (p3.y - p1.y) * tension;
-
-      const startColor = radiationLineColor(p1.val);
-      const endColor = radiationLineColor(p2.val);
-      const gradient = ctx.createLinearGradient(p1.x, p1.y, p2.x, p2.y);
-      gradient.addColorStop(0, startColor);
-      gradient.addColorStop(1, endColor);
-      
-      ctx.strokeStyle = gradient;
-      ctx.beginPath();
-      ctx.moveTo(p1.x, p1.y);
-      ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
-      ctx.stroke();
+        const p1 = pts[i];
+        const p2 = pts[i + 1];
+        const p0 = pts[i - 1] || p1;
+        const p3 = pts[i + 2] || p2;
+        
+        // Prevent x-overshoot by centering the tension on the local interval
+        const dx = p2.x - p1.x;
+        const cp1x = p1.x + dx * tension * 3; 
+        const cp1y = p1.y + (p2.y - p0.y) * tension;
+        const cp2x = p2.x - dx * tension * 3;
+        const cp2y = p2.y - (p3.y - p1.y) * tension;
+        
+        fillPath.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+        linePath.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
     }
+
+    // Finish fill path
+    fillPath.lineTo(pts[pts.length - 1].x, plotBottom);
+    fillPath.lineTo(pts[0].x, plotBottom);
+    fillPath.closePath();
+
+    // Create a global gradient for the entire line path
+    const mainGradient = ctx.createLinearGradient(plotLeft, 0, plotRight, 0);
+    // Add color stops for each point to ensure faithful color representation
+    pts.forEach(p => {
+        const pos = (p.x - plotLeft) / plotW;
+        if (pos >= 0 && pos <= 1) {
+            mainGradient.addColorStop(pos, radiationLineColor(p.val));
+        }
+    });
+
+    // Draw the fill
+    const fillGradient = ctx.createLinearGradient(0, plotTop, 0, plotBottom);
+    const middleVal = pts[Math.floor(pts.length/2)].val;
+    const baseColor = radiationLineColor(middleVal);
+    fillGradient.addColorStop(0, colorWithAlpha(baseColor, 0.2));
+    fillGradient.addColorStop(1, colorWithAlpha(baseColor, 0.01));
+    ctx.fillStyle = fillGradient;
+    ctx.fill(fillPath);
+
+    // Draw the line in ONE single stroke for perfect smoothing
+    ctx.strokeStyle = mainGradient;
+    ctx.stroke(linePath);
   } else if (hasRadiation && radiationPoints.length === 1) {
     const lone = radiationPoints[0];
     const x = getX(lone.timestamp);
@@ -4219,9 +4245,10 @@ function drawLiveChart(canvas, radiationPoints, extrasByKey, options) {
       const p0 = pts[i - 1] || p1;
       const p3 = pts[i + 2] || p2;
 
-      const cp1x = p1.x + (p2.x - p0.x) * tension;
+      const dx = p2.x - p1.x;
+      const cp1x = p1.x + dx * tension * 3;
       const cp1y = p1.y + (p2.y - p0.y) * tension;
-      const cp2x = p2.x - (p3.x - p1.x) * tension;
+      const cp2x = p2.x - dx * tension * 3;
       const cp2y = p2.y - (p3.y - p1.y) * tension;
 
       ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
@@ -4935,16 +4962,14 @@ function drawSpectrumChart(canvas, spectrum, highlightEnergies = null, highlight
   // Recalculate minY and maxY based on visible data when zoomed
   if (zoomRanges || canvas._zoomRanges) {
     let visibleMaxCount = 0;
-    let visibleMinCount = Infinity;
     for (let i = 0; i < energies.length; i++) {
       if (energies[i] >= minX && energies[i] <= maxX) {
         visibleMaxCount = Math.max(visibleMaxCount, spectrum.channels[i]);
-        visibleMinCount = Math.min(visibleMinCount, spectrum.channels[i]);
       }
     }
     if (visibleMaxCount > 0) {
       maxY = visibleMaxCount;
-      minY = Math.max(0, visibleMinCount); // Keep at least 0 as minimum
+      minY = 0; // Always start at 0 for clear baseline
     }
   }
 
