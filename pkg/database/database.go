@@ -1512,7 +1512,9 @@ CREATE TABLE IF NOT EXISTS uploads (
   track_id        TEXT,
   file_size       BIGINT,
   upload_ip       TEXT,
-  created_at      TIMESTAMPTZ DEFAULT NOW()
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  source          TEXT,
+  source_id       TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_uploads_track_id ON uploads(track_id);
@@ -1606,7 +1608,9 @@ CREATE TABLE IF NOT EXISTS uploads (
   track_id        TEXT,
   file_size       INTEGER,
   upload_ip       TEXT,
-  created_at      BIGINT NOT NULL
+  created_at      BIGINT NOT NULL,
+  source          TEXT,
+  source_id       TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_uploads_track_id ON uploads(track_id);
 CREATE INDEX IF NOT EXISTS idx_uploads_created_at ON uploads(created_at);
@@ -1704,7 +1708,9 @@ CREATE TABLE IF NOT EXISTS uploads (
   track_id        TEXT,
   file_size       BIGINT,
   upload_ip       TEXT,
-  created_at      TIMESTAMP DEFAULT NOW()
+  created_at      TIMESTAMP DEFAULT NOW(),
+  source          TEXT,
+  source_id       TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_uploads_track_id ON uploads(track_id);
 CREATE INDEX IF NOT EXISTS idx_uploads_created_at ON uploads(created_at);
@@ -1786,7 +1792,9 @@ ORDER BY (marker_id, id);`,
   track_id   String,
   file_size  Int64,
   upload_ip  String,
-  created_at DateTime DEFAULT now()
+  created_at DateTime DEFAULT now(),
+  source     String,
+  source_id  String
 ) ENGINE = MergeTree()
 ORDER BY (created_at, id);`,
 		}
@@ -1815,6 +1823,10 @@ ORDER BY (created_at, id);`,
 	// Create spectral data indexes after has_spectrum column is added
 	if err := db.ensureSpectralDataIndexes(cfg.DBType); err != nil {
 		return fmt.Errorf("create spectral data indexes: %w", err)
+	}
+	// Add source tracking columns to uploads table for import deduplication
+	if err := db.ensureUploadsMetadataColumns(cfg.DBType); err != nil {
+		return fmt.Errorf("add uploads metadata columns: %w", err)
 	}
 
 	return nil
@@ -2006,6 +2018,87 @@ func (db *Database) ensureSpectralDataIndexes(dbType string) error {
 	}
 
 	return nil
+}
+
+// ensureUploadsMetadataColumns upgrades the uploads table with source tracking columns.
+// We add source and source_id lazily so existing installations keep working without manual SQL.
+func (db *Database) ensureUploadsMetadataColumns(dbType string) error {
+	type column struct {
+		name string
+		def  string
+	}
+	required := []column{
+		{name: "source", def: "source TEXT"},
+		{name: "source_id", def: "source_id TEXT"},
+	}
+
+	switch strings.ToLower(dbType) {
+	case "pgx", "duckdb":
+		// Engines with IF NOT EXISTS syntax can add columns individually without prior inspection.
+		for _, col := range required {
+			stmt := fmt.Sprintf("ALTER TABLE uploads ADD COLUMN IF NOT EXISTS %s", col.def)
+			if _, err := db.DB.Exec(stmt); err != nil {
+				return err
+			}
+		}
+
+		// Add index for source tracking
+		indexStmt := "CREATE INDEX IF NOT EXISTS idx_uploads_source_id ON uploads(source, source_id)"
+		if _, err := db.DB.Exec(indexStmt); err != nil {
+			return fmt.Errorf("create uploads source index: %w", err)
+		}
+
+		return nil
+
+	case "clickhouse":
+		// ClickHouse schema already contains these columns.
+		return nil
+
+	default:
+		// SQLite-style engines require manual detection before issuing ALTER TABLE statements.
+		rows, err := db.DB.Query(`PRAGMA table_info(uploads);`)
+		if err != nil {
+			return fmt.Errorf("describe uploads: %w", err)
+		}
+		defer rows.Close()
+
+		present := make(map[string]bool)
+		for rows.Next() {
+			var (
+				cid     int
+				name    string
+				ctype   string
+				notnull int
+				dflt    sql.NullString
+				pk      int
+			)
+			if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err != nil {
+				return fmt.Errorf("scan pragma: %w", err)
+			}
+			present[name] = true
+		}
+		if err := rows.Err(); err != nil {
+			return fmt.Errorf("iterate pragma: %w", err)
+		}
+
+		for _, col := range required {
+			if present[col.name] {
+				continue
+			}
+			stmt := fmt.Sprintf("ALTER TABLE uploads ADD COLUMN %s", col.def)
+			if _, err := db.DB.Exec(stmt); err != nil {
+				return err
+			}
+		}
+
+		// Add index for source tracking
+		indexStmt := "CREATE INDEX IF NOT EXISTS idx_uploads_source_id ON uploads(source, source_id)"
+		if _, err := db.DB.Exec(indexStmt); err != nil {
+			return fmt.Errorf("create uploads source index: %w", err)
+		}
+
+		return nil
+	}
 }
 
 // MarkerBatchProgress reports how many markers a bulk insert has flushed so operators can track
