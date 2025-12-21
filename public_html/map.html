@@ -3347,7 +3347,15 @@ function updateMarkers(){
     maxLat: bounds.getNorthEast().lat,
     maxLon: bounds.getNorthEast().lng
   };
-  if (currentTrackID) params.trackID = currentTrackID; // focus on a single track when set
+
+  // When viewing a specific track, use world bounds to load ALL markers, not just viewport
+  if (currentTrackID) {
+    params.trackID = currentTrackID;
+    params.minLat = -90;
+    params.minLon = -180;
+    params.maxLat = 90;
+    params.maxLon = 180;
+  }
 
   const savedRange = loadDateRangeState();
 
@@ -3360,12 +3368,24 @@ function updateMarkers(){
   const es = new EventSource('/stream_markers?' + new URLSearchParams(params));
   markerStreamSource = es;
 
+  // Track bounds while loading markers
+  let markerBounds = { minLat: 90, minLon: 180, maxLat: -90, maxLon: -180, hasData: false };
+
   es.onmessage = e => {
     let m; try { m = JSON.parse(e.data); } catch { return; }
     const isLive = m.speed < 0; // negative speed denotes realtime marker
     if (!isLive && m.trackID) tracks.add(m.trackID);
     minTs = Math.min(minTs, m.date);
     maxTs = Math.max(maxTs, m.date);
+
+    // Update bounds as markers load
+    if (!isLive) {
+      markerBounds.minLat = Math.min(markerBounds.minLat, m.lat);
+      markerBounds.maxLat = Math.max(markerBounds.maxLat, m.lat);
+      markerBounds.minLon = Math.min(markerBounds.minLon, m.lon);
+      markerBounds.maxLon = Math.max(markerBounds.maxLon, m.lon);
+      markerBounds.hasData = true;
+    }
     if (savedRange && (m.date < savedRange[0] || m.date > savedRange[1])) return;
     if (!shouldDisplayBySpeed(m.speed)) return;
 
@@ -3456,6 +3476,23 @@ function updateMarkers(){
     }
     if (needSlider && window.__syncDateSliders && isFinite(minTs) && isFinite(maxTs)){
       window.__syncDateSliders(minTs, maxTs);
+    }
+
+    // Fit map to track bounds if in track view and no URL bounds were provided
+    if (isTrackView && markerBounds.hasData) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const hasUrlBounds = urlParams.has('minLat') && urlParams.has('minLon') &&
+                          urlParams.has('maxLat') && urlParams.has('maxLon');
+      if (!hasUrlBounds) {
+        // Fit map to the actual data bounds with some padding
+        const bounds = [[markerBounds.minLat, markerBounds.minLon],
+                       [markerBounds.maxLat, markerBounds.maxLon]];
+        console.log('Auto-fitting map to track bounds:', bounds);
+        map.fitBounds(bounds, { padding: [50, 50] });
+        adjustMarkerRadius();
+      } else {
+        console.log('URL bounds present, using those instead of auto-fit');
+      }
     }
     if (waitForDangerFit && storedUserCenter) {
       reframeAroundUser();
@@ -5414,19 +5451,11 @@ function viewTrack(trackID) {
   currentTrackID = trackID;   // new
   isTrackView    = true;
 
-  const bounds = map.getBounds();
   const layer  = map.hasLayer(googleSatellite) ? 'Google Satellite'
     : 'OpenStreetMap';
-  const zoom   = map.getZoom();
 
-  const trackURL =
-    `/trackid/${trackID}` +
-    `?minLat=${bounds.getSouthWest().lat}` +
-    `&minLon=${bounds.getSouthWest().lng}` +
-    `&maxLat=${bounds.getNorthEast().lat}` +
-    `&maxLon=${bounds.getNorthEast().lng}` +
-    `&zoom=${zoom}` +
-    `&layer=${encodeURIComponent(layer)}`;
+  // Don't include bounds in URL - let the frontend calculate real bounds from loaded markers
+  const trackURL = `/trackid/${trackID}?layer=${encodeURIComponent(layer)}`;
 
   window.location.href = trackURL;
 }

@@ -15,6 +15,8 @@ type Upload struct {
 	FileSize  int64  `json:"fileSize"`
 	UploadIP  string `json:"uploadIP"`
 	CreatedAt int64  `json:"createdAt"`
+	Source    string `json:"source,omitempty"`   // Import source (e.g., "safecast-api", "user-upload")
+	SourceID  string `json:"sourceID,omitempty"` // External reference ID (e.g., Safecast import ID)
 }
 
 // InsertUpload records a file upload in the uploads table.
@@ -31,38 +33,41 @@ func (db *Database) InsertUpload(ctx context.Context, upload Upload) (int64, err
 	switch db.Driver {
 	case "pgx":
 		query = `
-			INSERT INTO uploads (filename, file_type, track_id, file_size, upload_ip, created_at)
-			VALUES ($1, $2, $3, $4, $5, to_timestamp($6))
+			INSERT INTO uploads (filename, file_type, track_id, file_size, upload_ip, created_at, source, source_id)
+			VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7, $8)
 			RETURNING id
 		`
 		args = []interface{}{
 			upload.Filename, upload.FileType, upload.TrackID,
 			upload.FileSize, upload.UploadIP, createdAt,
+			upload.Source, upload.SourceID,
 		}
 		err := db.DB.QueryRowContext(ctx, query, args...).Scan(&id)
 		return id, err
 
 	case "duckdb":
 		query = `
-			INSERT INTO uploads (filename, file_type, track_id, file_size, upload_ip, created_at)
-			VALUES ($1, $2, $3, $4, $5, to_timestamp($6))
+			INSERT INTO uploads (filename, file_type, track_id, file_size, upload_ip, created_at, source, source_id)
+			VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7, $8)
 			RETURNING id
 		`
 		args = []interface{}{
 			upload.Filename, upload.FileType, upload.TrackID,
 			upload.FileSize, upload.UploadIP, createdAt,
+			upload.Source, upload.SourceID,
 		}
 		err := db.DB.QueryRowContext(ctx, query, args...).Scan(&id)
 		return id, err
 
 	case "sqlite", "chai":
 		query = `
-			INSERT INTO uploads (filename, file_type, track_id, file_size, upload_ip, created_at)
-			VALUES (?, ?, ?, ?, ?, ?)
+			INSERT INTO uploads (filename, file_type, track_id, file_size, upload_ip, created_at, source, source_id)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 		`
 		args = []interface{}{
 			upload.Filename, upload.FileType, upload.TrackID,
 			upload.FileSize, upload.UploadIP, createdAt,
+			upload.Source, upload.SourceID,
 		}
 		result, err := db.DB.ExecContext(ctx, query, args...)
 		if err != nil {
@@ -82,7 +87,7 @@ func (db *Database) GetUploads(ctx context.Context, limit int) ([]Upload, error)
 	}
 
 	query := `
-		SELECT id, filename, file_type, track_id, file_size, upload_ip, created_at
+		SELECT id, filename, file_type, track_id, file_size, upload_ip, created_at, source, source_id
 		FROM uploads
 		ORDER BY created_at DESC
 		LIMIT ?
@@ -92,7 +97,7 @@ func (db *Database) GetUploads(ctx context.Context, limit int) ([]Upload, error)
 	if db.Driver == "pgx" || db.Driver == "duckdb" {
 		query = `
 			SELECT id, filename, file_type, track_id, file_size, upload_ip,
-			       EXTRACT(EPOCH FROM created_at)::BIGINT
+			       EXTRACT(EPOCH FROM created_at)::BIGINT, source, source_id
 			FROM uploads
 			ORDER BY created_at DESC
 			LIMIT $1
@@ -108,12 +113,20 @@ func (db *Database) GetUploads(ctx context.Context, limit int) ([]Upload, error)
 	var uploads []Upload
 	for rows.Next() {
 		var u Upload
+		var source, sourceID *string
 		err := rows.Scan(
 			&u.ID, &u.Filename, &u.FileType, &u.TrackID,
 			&u.FileSize, &u.UploadIP, &u.CreatedAt,
+			&source, &sourceID,
 		)
 		if err != nil {
 			continue
+		}
+		if source != nil {
+			u.Source = *source
+		}
+		if sourceID != nil {
+			u.SourceID = *sourceID
 		}
 		uploads = append(uploads, u)
 	}
@@ -149,4 +162,66 @@ func (db *Database) DeleteTrack(ctx context.Context, trackID string) error {
 	}
 
 	return nil
+}
+
+// CheckImportExists returns true if a Safecast import ID has already been imported.
+func (db *Database) CheckImportExists(ctx context.Context, sourceType string, importID int64) (bool, error) {
+	var query string
+	var args []interface{}
+
+	sourceIDStr := fmt.Sprintf("%d", importID)
+
+	switch db.Driver {
+	case "pgx", "duckdb":
+		query = `SELECT COUNT(*) FROM uploads WHERE source = $1 AND source_id = $2`
+		args = []interface{}{sourceType, sourceIDStr}
+	case "sqlite", "chai":
+		query = `SELECT COUNT(*) FROM uploads WHERE source = ? AND source_id = ?`
+		args = []interface{}{sourceType, sourceIDStr}
+	default:
+		return false, fmt.Errorf("unsupported database driver: %s", db.Driver)
+	}
+
+	var count int
+	err := db.DB.QueryRowContext(ctx, query, args...).Scan(&count)
+	if err != nil {
+		return false, fmt.Errorf("check import exists: %w", err)
+	}
+
+	return count > 0, nil
+}
+
+// GetLastImportedSafecastID returns the highest Safecast import ID that has been processed.
+func (db *Database) GetLastImportedSafecastID(ctx context.Context, sourceType string) (int64, error) {
+	var query string
+	var args []interface{}
+
+	switch db.Driver {
+	case "pgx", "duckdb":
+		// PostgreSQL and DuckDB: CAST to INTEGER
+		query = `
+			SELECT COALESCE(MAX(CAST(source_id AS INTEGER)), 0)
+			FROM uploads
+			WHERE source = $1 AND source_id IS NOT NULL AND source_id != ''
+		`
+		args = []interface{}{sourceType}
+	case "sqlite", "chai":
+		// SQLite: CAST to INTEGER
+		query = `
+			SELECT COALESCE(MAX(CAST(source_id AS INTEGER)), 0)
+			FROM uploads
+			WHERE source = ? AND source_id IS NOT NULL AND source_id != ''
+		`
+		args = []interface{}{sourceType}
+	default:
+		return 0, fmt.Errorf("unsupported database driver: %s", db.Driver)
+	}
+
+	var lastID int64
+	err := db.DB.QueryRowContext(ctx, query, args...).Scan(&lastID)
+	if err != nil {
+		return 0, fmt.Errorf("get last imported safecast ID: %w", err)
+	}
+
+	return lastID, nil
 }

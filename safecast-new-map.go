@@ -52,6 +52,7 @@ import (
 	"safecast-new-map/pkg/mapimport"
 	"safecast-new-map/pkg/database"
 	"safecast-new-map/pkg/database/drivers"
+	safecastfetcher "safecast-new-map/pkg/safecast-fetcher"
 	"safecast-new-map/pkg/jsonarchive"
 	"safecast-new-map/pkg/logger"
 	"safecast-new-map/pkg/qrlogoext"
@@ -89,6 +90,10 @@ var importTGZFileFlag = flag.String("import-tgz-file", "", "Import a local .tgz 
 var supportEmail = flag.String("support-email", "", "Contact e-mail shown in the legal notice for feedback")
 var debugIPsFlag = flag.String("debug", "", "Comma separated IP addresses allowed to view the debug overlay")
 var adminPassword = flag.String("admin-password", "", "Password for admin endpoints (upload listing, track deletion). If not set, admin endpoints are disabled.")
+var safecastFetcherEnabled = flag.Bool("safecast-fetcher", false, "Enable automatic fetching of approved bGeigie imports from api.safecast.org")
+var safecastFetcherInterval = flag.Duration("safecast-fetcher-interval", 5*time.Minute, "How often to poll api.safecast.org for new approved imports")
+var safecastFetcherBatchSize = flag.Int("safecast-fetcher-batch-size", 10, "Maximum number of files to import per polling cycle (0 = unlimited)")
+var safecastFetcherStartDate = flag.String("safecast-fetcher-start-date", "", "Only import files uploaded after this date (YYYY-MM-DD format, empty = no filter)")
 
 // debugIPAllowlist keeps a fast lookup of remote addresses that should see the
 // technical overlay. We keep it as a map so lookups stay O(1) without extra
@@ -108,6 +113,7 @@ var cliUsageSections = []usageSection{
 	{Title: "Database", Flags: []string{"db-type", "db-path", "db-conn"}},
 	{Title: "Map defaults", Flags: []string{"default-lat", "default-lon", "default-zoom", "default-layer", "auto-locate-default"}},
 	{Title: "Realtime & archives", Flags: []string{"safecast-realtime", "json-archive-path", "json-archive-frequency", "import-tgz-url", "import-tgz-file"}},
+	{Title: "Safecast API fetcher", Flags: []string{"safecast-fetcher", "safecast-fetcher-interval", "safecast-fetcher-batch-size", "safecast-fetcher-start-date"}},
 	{Title: "Self-upgrade", Flags: []string{"selfupgrade", "selfupgrade-url"}},
 }
 
@@ -6764,6 +6770,71 @@ func main() {
 		ctxRT, cancelRT := context.WithCancel(context.Background())
 		defer cancelRT()
 		safecastrealtime.Start(ctxRT, db, *dbType, log.Printf)
+	}
+
+	if *safecastFetcherEnabled {
+		// Launch Safecast API fetcher to automatically import approved bGeigie logs
+		ctxFetcher, cancelFetcher := context.WithCancel(context.Background())
+		defer cancelFetcher()
+
+		// Create importer function that bridges to existing import logic
+		importerFunc := func(
+			ctx context.Context,
+			fileContent []byte,
+			filename string,
+			safecastImportID int64,
+			db *database.Database,
+			dbType string,
+		) (trackID string, markerCount int, err error) {
+			// Generate new track ID
+			trackID = GenerateSerialNumber()
+
+			// Create BytesFile from content
+			bytesFile := safecastfetcher.NewBytesFile(fileContent, filename)
+
+			// Parse and import the file
+			_, finalTrackID, err := processBGeigieZenFile(bytesFile, trackID, db, dbType)
+			if err != nil {
+				return "", 0, fmt.Errorf("process bGeigie file: %w", err)
+			}
+
+			// Count markers for this track
+			// We don't have a direct way to get the count from processBGeigieZenFile,
+			// so we'll estimate from the file or return 0
+			markerCount = 0
+
+			// Record the upload with source tracking
+			upload := database.Upload{
+				Filename:  filename,
+				FileType:  ".log",
+				TrackID:   finalTrackID,
+				FileSize:  int64(len(fileContent)),
+				UploadIP:  "safecast-api",
+				CreatedAt: time.Now().Unix(),
+				Source:    safecastfetcher.SourceTypeSafecastAPI,
+				SourceID:  fmt.Sprintf("%d", safecastImportID),
+			}
+
+			if _, err := db.InsertUpload(ctx, upload); err != nil {
+				return finalTrackID, markerCount, fmt.Errorf("record upload: %w", err)
+			}
+
+			return finalTrackID, markerCount, nil
+		}
+
+		// Start the fetcher
+		safecastfetcher.Start(ctxFetcher, safecastfetcher.Config{
+			DB:        db,
+			DBType:    *dbType,
+			Interval:  *safecastFetcherInterval,
+			BatchSize: *safecastFetcherBatchSize,
+			StartDate: *safecastFetcherStartDate,
+			Importer:  importerFunc,
+			Logf:      log.Printf,
+		})
+
+		log.Printf("safecast API fetcher enabled: interval=%s batch=%d start_date=%s",
+			*safecastFetcherInterval, *safecastFetcherBatchSize, *safecastFetcherStartDate)
 	}
 
 	// Build a JSON archive tgz with all known exported tracks only when
