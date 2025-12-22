@@ -3328,6 +3328,61 @@ function getTooltipContent(marker) {
 }
 
 
+/* ============================================
+ * TILE CACHE - Client-side marker data cache
+ * ============================================ */
+const tileCache = {
+  cache: new Map(),
+  maxSize: 100, // Cache up to 100 tiles
+  ttl: 5 * 60 * 1000, // 5 minutes
+
+  makeKey(zoom, minLat, minLon, maxLat, maxLon) {
+    // Round coordinates to reduce cache key variations
+    const precision = zoom >= 10 ? 4 : 3;
+    return `${zoom}_${minLat.toFixed(precision)}_${minLon.toFixed(precision)}_${maxLat.toFixed(precision)}_${maxLon.toFixed(precision)}`;
+  },
+
+  get(key) {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+
+    // Check if expired
+    if (Date.now() - entry.timestamp > this.ttl) {
+      this.cache.delete(key);
+      return null;
+    }
+
+    entry.lastAccess = Date.now();
+    return entry.data;
+  },
+
+  set(key, data) {
+    // Implement LRU eviction
+    if (this.cache.size >= this.maxSize) {
+      // Remove oldest accessed entry
+      let oldestKey = null;
+      let oldestTime = Infinity;
+      for (const [k, v] of this.cache.entries()) {
+        if (v.lastAccess < oldestTime) {
+          oldestTime = v.lastAccess;
+          oldestKey = k;
+        }
+      }
+      if (oldestKey) this.cache.delete(oldestKey);
+    }
+
+    this.cache.set(key, {
+      data: data,
+      timestamp: Date.now(),
+      lastAccess: Date.now()
+    });
+  },
+
+  clear() {
+    this.cache.clear();
+  }
+};
+
 /* Request markers for current bounds/zoom, render them,
  * and keep the date sliders in sync with the viewport.
  */
@@ -3336,11 +3391,15 @@ function updateMarkers(){
   if (loadingEl) loadingEl.style.display='block';
 
   if (markerStreamSource) markerStreamSource.close();
+  if (window.markerStreamSources) {
+    window.markerStreamSources.forEach(source => source.close());
+  }
+  window.markerStreamSources = [];
 
   const zoom   = map.getZoom();
   const bounds = map.getBounds();
 
-  const params = {
+  const baseParams = {
     zoom  : zoom,
     minLat: bounds.getSouthWest().lat,
     minLon: bounds.getSouthWest().lng,
@@ -3350,11 +3409,11 @@ function updateMarkers(){
 
   // When viewing a specific track, use world bounds to load ALL markers, not just viewport
   if (currentTrackID) {
-    params.trackID = currentTrackID;
-    params.minLat = -90;
-    params.minLon = -180;
-    params.maxLat = 90;
-    params.maxLon = 180;
+    baseParams.trackID = currentTrackID;
+    baseParams.minLat = -90;
+    baseParams.minLon = -180;
+    baseParams.maxLat = 90;
+    baseParams.maxLon = 180;
   }
 
   const savedRange = loadDateRangeState();
@@ -3365,11 +3424,145 @@ function updateMarkers(){
   const tracks = new Set();
   let minTs = Infinity, maxTs = -Infinity;
 
-  const es = new EventSource('/stream_markers?' + new URLSearchParams(params));
-  markerStreamSource = es;
+  // PARALLEL TILE-BASED LOADING WITH CACHING
+  // Split viewport into 2x2 grid (4 tiles) and fetch in parallel
+  // Cache enabled for all zoom levels (except track view)
+  const useTiles = !currentTrackID; // Use tiles + cache for all zoom levels, except track view
+
+  if (useTiles) {
+    const latMid = (baseParams.minLat + baseParams.maxLat) / 2;
+    const lonMid = (baseParams.minLon + baseParams.maxLon) / 2;
+
+    const tiles = [
+      { minLat: baseParams.minLat, maxLat: latMid, minLon: baseParams.minLon, maxLon: lonMid }, // SW
+      { minLat: baseParams.minLat, maxLat: latMid, minLon: lonMid, maxLon: baseParams.maxLon }, // SE
+      { minLat: latMid, maxLat: baseParams.maxLat, minLon: baseParams.minLon, maxLon: lonMid }, // NW
+      { minLat: latMid, maxLat: baseParams.maxLat, minLon: lonMid, maxLon: baseParams.maxLon }  // NE
+    ];
+
+    let activeSources = 0;
+
+    // Open parallel SSE connections for each tile (or use cache)
+    tiles.forEach((tile, idx) => {
+      const params = { ...baseParams, ...tile };
+      const cacheKey = tileCache.makeKey(zoom, tile.minLat, tile.minLon, tile.maxLat, tile.maxLon);
+      const cached = tileCache.get(cacheKey);
+
+      if (cached) {
+        // Use cached data - render immediately
+        console.log(`[Cache HIT] Tile ${idx} from cache`);
+        cached.forEach(markerData => {
+          renderCachedMarker(markerData, tracks, minTs, maxTs, savedRange, zoom);
+        });
+      } else {
+        // Cache miss - fetch from server
+        console.log(`[Cache MISS] Tile ${idx} fetching...`);
+        activeSources++;
+        const es = new EventSource('/stream_markers?' + new URLSearchParams(params));
+        window.markerStreamSources.push(es);
+        setupMarkerStream(es, tracks, minTs, maxTs, savedRange, idx, cacheKey, () => {
+          activeSources--;
+          if (activeSources === 0 && loadingEl) loadingEl.style.display = 'none';
+        }, zoom);
+      }
+    });
+
+    // Use first stream as primary for backwards compatibility
+    if (window.markerStreamSources.length > 0) {
+      markerStreamSource = window.markerStreamSources[0];
+    }
+
+    // If all tiles were cached, hide loading immediately
+    if (activeSources === 0 && loadingEl) {
+      loadingEl.style.display = 'none';
+    }
+  } else {
+    // Single stream for track view or zoomed-out view (no caching for these)
+    const es = new EventSource('/stream_markers?' + new URLSearchParams(baseParams));
+    markerStreamSource = es;
+    window.markerStreamSources = [es];
+    setupMarkerStream(es, tracks, minTs, maxTs, savedRange, 0, null, () => {
+      if (loadingEl) loadingEl.style.display = 'none';
+    }, zoom);
+  }
+}
+
+// Helper function to render a cached marker
+function renderCachedMarker(m, tracks, minTs, maxTs, savedRange, zoom) {
+  const isLive = m.speed < 0;
+  if (!isLive && m.trackID) tracks.add(m.trackID);
+
+  if (savedRange && (m.date < savedRange[0] || m.date > savedRange[1])) return;
+  if (!shouldDisplayBySpeed(m.speed)) return;
+  let marker;
+
+  if (isLive) {
+    const nowSec = Date.now() / 1000;
+    const icon = buildRealtimeIcon(m, zoom, nowSec);
+    if (!icon) return;
+    marker = L.marker([m.lat, m.lon], {
+      icon: L.divIcon({className:'', html: icon.html, iconSize:[icon.size, icon.size], iconAnchor:[icon.radius, icon.radius]})
+    })
+    .addTo(map)
+    .bindTooltip(getTooltipContent(m), { direction:'top', className:'custom-tooltip', offset:[0,-8], interactive:true })
+    .bindPopup(getPopupContent(m));
+  } else {
+    const hasSpectrum = m.hasSpectrum || false;
+    if (hasSpectrum) {
+      const baseRadius = getRadius(m.doseRate, zoom);
+      const radius = baseRadius * 3;
+      const size = radius * 3.7;
+      const fillColor = getGradientColor(m.doseRate);
+      const value = formatPrimaryUnit(m.doseRate);
+      const fontSize = Math.max(Math.round(size * 0.32), 11);
+      const html = `
+        <div class="spectrum-marker" style="background:${fillColor};border:3px solid var(--isotope-highlight);color:#000000;width:${size}px;height:${size}px;border-radius:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:${fontSize}px;font-weight:bold;">
+          <div style="font-size:${Math.max(fontSize * 0.8, 10)}px;">📊</div>
+          <div>${value}</div>
+        </div>`;
+      marker = L.marker([m.lat, m.lon], {
+        icon: L.divIcon({className:'', html: html, iconSize:[size, size], iconAnchor:[size/2, size/2]})
+      })
+      .addTo(map)
+      .bindTooltip(getTooltipContent(m), { direction:'top', className:'custom-tooltip', offset:[0,-8], interactive:true });
+      marker.on('click', function() { openSpectrumModal(m.id, m); });
+    } else {
+      const theme = document.documentElement.dataset.theme;
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const isDarkMode = theme === 'dark' || (!theme && prefersDark);
+      const fillColor = getGradientColor(m.doseRate);
+      const borderColor = isDarkMode ? fillColor : '#000000';
+      const markerStyle = {
+        radius: getRadius(m.doseRate, zoom),
+        fillColor: fillColor,
+        color: borderColor,
+        weight: 1,
+        opacity: getFillOpacity(m.speed) + 0.1,
+        fillOpacity: getFillOpacity(m.speed)
+      };
+      marker = L.circleMarker([m.lat, m.lon], markerStyle)
+      .addTo(map)
+      .bindTooltip(getTooltipContent(m), { direction:'top', className:'custom-tooltip', offset:[0,-8], interactive:true })
+      .bindPopup(getPopupContent(m));
+    }
+  }
+
+  marker.doseRate = m.doseRate;
+  marker.date = m.date;
+  marker.isRealtime = isLive;
+  marker.hasSpectrum = m.hasSpectrum || false;
+  marker.markerId = m.id;
+  circleMarkers[m.id || m.trackID] = marker;
+}
+
+// Helper function to setup marker stream event handlers
+function setupMarkerStream(es, tracks, minTs, maxTs, savedRange, tileIndex, cacheKey, onDone, zoom) {
 
   // Track bounds while loading markers
   let markerBounds = { minLat: 90, minLon: 180, maxLat: -90, maxLon: -180, hasData: false };
+
+  // Collect markers for caching
+  const tileMarkers = cacheKey ? [] : null;
 
   es.onmessage = e => {
     let m; try { m = JSON.parse(e.data); } catch { return; }
@@ -3461,9 +3654,21 @@ function updateMarkers(){
     marker.hasSpectrum = m.hasSpectrum || false;
     marker.markerId = m.id;  // Store marker ID for spectrum API calls
     circleMarkers[m.id || m.trackID] = marker;
+
+    // Collect marker data for caching
+    if (tileMarkers) {
+      tileMarkers.push(m);
+    }
   };
 
   es.addEventListener('done', () => {
+    // Store tile data in cache
+    if (cacheKey && tileMarkers) {
+      tileCache.set(cacheKey, tileMarkers);
+      console.log(`[Cache STORE] Tile ${tileIndex}: ${tileMarkers.length} markers cached`);
+    }
+
+    if (onDone) onDone();
     const dateSpanMonths = (isFinite(minTs) && isFinite(maxTs))
                             ? monthsApart(minTs, maxTs) : 0;
     const needSlider = !isTrackView && tracks.size > 1 && dateSpanMonths > 1;
