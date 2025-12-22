@@ -65,7 +65,7 @@ func (db *Database) insertSpectrumSQL(ctx context.Context, conn *sql.DB, spectru
 			RETURNING id
 		`
 		args = []interface{}{
-			spectrum.MarkerID, string(channelsJSON), spectrum.ChannelCount,
+			spectrum.MarkerID, spectrum.Channels, spectrum.ChannelCount,
 			spectrum.EnergyMinKeV, spectrum.EnergyMaxKeV, spectrum.LiveTimeSec,
 			spectrum.RealTimeSec, spectrum.DeviceModel, string(calibrationJSON),
 			spectrum.SourceFormat, spectrum.Filename, spectrum.RawData, createdAt,

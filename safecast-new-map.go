@@ -4813,9 +4813,9 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		.import-form { background: var(--bg-card); padding: 20px; margin-bottom: 20px; border-radius: 5px; box-shadow: var(--shadow); }
 		.import-form h3 { margin-top: 0; color: var(--text-primary); }
 		.form-row { display: flex; gap: 15px; align-items: flex-end; margin-top: 15px; }
-		.form-group { flex: 1; }
+		.form-group { min-width: 200px; }
 		.form-group label { display: block; margin-bottom: 5px; color: var(--text-secondary); font-size: 0.9em; font-weight: 500; }
-		.form-group input[type="date"] { width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 3px; background: var(--bg-card); color: var(--text-primary); font-size: 1em; }
+		.form-group input[type="date"] { width: 200px; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 3px; background: var(--bg-card); color: var(--text-primary); font-size: 1em; }
 		.import-btn { background: #2196F3; color: white; border: none; padding: 10px 24px; border-radius: 3px; cursor: pointer; font-size: 1em; font-weight: 500; }
 		.import-btn:hover { background: #1976D2; }
 		.import-btn:disabled { background: #ccc; cursor: not-allowed; }
@@ -4873,11 +4873,12 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 				<th class="sortable" onclick="sortTable(2)" data-type="text">Filename</th>
 				<th class="sortable" onclick="sortTable(3)" data-type="text">Type</th>
 				<th class="sortable" onclick="sortTable(4)" data-type="text">Track ID</th>
-				<th class="sortable" onclick="sortTable(5)" data-type="text">Size</th>
-				<th class="sortable" onclick="sortTable(6)" data-type="text">Source</th>
-				<th class="sortable" onclick="sortTable(7)" data-type="text">User ID</th>
-				<th class="sortable" onclick="sortTable(8)" data-type="text">Upload IP</th>
-				<th class="sortable" onclick="sortTable(9)" data-type="date">Upload Time</th>
+				<th class="sortable" onclick="sortTable(5)" data-type="date">Recording Date</th>
+				<th class="sortable" onclick="sortTable(6)" data-type="text">Size</th>
+				<th class="sortable" onclick="sortTable(7)" data-type="text">Source</th>
+				<th class="sortable" onclick="sortTable(8)" data-type="text">User ID</th>
+				<th class="sortable" onclick="sortTable(9)" data-type="text">Upload IP</th>
+				<th class="sortable" onclick="sortTable(10)" data-type="date">Upload Time</th>
 				<th>Actions</th>
 			</tr>
 			<tr class="filter-row">
@@ -4886,6 +4887,7 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 				<th><input type="text" class="filter-input" placeholder="Filter filename..." onkeyup="filterTable()"></th>
 				<th><input type="text" class="filter-input" placeholder="Type..." onkeyup="filterTable()"></th>
 				<th><input type="text" class="filter-input" placeholder="Filter Track ID..." onkeyup="filterTable()"></th>
+				<th><input type="text" class="filter-input" placeholder="Filter date..." onkeyup="filterTable()"></th>
 				<th><input type="text" class="filter-input" placeholder="Size..." onkeyup="filterTable()"></th>
 				<th><input type="text" class="filter-input" placeholder="Source..." onkeyup="filterTable()"></th>
 				<th><input type="text" class="filter-input" placeholder="User ID..." onkeyup="filterTable()"></th>
@@ -4899,6 +4901,12 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		for _, upload := range uploads {
 			uploadTime := time.Unix(upload.CreatedAt, 0).Format("2006-01-02 15:04:05")
 			fileSize := formatFileSize(upload.FileSize)
+
+			// Format recording date
+			recordingDate := "-"
+			if upload.RecordingDate > 0 {
+				recordingDate = time.Unix(upload.RecordingDate, 0).Format("2006-01-02 15:04:05")
+			}
 
 			// Format source display
 			sourceDisplay := "manual"
@@ -4929,6 +4937,7 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 				<td class="filename">%s</td>
 				<td>%s</td>
 				<td class="trackid"><a href="/trackid/%s">%s</a></td>
+				<td class="datetime">%s</td>
 				<td class="filesize">%s</td>
 				<td class="source">%s</td>
 				<td>%s</td>
@@ -4941,6 +4950,7 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 				upload.Filename,
 				upload.FileType,
 				upload.TrackID, upload.TrackID,
+				recordingDate,
 				fileSize,
 				sourceDisplay,
 				userIDDisplay,

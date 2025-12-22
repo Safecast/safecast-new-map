@@ -8,17 +8,18 @@ import (
 
 // Upload represents a file upload record for tracking purposes.
 type Upload struct {
-	ID        int64  `json:"id"`
-	Filename  string `json:"filename"`
-	FileType  string `json:"fileType"`
-	TrackID   string `json:"trackID"`
-	FileSize  int64  `json:"fileSize"`
-	UploadIP  string `json:"uploadIP"`
-	CreatedAt int64  `json:"createdAt"`
-	Source    string `json:"source,omitempty"`    // Import source (e.g., "safecast-api", "user-upload")
-	SourceID  string `json:"sourceID,omitempty"`  // External reference ID (e.g., Safecast import ID)
-	SourceURL string `json:"sourceURL,omitempty"` // Source file URL (e.g., S3 URL)
-	UserID    string `json:"userID,omitempty"`    // User ID from source (e.g., Safecast user ID)
+	ID            int64  `json:"id"`
+	Filename      string `json:"filename"`
+	FileType      string `json:"fileType"`
+	TrackID       string `json:"trackID"`
+	FileSize      int64  `json:"fileSize"`
+	UploadIP      string `json:"uploadIP"`
+	CreatedAt     int64  `json:"createdAt"`
+	RecordingDate int64  `json:"recordingDate,omitempty"` // Earliest marker date for this track
+	Source        string `json:"source,omitempty"`        // Import source (e.g., "safecast-api", "user-upload")
+	SourceID      string `json:"sourceID,omitempty"`      // External reference ID (e.g., Safecast import ID)
+	SourceURL     string `json:"sourceURL,omitempty"`     // Source file URL (e.g., S3 URL)
+	UserID        string `json:"userID,omitempty"`        // User ID from source (e.g., Safecast user ID)
 }
 
 // InsertUpload records a file upload in the uploads table.
@@ -96,20 +97,28 @@ func (db *Database) GetUploads(ctx context.Context, limit int, userID string) ([
 		// Filter by user_id
 		if db.Driver == "pgx" || db.Driver == "duckdb" {
 			query = `
-				SELECT id, filename, file_type, track_id, file_size, upload_ip,
-				       EXTRACT(EPOCH FROM created_at)::BIGINT, source, source_id, source_url, user_id
-				FROM uploads
-				WHERE user_id = $1
-				ORDER BY created_at DESC
+				SELECT u.id, u.filename, u.file_type, u.track_id, u.file_size, u.upload_ip,
+				       EXTRACT(EPOCH FROM u.created_at)::BIGINT,
+				       COALESCE(MIN(m.date), 0) as recording_date,
+				       u.source, u.source_id, u.source_url, u.user_id
+				FROM uploads u
+				LEFT JOIN markers m ON u.track_id = m.trackid
+				WHERE u.user_id = $1
+				GROUP BY u.id, u.filename, u.file_type, u.track_id, u.file_size, u.upload_ip, u.created_at, u.source, u.source_id, u.source_url, u.user_id
+				ORDER BY u.created_at DESC
 				LIMIT $2
 			`
 			args = []interface{}{userID, limit}
 		} else {
 			query = `
-				SELECT id, filename, file_type, track_id, file_size, upload_ip, created_at, source, source_id, source_url, user_id
-				FROM uploads
-				WHERE user_id = ?
-				ORDER BY created_at DESC
+				SELECT u.id, u.filename, u.file_type, u.track_id, u.file_size, u.upload_ip, u.created_at,
+				       COALESCE(MIN(m.date), 0) as recording_date,
+				       u.source, u.source_id, u.source_url, u.user_id
+				FROM uploads u
+				LEFT JOIN markers m ON u.track_id = m.trackID
+				WHERE u.user_id = ?
+				GROUP BY u.id
+				ORDER BY u.created_at DESC
 				LIMIT ?
 			`
 			args = []interface{}{userID, limit}
@@ -118,18 +127,26 @@ func (db *Database) GetUploads(ctx context.Context, limit int, userID string) ([
 		// No filter
 		if db.Driver == "pgx" || db.Driver == "duckdb" {
 			query = `
-				SELECT id, filename, file_type, track_id, file_size, upload_ip,
-				       EXTRACT(EPOCH FROM created_at)::BIGINT, source, source_id, source_url, user_id
-				FROM uploads
-				ORDER BY created_at DESC
+				SELECT u.id, u.filename, u.file_type, u.track_id, u.file_size, u.upload_ip,
+				       EXTRACT(EPOCH FROM u.created_at)::BIGINT,
+				       COALESCE(MIN(m.date), 0) as recording_date,
+				       u.source, u.source_id, u.source_url, u.user_id
+				FROM uploads u
+				LEFT JOIN markers m ON u.track_id = m.trackid
+				GROUP BY u.id, u.filename, u.file_type, u.track_id, u.file_size, u.upload_ip, u.created_at, u.source, u.source_id, u.source_url, u.user_id
+				ORDER BY u.created_at DESC
 				LIMIT $1
 			`
 			args = []interface{}{limit}
 		} else {
 			query = `
-				SELECT id, filename, file_type, track_id, file_size, upload_ip, created_at, source, source_id, source_url, user_id
-				FROM uploads
-				ORDER BY created_at DESC
+				SELECT u.id, u.filename, u.file_type, u.track_id, u.file_size, u.upload_ip, u.created_at,
+				       COALESCE(MIN(m.date), 0) as recording_date,
+				       u.source, u.source_id, u.source_url, u.user_id
+				FROM uploads u
+				LEFT JOIN markers m ON u.track_id = m.trackID
+				GROUP BY u.id
+				ORDER BY u.created_at DESC
 				LIMIT ?
 			`
 			args = []interface{}{limit}
@@ -148,7 +165,7 @@ func (db *Database) GetUploads(ctx context.Context, limit int, userID string) ([
 		var source, sourceID, sourceURL, userID *string
 		err := rows.Scan(
 			&u.ID, &u.Filename, &u.FileType, &u.TrackID,
-			&u.FileSize, &u.UploadIP, &u.CreatedAt,
+			&u.FileSize, &u.UploadIP, &u.CreatedAt, &u.RecordingDate,
 			&source, &sourceID, &sourceURL, &userID,
 		)
 		if err != nil {
