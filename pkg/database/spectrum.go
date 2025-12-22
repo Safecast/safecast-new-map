@@ -162,7 +162,7 @@ func (db *Database) getSpectrumSQL(ctx context.Context, conn *sql.DB, markerID i
 	if db.Driver == "pgx" || db.Driver == "duckdb" {
 		placeholder := "$1"
 		query = `
-			SELECT s.id, s.marker_id, s.channels, s.channel_count, s.energy_min_kev, s.energy_max_kev,
+			SELECT s.id, s.marker_id, array_to_json(s.channels)::text, s.channel_count, s.energy_min_kev, s.energy_max_kev,
 			       s.live_time_sec, s.real_time_sec, s.device_model, s.calibration,
 			       s.source_format, s.filename, s.raw_data, EXTRACT(EPOCH FROM s.created_at)::BIGINT
 			FROM spectra s
@@ -212,7 +212,7 @@ func (db *Database) getSpectrumSQL(ctx context.Context, conn *sql.DB, markerID i
 
 		if db.Driver == "pgx" || db.Driver == "duckdb" {
 			query = `
-				SELECT s.id, s.marker_id, s.channels, s.channel_count, s.energy_min_kev, s.energy_max_kev,
+				SELECT s.id, s.marker_id, array_to_json(s.channels)::text, s.channel_count, s.energy_min_kev, s.energy_max_kev,
 				       s.live_time_sec, s.real_time_sec, s.device_model, s.calibration,
 				       s.source_format, s.filename, s.raw_data, EXTRACT(EPOCH FROM s.created_at)::BIGINT
 				FROM spectra s
@@ -264,7 +264,7 @@ func (db *Database) GetMarkersWithSpectra(ctx context.Context, bounds Bounds) ([
 // getMarkersWithSpectraSQL performs the actual SQL query.
 func (db *Database) getMarkersWithSpectraSQL(ctx context.Context, conn *sql.DB, bounds Bounds) ([]Marker, error) {
 	query := `
-		SELECT id, doseRate, date, lon, lat, countRate, zoom, speed, trackID,
+		SELECT id, doseRate, date, lon, lat, countRate, zoom, COALESCE(speed, 0) as speed, trackID,
 		       altitude, detector, radiation, temperature, humidity, has_spectrum
 		FROM markers
 		WHERE has_spectrum = ?
@@ -278,9 +278,21 @@ func (db *Database) getMarkersWithSpectraSQL(ctx context.Context, conn *sql.DB, 
 		true, bounds.MinLat, bounds.MaxLat, bounds.MinLon, bounds.MaxLon,
 	}
 
-	if db.Driver == "pgx" || db.Driver == "duckdb" {
+	if db.Driver == "pgx" {
+		// PostgreSQL: use lowercase column names (PostgreSQL folds unquoted identifiers to lowercase)
 		query = `
-			SELECT id, doseRate, date, lon, lat, countRate, zoom, speed, trackID,
+			SELECT id, doserate, date, lon, lat, countrate, zoom, COALESCE(speed, 0) as speed, trackid,
+			       altitude, detector, radiation, temperature, humidity, has_spectrum
+			FROM markers
+			WHERE has_spectrum = $1
+			  AND lat BETWEEN $2 AND $3
+			  AND lon BETWEEN $4 AND $5
+			ORDER BY date DESC
+			LIMIT 1000
+		`
+	} else if db.Driver == "duckdb" {
+		query = `
+			SELECT id, doseRate, date, lon, lat, countRate, zoom, COALESCE(speed, 0) as speed, trackID,
 			       altitude, detector, radiation, temperature, humidity, has_spectrum
 			FROM markers
 			WHERE has_spectrum = $1

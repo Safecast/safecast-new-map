@@ -271,7 +271,20 @@ func (db *Database) StreamMarkersByTrackRange(
 			args = append(args, limit)
 		}
 
-		query := fmt.Sprintf(`SELECT id, doseRate, date, lon, lat, countRate, zoom, speed, trackID,
+		var query string
+		if strings.ToLower(dbType) == "pgx" {
+			// PostgreSQL: use lowercase column names (PostgreSQL folds unquoted identifiers to lowercase)
+			query = fmt.Sprintf(`SELECT id, doserate, date, lon, lat, countrate, zoom, COALESCE(speed, 0) AS speed, trackid,
+       altitude,
+       COALESCE(detector, '') AS detector,
+       COALESCE(radiation, '') AS radiation,
+       temperature,
+       humidity
+FROM markers
+WHERE trackid = %s AND id >= %s AND id <= %s
+ORDER BY id%s;`, trackPlaceholder, fromPlaceholder, toPlaceholder, limitClause)
+		} else {
+			query = fmt.Sprintf(`SELECT id, doseRate, date, lon, lat, countRate, zoom, COALESCE(speed, 0) AS speed, trackID,
        altitude,
        COALESCE(detector, '') AS detector,
        COALESCE(radiation, '') AS radiation,
@@ -280,6 +293,7 @@ func (db *Database) StreamMarkersByTrackRange(
 FROM markers
 WHERE trackID = %s AND id >= %s AND id <= %s
 ORDER BY id%s;`, trackPlaceholder, fromPlaceholder, toPlaceholder, limitClause)
+		}
 
 		var batch []Marker
 		err := db.withSerializedConnectionFor(ctx, WorkloadWebRead, func(ctx context.Context, conn *sql.DB) error {
