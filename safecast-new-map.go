@@ -45,6 +45,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -4683,6 +4684,71 @@ func updateCoordinatesHandler(w http.ResponseWriter, r *http.Request) {
 // ADMIN API
 // =====================
 
+// formatUploadRow formats a single upload record as an HTML table row.
+func formatUploadRow(upload database.Upload, password string) string {
+	uploadTime := time.Unix(upload.CreatedAt, 0).Format("2006-01-02 15:04:05")
+	fileSize := formatFileSize(upload.FileSize)
+
+	// Format recording date
+	recordingDate := "-"
+	if upload.RecordingDate > 0 {
+		recordingDate = time.Unix(upload.RecordingDate, 0).Format("2006-01-02 15:04:05")
+	}
+
+	// Format source display and get numeric source ID for sorting
+	sourceDisplay := "manual"
+	sourceIDNumeric := "0" // Default for manual uploads
+	if upload.Source != "" {
+		if upload.SourceID != "" {
+			sourceIDNumeric = upload.SourceID // Store for data attribute
+			if upload.SourceURL != "" {
+				sourceDisplay = fmt.Sprintf(`%s (<a href="%s" target="_blank">#%s</a>)`,
+					upload.Source, upload.SourceURL, upload.SourceID)
+			} else {
+				sourceDisplay = fmt.Sprintf("%s (#%s)", upload.Source, upload.SourceID)
+			}
+		} else {
+			sourceDisplay = upload.Source
+		}
+	}
+
+	// Format user ID display
+	userIDDisplay := "-"
+	if upload.UserID != "" {
+		userIDDisplay = fmt.Sprintf(`<a href="/api/admin/uploads?password=%s&user_id=%s">%s</a>`,
+			password, upload.UserID, upload.UserID)
+	}
+
+	return fmt.Sprintf(`
+			<tr>
+				<td class="checkbox-col"><input type="checkbox" class="track-checkbox" value="%s" onchange="updateDeleteButton()"></td>
+				<td>%d</td>
+				<td class="filename">%s</td>
+				<td>%s</td>
+				<td class="trackid"><a href="/trackid/%s">%s</a></td>
+				<td class="datetime">%s</td>
+				<td class="filesize">%s</td>
+				<td class="source" data-source-id="%s">%s</td>
+				<td>%s</td>
+				<td>%s</td>
+				<td class="datetime">%s</td>
+				<td><button class="delete-btn" onclick="deleteTrack('%s')">Delete</button></td>
+			</tr>`,
+		upload.TrackID,
+		upload.ID,
+		upload.Filename,
+		upload.FileType,
+		upload.TrackID, upload.TrackID,
+		recordingDate,
+		fileSize,
+		sourceIDNumeric, sourceDisplay,
+		userIDDisplay,
+		upload.UploadIP,
+		uploadTime,
+		upload.TrackID,
+	)
+}
+
 // adminUploadsHandler lists all file uploads with metadata.
 // GET /api/admin/uploads?password=xxx&limit=100
 func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
@@ -4903,68 +4969,50 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		</thead>
 		<tbody id="uploadsTableBody">`
 
-		for _, upload := range uploads {
-			uploadTime := time.Unix(upload.CreatedAt, 0).Format("2006-01-02 15:04:05")
-			fileSize := formatFileSize(upload.FileSize)
+		// Parallel processing for formatting upload records
+		numWorkers := 8
+		if len(uploads) < 50 {
+			// For small datasets, use sequential processing (faster due to no overhead)
+			numWorkers = 1
+		}
+		if len(uploads) < numWorkers {
+			numWorkers = len(uploads)
+		}
 
-			// Format recording date
-			recordingDate := "-"
-			if upload.RecordingDate > 0 {
-				recordingDate = time.Unix(upload.RecordingDate, 0).Format("2006-01-02 15:04:05")
+		// Results slice to store formatted HTML in order
+		rows := make([]string, len(uploads))
+
+		if numWorkers == 1 {
+			// Sequential processing for small datasets
+			for i, upload := range uploads {
+				rows[i] = formatUploadRow(upload, password)
 			}
+		} else {
+			// Parallel processing for large datasets
+			var wg sync.WaitGroup
+			batchSize := (len(uploads) + numWorkers - 1) / numWorkers
 
-			// Format source display and get numeric source ID for sorting
-			sourceDisplay := "manual"
-			sourceIDNumeric := "0" // Default for manual uploads
-			if upload.Source != "" {
-				if upload.SourceID != "" {
-					sourceIDNumeric = upload.SourceID // Store for data attribute
-					if upload.SourceURL != "" {
-						sourceDisplay = fmt.Sprintf(`%s (<a href="%s" target="_blank">#%s</a>)`,
-							upload.Source, upload.SourceURL, upload.SourceID)
-					} else {
-						sourceDisplay = fmt.Sprintf("%s (#%s)", upload.Source, upload.SourceID)
-					}
-				} else {
-					sourceDisplay = upload.Source
+			for w := 0; w < numWorkers; w++ {
+				wg.Add(1)
+				start := w * batchSize
+				end := start + batchSize
+				if end > len(uploads) {
+					end = len(uploads)
 				}
-			}
 
-			// Format user ID display
-			userIDDisplay := "-"
-			if upload.UserID != "" {
-				userIDDisplay = fmt.Sprintf(`<a href="/api/admin/uploads?password=%s&user_id=%s">%s</a>`,
-					password, upload.UserID, upload.UserID)
+				go func(start, end int) {
+					defer wg.Done()
+					for i := start; i < end; i++ {
+						rows[i] = formatUploadRow(uploads[i], password)
+					}
+				}(start, end)
 			}
+			wg.Wait()
+		}
 
-			html += fmt.Sprintf(`
-			<tr>
-				<td class="checkbox-col"><input type="checkbox" class="track-checkbox" value="%s" onchange="updateDeleteButton()"></td>
-				<td>%d</td>
-				<td class="filename">%s</td>
-				<td>%s</td>
-				<td class="trackid"><a href="/trackid/%s">%s</a></td>
-				<td class="datetime">%s</td>
-				<td class="filesize">%s</td>
-				<td class="source" data-source-id="%s">%s</td>
-				<td>%s</td>
-				<td>%s</td>
-				<td class="datetime">%s</td>
-				<td><button class="delete-btn" onclick="deleteTrack('%s')">Delete</button></td>
-			</tr>`,
-				upload.TrackID,
-				upload.ID,
-				upload.Filename,
-				upload.FileType,
-				upload.TrackID, upload.TrackID,
-				recordingDate,
-				fileSize,
-				sourceIDNumeric, sourceDisplay,
-				userIDDisplay,
-				upload.UploadIP,
-				uploadTime,
-				upload.TrackID,
-			)
+		// Concatenate all rows
+		for _, row := range rows {
+			html += row
 		}
 
 		html += `
@@ -5479,6 +5527,19 @@ func adminImportFromSafecastHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	client := safecastfetcher.NewClient()
 
+	// Parse date range once before the loop
+	startTime, err := time.Parse("2006-01-02", req.StartDate)
+	if err != nil {
+		sendProgress("Error: Invalid start_date format (use YYYY-MM-DD)", 0, 0, 1, 0)
+		return
+	}
+	endTime, err := time.Parse("2006-01-02", req.EndDate)
+	if err != nil {
+		sendProgress("Error: Invalid end_date format (use YYYY-MM-DD)", 0, 0, 1, 0)
+		return
+	}
+	endTime = endTime.Add(24 * time.Hour) // Include end date
+
 	var allImports []safecastfetcher.SafecastImport
 	imported := 0
 	skipped := 0
@@ -5488,7 +5549,9 @@ func adminImportFromSafecastHandler(w http.ResponseWriter, r *http.Request) {
 	sendProgress("Fetching imports from Safecast API...", 0, 0, 0, 0)
 
 	// Fetch imports page by page
-	for page := 1; page <= 100; page++ { // Safety limit
+	// Note: API returns ~25-50 items per page. With 2042+ pages total, we need high limit.
+	// Loop will stop early once we pass the start date, so this is just a safety ceiling.
+	for page := 1; page <= 3000; page++ { // Safety limit (enough for all historical imports)
 		imports, err := client.FetchApprovedImports(ctx, req.StartDate, page)
 		if err != nil {
 			log.Printf("[admin-import] Error fetching page %d: %v", page, err)
@@ -5500,99 +5563,167 @@ func adminImportFromSafecastHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Filter by date range
-		endTime, _ := time.Parse("2006-01-02", req.EndDate)
-		endTime = endTime.Add(24 * time.Hour) // Include end date
-
 		for _, imp := range imports {
+			// Skip imports after end date (too new)
 			if imp.CreatedAt.After(endTime) {
-				continue // Skip imports after end date
+				continue
 			}
+			// Skip imports before start date (too old)
+			if imp.CreatedAt.Before(startTime) {
+				continue
+			}
+			// Within range - add it
 			allImports = append(allImports, imp)
 		}
 
 		// Update progress
 		sendProgress(fmt.Sprintf("Fetched page %d, found %d imports so far...", page, len(allImports)), 0, 0, 0, len(allImports))
 
-		// Stop if we've passed the end date
-		if len(imports) > 0 && imports[len(imports)-1].CreatedAt.After(endTime) {
+		// Stop pagination if we've gone past the start date
+		// API returns results in DESC order (newest first), so if the oldest import
+		// on this page is before the start date, we've collected all imports in range
+		if len(imports) > 0 && imports[len(imports)-1].CreatedAt.Before(startTime) {
+			log.Printf("[admin-import] Reached imports before start date, stopping pagination")
 			break
 		}
 	}
 
 	log.Printf("[admin-import] Found %d imports in date range", len(allImports))
-	sendProgress(fmt.Sprintf("Found %d imports in date range. Starting import...", len(allImports)), 0, 0, 0, len(allImports))
+	sendProgress(fmt.Sprintf("Found %d imports in date range. Starting parallel import...", len(allImports)), 0, 0, 0, len(allImports))
 
-	// Import each file
-	for i, imp := range allImports {
-		// Check if already imported
-		exists, err := db.CheckImportExists(ctx, safecastfetcher.SourceTypeSafecastAPI, imp.ID)
-		if err != nil {
-			log.Printf("[admin-import] Error checking import #%d: %v", imp.ID, err)
-			errors++
-			sendProgress(fmt.Sprintf("Processing %d/%d: Error checking import #%d", i+1, len(allImports), imp.ID), imported, skipped, errors, len(allImports))
-			continue
-		}
-
-		if exists {
-			skipped++
-			sendProgress(fmt.Sprintf("Processing %d/%d: Skipped #%d (already imported)", i+1, len(allImports), imp.ID), imported, skipped, errors, len(allImports))
-			continue
-		}
-
-		// Download and import
-		sendProgress(fmt.Sprintf("Processing %d/%d: Downloading #%d (%s)...", i+1, len(allImports), imp.ID, imp.Name), imported, skipped, errors, len(allImports))
-		content, filename, err := safecastfetcher.DownloadLogFile(ctx, imp.SourceURL)
-		if err != nil {
-			log.Printf("[admin-import] import #%d: download failed: %v", imp.ID, err)
-			errors++
-			sendProgress(fmt.Sprintf("Processing %d/%d: Error downloading #%d", i+1, len(allImports), imp.ID), imported, skipped, errors, len(allImports))
-			continue
-		}
-
-		// Import using the importer function from the fetcher
-		sendProgress(fmt.Sprintf("Processing %d/%d: Importing #%d...", i+1, len(allImports), imp.ID), imported, skipped, errors, len(allImports))
-		trackID := GenerateSerialNumber()
-		bytesFile := safecastfetcher.NewBytesFile(content, filename)
-
-		_, finalTrackID, err := processBGeigieZenFile(bytesFile, trackID, db, *dbType)
-		if err != nil {
-			log.Printf("[admin-import] import #%d: process failed: %v", imp.ID, err)
-			errors++
-			sendProgress(fmt.Sprintf("Processing %d/%d: Error processing #%d", i+1, len(allImports), imp.ID), imported, skipped, errors, len(allImports))
-			continue
-		}
-
-		// Record the upload
-		upload := database.Upload{
-			Filename:  filename,
-			FileType:  ".log",
-			TrackID:   finalTrackID,
-			FileSize:  int64(len(content)),
-			UploadIP:  "admin-import",
-			CreatedAt: time.Now().Unix(),
-			Source:    safecastfetcher.SourceTypeSafecastAPI,
-			SourceID:  fmt.Sprintf("%d", imp.ID),
-			SourceURL: imp.SourceURL,
-			UserID:    fmt.Sprintf("%d", imp.UserID),
-		}
-
-		if _, err := db.InsertUpload(ctx, upload); err != nil {
-			// Skip if already exists (duplicate key error from previous partial import)
-			if !strings.Contains(err.Error(), "UNIQUE constraint") &&
-				!strings.Contains(err.Error(), "duplicate key") {
-				log.Printf("[admin-import] import #%d: record upload failed: %v", imp.ID, err)
-				errors++
-				sendProgress(fmt.Sprintf("Processing %d/%d: Error recording #%d", i+1, len(allImports), imp.ID), imported, skipped, errors, len(allImports))
-				continue
-			}
-			// Duplicate upload record is OK - markers are what matter
-			log.Printf("[admin-import] import #%d: upload record already exists, continuing", imp.ID)
-		}
-
-		imported++
-		log.Printf("[admin-import] import #%d: success (track %s)", imp.ID, finalTrackID)
-		sendProgress(fmt.Sprintf("Processing %d/%d: Imported #%d ✓", i+1, len(allImports), imp.ID), imported, skipped, errors, len(allImports))
+	// Parallel import with worker pool
+	numWorkers := 8 // Process 8 files concurrently
+	if len(allImports) < numWorkers {
+		numWorkers = len(allImports)
 	}
+
+	// Create channels for work distribution
+	type importJob struct {
+		index int
+		imp   safecastfetcher.SafecastImport
+	}
+	jobs := make(chan importJob, len(allImports))
+
+	// Mutex for protecting shared counters and progress updates
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+
+	// Track number of processed imports for progress
+	processed := 0
+
+	// Start worker goroutines
+	for w := 0; w < numWorkers; w++ {
+		wg.Add(1)
+		go func(workerID int) {
+			defer wg.Done()
+
+			for job := range jobs {
+				imp := job.imp
+
+				// Check if already imported
+				exists, err := db.CheckImportExists(ctx, safecastfetcher.SourceTypeSafecastAPI, imp.ID)
+				if err != nil {
+					log.Printf("[admin-import] worker %d: Error checking import #%d: %v", workerID, imp.ID, err)
+					mu.Lock()
+					errors++
+					processed++
+					sendProgress(fmt.Sprintf("Processing %d/%d: Error checking #%d", processed, len(allImports), imp.ID), imported, skipped, errors, len(allImports))
+					mu.Unlock()
+					continue
+				}
+
+				if exists {
+					mu.Lock()
+					skipped++
+					processed++
+					sendProgress(fmt.Sprintf("Processing %d/%d: Skipped #%d (already imported)", processed, len(allImports), imp.ID), imported, skipped, errors, len(allImports))
+					mu.Unlock()
+					continue
+				}
+
+				// Download and import
+				mu.Lock()
+				sendProgress(fmt.Sprintf("Processing %d/%d: Worker %d downloading #%d (%s)...", processed+1, len(allImports), workerID, imp.ID, imp.Name), imported, skipped, errors, len(allImports))
+				mu.Unlock()
+
+				content, filename, err := safecastfetcher.DownloadLogFile(ctx, imp.SourceURL)
+				if err != nil {
+					log.Printf("[admin-import] worker %d: import #%d: download failed: %v", workerID, imp.ID, err)
+					mu.Lock()
+					errors++
+					processed++
+					sendProgress(fmt.Sprintf("Processing %d/%d: Error downloading #%d", processed, len(allImports), imp.ID), imported, skipped, errors, len(allImports))
+					mu.Unlock()
+					continue
+				}
+
+				// Import using the importer function from the fetcher
+				mu.Lock()
+				sendProgress(fmt.Sprintf("Processing %d/%d: Worker %d importing #%d...", processed+1, len(allImports), workerID, imp.ID), imported, skipped, errors, len(allImports))
+				mu.Unlock()
+
+				trackID := GenerateSerialNumber()
+				bytesFile := safecastfetcher.NewBytesFile(content, filename)
+
+				_, finalTrackID, err := processBGeigieZenFile(bytesFile, trackID, db, *dbType)
+				if err != nil {
+					log.Printf("[admin-import] worker %d: import #%d: process failed: %v", workerID, imp.ID, err)
+					mu.Lock()
+					errors++
+					processed++
+					sendProgress(fmt.Sprintf("Processing %d/%d: Error processing #%d", processed, len(allImports), imp.ID), imported, skipped, errors, len(allImports))
+					mu.Unlock()
+					continue
+				}
+
+				// Record the upload
+				upload := database.Upload{
+					Filename:  filename,
+					FileType:  ".log",
+					TrackID:   finalTrackID,
+					FileSize:  int64(len(content)),
+					UploadIP:  "admin-import",
+					CreatedAt: time.Now().Unix(),
+					Source:    safecastfetcher.SourceTypeSafecastAPI,
+					SourceID:  fmt.Sprintf("%d", imp.ID),
+					SourceURL: imp.SourceURL,
+					UserID:    fmt.Sprintf("%d", imp.UserID),
+				}
+
+				if _, err := db.InsertUpload(ctx, upload); err != nil {
+					// Skip if already exists (duplicate key error from previous partial import)
+					if !strings.Contains(err.Error(), "UNIQUE constraint") &&
+						!strings.Contains(err.Error(), "duplicate key") {
+						log.Printf("[admin-import] worker %d: import #%d: record upload failed: %v", workerID, imp.ID, err)
+						mu.Lock()
+						errors++
+						processed++
+						sendProgress(fmt.Sprintf("Processing %d/%d: Error recording #%d", processed, len(allImports), imp.ID), imported, skipped, errors, len(allImports))
+						mu.Unlock()
+						continue
+					}
+					// Duplicate upload record is OK - markers are what matter
+					log.Printf("[admin-import] worker %d: import #%d: upload record already exists, continuing", workerID, imp.ID)
+				}
+
+				mu.Lock()
+				imported++
+				processed++
+				log.Printf("[admin-import] worker %d: import #%d: success (track %s)", workerID, imp.ID, finalTrackID)
+				sendProgress(fmt.Sprintf("Processing %d/%d: Worker %d imported #%d ✓", processed, len(allImports), workerID, imp.ID), imported, skipped, errors, len(allImports))
+				mu.Unlock()
+			}
+		}(w)
+	}
+
+	// Send all jobs to workers
+	for i, imp := range allImports {
+		jobs <- importJob{index: i, imp: imp}
+	}
+	close(jobs)
+
+	// Wait for all workers to complete
+	wg.Wait()
 
 	log.Printf("[admin-import] Complete: imported=%d skipped=%d errors=%d", imported, skipped, errors)
 
