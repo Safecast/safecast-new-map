@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"math"
+	"strings"
 )
 
 // =============================
@@ -89,7 +90,10 @@ func (db *Database) StreamLatestMarkersNear(
 		maxLonPlaceholder := nextPlaceholder()
 		limitPlaceholder := nextPlaceholder()
 
-		query := fmt.Sprintf(`SELECT id, doseRate, date, lon, lat, countRate, zoom, speed, trackID,
+		var query string
+		if strings.ToLower(dbType) == "pgx" {
+			// PostgreSQL: use lowercase column names (PostgreSQL folds unquoted identifiers to lowercase)
+			query = fmt.Sprintf(`SELECT id, doserate, date, lon, lat, countrate, zoom, COALESCE(speed, 0) AS speed, trackid,
        altitude,
        COALESCE(detector, '') AS detector,
        COALESCE(radiation, '') AS radiation,
@@ -99,12 +103,30 @@ FROM markers
 WHERE lat >= %s AND lat <= %s AND lon >= %s AND lon <= %s
 ORDER BY date DESC
 LIMIT %s;`,
-			minLatPlaceholder,
-			maxLatPlaceholder,
-			minLonPlaceholder,
-			maxLonPlaceholder,
-			limitPlaceholder,
-		)
+				minLatPlaceholder,
+				maxLatPlaceholder,
+				minLonPlaceholder,
+				maxLonPlaceholder,
+				limitPlaceholder,
+			)
+		} else {
+			query = fmt.Sprintf(`SELECT id, doseRate, date, lon, lat, countRate, zoom, COALESCE(speed, 0) AS speed, trackID,
+       altitude,
+       COALESCE(detector, '') AS detector,
+       COALESCE(radiation, '') AS radiation,
+       temperature,
+       humidity
+FROM markers
+WHERE lat >= %s AND lat <= %s AND lon >= %s AND lon <= %s
+ORDER BY date DESC
+LIMIT %s;`,
+				minLatPlaceholder,
+				maxLatPlaceholder,
+				minLonPlaceholder,
+				maxLonPlaceholder,
+				limitPlaceholder,
+			)
+		}
 
 		rows, err := db.DB.QueryContext(ctx, query, minLat, maxLat, minLon, maxLon, fetchLimit)
 		if err != nil {

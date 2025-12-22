@@ -20,8 +20,9 @@ func (db *Database) StreamMarkersByZoomAndBounds(ctx context.Context, zoom int, 
 		case "pgx":
 			// Use PostGIS spatial index with ST_Intersects and && bounding box operator
 			// for optimal performance. The && operator uses the GIST index efficiently.
+			// Note: PostgreSQL folds unquoted identifiers to lowercase, so use lowercase column names
 			query = `
-                SELECT id, doseRate, date, lon, lat, countRate, zoom, speed, trackID,
+                SELECT id, doserate, date, lon, lat, countrate, zoom, COALESCE(speed, 0) as speed, trackid,
                        COALESCE(altitude, 0) as altitude,
                        COALESCE(detector, '') as detector,
                        COALESCE(radiation, '') as radiation,
@@ -29,13 +30,13 @@ func (db *Database) StreamMarkersByZoomAndBounds(ctx context.Context, zoom int, 
                        COALESCE(humidity, 0) as humidity,
                        COALESCE(has_spectrum, FALSE) as has_spectrum
                 FROM markers
-                WHERE zoom = $1 
+                WHERE zoom = $1
                   AND geom && ST_MakeEnvelope($4, $2, $5, $3, 4326)
                   AND ST_Intersects(geom, ST_MakeEnvelope($4, $2, $5, $3, 4326));
             `
 		default:
 			query = `
-                SELECT id, doseRate, date, lon, lat, countRate, zoom, speed, trackID,
+                SELECT id, doseRate, date, lon, lat, countRate, zoom, COALESCE(speed, 0) as speed, trackID,
                        COALESCE(altitude, 0) as altitude,
                        COALESCE(detector, '') as detector,
                        COALESCE(radiation, '') as radiation,
@@ -92,8 +93,9 @@ func (db *Database) StreamMarkersByTrackIDZoomAndBounds(ctx context.Context, tra
 		case "pgx":
 			// Use PostGIS spatial index with ST_Intersects and && bounding box operator
 			// for optimal performance. The && operator uses the GIST index efficiently.
+			// Note: PostgreSQL folds unquoted identifiers to lowercase, so use lowercase column names
 			query = `
-                SELECT id, doseRate, date, lon, lat, countRate, zoom, speed, trackID,
+                SELECT id, doserate, date, lon, lat, countrate, zoom, COALESCE(speed, 0) as speed, trackid,
                        COALESCE(altitude, 0) as altitude,
                        COALESCE(detector, '') as detector,
                        COALESCE(radiation, '') as radiation,
@@ -101,14 +103,14 @@ func (db *Database) StreamMarkersByTrackIDZoomAndBounds(ctx context.Context, tra
                        COALESCE(humidity, 0) as humidity,
                        COALESCE(has_spectrum, FALSE) as has_spectrum
                 FROM markers
-                WHERE trackID = $1 
+                WHERE trackid = $1
                   AND zoom = $2
                   AND geom && ST_MakeEnvelope($5, $3, $6, $4, 4326)
                   AND ST_Intersects(geom, ST_MakeEnvelope($5, $3, $6, $4, 4326));
             `
 		default:
 			query = `
-                SELECT id, doseRate, date, lon, lat, countRate, zoom, speed, trackID,
+                SELECT id, doseRate, date, lon, lat, countRate, zoom, COALESCE(speed, 0) as speed, trackID,
                        COALESCE(altitude, 0) as altitude,
                        COALESCE(detector, '') as detector,
                        COALESCE(radiation, '') as radiation,

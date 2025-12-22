@@ -6240,6 +6240,7 @@ func getMarkersHandler(w http.ResponseWriter, r *http.Request) {
 			dateFrom, dateTo, sr, *dbType)
 	}
 	if err != nil {
+		log.Printf("Error fetching markers: %v (zoom=%d, bounds=[%f,%f,%f,%f], dbType=%s)", err, zoom, minLat, minLon, maxLat, maxLon, *dbType)
 		http.Error(w, "Error fetching markers", http.StatusInternalServerError)
 		return
 	}

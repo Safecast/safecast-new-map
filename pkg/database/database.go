@@ -3681,19 +3681,38 @@ func (db *Database) GetMarkersByTrackIDZoomBoundsSpeed(
 // the call sites compact while still returning fully populated Marker structs.
 func (db *Database) queryMarkers(ctx context.Context, where string, args []interface{}, dbType string, lane WorkloadKind) ([]Marker, error) {
 	var hasSpectrumExpr string
-	if strings.ToLower(dbType) == "pgx" || strings.ToLower(dbType) == "duckdb" {
+	var selectColumns string
+
+	if strings.ToLower(dbType) == "pgx" {
+		// PostgreSQL: use lowercase column names (PostgreSQL folds unquoted identifiers to lowercase)
 		hasSpectrumExpr = "COALESCE(has_spectrum, FALSE) AS has_spectrum"
+		selectColumns = `id,doserate,date,lon,lat,countrate,zoom,COALESCE(speed, 0) AS speed,trackid,
+                         COALESCE(altitude, 0) AS altitude,
+                         COALESCE(detector, '') AS detector,
+                         COALESCE(radiation, '') AS radiation,
+                         COALESCE(temperature, 0) AS temperature,
+                         COALESCE(humidity, 0) AS humidity`
+	} else if strings.ToLower(dbType) == "duckdb" {
+		hasSpectrumExpr = "COALESCE(has_spectrum, FALSE) AS has_spectrum"
+		selectColumns = `id,doseRate,date,lon,lat,countRate,zoom,COALESCE(speed, 0) AS speed,trackID,
+                         COALESCE(altitude, 0) AS altitude,
+                         COALESCE(detector, '') AS detector,
+                         COALESCE(radiation, '') AS radiation,
+                         COALESCE(temperature, 0) AS temperature,
+                         COALESCE(humidity, 0) AS humidity`
 	} else {
 		hasSpectrumExpr = "COALESCE(has_spectrum, 0) AS has_spectrum"
+		selectColumns = `id,doseRate,date,lon,lat,countRate,zoom,COALESCE(speed, 0) AS speed,trackID,
+                         COALESCE(altitude, 0) AS altitude,
+                         COALESCE(detector, '') AS detector,
+                         COALESCE(radiation, '') AS radiation,
+                         COALESCE(temperature, 0) AS temperature,
+                         COALESCE(humidity, 0) AS humidity`
 	}
-	query := fmt.Sprintf(`SELECT id,doseRate,date,lon,lat,countRate,zoom,speed,trackID,
-                                     COALESCE(altitude, 0) AS altitude,
-                                     COALESCE(detector, '') AS detector,
-                                     COALESCE(radiation, '') AS radiation,
-                                     COALESCE(temperature, 0) AS temperature,
-                                     COALESCE(humidity, 0) AS humidity,
+
+	query := fmt.Sprintf(`SELECT %s,
                                      %s
-                              FROM markers WHERE %s;`, hasSpectrumExpr, where)
+                              FROM markers WHERE %s;`, selectColumns, hasSpectrumExpr, where)
 
 	var out []Marker
 
