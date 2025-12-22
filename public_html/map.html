@@ -3427,7 +3427,8 @@ function updateMarkers(){
   // PARALLEL TILE-BASED LOADING WITH CACHING
   // Split viewport into 2x2 grid (4 tiles) and fetch in parallel
   // Cache enabled for all zoom levels (except track view)
-  const useTiles = !currentTrackID; // Use tiles + cache for all zoom levels, except track view
+  // Disable during background refresh to reduce database load
+  const useTiles = !currentTrackID && !window.isBackgroundRefresh; // Use tiles + cache for all zoom levels, except track view and background refresh
 
   if (useTiles) {
     const latMid = (baseParams.minLat + baseParams.maxLat) / 2;
@@ -3527,17 +3528,13 @@ function renderCachedMarker(m, tracks, minTs, maxTs, savedRange, zoom) {
       .bindTooltip(getTooltipContent(m), { direction:'top', className:'custom-tooltip', offset:[0,-8], interactive:true });
       marker.on('click', function() { openSpectrumModal(m.id, m); });
     } else {
-      const theme = document.documentElement.dataset.theme;
-      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const isDarkMode = theme === 'dark' || (!theme && prefersDark);
       const fillColor = getGradientColor(m.doseRate);
-      const borderColor = isDarkMode ? fillColor : '#000000';
       const markerStyle = {
         radius: getRadius(m.doseRate, zoom),
         fillColor: fillColor,
-        color: borderColor,
-        weight: 1,
-        opacity: getFillOpacity(m.speed) + 0.1,
+        color: fillColor,
+        weight: 0,
+        opacity: getFillOpacity(m.speed),
         fillOpacity: getFillOpacity(m.speed)
       };
       marker = L.circleMarker([m.lat, m.lon], markerStyle)
@@ -3624,19 +3621,14 @@ function setupMarkerStream(es, tracks, minTs, maxTs, savedRange, tileIndex, cach
         });
       } else {
         // Regular markers: use circleMarker
-        // Determine border color: black in light mode, same as fill in dark mode
-        const theme = document.documentElement.dataset.theme;
-        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const isDarkMode = theme === 'dark' || (!theme && prefersDark);
         const fillColor = getGradientColor(m.doseRate);
-        const borderColor = isDarkMode ? fillColor : '#000000';
 
         const markerStyle = {
           radius      : getRadius(m.doseRate, zoom),
           fillColor   : fillColor,
-          color       : borderColor,
-          weight      : 1,
-          opacity     : getFillOpacity(m.speed) + 0.1,
+          color       : fillColor,
+          weight      : 0,
+          opacity     : getFillOpacity(m.speed),
           fillOpacity : getFillOpacity(m.speed)
         };
 
@@ -6239,7 +6231,10 @@ function centerMapToLocation() {
         }
         let rounds = 0;
         backgroundRefreshTimer = setInterval(() => {
+          // Set flag to disable parallel tile loading during background refresh
+          window.isBackgroundRefresh = true;
           updateMarkers();
+          window.isBackgroundRefresh = false;
           rounds += 1;
           if (rounds >= 24) {
             clearInterval(backgroundRefreshTimer);

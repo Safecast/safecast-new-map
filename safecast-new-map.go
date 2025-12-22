@@ -4922,7 +4922,17 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		<div class="import-status" id="importStatus"></div>
 	</div>
 	<div class="summary">
-		<strong>Total Uploads:</strong> ` + strconv.Itoa(len(uploads)) + ` files (showing up to ` + strconv.Itoa(limit) + `)`
+		<strong>Total Uploads:</strong> ` + strconv.Itoa(len(uploads)) + ` files (showing up to ` + strconv.Itoa(limit) + `)
+		<span style="margin-left: 20px;">
+			<label for="limitSelect"><strong>Show:</strong></label>
+			<select id="limitSelect" onchange="changeLimit()" style="margin-left: 5px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary);">
+				<option value="100"` + func() string { if limit == 100 { return " selected" }; return "" }() + `>100</option>
+				<option value="500"` + func() string { if limit == 500 { return " selected" }; return "" }() + `>500</option>
+				<option value="1000"` + func() string { if limit == 1000 { return " selected" }; return "" }() + `>1000</option>
+				<option value="5000"` + func() string { if limit == 5000 { return " selected" }; return "" }() + `>5000</option>
+				<option value="10000"` + func() string { if limit >= 10000 { return " selected" }; return "" }() + `>All</option>
+			</select>
+		</span>`
 
 	if userID != "" {
 		html += ` | <strong>Filtered by User ID:</strong> ` + userID + ` <a href="/api/admin/uploads?password=` + password + `">[Clear Filter]</a>`
@@ -5192,6 +5202,14 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 
 			// Update delete button after filtering
 			updateDeleteButton();
+		}
+
+		// Change limit and reload page
+		function changeLimit() {
+			const limit = document.getElementById('limitSelect').value;
+			const url = new URL(window.location.href);
+			url.searchParams.set('limit', limit);
+			window.location.href = url.toString();
 		}
 
 		// Import from Safecast API
