@@ -100,7 +100,7 @@ func (db *Database) insertMarkersPostgreSQLCopy(ctx context.Context, chunk []Mar
 		}
 
 		insertFromTemp := fmt.Sprintf(`INSERT INTO markers
- (doseRate,date,lon,lat,countRate,zoom,speed,trackID,altitude,detector,radiation,temperature,humidity)
+ (doserate,date,lon,lat,countrate,zoom,speed,trackid,altitude,detector,radiation,temperature,humidity)
  SELECT doseRate,date,lon,lat,countRate,zoom,speed,trackID,altitude,detector,radiation,temperature,humidity FROM %s
  ON CONFLICT ON CONSTRAINT markers_unique DO NOTHING`, tempTable)
 		if _, err := tx.Exec(ctx, insertFromTemp); err != nil {
@@ -185,7 +185,7 @@ func (db *Database) insertMarkersPostgreSQLCopyBatched(ctx context.Context, mark
 		}
 
 		insertFromTemp := fmt.Sprintf(`INSERT INTO markers
- (doseRate,date,lon,lat,countRate,zoom,speed,trackID,altitude,detector,radiation,temperature,humidity)
+ (doserate,date,lon,lat,countrate,zoom,speed,trackid,altitude,detector,radiation,temperature,humidity)
  SELECT doseRate,date,lon,lat,countRate,zoom,speed,trackID,altitude,detector,radiation,temperature,humidity FROM %s
  ON CONFLICT ON CONSTRAINT markers_unique DO NOTHING`, tempTable)
 		truncateTemp := fmt.Sprintf(`TRUNCATE %s`, tempTable)
