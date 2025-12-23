@@ -7236,6 +7236,78 @@ func realtimeHistoryHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // =====================
+// GZIP COMPRESSION
+// =====================
+
+// gzipResponseWriter wraps http.ResponseWriter to automatically gzip responses
+// when client supports it. Expected compression ratio: 3-5x (500 kB → 100-150 kB)
+type gzipResponseWriter struct {
+	http.ResponseWriter
+	gzipWriter *gzip.Writer
+	written    bool
+}
+
+// WriteHeader delegates to underlying writer (called by handler)
+func (g *gzipResponseWriter) WriteHeader(statusCode int) {
+	if !g.written {
+		g.ResponseWriter.WriteHeader(statusCode)
+		g.written = true
+	}
+}
+
+// Write intercepts writes to compress them with gzip
+func (g *gzipResponseWriter) Write(b []byte) (int, error) {
+	if !g.written {
+		g.WriteHeader(http.StatusOK)
+	}
+	return g.gzipWriter.Write(b)
+}
+
+// Flush flushes both the gzip writer and response writer if possible
+func (g *gzipResponseWriter) Flush() error {
+	if err := g.gzipWriter.Flush(); err != nil {
+		return err
+	}
+	if f, ok := g.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+	return nil
+}
+
+// gzipHandler wraps a handler to apply gzip compression to responses
+// only when the client sends Accept-Encoding: gzip
+func gzipHandler(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Check if client accepts gzip encoding
+		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			next(w, r)
+			return
+		}
+
+		// Set gzip header BEFORE creating wrapper (before any writes)
+		w.Header().Set("Content-Encoding", "gzip")
+		w.Header().Add("Vary", "Accept-Encoding")
+
+		// Create gzip writer
+		gzipWriter := gzip.NewWriter(w)
+		defer gzipWriter.Close()
+
+		// Wrap response writer
+		wrappedWriter := &gzipResponseWriter{
+			ResponseWriter: w,
+			gzipWriter:     gzipWriter,
+			written:        false,
+		}
+
+		// Call original handler
+		next(wrappedWriter, r)
+
+		// Ensure gzip writer is flushed
+		_ = gzipWriter.Flush()
+	}
+}
+
+// =====================
 // MAIN
 // =====================
 
@@ -7483,11 +7555,13 @@ func main() {
 	http.HandleFunc("/licenses/", licenseHandler)
 	http.HandleFunc("/upload", uploadHandler)
 	http.HandleFunc("/get_markers", getMarkersHandler)
+	// Note: /stream_markers is Server-Sent Events (streaming) so gzip is skipped.
+	// Gzip doesn't work well with streaming responses due to buffering.
 	http.HandleFunc("/stream_markers", streamMarkersHandler)
 	http.HandleFunc("/realtime_history", realtimeHistoryHandler)
 	http.HandleFunc("/trackid/", trackHandler)
 	http.HandleFunc("/qrpng", qrPngHandler)
-	http.HandleFunc("/api/geoip", geoIPHandler)
+	http.HandleFunc("/api/geoip", gzipHandler(geoIPHandler))
 	http.HandleFunc("/s/", shortRedirectHandler)
 	http.HandleFunc("/api/docs", apiDocsHandler)
 	http.HandleFunc("/api/spectrum/", spectrumHandler)                  // GET /api/spectrum/{markerID} and /api/spectrum/{markerID}/download
