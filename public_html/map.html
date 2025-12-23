@@ -2248,6 +2248,26 @@ var isTrackView = false;
 var osmLayer, googleSatellite;
 var trackBounds;
 var currentTrackID = null;
+var lastViewportKey = null;
+var lastFilterState = null;  // Track filter state to detect changes
+
+function getViewportKey() {
+  // Create a string that uniquely identifies the current view
+  // Rounded to reduce precision - small pans won't trigger full redraw
+  const bounds = map.getBounds();
+  const zoom = map.getZoom();
+  const minLat = Math.round(bounds.getSouthWest().lat * 100) / 100;
+  const minLon = Math.round(bounds.getSouthWest().lng * 100) / 100;
+  const maxLat = Math.round(bounds.getNorthEast().lat * 100) / 100;
+  const maxLon = Math.round(bounds.getNorthEast().lng * 100) / 100;
+  return `${zoom}_${minLat}_${minLon}_${maxLat}_${maxLon}`;
+}
+
+function getFilterStateKey() {
+  // Create a string that uniquely identifies the current filter state
+  const state = loadSpeedFilterState();
+  return JSON.stringify(state);
+}
 const shortLinkBox = document.getElementById('shortLinkDisplay');
 let shortLinkTimer = null;
 let shortLinkAbort = null;
@@ -2767,6 +2787,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Adjust marker size on zoom
     map.on('zoomend', function() {
+      invalidateMarkerStyleCache();  // Clear style cache on zoom
       adjustMarkerRadius();
       debounceUpdateMarkers();
     });
@@ -3383,6 +3404,86 @@ const tileCache = {
   }
 };
 
+/* ===== MARKER BATCHING SYSTEM ===== */
+const markerBatch = [];
+const BATCH_SIZE = 25;
+let batchFlushTimer = null;
+
+function flushMarkerBatch(fromDone = false) {
+  if (batchFlushTimer) {
+    clearTimeout(batchFlushTimer);
+    batchFlushTimer = null;
+  }
+  
+  if (markerBatch.length === 0) return;
+  
+  // Use FeatureGroup to batch DOM operations
+  const batch = L.featureGroup();
+  const toAdd = markerBatch.splice(0, markerBatch.length);
+  
+  toAdd.forEach(entry => {
+    batch.addLayer(entry.marker);
+    circleMarkers[entry.id] = entry.marker;
+  });
+  
+  batch.addTo(map);
+  
+  // Schedule next flush if more markers queued
+  if (markerBatch.length > 0) {
+    batchFlushTimer = setTimeout(flushMarkerBatch, 10);
+  }
+}
+
+function queueMarkerForBatch(marker, id) {
+  markerBatch.push({ marker, id });
+  
+  if (markerBatch.length >= BATCH_SIZE) {
+    flushMarkerBatch();
+  } else if (!batchFlushTimer) {
+    batchFlushTimer = setTimeout(flushMarkerBatch, 50);
+  }
+}
+/* ===== END BATCHING ===== */
+
+// ===== MARKER STYLE CACHE =====
+// Reduces recalculation of styles for markers with similar properties
+const markerStyleCache = new Map();
+let lastStyleCacheZoom = null;
+
+function getCachedMarkerStyle(doseRate, zoom, speed) {
+  // Create cache key using reduced precision to increase hit rate
+  // Round doseRate to 3 decimals, speed to 1 decimal
+  const doseKey = Math.round(doseRate * 1000);
+  const speedKey = Math.round(speed * 10);
+  const cacheKey = `${doseKey}_${zoom}_${speedKey}`;
+  
+  if (markerStyleCache.has(cacheKey)) {
+    return markerStyleCache.get(cacheKey);
+  }
+  
+  // Calculate and cache
+  const style = {
+    radius: getRadius(doseRate, zoom),
+    fillColor: getGradientColor(doseRate),
+    color: getGradientColor(doseRate),
+    weight: 0,
+    opacity: getFillOpacity(speed),
+    fillOpacity: getFillOpacity(speed)
+  };
+  
+  markerStyleCache.set(cacheKey, style);
+  return style;
+}
+
+// Clear cache when zoom changes
+function invalidateMarkerStyleCache() {
+  if (lastStyleCacheZoom !== map.getZoom()) {
+    markerStyleCache.clear();
+    lastStyleCacheZoom = map.getZoom();
+  }
+}
+// ===== END CACHE =====
+
 /* Request markers for current bounds/zoom, render them,
  * and keep the date sliders in sync with the viewport.
  */
@@ -3418,8 +3519,44 @@ function updateMarkers(){
 
   const savedRange = loadDateRangeState();
 
-  for (const key in circleMarkers) map.removeLayer(circleMarkers[key]);
-  circleMarkers = {};
+  // Skip if viewport hasn't meaningfully changed (prevents unnecessary redraws)
+  const newViewportKey = getViewportKey();
+  const newFilterState = getFilterStateKey();
+  const filterChanged = lastFilterState !== newFilterState;
+  
+  if (lastViewportKey === newViewportKey && lastFilterState === newFilterState && !currentTrackID) {
+    // Viewport and filters unchanged in global view - skip full redraw
+    return;
+  }
+  lastViewportKey = newViewportKey;
+  lastFilterState = newFilterState;  // Track filter state to detect future changes
+
+  // If filters changed, clear all markers to re-filter them
+  if (filterChanged) {
+    // Flush any pending batched markers first
+    flushMarkerBatch();
+    // Remove all markers from map
+    for (const key in circleMarkers) {
+      const marker = circleMarkers[key];
+      map.removeLayer(marker);
+    }
+    circleMarkers = {};
+  } else {
+    // Otherwise, remove only markers that are now off-screen
+    const markersToRemove = [];
+    
+    for (const key in circleMarkers) {
+      const marker = circleMarkers[key];
+      if (marker.getLatLng && !bounds.contains(marker.getLatLng())) {
+        map.removeLayer(marker);
+        markersToRemove.push(key);
+      }
+    }
+    
+    markersToRemove.forEach(key => {
+      delete circleMarkers[key];
+    });
+  }
 
   const tracks = new Set();
   let minTs = Infinity, maxTs = -Infinity;
@@ -3463,8 +3600,11 @@ function updateMarkers(){
         window.markerStreamSources.push(es);
         setupMarkerStream(es, tracks, minTs, maxTs, savedRange, idx, cacheKey, () => {
           activeSources--;
-          if (activeSources === 0 && loadingEl) loadingEl.style.display = 'none';
-        }, zoom);
+          // Note: loadingEl is available through closure from updateMarkers()
+          if (activeSources === 0 && loadingEl) {
+            loadingEl.style.display = 'none';
+          }
+        }, zoom, loadingEl);
       }
     });
 
@@ -3484,7 +3624,7 @@ function updateMarkers(){
     window.markerStreamSources = [es];
     setupMarkerStream(es, tracks, minTs, maxTs, savedRange, 0, null, () => {
       if (loadingEl) loadingEl.style.display = 'none';
-    }, zoom);
+    }, zoom, loadingEl);
   }
 }
 
@@ -3503,10 +3643,28 @@ function renderCachedMarker(m, tracks, minTs, maxTs, savedRange, zoom) {
     if (!icon) return;
     marker = L.marker([m.lat, m.lon], {
       icon: L.divIcon({className:'', html: icon.html, iconSize:[icon.size, icon.size], iconAnchor:[icon.radius, icon.radius]})
-    })
-    .addTo(map)
-    .bindTooltip(getTooltipContent(m), { direction:'top', className:'custom-tooltip', offset:[0,-8], interactive:true })
-    .bindPopup(getPopupContent(m));
+    });
+    queueMarkerForBatch(marker, m.id);
+    
+    // Lazy-bind tooltip and popup only on user interaction
+    (function(m, marker) {
+      marker.on('mouseover', function() {
+        if (!this._tooltip) {
+          this.bindTooltip(getTooltipContent(m), { 
+            direction:'top', 
+            className:'custom-tooltip', 
+            offset:[0,-8], 
+            interactive:true 
+          });
+        }
+      });
+      
+      marker.on('click', function() {
+        if (!this._popup) {
+          this.bindPopup(getPopupContent(m));
+        }
+      });
+    })(m, marker);
   } else {
     const hasSpectrum = m.hasSpectrum || false;
     if (hasSpectrum) {
@@ -3523,24 +3681,52 @@ function renderCachedMarker(m, tracks, minTs, maxTs, savedRange, zoom) {
         </div>`;
       marker = L.marker([m.lat, m.lon], {
         icon: L.divIcon({className:'', html: html, iconSize:[size, size], iconAnchor:[size/2, size/2]})
-      })
-      .addTo(map)
-      .bindTooltip(getTooltipContent(m), { direction:'top', className:'custom-tooltip', offset:[0,-8], interactive:true });
+      });
+      queueMarkerForBatch(marker, m.id);
+      
+      // Lazy-bind tooltip on hover
+      (function(m, marker) {
+        marker.on('mouseover', function() {
+          if (!this._tooltip) {
+            this.bindTooltip(getTooltipContent(m), { 
+              direction:'top', 
+              className:'custom-tooltip', 
+              offset:[0,-8], 
+              interactive:true 
+            });
+          }
+        });
+      })(m, marker);
+
+      // Open spectrum modal on click
       marker.on('click', function() { openSpectrumModal(m.id, m); });
     } else {
       const fillColor = getGradientColor(m.doseRate);
-      const markerStyle = {
-        radius: getRadius(m.doseRate, zoom),
-        fillColor: fillColor,
-        color: fillColor,
-        weight: 0,
-        opacity: getFillOpacity(m.speed),
-        fillOpacity: getFillOpacity(m.speed)
-      };
-      marker = L.circleMarker([m.lat, m.lon], markerStyle)
-      .addTo(map)
-      .bindTooltip(getTooltipContent(m), { direction:'top', className:'custom-tooltip', offset:[0,-8], interactive:true })
-      .bindPopup(getPopupContent(m));
+      // Use cached style calculation for better performance
+      const markerStyle = getCachedMarkerStyle(m.doseRate, zoom, m.speed);
+
+      marker = L.circleMarker([m.lat, m.lon], markerStyle);
+      queueMarkerForBatch(marker, m.id);
+      
+      // Lazy-bind tooltip and popup only on user interaction
+      (function(m, marker) {
+        marker.on('mouseover', function() {
+          if (!this._tooltip) {
+            this.bindTooltip(getTooltipContent(m), { 
+              direction:'top', 
+              className:'custom-tooltip', 
+              offset:[0,-8], 
+              interactive:true 
+            });
+          }
+        });
+        
+        marker.on('click', function() {
+          if (!this._popup) {
+            this.bindPopup(getPopupContent(m));
+          }
+        });
+      })(m, marker);
     }
   }
 
@@ -3553,7 +3739,11 @@ function renderCachedMarker(m, tracks, minTs, maxTs, savedRange, zoom) {
 }
 
 // Helper function to setup marker stream event handlers
-function setupMarkerStream(es, tracks, minTs, maxTs, savedRange, tileIndex, cacheKey, onDone, zoom) {
+function setupMarkerStream(es, tracks, minTs, maxTs, savedRange, tileIndex, cacheKey, onDone, zoom, loadingEl) {
+  // Debug: Verify loadingEl is defined
+  if (!loadingEl) {
+    console.warn('WARNING: loadingEl is undefined in setupMarkerStream! This will cause errors.');
+  }
 
   // Track bounds while loading markers
   let markerBounds = { minLat: 90, minLon: 180, maxLat: -90, maxLon: -180, hasData: false };
@@ -3586,10 +3776,28 @@ function setupMarkerStream(es, tracks, minTs, maxTs, savedRange, tileIndex, cach
       if (!icon) return; // device is older than 24 hours
       marker = L.marker([m.lat, m.lon], {
         icon: L.divIcon({className:'', html: icon.html, iconSize:[icon.size, icon.size], iconAnchor:[icon.radius, icon.radius]})
-      })
-      .addTo(map)
-      .bindTooltip(getTooltipContent(m), { direction:'top', className:'custom-tooltip', offset:[0,-8], interactive:true })
-      .bindPopup(getPopupContent(m));
+      });
+      queueMarkerForBatch(marker, m.id);
+      
+      // Lazy-bind tooltip and popup only on user interaction
+      (function(m, marker) {
+        marker.on('mouseover', function() {
+          if (!this._tooltip) {
+            this.bindTooltip(getTooltipContent(m), { 
+              direction:'top', 
+              className:'custom-tooltip', 
+              offset:[0,-8], 
+              interactive:true 
+            });
+          }
+        });
+        
+        marker.on('click', function() {
+          if (!this._popup) {
+            this.bindPopup(getPopupContent(m));
+          }
+        });
+      })(m, marker);
     } else {
       // Add special styling for markers with spectrum data
       const hasSpectrum = m.hasSpectrum || false;
@@ -3611,9 +3819,22 @@ function setupMarkerStream(es, tracks, minTs, maxTs, savedRange, tileIndex, cach
 
         marker = L.marker([m.lat, m.lon], {
           icon: L.divIcon({className:'', html: html, iconSize:[size, size], iconAnchor:[size/2, size/2]})
-        })
-        .addTo(map)
-        .bindTooltip(getTooltipContent(m), { direction:'top', className:'custom-tooltip', offset:[0,-8], interactive:true });
+        });
+        queueMarkerForBatch(marker, m.id);
+        
+        // Lazy-bind tooltip on hover
+        (function(m, marker) {
+          marker.on('mouseover', function() {
+            if (!this._tooltip) {
+              this.bindTooltip(getTooltipContent(m), { 
+                direction:'top', 
+                className:'custom-tooltip', 
+                offset:[0,-8], 
+                interactive:true 
+              });
+            }
+          });
+        })(m, marker);
 
         // Open spectrum modal on click
         marker.on('click', function() {
@@ -3621,21 +3842,31 @@ function setupMarkerStream(es, tracks, minTs, maxTs, savedRange, tileIndex, cach
         });
       } else {
         // Regular markers: use circleMarker
-        const fillColor = getGradientColor(m.doseRate);
+        // Use cached style calculation for better performance
+        const markerStyle = getCachedMarkerStyle(m.doseRate, zoom, m.speed);
 
-        const markerStyle = {
-          radius      : getRadius(m.doseRate, zoom),
-          fillColor   : fillColor,
-          color       : fillColor,
-          weight      : 0,
-          opacity     : getFillOpacity(m.speed),
-          fillOpacity : getFillOpacity(m.speed)
-        };
-
-        marker = L.circleMarker([m.lat, m.lon], markerStyle)
-        .addTo(map)
-        .bindTooltip(getTooltipContent(m), { direction:'top', className:'custom-tooltip', offset:[0,-8], interactive:true })
-        .bindPopup(getPopupContent(m));
+        marker = L.circleMarker([m.lat, m.lon], markerStyle);
+        queueMarkerForBatch(marker, m.id);
+        
+        // Lazy-bind tooltip and popup only on user interaction
+        (function(m, marker) {
+          marker.on('mouseover', function() {
+            if (!this._tooltip) {
+              this.bindTooltip(getTooltipContent(m), { 
+                direction:'top', 
+                className:'custom-tooltip', 
+                offset:[0,-8], 
+                interactive:true 
+              });
+            }
+          });
+          
+          marker.on('click', function() {
+            if (!this._popup) {
+              this.bindPopup(getPopupContent(m));
+            }
+          });
+        })(m, marker);
       }
     }
 
@@ -3654,6 +3885,8 @@ function setupMarkerStream(es, tracks, minTs, maxTs, savedRange, tileIndex, cach
   };
 
   es.addEventListener('done', () => {
+    flushMarkerBatch(true);  // Flush any remaining markers
+    
     // Store tile data in cache
     if (cacheKey && tileMarkers) {
       tileCache.set(cacheKey, tileMarkers);
@@ -3694,12 +3927,24 @@ function setupMarkerStream(es, tracks, minTs, maxTs, savedRange, tileIndex, cach
     if (waitForDangerFit && storedUserCenter) {
       reframeAroundUser();
     }
-    if (loadingEl) loadingEl.style.display='none';
+    try {
+      if (loadingEl) {
+        loadingEl.style.display='none';
+      }
+    } catch (err) {
+      console.error('Error hiding loading element:', err);
+    }
     es.close();
   });
 
   es.onerror = () => {
-    if (loadingEl) loadingEl.style.display='none';
+    try {
+      if (loadingEl) {
+        loadingEl.style.display='none';
+      }
+    } catch (err) {
+      console.error('Error hiding loading element in onerror:', err);
+    }
     es.close();
   };
 }

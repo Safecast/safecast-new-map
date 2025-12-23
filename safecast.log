@@ -1,0 +1,159 @@
+nohup: ignoring input
+2025/12/23 12:37:03 PostgreSQL connection pool configured: MaxOpenConns=32 (2×16 CPU cores)
+2025/12/23 12:37:03 Using database driver: pgx with DSN: postgres://postgres:@127.0.0.1:5432/safecast?sslmode=prefer
+2025/12/23 12:37:03 realtime poller start: url=https://tt.safecast.org/devices interval=5m0s
+2025/12/23 12:37:03 json archive disabled: set -json-archive-path to enable tarball generation
+2025/12/23 12:37:03 ⏳ background index build scheduled (engine=pgx). Listeners are up; pages may be slower until indexes are ready.
+2025/12/23 12:37:03 ⏳ background index build scheduled (engine=pgx). Listeners are up; pages may be slower until indexes are ready.
+2025/12/23 12:37:03 HTTP server ➜ http://localhost:8765
+2025/12/23 12:37:07 realtime fetch: devices 1499
+2025/12/23 12:37:07 realtime sample: id=geigiecast:61099 name="" lat=22.318070 lon=114.157710 val=53.000000 unit=lnd_7318u
+2025/12/23 12:37:08 realtime poll: devices 113 stored 357 next=5m0s
+2025/12/23 12:37:08 realtime summary: ??:1 avg=0.10 Canada (CA):2 avg=0.07 Georgia (GE):1 avg=0.09 Germany (DE):1 avg=0.14 Japan (JP):31 avg=0.20 Sudan (SD):1 avg=0.13 Switzerland (CH):1 avg=0.12 Taiwan (TW):2 avg=0.12 Ukraine (UA):52 avg=0.19 United States of America (US):21 avg=0.10 added=113 removed=0
+2025/12/23 12:37:14 ✅ track registry ready for fast pagination
+2025/12/23 12:37:14 ▶️  start index idx_markers_zoom_bounds
+2025/12/23 12:37:14 ✅ index idx_markers_zoom_bounds ready in 0s
+2025/12/23 12:37:14 ▶️  start index idx_markers_trackid_zoom_bounds
+2025/12/23 12:37:14 ✅ index idx_markers_trackid_zoom_bounds ready in 0s
+2025/12/23 12:37:14 ▶️  start index idx_markers_zoom_bounds_speed
+2025/12/23 12:37:14 ✅ index idx_markers_zoom_bounds_speed ready in 0s
+2025/12/23 12:37:14 ▶️  start index idx_markers_identity_probe
+2025/12/23 12:37:14 ✅ index idx_markers_identity_probe ready in 0s
+2025/12/23 12:37:14 ▶️  start index idx_markers_trackid
+2025/12/23 12:37:14 ✅ index idx_markers_trackid ready in 0s
+2025/12/23 12:37:14 ▶️  start index idx_markers_date_trackid
+2025/12/23 12:37:14 ✅ index idx_markers_date_trackid ready in 0s
+2025/12/23 12:37:14 ▶️  start index idx_markers_date_trackid_id
+2025/12/23 12:37:14 ✅ index idx_markers_date_trackid_id ready in 0s
+2025/12/23 12:37:14 ▶️  start index idx_markers_trackid_date
+2025/12/23 12:37:14 ✅ index idx_markers_trackid_date ready in 0s
+2025/12/23 12:37:14 ▶️  start index idx_markers_trackid_id
+2025/12/23 12:37:14 ✅ index idx_markers_trackid_id ready in 0s
+2025/12/23 12:37:14 ▶️  start index idx_markers_date
+2025/12/23 12:37:14 ✅ index idx_markers_date ready in 0s
+2025/12/23 12:37:14 ▶️  start index idx_markers_zoom_date
+2025/12/23 12:37:14 ✅ index idx_markers_zoom_date ready in 0s
+2025/12/23 12:37:14 ▶️  start index idx_markers_speed
+2025/12/23 12:37:14 ✅ index idx_markers_speed ready in 0s
+2025/12/23 12:37:14 ▶️  start index idx_tracks_trackid
+2025/12/23 12:37:14 ✅ index idx_tracks_trackid ready in 0s
+2025/12/23 12:37:14 ▶️  start index idx_realtime_device_fetched
+2025/12/23 12:37:14 ✅ index idx_realtime_device_fetched ready in 0s
+2025/12/23 12:37:14 ▶️  start index idx_realtime_device_fetched_desc
+2025/12/23 12:37:14 ✅ index idx_realtime_device_fetched_desc ready in 0s
+2025/12/23 12:37:14 ▶️  start index idx_realtime_bounds
+2025/12/23 12:37:14 ✅ index idx_realtime_bounds ready in 0s
+2025/12/23 12:37:20 realtime markers: 0 lat[51.124213,53.066670] lon[-0.922852,6.981812]
+2025/12/23 12:37:20 realtime markers: 0 lat[53.066670,55.009126] lon[6.981812,14.886475]
+2025/12/23 12:37:20 realtime markers: 0 lat[53.066670,55.009126] lon[-0.922852,6.981812]
+2025/12/23 12:37:20 realtime markers: 0 lat[51.124213,53.066670] lon[6.981812,14.886475]
+2025/12/23 12:37:24 realtime markers: 0 lat[49.181703,52.946120] lon[-0.922852,6.981812]
+2025/12/23 12:37:24 realtime markers: 0 lat[49.181703,52.946120] lon[6.981812,14.886475]
+2025/12/23 12:37:24 realtime markers: 0 lat[52.946120,56.710536] lon[-0.922852,6.981812]
+2025/12/23 12:37:24 realtime markers: 0 lat[52.946120,56.710536] lon[6.981812,14.886475]
+2025/12/23 12:37:26 realtime markers: 0 lat[52.071065,52.547468] lon[6.448288,7.436371]
+2025/12/23 12:37:26 realtime markers: 0 lat[52.547468,53.023870] lon[5.460205,6.448288]
+2025/12/23 12:37:26 realtime markers: 0 lat[52.547468,53.023870] lon[6.448288,7.436371]
+2025/12/23 12:37:26 realtime markers: 0 lat[52.071065,52.547468] lon[5.460205,6.448288]
+2025/12/23 12:37:31 realtime markers: 0 lat[52.370149,52.489413] lon[6.144104,6.391125]
+2025/12/23 12:37:31 realtime markers: 0 lat[52.370149,52.489413] lon[6.391125,6.638145]
+2025/12/23 12:37:31 realtime markers: 0 lat[52.489413,52.608677] lon[6.144104,6.391125]
+2025/12/23 12:37:31 realtime markers: 0 lat[52.489413,52.608677] lon[6.391125,6.638145]
+2025/12/23 12:37:36 realtime markers: 0 lat[52.464325,52.479236] lon[6.332159,6.363037]
+2025/12/23 12:37:36 realtime markers: 0 lat[52.464325,52.479236] lon[6.363037,6.393914]
+2025/12/23 12:37:36 realtime markers: 0 lat[52.479236,52.494148] lon[6.332159,6.363037]
+2025/12/23 12:37:36 realtime markers: 0 lat[52.479236,52.494148] lon[6.363037,6.393914]
+2025/12/23 12:37:39 realtime markers: 0 lat[52.468796,52.483705] lon[6.354754,6.385632]
+2025/12/23 12:37:39 realtime markers: 0 lat[52.483705,52.498615] lon[6.323876,6.354754]
+2025/12/23 12:37:39 realtime markers: 0 lat[52.468796,52.483705] lon[6.323876,6.354754]
+2025/12/23 12:37:39 realtime markers: 0 lat[52.483705,52.498615] lon[6.354754,6.385632]
+2025/12/23 12:37:40 realtime markers: 0 lat[52.456951,52.486769] lon[6.294136,6.355891]
+2025/12/23 12:37:40 realtime markers: 0 lat[52.456951,52.486769] lon[6.355891,6.417646]
+2025/12/23 12:37:40 realtime markers: 0 lat[52.486769,52.516586] lon[6.294136,6.355891]
+2025/12/23 12:37:40 realtime markers: 0 lat[52.486769,52.516586] lon[6.355891,6.417646]
+2025/12/23 12:37:41 realtime markers: 0 lat[52.474834,52.504640] lon[6.278343,6.340098]
+2025/12/23 12:37:41 realtime markers: 0 lat[52.474834,52.504640] lon[6.340098,6.401854]
+2025/12/23 12:37:41 realtime markers: 0 lat[52.504640,52.534446] lon[6.278343,6.340098]
+2025/12/23 12:37:41 realtime markers: 0 lat[52.504640,52.534446] lon[6.340098,6.401854]
+2025/12/23 12:37:57 realtime markers: 0 lat[52.452034,52.481855] lon[6.342330,6.404085]
+2025/12/23 12:37:57 realtime markers: 0 lat[52.481855,52.511677] lon[6.280575,6.342330]
+2025/12/23 12:37:57 realtime markers: 0 lat[52.452034,52.481855] lon[6.280575,6.342330]
+2025/12/23 12:37:57 realtime markers: 0 lat[52.481855,52.511677] lon[6.342330,6.404085]
+2025/12/23 12:38:01 realtime markers: 0 lat[52.339535,52.458881] lon[6.165390,6.412411]
+2025/12/23 12:38:01 realtime markers: 0 lat[52.339535,52.458881] lon[6.412411,6.659431]
+2025/12/23 12:38:01 realtime markers: 0 lat[52.458881,52.578228] lon[6.165390,6.412411]
+2025/12/23 12:38:01 realtime markers: 0 lat[52.458881,52.578228] lon[6.412411,6.659431]
+2025/12/23 12:38:06 realtime markers: 0 lat[52.340793,52.460136] lon[6.023254,6.270275]
+2025/12/23 12:38:06 realtime markers: 0 lat[52.340793,52.460136] lon[6.270275,6.517296]
+2025/12/23 12:38:06 realtime markers: 0 lat[52.460136,52.579479] lon[6.023254,6.270275]
+2025/12/23 12:38:06 realtime markers: 0 lat[52.460136,52.579479] lon[6.270275,6.517296]
+2025/12/23 12:38:08 realtime markers: 0 lat[51.745738,52.695188] lon[4.081421,6.057587]
+2025/12/23 12:38:08 realtime markers: 0 lat[51.745738,52.695188] lon[6.057587,8.033752]
+2025/12/23 12:38:08 realtime markers: 0 lat[52.695188,53.644638] lon[4.081421,6.057587]
+2025/12/23 12:38:08 realtime markers: 0 lat[52.695188,53.644638] lon[6.057587,8.033752]
+2025/12/23 12:38:18 realtime markers: 0 lat[52.106505,52.701460] lon[4.081421,6.057587]
+2025/12/23 12:38:18 realtime markers: 0 lat[52.106505,52.701460] lon[6.057587,8.033752]
+2025/12/23 12:38:18 realtime markers: 0 lat[52.701460,53.296414] lon[4.081421,6.057587]
+2025/12/23 12:38:18 realtime markers: 0 lat[52.701460,53.296414] lon[6.057587,8.033752]
+2025/12/23 12:38:26 realtime markers: 0 lat[52.106505,52.701460] lon[6.057587,8.033752]
+2025/12/23 12:38:26 realtime markers: 0 lat[52.701460,53.296414] lon[4.081421,6.057587]
+2025/12/23 12:38:26 realtime markers: 0 lat[52.701460,53.296414] lon[6.057587,8.033752]
+2025/12/23 12:38:26 realtime markers: 0 lat[52.106505,52.701460] lon[4.081421,6.057587]
+2025/12/23 12:38:30 realtime markers: 0 lat[51.082822,53.420427] lon[-2.329102,5.575562]
+2025/12/23 12:38:30 realtime markers: 0 lat[53.420427,55.758032] lon[-2.329102,5.575562]
+2025/12/23 12:38:30 realtime markers: 0 lat[53.420427,55.758032] lon[5.575562,13.480225]
+2025/12/23 12:38:30 realtime markers: 0 lat[51.082822,53.420427] lon[5.575562,13.480225]
+2025/12/23 12:38:30 realtime markers: 0 lat[49.596470,54.170939] lon[5.152588,20.961914]
+2025/12/23 12:38:30 realtime markers: 0 lat[54.170939,58.745407] lon[-10.656738,5.152588]
+2025/12/23 12:38:30 realtime markers: 0 lat[49.596470,54.170939] lon[-10.656738,5.152588]
+2025/12/23 12:38:30 realtime markers: 0 lat[54.170939,58.745407] lon[5.152588,20.961914]
+2025/12/23 12:38:32 realtime markers: 0 lat[42.342305,47.612348] lon[-6.657715,9.151611]
+2025/12/23 12:38:32 realtime markers: 1 lat[42.342305,47.612348] lon[9.151611,24.960938]
+2025/12/23 12:38:32 realtime markers: 1 lat[47.612348,52.882391] lon[-6.657715,9.151611]
+2025/12/23 12:38:32 realtime markers: 9 lat[47.612348,52.882391] lon[9.151611,24.960938]
+2025/12/23 12:38:34 realtime markers: 0 lat[40.979898,46.373869] lon[-6.218262,9.591064]
+2025/12/23 12:38:34 realtime markers: 0 lat[40.979898,46.373869] lon[9.591064,25.400391]
+2025/12/23 12:38:34 realtime markers: 1 lat[46.373869,51.767840] lon[-6.218262,9.591064]
+2025/12/23 12:38:34 realtime markers: 10 lat[46.373869,51.767840] lon[9.591064,25.400391]
+2025/12/23 12:38:37 realtime markers: 0 lat[48.067620,53.291489] lon[-1.164551,14.644775]
+2025/12/23 12:38:37 realtime markers: 3 lat[42.843751,48.067620] lon[14.644775,30.454102]
+2025/12/23 12:38:37 realtime markers: 2 lat[42.843751,48.067620] lon[-1.164551,14.644775]
+2025/12/23 12:38:37 realtime markers: 23 lat[48.067620,53.291489] lon[14.644775,30.454102]
+2025/12/23 12:38:40 realtime markers: 0 lat[48.313958,58.562523] lon[-18.281250,13.337402]
+2025/12/23 12:38:40 realtime markers: 2 lat[38.065392,48.313958] lon[-18.281250,13.337402]
+2025/12/23 12:38:40 realtime markers: 10 lat[38.065392,48.313958] lon[13.337402,44.956055]
+2025/12/23 12:38:40 realtime markers: 44 lat[48.313958,58.562523] lon[13.337402,44.956055]
+2025/12/23 12:38:47 realtime markers: 0 lat[47.875804,80.297927] lon[-111.621094,14.853516]
+2025/12/23 12:38:47 realtime markers: 16 lat[15.453680,47.875804] lon[-111.621094,14.853516]
+2025/12/23 12:38:47 realtime markers: 47 lat[47.875804,80.297927] lon[14.853516,141.328125]
+2025/12/23 12:38:47 realtime markers: 41 lat[15.453680,47.875804] lon[14.853516,141.328125]
+2025/12/23 12:38:48 realtime markers: 1 lat[-1.406109,37.777112] lon[-32.871094,93.603516]
+2025/12/23 12:38:48 realtime markers: 3 lat[37.777112,76.960334] lon[93.603516,220.078125]
+2025/12/23 12:38:48 realtime markers: 57 lat[37.777112,76.960334] lon[-32.871094,93.603516]
+2025/12/23 12:38:48 realtime markers: 30 lat[-1.406109,37.777112] lon[93.603516,220.078125]
+2025/12/23 12:38:50 realtime markers: 1 lat[-3.162456,36.697644] lon[-9.140625,117.333984]
+2025/12/23 12:38:50 realtime markers: 12 lat[-3.162456,36.697644] lon[117.333984,243.808594]
+2025/12/23 12:38:50 realtime markers: 21 lat[36.697644,76.557743] lon[117.333984,243.808594]
+2025/12/23 12:38:50 realtime markers: 57 lat[36.697644,76.557743] lon[-9.140625,117.333984]
+2025/12/23 12:38:52 realtime markers: 1 lat[-14.944785,29.266850] lon[-21.972656,104.501953]
+2025/12/23 12:38:52 realtime markers: 2 lat[-14.944785,29.266850] lon[104.501953,230.976563]
+2025/12/23 12:38:52 realtime markers: 57 lat[29.266850,73.478485] lon[-21.972656,104.501953]
+2025/12/23 12:38:52 realtime markers: 31 lat[29.266850,73.478485] lon[104.501953,230.976563]
+2025/12/23 12:40:32 [admin-import] Error fetching page 112: execute request: Get "https://api.safecast.org/bgeigie_imports.json?order=created_at+desc&page=112&status=approved&uploaded_after=2021-12-01": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2025/12/23 12:40:32 [admin-import] Found 2775 imports in date range
+2025/12/23 12:40:32 [admin-import] Complete: imported=0 skipped=2775 errors=0
+2025/12/23 12:41:24 [admin-import] Error fetching page 1: unexpected status code: 503
+2025/12/23 12:41:24 [admin-import] Found 0 imports in date range
+2025/12/23 12:41:24 [admin-import] Complete: imported=0 skipped=0 errors=0
+2025/12/23 12:41:59 [admin-import] Error fetching page 1: unexpected status code: 503
+2025/12/23 12:41:59 [admin-import] Found 0 imports in date range
+2025/12/23 12:41:59 [admin-import] Complete: imported=0 skipped=0 errors=0
+2025/12/23 12:42:08 realtime fetch: devices 1499
+2025/12/23 12:42:08 realtime sample: id=geigiecast:61099 name="" lat=22.318070 lon=114.157710 val=53.000000 unit=lnd_7318u
+2025/12/23 12:42:08 realtime poll: devices 113 stored 357 next=5m0s
+2025/12/23 12:42:08 realtime summary: ??:1 avg=0.09 Canada (CA):2 avg=0.10 Georgia (GE):1 avg=0.09 Germany (DE):1 avg=0.06 Japan (JP):31 avg=0.20 Sudan (SD):1 avg=0.13 Switzerland (CH):1 avg=0.12 Taiwan (TW):2 avg=0.12 Ukraine (UA):52 avg=0.19 United States of America (US):21 avg=0.10 added=0 removed=0
+2025/12/23 12:42:57 [admin-import] Error fetching page 1: unexpected status code: 503
+2025/12/23 12:42:57 [admin-import] Found 0 imports in date range
+2025/12/23 12:42:57 [admin-import] Complete: imported=0 skipped=0 errors=0
+2025/12/23 12:46:31 realtime markers: 0 lat[0.000000,0.000000] lon[0.000000,0.000000]
+2025/12/23 12:46:41 realtime markers: 0 lat[0.000000,0.000000] lon[0.000000,0.000000]
