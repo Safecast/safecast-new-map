@@ -97,6 +97,17 @@ func main() {
 	fmt.Printf("%-15s: %10d rows in %v\n", "TOTAL", totalRows, totalDuration.Round(time.Second))
 	fmt.Println(strings.Repeat("=", 61))
 	fmt.Println()
+
+	// Reset sequences after migration
+	fmt.Println("🔄 Resetting PostgreSQL sequences...")
+	if err := resetSequences(pgDB); err != nil {
+		log.Printf("⚠️  Warning: Failed to reset sequences: %v", err)
+		fmt.Println("   You may need to run the reset_sequences.sh script manually")
+	} else {
+		fmt.Println("✅ Sequences reset successfully")
+	}
+
+	fmt.Println()
 	fmt.Println("✅ Migration completed successfully!")
 	fmt.Println()
 	fmt.Println("Next steps:")
@@ -416,4 +427,23 @@ func migrateUploads(sqliteDB *sql.DB, tx *sql.Tx, stat *MigrationStats) error {
 
 	stat.RowsMigrated = int64(count)
 	return rows.Err()
+}
+
+func resetSequences(db *sql.DB) error {
+	sequences := map[string]string{
+		"markers_id_seq": "markers",
+		"spectra_id_seq": "spectra",
+		"uploads_id_seq": "uploads",
+	}
+
+	for seqName, tableName := range sequences {
+		query := fmt.Sprintf("SELECT setval('%s', (SELECT COALESCE(MAX(id), 1) FROM %s))", seqName, tableName)
+		var newVal int64
+		if err := db.QueryRow(query).Scan(&newVal); err != nil {
+			return fmt.Errorf("reset sequence %s: %w", seqName, err)
+		}
+		fmt.Printf("   ✓ %s reset to %d\n", seqName, newVal)
+	}
+
+	return nil
 }

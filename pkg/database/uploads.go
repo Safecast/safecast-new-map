@@ -86,72 +86,105 @@ func (db *Database) InsertUpload(ctx context.Context, upload Upload) (int64, err
 // GetUploads retrieves upload records, ordered by most recent first.
 // If userID is not empty, only returns uploads from that user.
 func (db *Database) GetUploads(ctx context.Context, limit int, userID string) ([]Upload, error) {
+	return db.GetUploadsPaginated(ctx, limit, 0, userID, "")
+}
+
+func (db *Database) GetUploadsPaginated(ctx context.Context, limit int, offset int, userID string, search string) ([]Upload, error) {
 	if limit <= 0 {
 		limit = 100
+	}
+	if offset < 0 {
+		offset = 0
 	}
 
 	var query string
 	var args []interface{}
+	var whereConditions []string
+	paramCount := 0
 
+	// Build WHERE conditions
 	if userID != "" {
-		// Filter by user_id
+		paramCount++
 		if db.Driver == "pgx" || db.Driver == "duckdb" {
-			query = `
-				SELECT u.id, u.filename, u.file_type, u.track_id, u.file_size, u.upload_ip,
-				       EXTRACT(EPOCH FROM u.created_at)::BIGINT,
-				       COALESCE(MIN(m.date), 0) as recording_date,
-				       u.source, u.source_id, u.source_url, u.user_id
-				FROM uploads u
-				LEFT JOIN markers m ON u.track_id = m.trackid
-				WHERE u.user_id = $1
-				GROUP BY u.id, u.filename, u.file_type, u.track_id, u.file_size, u.upload_ip, u.created_at, u.source, u.source_id, u.source_url, u.user_id
-				ORDER BY u.created_at DESC
-				LIMIT $2
-			`
-			args = []interface{}{userID, limit}
+			whereConditions = append(whereConditions, fmt.Sprintf("u.user_id = $%d", paramCount))
 		} else {
-			query = `
-				SELECT u.id, u.filename, u.file_type, u.track_id, u.file_size, u.upload_ip, u.created_at,
-				       COALESCE(MIN(m.date), 0) as recording_date,
-				       u.source, u.source_id, u.source_url, u.user_id
-				FROM uploads u
-				LEFT JOIN markers m ON u.track_id = m.trackID
-				WHERE u.user_id = ?
-				GROUP BY u.id
-				ORDER BY u.created_at DESC
-				LIMIT ?
-			`
-			args = []interface{}{userID, limit}
-		}
-	} else {
-		// No filter
-		if db.Driver == "pgx" || db.Driver == "duckdb" {
-			query = `
-				SELECT u.id, u.filename, u.file_type, u.track_id, u.file_size, u.upload_ip,
-				       EXTRACT(EPOCH FROM u.created_at)::BIGINT,
-				       COALESCE(MIN(m.date), 0) as recording_date,
-				       u.source, u.source_id, u.source_url, u.user_id
-				FROM uploads u
-				LEFT JOIN markers m ON u.track_id = m.trackid
-				GROUP BY u.id, u.filename, u.file_type, u.track_id, u.file_size, u.upload_ip, u.created_at, u.source, u.source_id, u.source_url, u.user_id
-				ORDER BY u.created_at DESC
-				LIMIT $1
-			`
-			args = []interface{}{limit}
-		} else {
-			query = `
-				SELECT u.id, u.filename, u.file_type, u.track_id, u.file_size, u.upload_ip, u.created_at,
-				       COALESCE(MIN(m.date), 0) as recording_date,
-				       u.source, u.source_id, u.source_url, u.user_id
-				FROM uploads u
-				LEFT JOIN markers m ON u.track_id = m.trackID
-				GROUP BY u.id
-				ORDER BY u.created_at DESC
-				LIMIT ?
-			`
-			args = []interface{}{limit}
+			whereConditions = append(whereConditions, "u.user_id = ?")
 		}
 	}
+
+	if search != "" {
+		paramCount++
+		if db.Driver == "pgx" || db.Driver == "duckdb" {
+			// PostgreSQL: use ILIKE for case-insensitive search, also search numeric fields by converting to text
+			whereConditions = append(whereConditions, fmt.Sprintf(
+				"(u.track_id ILIKE $%d OR u.filename ILIKE $%d OR COALESCE(u.user_id, '') ILIKE $%d OR COALESCE(u.source, '') ILIKE $%d OR COALESCE(u.source_id, '') ILIKE $%d OR CAST(u.id AS TEXT) ILIKE $%d)",
+				paramCount, paramCount, paramCount, paramCount, paramCount, paramCount))
+		} else {
+			// SQLite: use LIKE (case-insensitive by default), also search numeric fields by converting to text
+			whereConditions = append(whereConditions,
+				"(u.track_id LIKE ? OR u.filename LIKE ? OR COALESCE(u.user_id, '') LIKE ? OR COALESCE(u.source, '') LIKE ? OR COALESCE(u.source_id, '') LIKE ? OR CAST(u.id AS TEXT) LIKE ?)")
+		}
+	}
+
+	// Build the base query
+	baseSelect := `
+		SELECT u.id, u.filename, u.file_type, u.track_id, u.file_size, u.upload_ip,`
+
+	if db.Driver == "pgx" || db.Driver == "duckdb" {
+		baseSelect += `
+		       EXTRACT(EPOCH FROM u.created_at)::BIGINT,
+		       COALESCE(ts.first_date, 0) as recording_date,
+		       u.source, u.source_id, u.source_url, u.user_id
+		FROM uploads u
+		LEFT JOIN track_statistics ts ON u.track_id = ts.trackid`
+	} else {
+		baseSelect += `
+		       u.created_at,
+		       COALESCE(ts.first_date, 0) as recording_date,
+		       u.source, u.source_id, u.source_url, u.user_id
+		FROM uploads u
+		LEFT JOIN track_statistics ts ON u.track_id = ts.trackID`
+	}
+
+	// Add WHERE clause if we have conditions
+	if len(whereConditions) > 0 {
+		query = baseSelect + "\nWHERE " + whereConditions[0]
+		for i := 1; i < len(whereConditions); i++ {
+			query += " AND " + whereConditions[i]
+		}
+	} else {
+		query = baseSelect
+	}
+
+	query += "\nORDER BY u.created_at DESC\n"
+
+	// Add LIMIT and OFFSET with correct parameter numbering
+	if db.Driver == "pgx" || db.Driver == "duckdb" {
+		paramCount++
+		limitParam := paramCount
+		paramCount++
+		offsetParam := paramCount
+		query += fmt.Sprintf("LIMIT $%d OFFSET $%d", limitParam, offsetParam)
+	} else {
+		query += "LIMIT ? OFFSET ?"
+	}
+
+	// Build args array
+	if userID != "" {
+		args = append(args, userID)
+	}
+	if search != "" {
+		searchPattern := "%" + search + "%"
+		if db.Driver == "pgx" || db.Driver == "duckdb" {
+			args = append(args, searchPattern)
+		} else {
+			// SQLite needs the pattern repeated 6 times (for each field)
+			for i := 0; i < 6; i++ {
+				args = append(args, searchPattern)
+			}
+		}
+	}
+	args = append(args, limit, offset)
 
 	rows, err := db.DB.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -279,4 +312,57 @@ func (db *Database) GetLastImportedSafecastID(ctx context.Context, sourceType st
 	}
 
 	return lastID, nil
+}
+
+// CountUploads returns the total number of uploads, optionally filtered by user_id and search term
+func (db *Database) CountUploads(ctx context.Context, userID string, search string) (int, error) {
+	var query string
+	var args []interface{}
+	var whereConditions []string
+	paramCount := 0
+
+	// Build WHERE conditions
+	if userID != "" {
+		paramCount++
+		if db.Driver == "pgx" || db.Driver == "duckdb" {
+			whereConditions = append(whereConditions, fmt.Sprintf("user_id = $%d", paramCount))
+		} else {
+			whereConditions = append(whereConditions, "user_id = ?")
+		}
+		args = append(args, userID)
+	}
+
+	if search != "" {
+		paramCount++
+		searchPattern := "%" + search + "%"
+		if db.Driver == "pgx" || db.Driver == "duckdb" {
+			whereConditions = append(whereConditions, fmt.Sprintf(
+				"(track_id ILIKE $%d OR filename ILIKE $%d OR COALESCE(user_id, '') ILIKE $%d OR COALESCE(source, '') ILIKE $%d OR COALESCE(source_id, '') ILIKE $%d OR CAST(id AS TEXT) ILIKE $%d)",
+				paramCount, paramCount, paramCount, paramCount, paramCount, paramCount))
+			args = append(args, searchPattern)
+		} else {
+			whereConditions = append(whereConditions,
+				"(track_id LIKE ? OR filename LIKE ? OR COALESCE(user_id, '') LIKE ? OR COALESCE(source, '') LIKE ? OR COALESCE(source_id, '') LIKE ? OR CAST(id AS TEXT) LIKE ?)")
+			for i := 0; i < 6; i++ {
+				args = append(args, searchPattern)
+			}
+		}
+	}
+
+	// Build query
+	query = "SELECT COUNT(*) FROM uploads"
+	if len(whereConditions) > 0 {
+		query += " WHERE " + whereConditions[0]
+		for i := 1; i < len(whereConditions); i++ {
+			query += " AND " + whereConditions[i]
+		}
+	}
+
+	var count int
+	err := db.DB.QueryRowContext(ctx, query, args...).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("count uploads: %w", err)
+	}
+
+	return count, nil
 }

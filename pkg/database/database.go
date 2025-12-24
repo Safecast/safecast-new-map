@@ -601,23 +601,32 @@ func NewDatabase(config Config) (*Database, error) {
 		cancel()
 	case "pgx":
 		// PostgreSQL benefits from multiple concurrent connections. Set pool size to
-		// 2×CPU cores (or minimum 8) to maximize throughput while avoiding connection
-		// exhaustion. This enables better multithreading and parallel query execution.
-		maxConns := runtime.NumCPU() * 2
-		if maxConns < 8 {
-			maxConns = 8 // Minimum 8 connections for better concurrency
+		// 4×CPU cores (increased from 2×CPU for better throughput under concurrent load).
+		// This enables better multithreading, parallel query execution, and handles
+		// concurrent map tile requests without connection exhaustion.
+		maxConns := runtime.NumCPU() * 4
+		if maxConns < 16 {
+			maxConns = 16 // Minimum 16 connections for better concurrency
+		}
+		db.SetMaxOpenConns(maxConns)
+		db.SetMaxIdleConns(maxConns)
+		// Connection lifetime: recycle after 5 minutes to handle server-side changes
+		db.SetConnMaxLifetime(5 * time.Minute)
+		// Idle timeout: return connections to pool after 2 minutes of inactivity
+		db.SetConnMaxIdleTime(2 * time.Minute)
+		log.Printf("PostgreSQL connection pool tuned: MaxOpenConns=%d (4×%d CPU cores), idle_timeout=2m, lifetime=5m", maxConns, runtime.NumCPU())
+	case "clickhouse":
+		// ClickHouse benefits from parallel connections for concurrent queries.
+		// Configure pool for efficient handling of simultaneous map tile requests.
+		maxConns := runtime.NumCPU() * 4
+		if maxConns < 16 {
+			maxConns = 16
 		}
 		db.SetMaxOpenConns(maxConns)
 		db.SetMaxIdleConns(maxConns)
 		db.SetConnMaxLifetime(5 * time.Minute)
 		db.SetConnMaxIdleTime(2 * time.Minute)
-		log.Printf("PostgreSQL connection pool configured: MaxOpenConns=%d (2×%d CPU cores)", maxConns, runtime.NumCPU())
-	case "clickhouse":
-		// ClickHouse benefits from a few parallel connections while remaining lightweight.
-		db.SetMaxOpenConns(8)
-		db.SetMaxIdleConns(8)
-		db.SetConnMaxLifetime(5 * time.Minute)
-		db.SetConnMaxIdleTime(2 * time.Minute)
+		log.Printf("ClickHouse connection pool tuned: MaxOpenConns=%d (4×%d CPU cores)", maxConns, runtime.NumCPU())
 	}
 
 	// Cheap liveness probe with timeout so we don't hang at startup
