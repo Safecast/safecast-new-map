@@ -5035,12 +5035,16 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Page numbers
 	startPage := page - 2
-	if startPage < 1 { startPage = 1 }
+	if startPage < 1 {
+		startPage = 1
+	}
 	endPage := startPage + 4
 	if endPage > totalPages {
 		endPage = totalPages
 		startPage = endPage - 4
-		if startPage < 1 { startPage = 1 }
+		if startPage < 1 {
+			startPage = 1
+		}
 	}
 
 	// First page
