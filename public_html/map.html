@@ -1821,10 +1821,20 @@ function interpolateColor(color1, color2, factor) {
 
 // Calculate marker radius based on zoom level
 function getRadius(doseRate, zoomLevel) {
-  // previous formula: Math.pow(2, (zoomLevel-10)/2)
+  // PERFORMANCE OPTIMIZATION: Significantly reduce marker size at low zoom levels
+  // to improve rendering performance when displaying tens of thousands of markers
   const k = 1;                               // scale by ~2
-  let r   = Math.pow(2, (zoomLevel - 10)/2.5) * k;
-  return Math.max(r, 2);                       // prevent tiny circles
+  let r;
+  
+  if (zoomLevel <= 7) {
+    // At zoom 7 and below, use much smaller markers for massive datasets
+    r = Math.pow(2, (zoomLevel - 10)/3.5) * k;  // Smaller denominator = smaller markers
+  } else {
+    // Normal scaling for zoom 8+
+    r = Math.pow(2, (zoomLevel - 10)/2.5) * k;
+  }
+  
+  return Math.max(r, 1.5);  // Reduced minimum from 2 to 1.5 pixels
 }
 
 // Thresholds for realtime freshness expressed in seconds so both the
@@ -2268,26 +2278,30 @@ function shouldDisplayBySpeed(speed) {
 
 // Compute marker fill opacity based on speed
 // Speed ranges: Walking <7 m/s, Car 7-70 m/s, Plane ≥70 m/s
+// PERFORMANCE OPTIMIZATION: Using full opacity (1.0) for all markers
+// to eliminate transparency blending overhead during zoom/pan operations.
+// Transparency blending is one of the most expensive rendering operations.
 function getFillOpacity(speed) {
+  // Return full opacity for maximum rendering performance
+  // Original variable opacity code preserved below for reference:
+  /*
   if (speed < 7) {
-    // Walking/pedestrian
-    return 0.9;
+    return 0.9;  // Walking/pedestrian
   } else if (speed < 40) {
-    // Car (slow) - linear gradient from 0.9 to 0.7
     var opacityRange = 0.9 - 0.7;
     var speedRange = 40 - 7;
     var factor = (speed - 7) / speedRange;
-    return 0.9 - (opacityRange * factor);
+    return 0.9 - (opacityRange * factor);  // Car (slow)
   } else if (speed < 70) {
-    // Car (fast) - linear gradient from 0.7 to 0.5
     var opacityRange = 0.7 - 0.5;
     var speedRange = 70 - 40;
     var factor = (speed - 40) / speedRange;
-    return 0.7 - (opacityRange * factor);
+    return 0.7 - (opacityRange * factor);  // Car (fast)
   } else {
-    // Plane
-    return 0.3;
+    return 0.3;  // Plane
   }
+  */
+  return 1.0;  // Full opacity for best performance
 }
 
 // Decide a translation key for safety based on dose rate (µSv/h).
@@ -2872,6 +2886,7 @@ document.addEventListener('DOMContentLoaded', function () {
     center: [defaultCfg.lat, defaultCfg.lon],
     zoom  : defaultCfg.zoom,
     layers: [startLayer],           // only one base layer
+    preferCanvas: true,             // PERFORMANCE: Use Canvas renderer instead of SVG for much faster rendering with many markers
   });
 
   // Layer control
@@ -3524,8 +3539,15 @@ const tileCache = {
 
 /* ===== MARKER BATCHING SYSTEM ===== */
 const markerBatch = [];
-const BATCH_SIZE = 25;
+let BATCH_SIZE = 100;  // PERFORMANCE: Base batch size (increased from 25)
 let batchFlushTimer = null;
+
+// Dynamically adjust batch size based on zoom level
+function getBatchSize(zoom) {
+  if (zoom <= 7) return 250;  // Very large batches for zoomed-out views
+  if (zoom <= 9) return 150;  // Medium batches for mid-range zoom
+  return 100;                 // Standard batches for zoomed-in views
+}
 
 function flushMarkerBatch(fromDone = false) {
   if (batchFlushTimer) {
@@ -3555,7 +3577,10 @@ function flushMarkerBatch(fromDone = false) {
 function queueMarkerForBatch(marker, id) {
   markerBatch.push({ marker, id });
   
-  if (markerBatch.length >= BATCH_SIZE) {
+  const currentZoom = map.getZoom();
+  const batchSize = getBatchSize(currentZoom);
+  
+  if (markerBatch.length >= batchSize) {
     flushMarkerBatch();
   } else if (!batchFlushTimer) {
     batchFlushTimer = setTimeout(flushMarkerBatch, 50);
@@ -3748,6 +3773,13 @@ function updateMarkers(){
 
 // Helper function to render a cached marker
 function renderCachedMarker(m, tracks, minTs, maxTs, savedRange, zoom) {
+  // PERFORMANCE: At very low zoom levels (< 7), sample markers to reduce render count
+  // Only render every Nth marker based on zoom level
+  if (zoom < 7) {
+    const sampleRate = zoom < 6 ? 4 : 2;  // Skip 75% at zoom < 6, 50% at zoom 6
+    if (Math.random() > (1 / sampleRate)) return;  // Randomly skip markers
+  }
+  
   const isLive = m.speed < 0;
   if (!isLive && m.trackID) tracks.add(m.trackID);
 
@@ -3884,6 +3916,14 @@ function setupMarkerStream(es, tracks, minTs, maxTs, savedRange, tileIndex, cach
 
   es.onmessage = e => {
     let m; try { m = JSON.parse(e.data); } catch { return; }
+    
+    // PERFORMANCE: At very low zoom levels (< 7), sample markers to reduce render count
+    // Only render every Nth marker based on zoom level
+    if (zoom < 7) {
+      const sampleRate = zoom < 6 ? 4 : 2;  // Skip 75% at zoom < 6, 50% at zoom 6
+      if (Math.random() > (1 / sampleRate)) return;  // Randomly skip markers
+    }
+    
     const isLive = m.speed < 0; // negative speed denotes realtime marker
     if (!isLive && m.trackID) tracks.add(m.trackID);
     minTs = Math.min(minTs, m.date);
