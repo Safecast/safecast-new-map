@@ -3795,22 +3795,22 @@ func buildSpatialWhereClause(dbType string, startPlaceholder int) (string, int) 
 		// Use PostGIS spatial index: && for bounding box check, ST_Intersects for exact check
 		// Parameters: minLon, minLat, maxLon, maxLat (ST_MakeEnvelope order)
 		return fmt.Sprintf("geom && ST_MakeEnvelope(%s, %s, %s, %s, 4326) AND ST_Intersects(geom, ST_MakeEnvelope(%s, %s, %s, %s, 4326))",
-			placeholder(dbType, startPlaceholder),   // minLon
-			placeholder(dbType, startPlaceholder+1), // minLat
-			placeholder(dbType, startPlaceholder+2), // maxLon
-			placeholder(dbType, startPlaceholder+3), // maxLat
-			placeholder(dbType, startPlaceholder),   // minLon (for ST_Intersects)
-			placeholder(dbType, startPlaceholder+1), // minLat (for ST_Intersects)
-			placeholder(dbType, startPlaceholder+2), // maxLon (for ST_Intersects)
-			placeholder(dbType, startPlaceholder+3)), // maxLat (for ST_Intersects)
+				placeholder(dbType, startPlaceholder),    // minLon
+				placeholder(dbType, startPlaceholder+1),  // minLat
+				placeholder(dbType, startPlaceholder+2),  // maxLon
+				placeholder(dbType, startPlaceholder+3),  // maxLat
+				placeholder(dbType, startPlaceholder),    // minLon (for ST_Intersects)
+				placeholder(dbType, startPlaceholder+1),  // minLat (for ST_Intersects)
+				placeholder(dbType, startPlaceholder+2),  // maxLon (for ST_Intersects)
+				placeholder(dbType, startPlaceholder+3)), // maxLat (for ST_Intersects)
 			4 // 4 parameters: minLon, minLat, maxLon, maxLat
 	}
 	// For non-PostgreSQL databases, use standard lat/lon BETWEEN
 	return fmt.Sprintf("lat BETWEEN %s AND %s AND lon BETWEEN %s AND %s",
-		placeholder(dbType, startPlaceholder),   // minLat
-		placeholder(dbType, startPlaceholder+1), // maxLat
-		placeholder(dbType, startPlaceholder+2), // minLon
-		placeholder(dbType, startPlaceholder+3)), // maxLon
+			placeholder(dbType, startPlaceholder),    // minLat
+			placeholder(dbType, startPlaceholder+1),  // maxLat
+			placeholder(dbType, startPlaceholder+2),  // minLon
+			placeholder(dbType, startPlaceholder+3)), // maxLon
 		4 // 4 parameters: minLat, maxLat, minLon, maxLon
 }
 
