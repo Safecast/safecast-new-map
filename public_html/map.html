@@ -1118,10 +1118,37 @@ body, html {
         }
 
         .live-modal-dose-time {
-          font-size: 0.85rem;
+          font-size: 0.9rem;
+          color: var(--modal-text);
+          opacity: 0.85;
+          margin: 8px 0 0 0;
+          padding-top: 8px;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .temp-unit-toggle {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 2px 8px;
+          font-size: 0.75rem;
+          background: var(--modal-bg);
+          border: 1px solid var(--legend-border);
+          border-radius: 4px;
+          cursor: pointer;
           color: var(--modal-text);
           opacity: 0.7;
-          margin: 0;
+          transition: opacity 0.2s;
+        }
+
+        .temp-unit-toggle:hover {
+          opacity: 1;
+        }
+
+        .temp-unit-toggle.active {
+          opacity: 1;
+          background: rgba(255, 112, 67, 0.2);
+          border-color: #ff7043;
         }
 
         .live-modal-heart {
@@ -1594,6 +1621,7 @@ body, html {
         <button class="live-range-btn active" data-range="day">24h</button>
         <button class="live-range-btn" data-range="month">30d</button>
         <button class="live-range-btn" data-range="all">All</button>
+        <button class="temp-unit-toggle" id="tempUnitToggle" title="Toggle temperature unit">°C</button>
       </div>
       <div class="live-chart-block">
         <h4 class="live-chart-title">
@@ -1949,6 +1977,24 @@ function escapeHtml(value) {
 
 const regionNameCache = {};
 
+// Cookie helpers
+function setCookie(name, value, days) {
+  const expires = new Date();
+  expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+  document.cookie = name + '=' + value + ';expires=' + expires.toUTCString() + ';path=/';
+}
+
+function getCookie(name) {
+  const nameEQ = name + '=';
+  const ca = document.cookie.split(';');
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+    if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+  }
+  return null;
+}
+
 function formatDateTime(ts) {
   if (!ts) return '—';
   const date = new Date(ts * 1000);
@@ -2026,7 +2072,7 @@ function labelForExtraKey(key) {
     case 'temperature_c':
       return translate('live_marker_temperature');
     case 'temperature_f':
-      return translate('live_marker_temperature_f');
+      return translate('live_marker_temperature'); // Use same label, unit will be added via suffix
     case 'humidity_percent':
       return translate('live_marker_humidity');
     case 'pressure_hpa':
@@ -2055,6 +2101,9 @@ function formatExtraValue(key, value) {
 
 // Adding pressure keeps environmental series grouped together for clarity.
 const EXTRA_SERIES_ORDER = ['temperature_c', 'temperature_f', 'humidity_percent', 'pressure_hpa'];
+
+// Temperature unit preference (Celsius or Fahrenheit)
+let preferredTempUnit = getCookie('tempUnit') || 'C';
 
 function extraUnitSuffix(key) {
   if (key === 'temperature_c') return '°C';
@@ -2117,6 +2166,24 @@ function renderLiveExtras(extra) {
   });
   if (!items.length) return '';
   return '<div><strong>' + translate('live_marker_extra_intro') + ':</strong><ul class="live-extra-list">' + items.join('') + '</ul></div>';
+}
+
+function renderEnvironmentExtras(extra) {
+  if (!extra || typeof extra !== 'object') return '';
+  const items = [];
+  
+  // Temperature is now shown in the main dose display, so skip it here
+  
+  // Other environment data
+  if (typeof extra.humidity_percent === 'number') {
+    items.push(translate('live_marker_humidity') + ': ' + formatExtraValue('humidity_percent', extra.humidity_percent));
+  }
+  if (typeof extra.pressure_hpa === 'number') {
+    items.push(translate('live_marker_pressure') + ': ' + formatExtraValue('pressure_hpa', extra.pressure_hpa));
+  }
+  
+  if (!items.length) return '';
+  return '<div><strong>' + translate('live_marker_extra_intro') + ':</strong><ul class="live-extra-list">' + items.map(i => '<li>' + i + '</li>').join('') + '</ul></div>';
 }
 
 function buildDeviceMeta(marker) {
@@ -4434,7 +4501,30 @@ function drawLiveChart(canvas, radiationPoints, extrasByKey, options) {
     Object.keys(extrasByKey).forEach(function(key) {
       const series = extrasByKey[key];
       if (Array.isArray(series) && series.length) {
-        extras[key] = series;
+        // Handle temperature conversion based on preference
+        if (key === 'temperature_c') {
+          if (preferredTempUnit === 'F') {
+            // Convert Celsius to Fahrenheit
+            extras['temperature_f'] = series.map(p => ({
+              timestamp: p.timestamp,
+              value: (p.value * 9/5) + 32
+            }));
+          } else {
+            extras[key] = series;
+          }
+        } else if (key === 'temperature_f') {
+          if (preferredTempUnit === 'C') {
+            // Convert Fahrenheit to Celsius
+            extras['temperature_c'] = series.map(p => ({
+              timestamp: p.timestamp,
+              value: (p.value - 32) * 5/9
+            }));
+          } else {
+            extras[key] = series;
+          }
+        } else {
+          extras[key] = series;
+        }
       }
     });
   }
@@ -4551,6 +4641,16 @@ function drawLiveChart(canvas, radiationPoints, extrasByKey, options) {
         if (point.value < minVal) minVal = point.value;
         if (point.value > maxVal) maxVal = point.value;
       });
+    }
+
+    // Special handling for temperature scales
+    if (key === 'temperature_c' || key === 'temperature_f') {
+      const zeroPoint = key === 'temperature_c' ? 0 : 32; // 0°C or 32°F
+      if (minVal > zeroPoint) {
+        // If all temperatures are above zero, start scale at ~0
+        minVal = zeroPoint;
+      }
+      // If minVal is below zero, keep the actual minimum (which is already set)
     }
 
     if (minVal === maxVal) {
@@ -4832,6 +4932,35 @@ function drawLiveChart(canvas, radiationPoints, extrasByKey, options) {
     }
     if (minLabel) {
       ctx.fillText(minLabel + (suffix ? ' ' + suffix : ''), xBase, plotBottom - 4);
+    }
+    
+    // Draw 0-degree reference line for temperature (only if temperature goes below zero)
+    if (key === 'temperature_c' || key === 'temperature_f') {
+      const zeroPoint = key === 'temperature_c' ? 0 : 32;
+      if (range.min < zeroPoint && zeroPoint <= range.max) {
+        const denom = (range.max - range.min) || 1;
+        const zeroY = plotBottom - ((zeroPoint - range.min) / denom) * plotH;
+        
+        // Draw dashed line across the plot
+        ctx.save();
+        ctx.strokeStyle = colorWithAlpha(color, 0.6);
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([8, 4]);
+        ctx.beginPath();
+        ctx.moveTo(plotLeft, zeroY);
+        ctx.lineTo(plotRight, zeroY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+        
+        // Draw label at 0°
+        const zeroLabel = key === 'temperature_c' ? '0°C' : '32°F';
+        ctx.fillStyle = color;
+        ctx.font = fonts.extras;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(zeroLabel, xBase, zeroY);
+      }
     }
   });
 
@@ -5132,7 +5261,7 @@ async function openLiveModal(deviceID, fallback) {
       doseEl.innerHTML = `
         <div class="live-modal-dose-value" style="color:${doseColor};">${primaryValue} <span style="font-size:0.45em;">${primaryUnit}</span></div>
         <div class="live-modal-dose-alt" style="color:${doseColor};">${altValue} ${altUnit}</div>
-        ${lastSeen ? `<div class="live-modal-dose-time"><strong>${translate('live_marker_last_seen')}:</strong> ${escapeHtml(lastSeen)}</div>` : ''}
+        ${lastSeen ? `<div class="live-modal-dose-time">${escapeHtml(lastSeen)}</div>` : ''}
       `;
     } else {
       console.log('No fallback dose rate available');
@@ -5181,9 +5310,9 @@ async function openLiveModal(deviceID, fallback) {
         const altValue = formatSecondaryUnit(valueSv);
         const primaryUnit = currentUnit === 'uR' ? 'µR/h' : 'µSv/h';
         const altUnit = currentUnit === 'uR' ? 'µSv/h' : 'µR/h';
-        const lastSeen = latest.time ? formatDateTime(latest.time) : '';
+        const lastSeen = latest.timestamp ? formatDateTime(latest.timestamp) : '';
         const doseColor = getGradientColor(valueSv);
-        console.log('From history - Primary value:', primaryValue, 'Color:', doseColor);
+        console.log('From history - Primary value:', primaryValue, 'Color:', doseColor, 'Last seen:', lastSeen);
         
         // Get temperature from latest extra data
         let tempHtml = '';
@@ -5192,15 +5321,19 @@ async function openLiveModal(deviceID, fallback) {
           if (latestExtra && latestExtra.temp !== null && latestExtra.temp !== undefined) {
             const tempC = latestExtra.temp.toFixed(1);
             const tempF = ((latestExtra.temp * 9/5) + 32).toFixed(1);
-            tempHtml = `<div class="live-modal-dose-temp">${tempC}°C (${tempF}°F)</div>`;
+            if (preferredTempUnit === 'F') {
+              tempHtml = `<div class="live-modal-dose-temp">${tempF}°F</div>`;
+            } else {
+              tempHtml = `<div class="live-modal-dose-temp">${tempC}°C</div>`;
+            }
           }
         }
         
         doseEl.innerHTML = `
           <div class="live-modal-dose-value" style="color:${doseColor};">${primaryValue} <span style="font-size:0.45em;">${primaryUnit}</span></div>
           <div class="live-modal-dose-alt" style="color:${doseColor};">${altValue} ${altUnit}</div>
+          ${lastSeen ? `<div class="live-modal-dose-time">${escapeHtml(lastSeen)}</div>` : ''}
           ${tempHtml}
-          ${lastSeen ? `<div class="live-modal-dose-time"><strong>${translate('live_marker_last_seen')}:</strong> ${escapeHtml(lastSeen)}</div>` : ''}
         `;
         console.log('Dose display updated with:', primaryValue, primaryUnit);
       }
@@ -5215,7 +5348,7 @@ async function openLiveModal(deviceID, fallback) {
       if (local) metaParts.push('<div><strong>' + translate('live_marker_local_time') + ':</strong> ' + escapeHtml(local.text) + ' (' + escapeHtml(local.zone) + ')</div>');
       metaEl.innerHTML = metaParts.join('');
     }
-    if (extraEl) extraEl.innerHTML = renderLiveExtras(merged.liveExtra);
+    if (extraEl) extraEl.innerHTML = renderEnvironmentExtras(merged.liveExtra);
 
     const ranges = (data && data.ranges) ? data.ranges : {};
     
@@ -5259,6 +5392,46 @@ async function openLiveModal(deviceID, fallback) {
         drawRange(btn.dataset.range);
       };
     });
+
+    // Temperature unit toggle
+    const tempToggle = document.getElementById('tempUnitToggle');
+    if (tempToggle) {
+      tempToggle.textContent = preferredTempUnit === 'F' ? '°F' : '°C';
+      tempToggle.classList.toggle('active', true);
+      tempToggle.onclick = () => {
+        preferredTempUnit = preferredTempUnit === 'C' ? 'F' : 'C';
+        setCookie('tempUnit', preferredTempUnit, 365);
+        tempToggle.textContent = preferredTempUnit === 'F' ? '°F' : '°C';
+        
+        // Update temperature display
+        if (doseEl && data.extraSeries && data.extraSeries.day && data.extraSeries.day.length > 0) {
+          const latestExtra = data.extraSeries.day[data.extraSeries.day.length - 1];
+          if (latestExtra && latestExtra.temp !== null && latestExtra.temp !== undefined) {
+            const tempC = latestExtra.temp.toFixed(1);
+            const tempF = ((latestExtra.temp * 9/5) + 32).toFixed(1);
+            const tempDisplay = preferredTempUnit === 'F' ? `${tempF}°F` : `${tempC}°C`;
+            
+            // Update just the temperature part
+            const tempElement = doseEl.querySelector('.live-modal-dose-temp');
+            if (tempElement) {
+              tempElement.textContent = tempDisplay;
+            }
+          }
+        }
+        
+        // Update environment section
+        if (extraEl) {
+          extraEl.innerHTML = renderEnvironmentExtras(merged.liveExtra);
+        }
+        
+        // Redraw the chart with updated temperature unit
+        const activeBtn = document.querySelector('.live-range-btn.active');
+        if (activeBtn) {
+          canvas._zoomRanges = null;
+          drawRange(activeBtn.dataset.range);
+        }
+      };
+    }
 
     // Default to 'day'
     drawRange('day');
