@@ -3896,26 +3896,36 @@ function renderCachedMarker(m, tracks, minTs, maxTs, savedRange, zoom) {
       marker = L.circleMarker([m.lat, m.lon], markerStyle);
       queueMarkerForBatch(marker, m.id);
       
-      // Lazy-bind tooltip and popup only on user interaction
-      (function(m, marker) {
-        marker.on('mouseover', function() {
-          if (!this._tooltip) {
-            this.bindTooltip(getTooltipContent(m), { 
-              direction:'top', 
-              className:'custom-tooltip', 
-              offset:[0,-8], 
-              interactive:true 
-            });
-          }
-        });
-        
-        // Click marker to directly view the track
+      // At low zoom: minimal interaction for performance
+      // At high zoom: full tooltip support
+      if (zoom <= 7) {
+        // Simplified: click to view track only
         marker.on('click', function() {
           if (m.trackID) {
             viewTrack(m.trackID);
           }
         });
-      })(m, marker);
+      } else {
+        // Full interaction: tooltip on hover, click to view track
+        (function(m, marker) {
+          marker.on('mouseover', function() {
+            if (!this._tooltip) {
+              this.bindTooltip(getTooltipContent(m), { 
+                direction:'top', 
+                className:'custom-tooltip', 
+                offset:[0,-8], 
+                interactive:true 
+              });
+            }
+          });
+          
+          marker.on('click', function() {
+            if (m.trackID) {
+              viewTrack(m.trackID);
+            }
+          });
+        })(m, marker);
+      }
     }
   }
 
@@ -4054,26 +4064,36 @@ function setupMarkerStream(es, tracks, minTs, maxTs, savedRange, tileIndex, cach
         marker = L.circleMarker([m.lat, m.lon], markerStyle);
         queueMarkerForBatch(marker, m.id);
         
-        // Lazy-bind tooltip and popup only on user interaction
-        (function(m, marker) {
-          marker.on('mouseover', function() {
-            if (!this._tooltip) {
-              this.bindTooltip(getTooltipContent(m), { 
-                direction:'top', 
-                className:'custom-tooltip', 
-                offset:[0,-8], 
-                interactive:true 
-              });
-            }
-          });
-          
-          // Click marker to directly view the track
+        // At low zoom: minimal interaction for performance
+        // At high zoom: full tooltip support
+        if (zoom <= 7) {
+          // Simplified: click to view track only
           marker.on('click', function() {
             if (m.trackID) {
               viewTrack(m.trackID);
             }
           });
-        })(m, marker);
+        } else {
+          // Full interaction: tooltip on hover, click to view track
+          (function(m, marker) {
+            marker.on('mouseover', function() {
+              if (!this._tooltip) {
+                this.bindTooltip(getTooltipContent(m), { 
+                  direction:'top', 
+                  className:'custom-tooltip', 
+                  offset:[0,-8], 
+                  interactive:true 
+                });
+              }
+            });
+            
+            marker.on('click', function() {
+              if (m.trackID) {
+                viewTrack(m.trackID);
+              }
+            });
+          })(m, marker);
+        }
       }
     }
 
