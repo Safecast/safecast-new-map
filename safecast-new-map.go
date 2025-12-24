@@ -4771,19 +4771,49 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get limit parameter
-	limit := 100
+	// Get limit parameter (page size)
+	limit := 500 // Default to 500 per page
 	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
 		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
 			limit = parsedLimit
 		}
 	}
 
+	// Get page parameter
+	page := 1
+	if pageStr := r.URL.Query().Get("page"); pageStr != "" {
+		if parsedPage, err := strconv.Atoi(pageStr); err == nil && parsedPage > 0 {
+			page = parsedPage
+		}
+	}
+
+	// Calculate offset
+	offset := (page - 1) * limit
+
 	// Get user_id filter parameter
 	userID := r.URL.Query().Get("user_id")
 
+	// Get search parameter
+	search := r.URL.Query().Get("search")
+
 	ctx := r.Context()
-	uploads, err := db.GetUploads(ctx, limit, userID)
+
+	// Get total count for pagination
+	totalCount, err := db.CountUploads(ctx, userID, search)
+	if err != nil {
+		log.Printf("Error counting uploads: %v", err)
+		http.Error(w, "Failed to count uploads", http.StatusInternalServerError)
+		return
+	}
+
+	// Calculate total pages
+	totalPages := (totalCount + limit - 1) / limit
+	if totalPages < 1 {
+		totalPages = 1
+	}
+
+	// Fetch current page of uploads
+	uploads, err := db.GetUploadsPaginated(ctx, limit, offset, userID, search)
 	if err != nil {
 		log.Printf("Error fetching uploads: %v", err)
 		http.Error(w, "Failed to fetch uploads", http.StatusInternalServerError)
@@ -4923,9 +4953,13 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		<div class="import-status" id="importStatus"></div>
 	</div>
 	<div class="summary">
-		<strong>Total Uploads:</strong> ` + strconv.Itoa(len(uploads)) + ` files (showing up to ` + strconv.Itoa(limit) + `)
+		<strong>Total Uploads:</strong> ` + strconv.Itoa(totalCount) + ` files
 		<span style="margin-left: 20px;">
-			<label for="limitSelect"><strong>Show:</strong></label>
+			<strong>Page ` + strconv.Itoa(page) + ` of ` + strconv.Itoa(totalPages) + `</strong>
+			(showing ` + strconv.Itoa(len(uploads)) + ` uploads)
+		</span>
+		<span style="margin-left: 20px;">
+			<label for="limitSelect"><strong>Per page:</strong></label>
 			<select id="limitSelect" onchange="changeLimit()" style="margin-left: 5px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary);">
 				<option value="100"` + func() string {
 		if limit == 100 {
@@ -4933,6 +4967,12 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return ""
 	}() + `>100</option>
+				<option value="250"` + func() string {
+		if limit == 250 {
+			return " selected"
+		}
+		return ""
+	}() + `>250</option>
 				<option value="500"` + func() string {
 		if limit == 500 {
 			return " selected"
@@ -4945,26 +4985,97 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return ""
 	}() + `>1000</option>
-				<option value="5000"` + func() string {
-		if limit == 5000 {
-			return " selected"
-		}
-		return ""
-	}() + `>5000</option>
-				<option value="10000"` + func() string {
-		if limit >= 10000 {
-			return " selected"
-		}
-		return ""
-	}() + `>All</option>
 			</select>
+		</span>
+		<span style="margin-left: 20px;">
+			<label for="searchInput"><strong>Search:</strong></label>
+			<input type="text" id="searchInput" value="` + search + `" placeholder="Search all fields..." style="margin-left: 5px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); width: 200px;" onkeypress="if(event.key === 'Enter') performSearch()">
+			<button onclick="performSearch()" style="margin-left: 5px; padding: 4px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--link-color); color: white; cursor: pointer;">🔍</button>
+			` + func() string {
+		if search != "" {
+			return `<button onclick="clearSearch()" style="margin-left: 5px; padding: 4px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); cursor: pointer;">Clear</button>`
+		}
+		return ""
+	}() + `
 		</span>`
 
 	if userID != "" {
-		html += ` | <strong>Filtered by User ID:</strong> ` + userID + ` <a href="/api/admin/uploads?password=` + password + `">[Clear Filter]</a>`
+		clearFilterURL := "/api/admin/uploads?password=" + password
+		if search != "" {
+			clearFilterURL += "&search=" + url.QueryEscape(search)
+		}
+		html += ` | <strong>Filtered by User ID:</strong> ` + userID + ` <a href="` + clearFilterURL + `">[Clear Filter]</a>`
 	}
 
-	html += `
+	if search != "" {
+		html += ` | <strong>Search:</strong> "` + search + `"`
+	}
+
+	// Add pagination controls inline in the summary
+	html += `<div style="margin-top: 10px;">`
+
+	// Helper function to build query parameters
+	buildURL := func(pageNum int) string {
+		urlStr := "?password=" + password + "&page=" + strconv.Itoa(pageNum) + "&limit=" + strconv.Itoa(limit)
+		if userID != "" {
+			urlStr += "&user_id=" + userID
+		}
+		if search != "" {
+			urlStr += "&search=" + url.QueryEscape(search)
+		}
+		return urlStr
+	}
+
+	// Previous button
+	if page > 1 {
+		html += `<a href="` + buildURL(page-1) + `" class="page-btn">&laquo; Previous</a>`
+	} else {
+		html += `<span class="page-btn disabled">&laquo; Previous</span>`
+	}
+
+	// Page numbers
+	startPage := page - 2
+	if startPage < 1 { startPage = 1 }
+	endPage := startPage + 4
+	if endPage > totalPages {
+		endPage = totalPages
+		startPage = endPage - 4
+		if startPage < 1 { startPage = 1 }
+	}
+
+	// First page
+	if startPage > 1 {
+		html += `<a href="` + buildURL(1) + `" class="page-btn">1</a>`
+		if startPage > 2 {
+			html += `<span class="page-btn disabled">...</span>`
+		}
+	}
+
+	// Page range
+	for i := startPage; i <= endPage; i++ {
+		if i == page {
+			html += `<span class="page-btn active">` + strconv.Itoa(i) + `</span>`
+		} else {
+			html += `<a href="` + buildURL(i) + `" class="page-btn">` + strconv.Itoa(i) + `</a>`
+		}
+	}
+
+	// Last page
+	if endPage < totalPages {
+		if endPage < totalPages-1 {
+			html += `<span class="page-btn disabled">...</span>`
+		}
+		html += `<a href="` + buildURL(totalPages) + `" class="page-btn">` + strconv.Itoa(totalPages) + `</a>`
+	}
+
+	// Next button
+	if page < totalPages {
+		html += `<a href="` + buildURL(page+1) + `" class="page-btn">Next &raquo;</a>`
+	} else {
+		html += `<span class="page-btn disabled">Next &raquo;</span>`
+	}
+
+	html += `</div>
 	</div>`
 
 	if len(uploads) == 0 {
@@ -5229,11 +5340,33 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 			updateDeleteButton();
 		}
 
-		// Change limit and reload page
+		// Change limit and reload page, reset to page 1
 		function changeLimit() {
 			const limit = document.getElementById('limitSelect').value;
 			const url = new URL(window.location.href);
 			url.searchParams.set('limit', limit);
+			url.searchParams.set('page', '1');
+			window.location.href = url.toString();
+		}
+
+		// Perform search
+		function performSearch() {
+			const searchValue = document.getElementById('searchInput').value;
+			const url = new URL(window.location.href);
+			if (searchValue.trim()) {
+				url.searchParams.set('search', searchValue.trim());
+			} else {
+				url.searchParams.delete('search');
+			}
+			url.searchParams.set('page', '1'); // Reset to page 1 when searching
+			window.location.href = url.toString();
+		}
+
+		// Clear search
+		function clearSearch() {
+			const url = new URL(window.location.href);
+			url.searchParams.delete('search');
+			url.searchParams.set('page', '1'); // Reset to page 1 when clearing
 			window.location.href = url.toString();
 		}
 
