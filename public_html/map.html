@@ -2387,6 +2387,7 @@ var isTrackView = false;
 var osmLayer, googleSatellite;
 var trackBounds;
 var currentTrackID = null;
+var currentTrackIDs = null;  // For multiple tracks view
 var lastViewportKey = null;
 var lastFilterState = null;  // Track filter state to detect changes
 
@@ -2763,7 +2764,7 @@ function attachControlTooltip(target, options) {
 
 document.addEventListener('DOMContentLoaded', function () {
 
-  // Initialize trackID from path
+  // Initialize trackID from path (single track)
   var match = window.location.pathname.match(/^\/trackid\/([a-zA-Z0-9]+)/);
   if (match) {
     currentTrackID = match[1];
@@ -2772,6 +2773,38 @@ document.addEventListener('DOMContentLoaded', function () {
     var backBox = document.querySelector('.back-to-all-container');
     if (backBox) backBox.style.display = 'block';
   }
+  
+  // Initialize multiple tracks from path
+  var tracksMatch = window.location.pathname.match(/^\/tracks\/(.+)/);
+  if (tracksMatch) {
+    var trackIDsParam = decodeURIComponent(tracksMatch[1]);
+    currentTrackIDs = trackIDsParam.split(',').map(function(id) { return id.trim(); }).filter(function(id) { return id.length > 0; });
+    if (currentTrackIDs.length > 0) {
+      isTrackView = true;
+      var backBox = document.querySelector('.back-to-all-container');
+      if (backBox) backBox.style.display = 'block';
+      
+      // Fetch combined bounds for all tracks
+      fetch('/api/tracks/bounds?trackIDs=' + encodeURIComponent(currentTrackIDs.join(',')))
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+          if (data.status === 'success' && data.bounds) {
+            trackBounds = [
+              [data.bounds.minLat, data.bounds.minLon],
+              [data.bounds.maxLat, data.bounds.maxLon]
+            ];
+            // If map is already initialized, fit bounds now
+            if (map) {
+              map.fitBounds(trackBounds);
+            }
+          }
+        })
+        .catch(function(err) {
+          console.error('Error fetching track bounds:', err);
+        });
+    }
+  }
+  
   refreshDownloadLink();
 
   // Theme-aware hover hints keep visitors oriented without repeating markup titles.
@@ -3666,6 +3699,15 @@ function updateMarkers(){
     baseParams.maxLat = 90;
     baseParams.maxLon = 180;
   }
+  
+  // When viewing multiple tracks, load all markers for those tracks
+  if (currentTrackIDs && currentTrackIDs.length > 0) {
+    baseParams.trackIDs = currentTrackIDs.join(',');
+    baseParams.minLat = -90;
+    baseParams.minLon = -180;
+    baseParams.maxLat = 90;
+    baseParams.maxLon = 180;
+  }
 
   const savedRange = loadDateRangeState();
 
@@ -3674,7 +3716,7 @@ function updateMarkers(){
   const newFilterState = getFilterStateKey();
   const filterChanged = lastFilterState !== newFilterState;
   
-  if (lastViewportKey === newViewportKey && lastFilterState === newFilterState && !currentTrackID) {
+  if (lastViewportKey === newViewportKey && lastFilterState === newFilterState && !currentTrackID && !currentTrackIDs) {
     // Viewport and filters unchanged in global view - skip full redraw
     return;
   }
@@ -3726,7 +3768,7 @@ function updateMarkers(){
   // At high zoom (>=8): Split viewport into 2x2 grid (4 tiles) for parallel loading
   // Cache enabled for all zoom levels (except track view)
   // Disable during background refresh to reduce database load
-  const useTiles = !currentTrackID && !window.isBackgroundRefresh; // Use tiles + cache for all zoom levels, except track view and background refresh
+  const useTiles = !currentTrackID && !currentTrackIDs && !window.isBackgroundRefresh; // Use tiles + cache for all zoom levels, except track view and background refresh
   const useSingleTile = zoom <= 7; // At low zoom, use single tile to reduce request overhead
 
   if (useTiles) {

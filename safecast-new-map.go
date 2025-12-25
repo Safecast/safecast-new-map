@@ -4040,13 +4040,25 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
 			clientIP = forwarded
 		}
+		
+		// Get earliest marker date for this track to populate RecordingDate
+		var recordingDate int64
+		var minDateQuery string
+		if *dbType == "pgx" {
+			minDateQuery = `SELECT MIN(date) FROM markers WHERE trackID = $1`
+		} else {
+			minDateQuery = `SELECT MIN(date) FROM markers WHERE trackID = ?`
+		}
+		_ = db.DB.QueryRowContext(r.Context(), minDateQuery, trackID).Scan(&recordingDate)
+		
 		upload := database.Upload{
-			Filename:  fh.Filename,
-			FileType:  ext,
-			TrackID:   trackID,
-			FileSize:  fh.Size,
-			UploadIP:  clientIP,
-			CreatedAt: 0, // Will be set to current time by InsertUpload
+			Filename:      fh.Filename,
+			FileType:      ext,
+			TrackID:       trackID,
+			FileSize:      fh.Size,
+			UploadIP:      clientIP,
+			RecordingDate: recordingDate, // Earliest marker date
+			CreatedAt:     0,              // Will be set to current time by InsertUpload
 		}
 		if _, uploadErr := db.InsertUpload(r.Context(), upload); uploadErr != nil {
 			logT(trackID, "Upload", "warning: failed to track upload: %v", uploadErr)
@@ -4837,7 +4849,7 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 			--border-color: #ddd;
 			--link-color: #0066cc;
 			--shadow: 0 1px 3px rgba(0,0,0,0.1);
-			--th-bg: #4CAF50;
+			--th-bg: #424242;
 			--hover-bg: #f9f9f9;
 		}
 		@media (prefers-color-scheme: dark) {
@@ -4850,7 +4862,7 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 				--border-color: #444;
 				--link-color: #90caf9;
 				--shadow: 0 1px 3px rgba(255,255,255,0.1);
-				--th-bg: #388e3c;
+				--th-bg: #616161;
 				--hover-bg: #333;
 				color-scheme: dark;
 			}
@@ -4864,7 +4876,7 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 			--border-color: #ddd;
 			--link-color: #0066cc;
 			--shadow: 0 1px 3px rgba(0,0,0,0.1);
-			--th-bg: #4CAF50;
+			--th-bg: #424242;
 			--hover-bg: #f9f9f9;
 			color-scheme: light;
 		}
@@ -4877,7 +4889,7 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 			--border-color: #444;
 			--link-color: #90caf9;
 			--shadow: 0 1px 3px rgba(255,255,255,0.1);
-			--th-bg: #388e3c;
+			--th-bg: #616161;
 			--hover-bg: #333;
 			color-scheme: dark;
 		}
@@ -4892,7 +4904,7 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		.summary { background: var(--bg-card); padding: 15px; margin-bottom: 20px; border-radius: 5px; box-shadow: var(--shadow); }
 		table { border-collapse: collapse; width: 100%; background: var(--bg-card); box-shadow: var(--shadow); }
 		th { background: var(--th-bg); color: white; padding: 12px; text-align: left; font-weight: 600; }
-		td { padding: 10px 12px; border-bottom: 1px solid var(--border-color); }
+		td { padding: 6px 8px; border-bottom: 1px solid var(--border-color); }
 		tr:hover { background: var(--hover-bg); }
 		.empty { text-align: center; padding: 40px; color: var(--text-muted); font-style: italic; }
 		.trackid { font-family: monospace; color: var(--link-color); }
@@ -4904,6 +4916,9 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		.delete-selected-btn { background: #f44336; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer; font-size: 1em; margin-left: 10px; }
 		.delete-selected-btn:hover { background: #d32f2f; }
 		.delete-selected-btn:disabled { background: #ccc; cursor: not-allowed; }
+		.view-selected-btn { background: #2196F3; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer; font-size: 1em; margin-left: 10px; }
+		.view-selected-btn:hover { background: #1976D2; }
+		.view-selected-btn:disabled { background: #ccc; cursor: not-allowed; }
 		.checkbox-col { width: 40px; text-align: center; }
 		.sortable { cursor: pointer; user-select: none; position: relative; padding-right: 20px; }
 		.sortable:hover { background: rgba(255,255,255,0.1); }
@@ -4928,17 +4943,18 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 	</style>
 </head>
 <body>
-	<h1>📁 File Uploads Administration</h1>
+	<h1>File Uploads Administration</h1>
 	<div class="nav">
 		<div class="nav-left">
 			<a href="/api/admin/tracks?password=` + password + `">All Tracks</a>
 			<a href="/api/admin/uploads?password=` + password + `">Tracked Uploads</a>
-			<button class="delete-selected-btn" id="deleteSelectedBtn" onclick="deleteSelected()" disabled>🗑️ Delete Selected</button>
+			<button class="view-selected-btn" id="viewSelectedBtn" onclick="viewSelected()" disabled>View Selected on Map</button>
+			<button class="delete-selected-btn" id="deleteSelectedBtn" onclick="deleteSelected()" disabled>Delete Selected</button>
 		</div>
-		<a href="/" class="back-to-map-btn">🗺️ Back to Map</a>
+		<a href="/" class="back-to-map-btn">Back to Map</a>
 	</div>
 	<div class="import-form">
-		<h3>📥 Import from Safecast API</h3>
+		<h3>Import from Safecast API</h3>
 		<div class="form-row">
 			<div class="form-group">
 				<label for="startDate">Start Date</label>
@@ -5188,9 +5204,26 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 
 		function updateDeleteButton() {
 			const checkboxes = document.querySelectorAll('.track-checkbox:checked');
-			const btn = document.getElementById('deleteSelectedBtn');
-			btn.disabled = checkboxes.length === 0;
-			btn.textContent = checkboxes.length > 0 ? '🗑️ Delete Selected (' + checkboxes.length + ')' : '🗑️ Delete Selected';
+			const deleteBtn = document.getElementById('deleteSelectedBtn');
+			const viewBtn = document.getElementById('viewSelectedBtn');
+			const count = checkboxes.length;
+			
+			deleteBtn.disabled = count === 0;
+			deleteBtn.textContent = count > 0 ? 'Delete Selected (' + count + ')' : 'Delete Selected';
+			
+			viewBtn.disabled = count === 0;
+			viewBtn.textContent = count > 0 ? 'View Selected on Map (' + count + ')' : 'View Selected on Map';
+		}
+
+		function viewSelected() {
+			const checkboxes = document.querySelectorAll('.track-checkbox:checked');
+			const trackIDs = Array.from(checkboxes).map(cb => cb.value);
+
+			if (trackIDs.length === 0) return;
+
+			// Navigate to map with multiple tracks
+			const tracksParam = trackIDs.join(',');
+			window.location.href = '/tracks/' + encodeURIComponent(tracksParam);
 		}
 
 		function deleteSelected() {
@@ -6081,7 +6114,7 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 			--border-color: #ddd;
 			--link-color: #0066cc;
 			--shadow: 0 1px 3px rgba(0,0,0,0.1);
-			--th-bg: #2196F3;
+			--th-bg: #424242;
 			--hover-bg: #f9f9f9;
 			--badge-bg: #e3f2fd;
 			--badge-text: #1976d2;
@@ -6098,7 +6131,7 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 				--border-color: #444;
 				--link-color: #90caf9;
 				--shadow: 0 1px 3px rgba(255,255,255,0.1);
-				--th-bg: #1976d2;
+				--th-bg: #616161;
 				--hover-bg: #333;
 				--badge-bg: rgba(144, 202, 249, 0.2);
 				--badge-text: #90caf9;
@@ -6116,7 +6149,7 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 			--border-color: #ddd;
 			--link-color: #0066cc;
 			--shadow: 0 1px 3px rgba(0,0,0,0.1);
-			--th-bg: #2196F3;
+			--th-bg: #424242;
 			--hover-bg: #f9f9f9;
 			--badge-bg: #e3f2fd;
 			--badge-text: #1976d2;
@@ -6133,7 +6166,7 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 			--border-color: #444;
 			--link-color: #90caf9;
 			--shadow: 0 1px 3px rgba(255,255,255,0.1);
-			--th-bg: #1976d2;
+			--th-bg: #616161;
 			--hover-bg: #333;
 			--badge-bg: rgba(144, 202, 249, 0.2);
 			--badge-text: #90caf9;
@@ -6152,7 +6185,7 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 		.summary { background: var(--bg-card); padding: 15px; margin-bottom: 20px; border-radius: 5px; box-shadow: var(--shadow); }
 		table { border-collapse: collapse; width: 100%; background: var(--bg-card); box-shadow: var(--shadow); }
 		th { background: var(--th-bg); color: white; padding: 12px; text-align: left; font-weight: 600; }
-		td { padding: 10px 12px; border-bottom: 1px solid var(--border-color); }
+		td { padding: 6px 8px; border-bottom: 1px solid var(--border-color); }
 		tr:hover { background: var(--hover-bg); }
 		.empty { text-align: center; padding: 40px; color: var(--text-muted); font-style: italic; }
 		.trackid { font-family: monospace; color: var(--link-color); }
@@ -6166,6 +6199,9 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 		.delete-selected-btn:disabled { background: #ccc; cursor: not-allowed; }
 		.backfill-btn { background: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer; font-size: 1em; margin-left: 10px; }
 		.backfill-btn:hover { background: #45a049; }
+		.view-selected-btn { background: #2196F3; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer; font-size: 1em; margin-left: 10px; }
+		.view-selected-btn:hover { background: #1976D2; }
+		.view-selected-btn:disabled { background: #ccc; cursor: not-allowed; }
 		.checkbox-col { width: 40px; text-align: center; }
 		.sortable { cursor: pointer; user-select: none; position: relative; padding-right: 20px; }
 		.sortable:hover { background: rgba(255,255,255,0.1); }
@@ -6177,15 +6213,16 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 	</style>
 </head>
 <body>
-	<h1>🗂️ All Tracks Administration</h1>
+	<h1>All Tracks Administration</h1>
 	<div class="nav">
 		<div class="nav-left">
 			<a href="/api/admin/tracks?password=` + password + `">All Tracks</a>
 			<a href="/api/admin/uploads?password=` + password + `">Tracked Uploads</a>
-			<button class="backfill-btn" onclick="backfillUploads()">📥 Backfill Upload Records</button>
-			<button class="delete-selected-btn" id="deleteSelectedBtn" onclick="deleteSelected()" disabled>🗑️ Delete Selected</button>
+			<button class="backfill-btn" onclick="backfillUploads()">Backfill Upload Records</button>
+			<button class="view-selected-btn" id="viewSelectedBtn" onclick="viewSelected()" disabled>View Selected on Map</button>
+			<button class="delete-selected-btn" id="deleteSelectedBtn" onclick="deleteSelected()" disabled>Delete Selected</button>
 		</div>
-		<a href="/" class="back-to-map-btn">🗺️ Back to Map</a>
+		<a href="/" class="back-to-map-btn">Back to Map</a>
 	</div>
 	<div class="summary">
 		<strong>Total Tracks:</strong> ` + strconv.Itoa(totalCount) + ` tracks
@@ -6775,6 +6812,186 @@ func trackHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Track page %s rendered.", trackID)
 }
 
+// tracksHandler displays multiple tracks on the map
+// /tracks/<track1,track2,track3>
+func tracksHandler(w http.ResponseWriter, r *http.Request) {
+	lang := getPreferredLanguage(r)
+
+	// /tracks/<IDs>
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 3 {
+		http.Error(w, "Track IDs not provided", http.StatusBadRequest)
+		return
+	}
+	trackIDsParam := parts[2]
+
+	// Parse template
+	tmpl := template.Must(template.New("map.html").Funcs(template.FuncMap{
+		"translate": func(key string) string {
+			if v, ok := translations[lang][key]; ok {
+				return v
+			}
+			return translations["en"][key]
+		},
+	}).ParseFS(content, "public_html/map.html"))
+
+	translationsJSON, err := marshalTemplateJS(translations)
+	if err != nil {
+		log.Printf("tracks handler: marshal translations failed: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	emptyMarkers := []database.Marker{}
+	markersJSON, err := marshalTemplateJS(emptyMarkers)
+	if err != nil {
+		log.Printf("tracks handler: marshal markers failed: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	data := struct {
+		Version           string
+		Translations      map[string]map[string]string
+		Lang              string
+		DefaultLat        float64
+		DefaultLon        float64
+		DefaultZoom       int
+		DefaultLayer      string
+		AutoLocateDefault bool
+		RealtimeAvailable bool
+		SupportEmail      string
+		TranslationsJSON  template.JS
+		MarkersJSON       template.JS
+		DebugEnabled      bool
+	}{
+		Version:           CompileVersion,
+		Translations:      translations,
+		Lang:              lang,
+		DefaultLat:        *defaultLat,
+		DefaultLon:        *defaultLon,
+		DefaultZoom:       *defaultZoom,
+		DefaultLayer:      *defaultLayer,
+		AutoLocateDefault: *autoLocateDefault,
+		RealtimeAvailable: *safecastRealtimeEnabled,
+		SupportEmail:      strings.TrimSpace(*supportEmail),
+		TranslationsJSON:  translationsJSON,
+		MarkersJSON:       markersJSON,
+		DebugEnabled:      debugEnabledForRequest(r),
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		log.Printf("template: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if _, err := buf.WriteTo(w); err != nil {
+		if isClientDisconnect(err) {
+			log.Printf("client disconnected while writing response")
+		} else {
+			log.Printf("write resp: %v", err)
+		}
+	}
+
+	log.Printf("Multi-track page rendered for: %s", trackIDsParam)
+}
+
+// apiTracksBoundsHandler returns combined bounds for multiple tracks
+// GET /api/tracks/bounds?trackIDs=track1,track2,track3
+func apiTracksBoundsHandler(w http.ResponseWriter, r *http.Request) {
+	trackIDsParam := r.URL.Query().Get("trackIDs")
+	if trackIDsParam == "" {
+		http.Error(w, "trackIDs parameter required", http.StatusBadRequest)
+		return
+	}
+
+	trackIDs := strings.Split(trackIDsParam, ",")
+	if len(trackIDs) == 0 {
+		http.Error(w, "No track IDs provided", http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+
+	// Calculate combined bounds
+	var minLat, minLon, maxLat, maxLon float64
+	first := true
+
+	for _, trackID := range trackIDs {
+		trackID = strings.TrimSpace(trackID)
+		if trackID == "" {
+			continue
+		}
+
+		// Query bounds for this track
+		var tMinLat, tMinLon, tMaxLat, tMaxLon sql.NullFloat64
+		
+		var query string
+		if *dbType == "pgx" {
+			query = `SELECT MIN(lat) as min_lat, MIN(lon) as min_lon, MAX(lat) as max_lat, MAX(lon) as max_lon 
+			         FROM markers WHERE trackID = $1`
+		} else {
+			query = `SELECT MIN(lat) as min_lat, MIN(lon) as min_lon, MAX(lat) as max_lat, MAX(lon) as max_lon 
+			         FROM markers WHERE trackID = ?`
+		}
+
+		err := db.DB.QueryRowContext(ctx, query, trackID).Scan(&tMinLat, &tMinLon, &tMaxLat, &tMaxLon)
+		if err != nil {
+			log.Printf("Error querying bounds for track %s: %v", trackID, err)
+			continue
+		}
+
+		// Skip if track has no markers
+		if !tMinLat.Valid || !tMinLon.Valid || !tMaxLat.Valid || !tMaxLon.Valid {
+			continue
+		}
+
+		// Update combined bounds
+		if first {
+			minLat = tMinLat.Float64
+			minLon = tMinLon.Float64
+			maxLat = tMaxLat.Float64
+			maxLon = tMaxLon.Float64
+			first = false
+		} else {
+			if tMinLat.Float64 < minLat {
+				minLat = tMinLat.Float64
+			}
+			if tMinLon.Float64 < minLon {
+				minLon = tMinLon.Float64
+			}
+			if tMaxLat.Float64 > maxLat {
+				maxLat = tMaxLat.Float64
+			}
+			if tMaxLon.Float64 > maxLon {
+				maxLon = tMaxLon.Float64
+			}
+		}
+	}
+
+	if first {
+		// No valid tracks found
+		http.Error(w, "No valid tracks found", http.StatusNotFound)
+		return
+	}
+
+	// Return bounds as JSON
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status": "success",
+		"bounds": map[string]float64{
+			"minLat": minLat,
+			"minLon": minLon,
+			"maxLat": maxLat,
+			"maxLon": maxLon,
+		},
+		"trackIDs": trackIDs,
+	})
+}
+
 // qrPngHandler generates a QR code image for a given URL.
 func qrPngHandler(w http.ResponseWriter, r *http.Request) {
 	u := r.URL.Query().Get("u")
@@ -6832,6 +7049,7 @@ func getMarkersHandler(w http.ResponseWriter, r *http.Request) {
 	maxLat, _ := strconv.ParseFloat(q.Get("maxLat"), 64)
 	maxLon, _ := strconv.ParseFloat(q.Get("maxLon"), 64)
 	trackID := q.Get("trackID")
+	trackIDsParam := q.Get("trackIDs")  // Multiple tracks
 
 	// ----- ✈️🚗🚶 фильтр скорости  ---------------------------------
 	var sr []database.SpeedRange
@@ -6870,6 +7088,24 @@ func getMarkersHandler(w http.ResponseWriter, r *http.Request) {
 			ctx,
 			trackID, zoom, minLat, minLon, maxLat, maxLon,
 			dateFrom, dateTo, sr, *dbType)
+	} else if trackIDsParam != "" {
+		// Handle multiple tracks
+		trackIDs := strings.Split(trackIDsParam, ",")
+		for _, tid := range trackIDs {
+			tid = strings.TrimSpace(tid)
+			if tid == "" {
+				continue
+			}
+			trackMarkers, trackErr := db.GetMarkersByTrackIDZoomBoundsSpeed(
+				ctx,
+				tid, zoom, minLat, minLon, maxLat, maxLon,
+				dateFrom, dateTo, sr, *dbType)
+			if trackErr != nil {
+				log.Printf("Error fetching markers for track %s: %v", tid, trackErr)
+				continue
+			}
+			markers = append(markers, trackMarkers...)
+		}
 	} else {
 		markers, err = db.GetMarkersByZoomBoundsSpeed(
 			ctx,
@@ -7033,6 +7269,64 @@ func sampleMarkerChannel(ctx context.Context, in <-chan database.Marker, sampleR
 	return out
 }
 
+// streamMultipleTracks merges marker streams from multiple tracks into a single channel
+func streamMultipleTracks(ctx context.Context, trackIDs []string, zoom int, minLat, minLon, maxLat, maxLon float64, dbType string) (<-chan database.Marker, <-chan error) {
+	out := make(chan database.Marker)
+	errOut := make(chan error, len(trackIDs))
+	
+	var wg sync.WaitGroup
+	
+	for _, trackID := range trackIDs {
+		trackID = strings.TrimSpace(trackID)
+		if trackID == "" {
+			continue
+		}
+		
+		wg.Add(1)
+		go func(tid string) {
+			defer wg.Done()
+			
+			markerCh, errCh := db.StreamMarkersByTrackIDZoomAndBounds(ctx, tid, zoom, minLat, minLon, maxLat, maxLon, dbType)
+			
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case err, ok := <-errCh:
+					if !ok {
+						return
+					}
+					if err != nil {
+						select {
+						case errOut <- err:
+						case <-ctx.Done():
+							return
+						}
+					}
+				case marker, ok := <-markerCh:
+					if !ok {
+						return
+					}
+					select {
+					case out <- marker:
+					case <-ctx.Done():
+						return
+					}
+				}
+			}
+		}(trackID)
+	}
+	
+	// Close output channel when all tracks are done
+	go func() {
+		wg.Wait()
+		close(out)
+		close(errOut)
+	}()
+	
+	return out, errOut
+}
+
 // streamMarkersHandler streams markers via Server-Sent Events.
 // Markers are emitted as soon as they are read and aggregated.
 func streamMarkersHandler(w http.ResponseWriter, r *http.Request) {
@@ -7043,6 +7337,7 @@ func streamMarkersHandler(w http.ResponseWriter, r *http.Request) {
 	maxLat, _ := strconv.ParseFloat(q.Get("maxLat"), 64)
 	maxLon, _ := strconv.ParseFloat(q.Get("maxLon"), 64)
 	trackID := q.Get("trackID")
+	trackIDsParam := q.Get("trackIDs")
 
 	// PERFORMANCE: Calculate density-based sampling rate for low zoom levels
 	// This reduces network traffic and client-side processing for dense views
@@ -7052,7 +7347,7 @@ func streamMarkersHandler(w http.ResponseWriter, r *http.Request) {
 			zoom, sampleRate, sampleRate*100)
 	}
 
-	// Choose streaming source: either entire map or a single track.
+	// Choose streaming source: either entire map, a single track, or multiple tracks
 	ctx := r.Context()
 	var (
 		baseSrc <-chan database.Marker
@@ -7060,6 +7355,10 @@ func streamMarkersHandler(w http.ResponseWriter, r *http.Request) {
 	)
 	if trackID != "" {
 		baseSrc, errCh = db.StreamMarkersByTrackIDZoomAndBounds(ctx, trackID, zoom, minLat, minLon, maxLat, maxLon, *dbType)
+	} else if trackIDsParam != "" {
+		// Handle multiple tracks by merging their streams
+		trackIDs := strings.Split(trackIDsParam, ",")
+		baseSrc, errCh = streamMultipleTracks(ctx, trackIDs, zoom, minLat, minLon, maxLat, maxLon, *dbType)
 	} else {
 		baseSrc, errCh = db.StreamMarkersByZoomAndBounds(ctx, zoom, minLat, minLon, maxLat, maxLon, *dbType)
 	}
@@ -8007,12 +8306,14 @@ func main() {
 	http.HandleFunc("/stream_markers", streamMarkersHandler)
 	http.HandleFunc("/realtime_history", realtimeHistoryHandler)
 	http.HandleFunc("/trackid/", trackHandler)
+	http.HandleFunc("/tracks/", tracksHandler)
 	http.HandleFunc("/qrpng", qrPngHandler)
 	http.HandleFunc("/api/geoip", gzipHandler(geoIPHandler))
 	http.HandleFunc("/s/", shortRedirectHandler)
 	http.HandleFunc("/api/docs", apiDocsHandler)
 	http.HandleFunc("/api/spectrum/", spectrumHandler)                                 // GET /api/spectrum/{markerID} and /api/spectrum/{markerID}/download
 	http.HandleFunc("/api/markers/spectra", markersWithSpectraHandler)                 // GET /api/markers/spectra
+	http.HandleFunc("/api/tracks/bounds", apiTracksBoundsHandler)                      // GET /api/tracks/bounds?trackIDs=...
 	http.HandleFunc("/api/update-coordinates", updateCoordinatesHandler)               // POST /api/update-coordinates
 	http.HandleFunc("/api/admin/uploads", adminUploadsHandler)                         // GET /api/admin/uploads?password=<pwd>
 	http.HandleFunc("/api/admin/tracks", adminTracksHandler)                           // GET /api/admin/tracks?password=<pwd>
