@@ -36,13 +36,17 @@ func (db *Database) InsertUpload(ctx context.Context, upload Upload) (int64, err
 	switch db.Driver {
 	case "pgx":
 		query = `
-			INSERT INTO uploads (filename, file_type, track_id, file_size, upload_ip, created_at, source, source_id, source_url, user_id)
-			VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7, $8, $9, $10)
+			INSERT INTO uploads (filename, file_type, track_id, file_size, upload_ip, created_at, recording_date, source, source_id, source_url, user_id)
+			VALUES ($1, $2, $3, $4, $5, to_timestamp($6), to_timestamp($7), $8, $9, $10, $11)
 			RETURNING id
 		`
+		recordingDateArg := upload.RecordingDate
+		if recordingDateArg == 0 {
+			recordingDateArg = createdAt
+		}
 		args = []interface{}{
 			upload.Filename, upload.FileType, upload.TrackID,
-			upload.FileSize, upload.UploadIP, createdAt,
+			upload.FileSize, upload.UploadIP, createdAt, recordingDateArg,
 			upload.Source, upload.SourceID, upload.SourceURL, upload.UserID,
 		}
 		err := db.DB.QueryRowContext(ctx, query, args...).Scan(&id)
@@ -50,13 +54,17 @@ func (db *Database) InsertUpload(ctx context.Context, upload Upload) (int64, err
 
 	case "duckdb":
 		query = `
-			INSERT INTO uploads (filename, file_type, track_id, file_size, upload_ip, created_at, source, source_id, source_url, user_id)
-			VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7, $8, $9, $10)
+			INSERT INTO uploads (filename, file_type, track_id, file_size, upload_ip, created_at, recording_date, source, source_id, source_url, user_id)
+			VALUES ($1, $2, $3, $4, $5, to_timestamp($6), to_timestamp($7), $8, $9, $10, $11)
 			RETURNING id
 		`
+		recordingDateArg := upload.RecordingDate
+		if recordingDateArg == 0 {
+			recordingDateArg = createdAt
+		}
 		args = []interface{}{
 			upload.Filename, upload.FileType, upload.TrackID,
-			upload.FileSize, upload.UploadIP, createdAt,
+			upload.FileSize, upload.UploadIP, createdAt, recordingDateArg,
 			upload.Source, upload.SourceID, upload.SourceURL, upload.UserID,
 		}
 		err := db.DB.QueryRowContext(ctx, query, args...).Scan(&id)
@@ -64,12 +72,16 @@ func (db *Database) InsertUpload(ctx context.Context, upload Upload) (int64, err
 
 	case "sqlite", "chai":
 		query = `
-			INSERT INTO uploads (filename, file_type, track_id, file_size, upload_ip, created_at, source, source_id, source_url, user_id)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			INSERT INTO uploads (filename, file_type, track_id, file_size, upload_ip, created_at, recording_date, source, source_id, source_url, user_id)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		`
+		recordingDateArg := upload.RecordingDate
+		if recordingDateArg == 0 {
+			recordingDateArg = createdAt
+		}
 		args = []interface{}{
 			upload.Filename, upload.FileType, upload.TrackID,
-			upload.FileSize, upload.UploadIP, createdAt,
+			upload.FileSize, upload.UploadIP, createdAt, recordingDateArg,
 			upload.Source, upload.SourceID, upload.SourceURL, upload.UserID,
 		}
 		result, err := db.DB.ExecContext(ctx, query, args...)
@@ -133,17 +145,15 @@ func (db *Database) GetUploadsPaginated(ctx context.Context, limit int, offset i
 	if db.Driver == "pgx" || db.Driver == "duckdb" {
 		baseSelect += `
 		       EXTRACT(EPOCH FROM u.created_at)::BIGINT,
-		       COALESCE(ts.first_date, 0) as recording_date,
+		       COALESCE(EXTRACT(EPOCH FROM u.recording_date)::BIGINT, 0) as recording_date,
 		       u.source, u.source_id, u.source_url, u.user_id
-		FROM uploads u
-		LEFT JOIN track_statistics ts ON u.track_id = ts.trackid`
+		FROM uploads u`
 	} else {
 		baseSelect += `
 		       u.created_at,
-		       COALESCE(ts.first_date, 0) as recording_date,
+		       COALESCE(u.recording_date, 0) as recording_date,
 		       u.source, u.source_id, u.source_url, u.user_id
-		FROM uploads u
-		LEFT JOIN track_statistics ts ON u.track_id = ts.trackID`
+		FROM uploads u`
 	}
 
 	// Add WHERE clause if we have conditions
