@@ -1,189 +1,328 @@
-[![Latest stable release build](https://github.com/Safecast/safecast-new-map/actions/workflows/release.yml/badge.svg)](https://github.com/Safecast/safecast-new-map/actions/workflows/release.yml)
+# Safecast New Map
 
-<img width="30%" align="left" alt="Safecast" src="https://avatars.githubusercontent.com/u/959637?s=400&v=4" />
+[![Build Status](https://github.com/Safecast/safecast-new-map/actions/workflows/release.yml/badge.svg)](https://github.com/Safecast/safecast-new-map/actions/workflows/release.yml)
 
-- [🇬🇧 English](/README.md)
-- [🇫🇷 Français](/doc/README_FR.md)
-- [🇯🇵 日本語](/doc/README_JP.md)
-- [🇨🇭 Schwiizerdütsch](/doc/README_DE_CH.md)
-- [🇮🇹 Italiano](/doc/README_IT.md)
-- [🇨🇳 中文](/doc/README_ZH.md)
-- [🇮🇳 हिन्दी](/doc/README_HI.md)
-- [🇮🇷 فارسی](/doc/README_FA.md)
-- [🇷🇺 Русский](/doc/README_RU.md)
-- [🇲🇳 Монгол](/doc/README_MN.md)
-- [🇰🇿 Қазақша](/doc/README_KK.md)
+A modern, self-hosted radiation monitoring platform that makes environmental data accessible to everyone. Built to help communities understand radiation levels in their environment through open data and transparent mapping.
 
-# ☢️ World Radiation Map
-We built this map so anyone can quickly understand whether the place they live or work is safe. Many grow food, keep livestock, or drink from springs without knowing if the environment is healthy.
+**Live Demo:** [simplemap.safecast.org](https://simplemap.safecast.org/)
 
-Natural background radiation stays low. Danger appears only where the levels rise well above that — because of human activity or specific local geology. In such places, water, air, and soil can eventually affect health: harming lungs, stomach, and other organs.
+**Downloads:** [Latest releases for all platforms](https://github.com/safecast/safecast-new-map/releases)
 
-If this map protects even one person or animal, building it was worth it. Let it serve as a simple, clear guide for choosing a safer path.
+## Language Support
 
-Live demo: [https://simplemap.safecast.org/](https://simplemap.safecast.org/) — your node will look the same.
-
-👉 [Unified download page](https://github.com/safecast/safecast-new-map/releases) (all platforms, latest builds)
-
-👉 [DeepWiki: Safecast New Map](https://deepwiki.com/safecast/safecast-new-map)
+[English](/README.md) | [Français](/doc/README_FR.md) | [日本語](/doc/README_JP.md) | [Deutsch (CH)](/doc/README_DE_CH.md) | [Italiano](/doc/README_IT.md) | [中文](/doc/README_ZH.md) | [हिन्दी](/doc/README_HI.md) | [فارسی](/doc/README_FA.md) | [Русский](/doc/README_RU.md) | [Монгол](/doc/README_MN.md) | [Қазақша](/doc/README_KK.md)
 
 ---
 
-### 📸 Example view
-<p>
-  <a href="https://simplemap.safecast.org" target="_blank"><img width="100%" alt="Fukushima view in safecast-new-map" src="https://github.com/user-attachments/assets/617a0ced-4280-41c2-9320-de1cfd33a61f" /></a><br />
-  <a href="https://simplemap.safecast.org" target="_blank"><img width="100%" alt="Safecast realtime radiation sensors in safecast-new-map" src="https://github.com/user-attachments/assets/13256b23-744d-4d02-a26c-ae9aef5b0d87" /></a><br />
-  <a href="https://simplemap.safecast.org" target="_blank"><img width="100%" alt="Air flights radiation in safecast-new-map" src="https://github.com/user-attachments/assets/cf0189c9-534f-4ff5-9d7a-ed5836e91ef5" /></a>
-</p>
+## About
+
+This project provides a complete radiation mapping solution that runs on your own infrastructure. Whether you're monitoring environmental safety, conducting research, or providing public information, the platform handles everything from data collection to visualization.
+
+Natural background radiation is typically low and safe. This map helps identify areas where levels rise above normal due to contamination, natural deposits, or other factors. Understanding these patterns helps communities make informed decisions about drinking water sources, agriculture, and land use.
+
+### Key Features
+
+**Data Collection & Import**
+- Upload radiation measurements from multiple device formats (bGeigie, RadiaCode, AtomFast, and more)
+- Automatic sync with Safecast's global database
+- Import from files (.kml, .kmz, .json, .rctrk, .csv, .gpx) or URLs
+- Real-time device monitoring (optional)
+
+**Visualization & Analysis**
+- Interactive map with multiple coloring schemes (scientific gradient or safety-focused)
+- Speed-based layer separation (walking, driving, flying)
+- Time-series analysis for specific locations
+- Country-level statistics and reporting
+- Print mode with QR codes for field marking
+
+**Data Management**
+- Multiple database backends (PostgreSQL, DuckDB, SQLite, ClickHouse)
+- Automated JSON archive generation (daily/weekly/monthly)
+- Track streaming for efficient large dataset handling
+- RESTful API with rate limiting
+
+**Advanced Capabilities**
+- Gamma spectrum analysis (.spe, .n42 formats)
+- Admin panel for content moderation
+- Short link generation for sharing
+- Multi-language interface
+- Auto-update system
 
 ---
 
-## 🧭 What’s inside
-- The map gathers measurements from many instruments; layers are neatly separated by movement speed — on foot, by car, or in flight.
-- You can upload your own tracks: new points immediately appear on the map to clarify the situation.
-- Import archives by URL or file, and save your own data as an archive (handy for backups).
-- Track how radiation changed over time in a chosen place — getting better or worse.
-- Create a short link to any area of the map.
-- Use print mode: mark hazardous spots with QR codes so a person can scan and instantly see the radiation level for that exact point. This helps highlight environmental risks where drinking water, long stays, or farming are undesirable. It is useful for ecologists, monitoring specialists, and teams that must warn people about danger.
-- The Map offers an API for integrating its data into external services under the open CC license.
+## Quick Start
 
-The project grows thanks to careful support from the **Safecast** community, the huge work of **Rob Oudendijk**, and countless people worldwide working in open dosimetry. We thank Safecast, AtomFast, Radiacode, DoseMap, and other initiatives for their contribution and involvement.
+### Option 1: Binary (Recommended)
 
----
+Download and run in seconds:
 
-## 🚀 Quick start (beginner friendly)
-Fastest path: download the binary. No Docker, no databases, no extra tools — download, run, done.
-
-### Option 1. Binary (recommended)
-1) Open the [releases page](https://github.com/safecast/safecast-new-map/releases) and download the build for your system.
-2) Make it executable and run:
 ```bash
+# Download from https://github.com/safecast/safecast-new-map/releases
 chmod +x ./safecast-new-map
 ./safecast-new-map
 ```
-3) Open [http://localhost:8765](http://localhost:8765) — the map is already live.
 
-Optional knobs:
-- `-port 8765` — local port.
-- `-domain maps.example.org` — HTTPS with Let’s Encrypt (needs 80/443).
-- `-default-lat` / `-default-lon` / `-default-zoom` / `-default-layer` — opening map view.
-- Storage: `-db-type sqlite|duckdb|chai|clickhouse|pgx`, `-db-path` for file databases, `-db-conn` for network ones.
+Open [http://localhost:8765](http://localhost:8765)
 
-### Option 2. Public node with a domain
-1) Run the binary with your domain:
+### Option 2: With Production Data
+
+Start with a complete dataset from simplemap.safecast.org:
+
 ```bash
-./safecast-new-map -domain example.org
+./safecast-new-map -import-tgz-url https://simplemap.safecast.org/api/json/weekly.tgz
 ```
-2) Keep ports 80/443 open for Let’s Encrypt. After issuance, the map is at [https://example.org](https://example.org).
 
-### Option 3. Docker (all packaged)
-1) Install Docker (Desktop or CLI).
-2) Find **Safecast/safecast-new-map** on Docker Hub and click **Run** (or execute one command):
+This imports all public tracks and starts the server. Future runs will use the cached data.
+
+### Option 3: Production Deployment
+
+Deploy with HTTPS using Let's Encrypt:
+
 ```bash
-docker run -d -p 8765:8765 --name safecast-new-map safecastr/safecast-new-map:latest
+./safecast-new-map -domain maps.example.org -db-type pgx -db-conn "postgres://user:pass@localhost/safecast"
 ```
-3) Open [http://localhost:8765](http://localhost:8765) — that’s it.
 
----
+Requires ports 80 and 443 open for certificate validation.
 
-## 📥 Import data
-- On the map page, click the green **Upload** button and drop your tracks (`.kml`, `.kmz`, `.json`, `.rctrk`, `.csv`, `.gpx`, bGeigie Nano/Zen `$BNRDD`, AtomFast, RadiaCode, Safecast, etc.).
-- Instant mirror of simplemap.safecast.org: run `safecast-new-map -import-tgz-url https://simplemap.safecast.org/api/json/weekly.tgz` once — it fetches the weekly archive, fills your database, and quits so the next launch starts fully populated.
-- Want the archive saved locally first? Download [https://simplemap.safecast.org/api/json/weekly.tgz](https://simplemap.safecast.org/api/json/weekly.tgz), point `-import-tgz-path /path/to/weekly.tgz`, and start with your own copy.
+### Option 4: Docker
 
-### 🗺️ One-command first run with live data
-For a completely fresh install, this single command both preloads real-world tracks and serves the map right away:
 ```bash
-safecast-new-map -import-tgz-url https://simplemap.safecast.org/api/json/weekly.tgz
+docker run -d -p 8765:8765 --name safecast-map safecastr/safecast-new-map:latest
 ```
-After it imports, rerun normally (or keep the same command in a systemd service) — the map opens with real measurements visible at [http://localhost:8765](http://localhost:8765).
 
-### 🛢️ Database options for import and regular use
-- **PostgreSQL (`pgx`)** — the fastest and most convenient with several users. Example: `safecast-new-map -db-type pgx -db-conn postgres://USER:PASS@HOST:PORT/DATABASE?sslmode=allow -import-tgz-url https://simplemap.safecast.org/api/json/weekly.tgz`
-- **DuckDB / SQLite / Chai** — simple file databases for a single user. Concurrent writes can conflict, so keep them for personal maps. Example: `safecast-new-map -db-type duckdb -import-tgz-url https://simplemap.safecast.org/api/json/weekly.tgz`
-
-## 📤 Export
-- Single track: `/api/track/{trackID}.json` (legacy `.cim` also works).
-- Scheduled archive: `/api/json/weekly.tgz` (or `/daily.tgz`, `/monthly.tgz`, `/yearly.tgz`). Inside: one JSON per track.
+Open [http://localhost:8765](http://localhost:8765)
 
 ---
 
-## 🔗 URL Parameters
+## Configuration
 
-You can customize the map view by adding parameters to the URL. This is useful for sharing specific views or embedding the map.
+### Database Options
 
-| Parameter | Options | Description |
-| :--- | :--- | :--- |
-| `coloring` | `safecast`, `chicha` | **safecast**: High-resolution 15-step gradient.<br>**chicha**: 4-bin safety scale (Green/Yellow/Red/Black). |
-| `unit` | `uSv`, `uR` | **uSv**: Microsieverts per hour (µSv/h).<br>**uR**: Microroentgen per hour (µR/h). |
-| `legend` | `1`, `0` | **1**: Show the compact legend (default).<br>**0**: Hide the legend and unit toggle. |
-| `lang` | `en`, `ru`, `ar`, etc. | Set the interface language (e.g., `lang=ru`). |
-| `layer` | `OpenStreetMap`, `Google Satellite` | Set the default base layer. |
+**PostgreSQL (Recommended for Production)**
+```bash
+./safecast-new-map -db-type pgx -db-conn "postgres://user:pass@host:5432/dbname?sslmode=require"
+```
 
-### Examples:
-- **Chicha Safety View (µR/h):**
-  `http://localhost:8765/?coloring=chicha&unit=uR`
-- **Safecast Scientific View (µSv/h):**
-  `http://localhost:8765/?coloring=safecast&unit=uSv`
-- **Clean View (No Legend):**
-  `http://localhost:8765/?legend=0`
+**DuckDB (Fast Local Storage)**
+```bash
+./safecast-new-map -db-type duckdb -db-path /path/to/data
+```
+
+**SQLite (Simple Single-User)**
+```bash
+./safecast-new-map -db-type sqlite -db-path /path/to/data
+```
+
+**ClickHouse (Large-Scale Analytics)**
+```bash
+./safecast-new-map -db-type clickhouse -db-conn "clickhouse://user:pass@host:9000/dbname?secure=true"
+```
+
+### Common Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-port` | 8765 | HTTP server port |
+| `-domain` | - | Domain for HTTPS (enables Let's Encrypt) |
+| `-db-type` | pgx | Database: pgx, duckdb, sqlite, chai, clickhouse |
+| `-db-path` | . | Path for file-based databases |
+| `-db-conn` | - | Connection string for network databases |
+| `-default-lat` | 44.08832 | Initial map latitude |
+| `-default-lon` | 42.97577 | Initial map longitude |
+| `-default-zoom` | 11 | Initial map zoom level |
+| `-default-layer` | OpenStreetMap | Base map layer |
+| `-admin-password` | - | Enable admin panel (track management) |
+| `-safecast-realtime` | false | Poll live Safecast device data |
+| `-safecast-fetcher` | false | Auto-sync approved bGeigie imports |
+| `-json-archive-frequency` | weekly | Archive generation: daily, weekly, monthly, yearly |
 
 ---
 
-## 🧠 Advanced options
-- **Databases:** built-in SQLite by default; you can switch to DuckDB, Chai, ClickHouse, or PostgreSQL (`pgx`).
-- **Import:** by URL or file; you can feed an archive directly.
-- **Export:** JSON archives, a single track, legacy `.cim` files supported.
-- **Appearance:** starting coordinates and layer (`-default-*`).
-- **Admin panel:** enable with `-admin-password YOUR_PASSWORD` for track and upload management. See [ADMIN.md](ADMIN.md).
-- **Safecast Realtime:** add `-safecast-realtime` to poll live sensor data from Safecast devices worldwide.
-- **Spectral Data:** Upload and analyze gamma spectrum files (`.spe`, `.n42`, `.rctrk`) for detailed isotope analysis.
-- **DuckDB startup slow?** See the [performance notes](doc/DUCKDB_PERFORMANCE.md) for checkpoint/Parquet guidance.
-
----
-
-## 🔬 Spectral Data Support
-
-The map supports uploading and storing gamma spectrum files alongside radiation measurements for detailed isotope analysis.
+## Data Import & Export
 
 ### Supported Formats
-- **`.spe`** - Maestro spectrum format
-- **`.n42`** - ANSI N42.42 standard format
-- **`.rctrk`** - RadiaCode track format with embedded spectra
 
-### Adding Spectral Support to Existing Database
+**Import:**
+- KML/KMZ (Google Earth, Safecast bGeigie)
+- JSON (exported tracks)
+- RCTRK (RadiaCode)
+- CSV (AtomFast, custom formats)
+- GPX (GPS tracks)
+- LOG (bGeigie Nano/Zen)
 
-If you're upgrading an existing database to support spectral data, use the migration scripts:
+**Export:**
+- JSON archives (compressed .tgz)
+- Individual track JSON
+- Legacy CIM format
 
+### Bulk Import
+
+Import from remote archive:
 ```bash
-# For PostgreSQL (recommended for production)
-./migrate_add_spectra_postgresql.sh
-
-# For SQLite
-./migrate_add_spectra_sqlite.sh /path/to/database.db
-
-# For DuckDB
-./migrate_add_spectra_duckdb.sh /path/to/database.duckdb
+./safecast-new-map -import-tgz-url https://simplemap.safecast.org/api/json/weekly.tgz
 ```
 
-The migration safely adds:
-- `spectra` table for storing spectrum data
-- `has_spectrum` flag on the `markers` table
-- Indexes for fast spectrum lookups
+Import from local file:
+```bash
+./safecast-new-map -import-tgz-file /path/to/archive.tgz
+```
 
-**📖 Full documentation:** See [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) for detailed migration instructions.
+### API Endpoints
 
-### Features
-- **Automatic parsing** of spectrum files during track upload
-- **Energy calibration** support for accurate peak identification
-- **Isotope detection** from gamma spectrum peaks
-- **Spectrum visualization** on marker popups
-- **API access** to retrieve spectrum data for external analysis
+- **Track data:** `/api/track/{id}.json`
+- **Archives:** `/api/json/weekly.tgz` (also daily, monthly, yearly)
+- **Track list:** `/api/tracks`
+- **Statistics:** `/api/stats`
+- **Countries:** `/api/countries`
 
 ---
 
-## 🤝 Why your own node & a bit of history
-- We wanted anyone, without training, to see if radiation threatens where they live, grow food, or collect water.
-- The more nodes exist, the harder it is to miss contamination.
+## Spectral Data Analysis
 
-Safecast-Isotope-Map was inspired by **Dmitry Ignatenko** and his forward steps in field research, and is deeply influenced by **Rob Oudendijk** and **Safecast**. Open data from the AtomFast and Radiacode communities keeps it useful. If the map spares even one life, it was not in vain.
+Analyze gamma spectra for isotope identification:
+
+### Supported Formats
+- `.spe` - Maestro spectrum format
+- `.n42` - ANSI N42.42 standard
+- `.rctrk` - RadiaCode with embedded spectra
+
+### Database Migration
+
+Add spectrum support to existing databases:
+
+```bash
+# PostgreSQL
+psql -d your_database -f migrations/add_spectrum_support.sql
+
+# SQLite
+sqlite3 data.db < migrations/add_spectrum_support_sqlite.sql
+
+# DuckDB
+duckdb data.duckdb < migrations/add_spectrum_support_duckdb.sql
+```
+
+See [SPECTRAL_MIGRATION_GUIDE.md](SPECTRAL_MIGRATION_GUIDE.md) for details.
+
+### Features
+- Automatic spectrum extraction during upload
+- Energy calibration support
+- Peak detection and isotope identification
+- Visualization on map markers
+- API access for external analysis
+
+---
+
+## Administration
+
+Enable the admin panel with:
+```bash
+./safecast-new-map -admin-password your-secure-password
+```
+
+**Admin capabilities:**
+- View all uploads and tracks
+- Delete inappropriate content
+- Monitor system statistics
+- Manage user contributions
+
+---
+
+## URL Parameters
+
+Customize map views with URL parameters:
+
+| Parameter | Values | Description |
+|-----------|--------|-------------|
+| `coloring` | safecast, chicha | Scientific gradient vs. safety bins |
+| `unit` | uSv, uR | Display units (microsieverts or microroentgen) |
+| `legend` | 1, 0 | Show/hide legend |
+| `lang` | en, ru, ja, etc. | Interface language |
+| `layer` | OpenStreetMap, Google Satellite | Base map |
+
+**Examples:**
+- Safety view: `/?coloring=chicha&unit=uR`
+- Clean embed: `/?legend=0`
+- Russian interface: `/?lang=ru`
+
+---
+
+## Automated Data Sync
+
+### Safecast Realtime Devices
+
+Poll live sensor data:
+```bash
+./safecast-new-map -safecast-realtime
+```
+
+Sensors appear on the map in real-time with current readings.
+
+### Safecast API Fetcher
+
+Automatically import approved bGeigie measurements:
+```bash
+./safecast-new-map -safecast-fetcher \
+  -safecast-fetcher-interval 5m \
+  -safecast-fetcher-batch-size 10 \
+  -safecast-fetcher-start-date 2024-01-01
+```
+
+---
+
+## Development
+
+### Build from Source
+
+```bash
+git clone https://github.com/Safecast/safecast-new-map.git
+cd safecast-new-map
+go build -o safecast-new-map
+./safecast-new-map
+```
+
+### Run Tests
+
+```bash
+go test ./...
+```
+
+### Cross-Compile
+
+```bash
+# See scripts/crosscompile/crosscompile.go
+go run scripts/crosscompile/crosscompile.go
+```
+
+---
+
+## Performance Notes
+
+**DuckDB Performance:** For large imports, see [doc/DUCKDB_PERFORMANCE.md](doc/DUCKDB_PERFORMANCE.md) for checkpoint and Parquet optimization.
+
+**PostgreSQL Tuning:** Use connection pooling and appropriate `work_mem` settings for large batch imports.
+
+**Rate Limiting:** API endpoints are rate-limited by default. Adjust in code if needed for high-traffic deployments.
+
+---
+
+## Community & Support
+
+This project is developed and maintained by the Safecast community with contributions from:
+- Rob Oudendijk (primary developer)
+- Safecast volunteers worldwide
+- AtomFast community
+- RadiaCode community
+- Open dosimetry researchers
+
+**Contributing:** We welcome contributions! See issues for areas needing help.
+
+**History:** Inspired by Dmitry Ignatenko's field research and built on Safecast's decade of open radiation monitoring. The goal remains simple: make environmental radiation data accessible to everyone who needs it.
+
+---
+
+## License
+
+Code: [Apache 2.0](LICENSE)  
+Data: [CC0 1.0 Universal](LICENSE.CC0)
+
+The map data is provided as-is for public benefit. While we strive for accuracy, always consult professional advice for health and safety decisions.
