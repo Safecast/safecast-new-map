@@ -308,7 +308,8 @@ go run scripts/crosscompile/crosscompile.go
 ## Community & Support
 
 This project is developed and maintained by the Safecast community with contributions from:
-- Rob Oudendijk (primary developer)
+- Matvey Gladkikh (primary designer/developer)
+- Rob Oudendijk (developer)
 - Safecast volunteers worldwide
 - AtomFast community
 - RadiaCode community
