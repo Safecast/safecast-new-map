@@ -2266,7 +2266,10 @@ function buildRealtimeIcon(marker, zoomLevel, nowSec) {
  */
 function shouldDisplayBySpeed(speed) {
   /* Key line */
-  if (isTrackView) return true;        // filter disabled in track view
+  if (isTrackView) {
+    console.log('Track view - showing marker with speed:', speed);
+    return true;        // filter disabled in track view
+  }
 
   const st = loadSpeedFilterState();   // global mode
   if (speed < 0) {                     // Safecast heart markers use negative speed to signal realtime data
@@ -2772,8 +2775,27 @@ document.addEventListener('DOMContentLoaded', function () {
     // NEW: show back button immediately
     var backBox = document.querySelector('.back-to-all-container');
     if (backBox) backBox.style.display = 'block';
+
+    // Fetch bounds for single track
+    fetch('/api/tracks/bounds?trackIDs=' + encodeURIComponent(currentTrackID))
+      .then(function(response) { return response.json(); })
+      .then(function(data) {
+        if (data.status === 'success' && data.bounds) {
+          trackBounds = [
+            [data.bounds.minLat, data.bounds.minLon],
+            [data.bounds.maxLat, data.bounds.maxLon]
+          ];
+          // If map is already initialized, fit bounds now
+          if (map) {
+            map.fitBounds(trackBounds);
+          }
+        }
+      })
+      .catch(function(err) {
+        console.error('Error fetching track bounds:', err);
+      });
   }
-  
+
   // Initialize multiple tracks from path
   var tracksMatch = window.location.pathname.match(/^\/tracks\/(.+)/);
   if (tracksMatch) {
@@ -2783,7 +2805,7 @@ document.addEventListener('DOMContentLoaded', function () {
       isTrackView = true;
       var backBox = document.querySelector('.back-to-all-container');
       if (backBox) backBox.style.display = 'block';
-      
+
       // Fetch combined bounds for all tracks
       fetch('/api/tracks/bounds?trackIDs=' + encodeURIComponent(currentTrackIDs.join(',')))
         .then(function(response) { return response.json(); })
