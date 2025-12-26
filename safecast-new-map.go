@@ -5874,6 +5874,17 @@ func adminImportFromSafecastHandler(w http.ResponseWriter, r *http.Request) {
 					continue
 				}
 
+				// Fetch username from API
+				username := ""
+				if imp.UserID > 0 {
+					user, err := client.FetchUser(ctx, imp.UserID)
+					if err != nil {
+						log.Printf("[admin-import] worker %d: import #%d: warning: failed to fetch username for user %d: %v", workerID, imp.ID, imp.UserID, err)
+					} else if user != nil {
+						username = user.Name
+					}
+				}
+
 				// Import using the importer function from the fetcher
 				mu.Lock()
 				sendProgress(fmt.Sprintf("Processing %d/%d: Worker %d importing #%d...", processed+1, len(allImports), workerID, imp.ID), imported, skipped, errors, len(allImports))
@@ -5893,19 +5904,33 @@ func adminImportFromSafecastHandler(w http.ResponseWriter, r *http.Request) {
 					continue
 				}
 
+				// Get earliest marker date for this track (recording date)
+				var recordingDate int64
+				var minDateQuery string
+				if *dbType == "pgx" || *dbType == "duckdb" {
+					minDateQuery = "SELECT COALESCE(MIN(date), 0) FROM markers WHERE trackID = $1"
+				} else {
+					minDateQuery = "SELECT COALESCE(MIN(date), 0) FROM markers WHERE trackID = ?"
+				}
+				if err := db.DB.QueryRowContext(ctx, minDateQuery, finalTrackID).Scan(&recordingDate); err != nil {
+					log.Printf("[admin-import] worker %d: import #%d: warning: failed to get recording date: %v", workerID, imp.ID, err)
+					recordingDate = time.Now().Unix() // Fallback to current time
+				}
+
 				// Record the upload
 				upload := database.Upload{
-					Filename:  filename,
-					FileType:  ".log",
-					TrackID:   finalTrackID,
-					FileSize:  int64(len(content)),
-					UploadIP:  "admin-import",
-					CreatedAt: time.Now().Unix(),
-					Source:    safecastfetcher.SourceTypeSafecastAPI,
-					SourceID:  fmt.Sprintf("%d", imp.ID),
-					SourceURL: imp.SourceURL,
-					UserID:    fmt.Sprintf("%d", imp.UserID),
-					Username:  "",  // TODO: Fetch from API
+					Filename:      filename,
+					FileType:      ".log",
+					TrackID:       finalTrackID,
+					FileSize:      int64(len(content)),
+					UploadIP:      "admin-import",
+					CreatedAt:     time.Now().Unix(),
+					RecordingDate: recordingDate,
+					Source:        safecastfetcher.SourceTypeSafecastAPI,
+					SourceID:      fmt.Sprintf("%d", imp.ID),
+					SourceURL:     imp.SourceURL,
+					UserID:        fmt.Sprintf("%d", imp.UserID),
+					Username:      username,
 				}
 
 				if _, err := db.InsertUpload(ctx, upload); err != nil {
