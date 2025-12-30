@@ -5891,70 +5891,36 @@ func adminImportFromSafecastHandler(w http.ResponseWriter, r *http.Request) {
 				sendProgress(fmt.Sprintf("Processing %d/%d: Worker %d importing #%d...", processed+1, len(allImports), workerID, imp.ID), imported, skipped, errors, len(allImports))
 				mu.Unlock()
 
-				trackID := GenerateSerialNumber()
-				bytesFile := safecastfetcher.NewBytesFile(content, filename)
+				// Use the efficient batch processing importer from safecast-fetcher package
+				// This uses the same optimized code path as backfill command
+				result, err := safecastfetcher.ImportSafecastFile(
+					ctx,
+					content,
+					filename,
+					int64(imp.ID),
+					imp.SourceURL,
+					fmt.Sprintf("%d", imp.UserID),
+					username,
+					db,
+					*dbType,
+					nil, // Use default importer
+				)
 
-				_, finalTrackID, err := processBGeigieZenFile(bytesFile, trackID, db, *dbType)
 				if err != nil {
-					log.Printf("[admin-import] worker %d: import #%d: process failed: %v", workerID, imp.ID, err)
+					log.Printf("[admin-import] worker %d: import #%d: import failed: %v", workerID, imp.ID, err)
 					mu.Lock()
 					errors++
 					processed++
-					sendProgress(fmt.Sprintf("Processing %d/%d: Error processing #%d", processed, len(allImports), imp.ID), imported, skipped, errors, len(allImports))
+					sendProgress(fmt.Sprintf("Processing %d/%d: Error importing #%d", processed, len(allImports), imp.ID), imported, skipped, errors, len(allImports))
 					mu.Unlock()
 					continue
-				}
-
-				// Get earliest marker date for this track (recording date)
-				var recordingDate int64
-				var minDateQuery string
-				if *dbType == "pgx" || *dbType == "duckdb" {
-					minDateQuery = "SELECT COALESCE(MIN(date), 0) FROM markers WHERE trackID = $1"
-				} else {
-					minDateQuery = "SELECT COALESCE(MIN(date), 0) FROM markers WHERE trackID = ?"
-				}
-				if err := db.DB.QueryRowContext(ctx, minDateQuery, finalTrackID).Scan(&recordingDate); err != nil {
-					log.Printf("[admin-import] worker %d: import #%d: warning: failed to get recording date: %v", workerID, imp.ID, err)
-					recordingDate = time.Now().Unix() // Fallback to current time
-				}
-
-				// Record the upload
-				upload := database.Upload{
-					Filename:      filename,
-					FileType:      ".log",
-					TrackID:       finalTrackID,
-					FileSize:      int64(len(content)),
-					UploadIP:      "admin-import",
-					CreatedAt:     time.Now().Unix(),
-					RecordingDate: recordingDate,
-					Source:        safecastfetcher.SourceTypeSafecastAPI,
-					SourceID:      fmt.Sprintf("%d", imp.ID),
-					SourceURL:     imp.SourceURL,
-					UserID:        fmt.Sprintf("%d", imp.UserID),
-					Username:      username,
-				}
-
-				if _, err := db.InsertUpload(ctx, upload); err != nil {
-					// Skip if already exists (duplicate key error from previous partial import)
-					if !strings.Contains(err.Error(), "UNIQUE constraint") &&
-						!strings.Contains(err.Error(), "duplicate key") {
-						log.Printf("[admin-import] worker %d: import #%d: record upload failed: %v", workerID, imp.ID, err)
-						mu.Lock()
-						errors++
-						processed++
-						sendProgress(fmt.Sprintf("Processing %d/%d: Error recording #%d", processed, len(allImports), imp.ID), imported, skipped, errors, len(allImports))
-						mu.Unlock()
-						continue
-					}
-					// Duplicate upload record is OK - markers are what matter
-					log.Printf("[admin-import] worker %d: import #%d: upload record already exists, continuing", workerID, imp.ID)
 				}
 
 				mu.Lock()
 				imported++
 				processed++
-				log.Printf("[admin-import] worker %d: import #%d: success (track %s)", workerID, imp.ID, finalTrackID)
-				sendProgress(fmt.Sprintf("Processing %d/%d: Worker %d imported #%d ✓", processed, len(allImports), workerID, imp.ID), imported, skipped, errors, len(allImports))
+				log.Printf("[admin-import] worker %d: import #%d: success (track %s, %d markers)", workerID, imp.ID, result.TrackID, result.MarkerCount)
+				sendProgress(fmt.Sprintf("Processing %d/%d: Worker %d imported #%d ✓ (%d markers)", processed, len(allImports), workerID, imp.ID, result.MarkerCount), imported, skipped, errors, len(allImports))
 				mu.Unlock()
 			}
 		}(w)
@@ -8278,6 +8244,9 @@ func main() {
 
 			return finalTrackID, markerCount, nil
 		}
+
+		// Set the default importer so GUI batch imports can use the same efficient code path
+		safecastfetcher.DefaultImporter = importerFunc
 
 		// Start the fetcher
 		safecastfetcher.Start(ctxFetcher, safecastfetcher.Config{
