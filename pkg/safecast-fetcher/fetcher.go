@@ -15,24 +15,26 @@ const (
 
 // Fetcher handles periodic polling and importing from Safecast API
 type Fetcher struct {
-	client      *Client
-	db          *database.Database
-	dbType      string
-	batchSize   int
-	startDate   string
-	importer    ImporterFunc
-	logf        func(string, ...any)
+	client       *Client
+	db           *database.Database
+	dbType       string
+	batchSize    int
+	startDate    string
+	importer     ImporterFunc
+	logf         func(string, ...any)
+	backfillMode bool // When true, imports all matching records regardless of lastID
 }
 
 // Config contains configuration for the fetcher
 type Config struct {
-	DB          *database.Database
-	DBType      string
-	Interval    time.Duration
-	BatchSize   int
-	StartDate   string
-	Importer    ImporterFunc
-	Logf        func(string, ...any)
+	DB           *database.Database
+	DBType       string
+	Interval     time.Duration
+	BatchSize    int
+	StartDate    string
+	Importer     ImporterFunc
+	Logf         func(string, ...any)
+	BackfillMode bool // When true, imports all matching records regardless of database state
 }
 
 // Start launches the background polling service
@@ -41,17 +43,18 @@ func Start(ctx context.Context, cfg Config) {
 		cfg.Logf = func(string, ...any) {}
 	}
 
-	cfg.Logf("[safecast-fetcher] start: interval=%s batch=%d start_date=%s",
-		cfg.Interval, cfg.BatchSize, cfg.StartDate)
+	cfg.Logf("[safecast-fetcher] start: interval=%s batch=%d start_date=%s backfill=%v",
+		cfg.Interval, cfg.BatchSize, cfg.StartDate, cfg.BackfillMode)
 
 	fetcher := &Fetcher{
-		client:    NewClient(),
-		db:        cfg.DB,
-		dbType:    cfg.DBType,
-		batchSize: cfg.BatchSize,
-		startDate: cfg.StartDate,
-		importer:  cfg.Importer,
-		logf:      cfg.Logf,
+		client:       NewClient(),
+		db:           cfg.DB,
+		dbType:       cfg.DBType,
+		batchSize:    cfg.BatchSize,
+		startDate:    cfg.StartDate,
+		importer:     cfg.Importer,
+		logf:         cfg.Logf,
+		backfillMode: cfg.BackfillMode,
 	}
 
 	// Launch background polling goroutine
@@ -85,12 +88,19 @@ func (f *Fetcher) run(ctx context.Context, interval time.Duration) {
 // poll fetches and imports new approved files
 func (f *Fetcher) poll(ctx context.Context) error {
 	// Get the last imported Safecast ID
-	lastID, err := f.db.GetLastImportedSafecastID(ctx, SourceTypeSafecastAPI)
-	if err != nil {
-		return fmt.Errorf("get last imported ID: %w", err)
+	// In backfill mode, start from 0 to import all historical data
+	var lastID int64
+	if f.backfillMode {
+		lastID = 0
+		f.logf("[safecast-fetcher] poll: BACKFILL MODE - importing all records from startDate=%s", f.startDate)
+	} else {
+		var err error
+		lastID, err = f.db.GetLastImportedSafecastID(ctx, SourceTypeSafecastAPI)
+		if err != nil {
+			return fmt.Errorf("get last imported ID: %w", err)
+		}
+		f.logf("[safecast-fetcher] poll: checking for imports after ID %d", lastID)
 	}
-
-	f.logf("[safecast-fetcher] poll: checking for imports after ID %d", lastID)
 
 	// Fetch approved imports from API with pagination
 	allImports, err := f.fetchNewImports(ctx, lastID)
@@ -218,8 +228,8 @@ func (f *Fetcher) fetchNewImports(ctx context.Context, lastID int64) ([]Safecast
 		page++
 
 		// Safety: don't fetch more than 10 pages in one poll cycle
-		if page > 10 {
-			f.logf("[safecast-fetcher] warning: stopped at page 10, consider increasing poll interval")
+		if page > 500 {
+			f.logf("[safecast-fetcher] warning: stopped at page 500, consider increasing poll interval")
 			break
 		}
 	}

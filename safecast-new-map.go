@@ -96,6 +96,7 @@ var safecastFetcherEnabled = flag.Bool("safecast-fetcher", false, "Enable automa
 var safecastFetcherInterval = flag.Duration("safecast-fetcher-interval", 5*time.Minute, "How often to poll api.safecast.org for new approved imports")
 var safecastFetcherBatchSize = flag.Int("safecast-fetcher-batch-size", 10, "Maximum number of files to import per polling cycle (0 = unlimited)")
 var safecastFetcherStartDate = flag.String("safecast-fetcher-start-date", "", "Only import files uploaded after this date (YYYY-MM-DD format, empty = no filter)")
+var safecastFetcherBackfill = flag.Bool("safecast-fetcher-backfill", false, "Backfill mode: import all matching records from start-date, ignoring what's already in database")
 
 // debugIPAllowlist keeps a fast lookup of remote addresses that should see the
 // technical overlay. We keep it as a map so lookups stay O(1) without extra
@@ -8280,17 +8281,18 @@ func main() {
 
 		// Start the fetcher
 		safecastfetcher.Start(ctxFetcher, safecastfetcher.Config{
-			DB:        db,
-			DBType:    *dbType,
-			Interval:  *safecastFetcherInterval,
-			BatchSize: *safecastFetcherBatchSize,
-			StartDate: *safecastFetcherStartDate,
-			Importer:  importerFunc,
-			Logf:      log.Printf,
+			DB:           db,
+			DBType:       *dbType,
+			Interval:     *safecastFetcherInterval,
+			BatchSize:    *safecastFetcherBatchSize,
+			StartDate:    *safecastFetcherStartDate,
+			Importer:     importerFunc,
+			Logf:         log.Printf,
+			BackfillMode: *safecastFetcherBackfill,
 		})
 
-		log.Printf("safecast API fetcher enabled: interval=%s batch=%d start_date=%s",
-			*safecastFetcherInterval, *safecastFetcherBatchSize, *safecastFetcherStartDate)
+		log.Printf("safecast API fetcher enabled: interval=%s batch=%d start_date=%s backfill=%v",
+			*safecastFetcherInterval, *safecastFetcherBatchSize, *safecastFetcherStartDate, *safecastFetcherBackfill)
 	}
 
 	// Build a JSON archive tgz with all known exported tracks only when

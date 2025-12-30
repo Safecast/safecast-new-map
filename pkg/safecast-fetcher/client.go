@@ -51,7 +51,8 @@ type Client struct {
 // NewClient creates a new Safecast API client
 func NewClient() *Client {
 	return &Client{
-		baseURL: "https://api.safecast.org",
+		// Using alternative Safecast API URL as main API is currently unavailable
+		baseURL: "http://safecastapi-prd-010.baebmmfncu.us-west-2.elasticbeanstalk.com",
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -63,15 +64,18 @@ func NewClient() *Client {
 //   - uploadedAfter: ISO date string (YYYY-MM-DD) to get imports after this date (empty for no filter)
 //   - page: pagination page number (1-indexed)
 func (c *Client) FetchApprovedImports(ctx context.Context, uploadedAfter string, page int) ([]SafecastImport, error) {
-	// Build URL: GET /bgeigie_imports.json?status=approved&page=N
-	u, err := url.Parse(fmt.Sprintf("%s/bgeigie_imports.json", c.baseURL))
+	// Build URL: GET /bgeigie_imports?status=approved&page=N
+	// Note: Alternative API requires Accept header instead of .json extension
+	u, err := url.Parse(fmt.Sprintf("%s/bgeigie_imports", c.baseURL))
 	if err != nil {
 		return nil, fmt.Errorf("parse base URL: %w", err)
 	}
 
 	query := u.Query()
 	query.Set("status", "approved")
-	query.Set("order", "created_at desc")
+	// Use ascending order to get oldest imports first, ensuring historical data is fetched
+	// before newer data when paginating with the 10-page limit
+	query.Set("order", "created_at asc")
 	if uploadedAfter != "" {
 		query.Set("uploaded_after", uploadedAfter)
 	}
@@ -85,6 +89,9 @@ func (c *Client) FetchApprovedImports(ctx context.Context, uploadedAfter string,
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}
+
+	// Set Accept header to get JSON response (required by alternative API)
+	req.Header.Set("Accept", "application/json")
 
 	// Execute request
 	resp, err := c.httpClient.Do(req)
