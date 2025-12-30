@@ -1,0 +1,39 @@
+2025/12/30 08:04:32 PostgreSQL connection pool tuned: MaxOpenConns=64 (4×16 CPU cores), idle_timeout=2m, lifetime=5m
+2025/12/30 08:04:32 Using database driver: pgx with DSN: postgres://postgres:@127.0.0.1:5432/safecast?sslmode=prefer
+2025/12/30 08:04:32 [safecast-fetcher] start: interval=10m0s batch=0 start_date=2017-03-19 backfill=true
+2025/12/30 08:04:32 safecast API fetcher enabled: interval=10m0s batch=0 start_date=2017-03-19 backfill=true
+2025/12/30 08:04:32 json archive disabled: set -json-archive-path to enable tarball generation
+2025/12/30 08:04:32 [safecast-fetcher] poll: BACKFILL MODE - importing all records from startDate=2017-03-19
+2025/12/30 08:04:32 ⏳ background index build scheduled (engine=pgx). Listeners are up; pages may be slower until indexes are ready.
+2025/12/30 08:04:32 ⏳ background index build scheduled (engine=pgx). Listeners are up; pages may be slower until indexes are ready.
+2025/12/30 08:04:32 HTTP server ➜ http://localhost:8765
+2025/12/30 08:04:33 [safecast-fetcher] page 1: fetched 25 imports (IDs 27950-27978)
+2025/12/30 08:04:33 [safecast-fetcher] page 1: found 25 new imports (> 0)
+2025/12/30 08:04:33 [safecast-fetcher] page 2: fetched 25 imports (IDs 27979-28014)
+2025/12/30 08:04:33 [safecast-fetcher] page 2: found 25 new imports (> 0)
+2025/12/30 08:04:33 [safecast-fetcher] page 3: fetched 25 imports (IDs 28015-28059)
+2025/12/30 08:04:33 [safecast-fetcher] page 3: found 25 new imports (> 0)
+2025/12/30 08:04:33 [safecast-fetcher] page 4: fetched 25 imports (IDs 28060-28086)
+2025/12/30 08:04:33 [safecast-fetcher] page 4: found 25 new imports (> 0)
+2025/12/30 08:04:34 [safecast-fetcher] page 5: fetched 25 imports (IDs 28087-28111)
+2025/12/30 08:04:34 [safecast-fetcher] page 5: found 25 new imports (> 0)
+2025/12/30 08:04:34 [safecast-fetcher] page 6: fetched 25 imports (IDs 28112-28136)
+2025/12/30 08:04:34 [safecast-fetcher] page 6: found 25 new imports (> 0)
+2025/12/30 08:04:34 [safecast-fetcher] page 7: fetched 25 imports (IDs 28137-28169)
+2025/12/30 08:04:34 [safecast-fetcher] page 7: found 25 new imports (> 0)
+2025/12/30 08:04:34 [safecast-fetcher] page 8: fetched 25 imports (IDs 28170-28199)
+2025/12/30 08:04:34 [safecast-fetcher] page 8: found 25 new imports (> 0)
+2025/12/30 08:04:34 [safecast-fetcher] page 9: fetched 25 imports (IDs 28200-28235)
+2025/12/30 08:04:34 [safecast-fetcher] page 9: found 25 new imports (> 0)
+2025/12/30 08:04:35 [safecast-fetcher] page 10: fetched 25 imports (IDs 28236-28263)
+2025/12/30 08:04:35 [safecast-fetcher] page 10: found 25 new imports (> 0)
+2025/12/30 08:04:35 [safecast-fetcher] page 11: fetched 25 imports (IDs 28264-28297)
+2025/12/30 08:04:35 [safecast-fetcher] page 11: found 25 new imports (> 0)
+2025/12/30 08:04:35 [safecast-fetcher] page 12: fetched 25 imports (IDs 28298-28332)
+2025/12/30 08:04:35 [safecast-fetcher] page 12: found 25 new imports (> 0)
+2025/12/30 08:04:35 [safecast-fetcher] page 13: fetched 25 imports (IDs 28333-28358)
+2025/12/30 08:04:35 [safecast-fetcher] page 13: found 25 new imports (> 0)
+2025/12/30 08:04:36 [safecast-fetcher] page 14: fetched 25 imports (IDs 28359-28388)
+2025/12/30 08:04:36 [safecast-fetcher] page 14: found 25 new imports (> 0)
+2025/12/30 08:04:36 [safecast-fetcher] page 15: fetched 25 imports (IDs 28389-28419)
+2025/12/30 08:04:36 [safecast-fetcher] page 15: found 25 new imports (> 0)
