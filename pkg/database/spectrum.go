@@ -65,7 +65,7 @@ func (db *Database) insertSpectrumSQL(ctx context.Context, conn *sql.DB, spectru
 			RETURNING id
 		`
 		args = []interface{}{
-			spectrum.MarkerID, spectrum.Channels, spectrum.ChannelCount,
+			spectrum.MarkerID, string(channelsJSON), spectrum.ChannelCount,
 			spectrum.EnergyMinKeV, spectrum.EnergyMaxKeV, spectrum.LiveTimeSec,
 			spectrum.RealTimeSec, spectrum.DeviceModel, string(calibrationJSON),
 			spectrum.SourceFormat, spectrum.Filename, spectrum.RawData, createdAt,
@@ -162,9 +162,9 @@ func (db *Database) getSpectrumSQL(ctx context.Context, conn *sql.DB, markerID i
 	if db.Driver == "pgx" || db.Driver == "duckdb" {
 		placeholder := "$1"
 		query = `
-			SELECT s.id, s.marker_id, array_to_json(s.channels)::text, s.channel_count, s.energy_min_kev, s.energy_max_kev,
+			SELECT s.id, s.marker_id, s.channels, s.channel_count, s.energy_min_kev, s.energy_max_kev,
 			       s.live_time_sec, s.real_time_sec, s.device_model, s.calibration,
-			       s.source_format, s.filename, s.raw_data, EXTRACT(EPOCH FROM s.created_at)::BIGINT
+			       s.source_format, s.filename, s.raw_data, EXTRACT(EPOCH FROM s.created_at)
 			FROM spectra s
 			WHERE s.marker_id = ` + placeholder + `
 			LIMIT 1
@@ -173,7 +173,7 @@ func (db *Database) getSpectrumSQL(ctx context.Context, conn *sql.DB, markerID i
 
 	var spectrum Spectrum
 	var channelsJSON, calibrationJSON string
-	var createdAt int64
+	var createdAt interface{} // Use interface{} to handle both int64 (SQLite) and float64 (PostgreSQL)
 
 	err := conn.QueryRowContext(ctx, query, args...).Scan(
 		&spectrum.ID, &spectrum.MarkerID, &channelsJSON, &spectrum.ChannelCount,
@@ -212,9 +212,9 @@ func (db *Database) getSpectrumSQL(ctx context.Context, conn *sql.DB, markerID i
 
 		if db.Driver == "pgx" || db.Driver == "duckdb" {
 			query = `
-				SELECT s.id, s.marker_id, array_to_json(s.channels)::text, s.channel_count, s.energy_min_kev, s.energy_max_kev,
+				SELECT s.id, s.marker_id, s.channels, s.channel_count, s.energy_min_kev, s.energy_max_kev,
 				       s.live_time_sec, s.real_time_sec, s.device_model, s.calibration,
-				       s.source_format, s.filename, s.raw_data, EXTRACT(EPOCH FROM s.created_at)::BIGINT
+				       s.source_format, s.filename, s.raw_data, EXTRACT(EPOCH FROM s.created_at)
 				FROM spectra s
 				JOIN markers m ON s.marker_id = m.id
 				WHERE m.lat = $1 AND m.lon = $2 AND m.date = $3
@@ -251,7 +251,17 @@ func (db *Database) getSpectrumSQL(ctx context.Context, conn *sql.DB, markerID i
 		spectrum.Calibration = &cal
 	}
 
-	spectrum.CreatedAt = createdAt
+	// Convert createdAt based on type (int64 from SQLite, float64 from PostgreSQL EXTRACT)
+	switch v := createdAt.(type) {
+	case int64:
+		spectrum.CreatedAt = v
+	case float64:
+		spectrum.CreatedAt = int64(v)
+	case nil:
+		spectrum.CreatedAt = 0
+	default:
+		spectrum.CreatedAt = 0
+	}
 
 	return &spectrum, nil
 }

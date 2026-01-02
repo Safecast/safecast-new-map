@@ -97,6 +97,7 @@ var safecastFetcherInterval = flag.Duration("safecast-fetcher-interval", 5*time.
 var safecastFetcherBatchSize = flag.Int("safecast-fetcher-batch-size", 10, "Maximum number of files to import per polling cycle (0 = unlimited)")
 var safecastFetcherStartDate = flag.String("safecast-fetcher-start-date", "", "Only import files uploaded after this date (YYYY-MM-DD format, empty = no filter)")
 var safecastFetcherBackfill = flag.Bool("safecast-fetcher-backfill", false, "Backfill mode: import all matching records from start-date, ignoring what's already in database")
+var safecastFetcherNewestFirst = flag.Bool("safecast-fetcher-newest-first", false, "Fetch newest imports first instead of oldest first")
 
 // debugIPAllowlist keeps a fast lookup of remote addresses that should see the
 // technical overlay. We keep it as a map so lookups stay O(1) without extra
@@ -333,12 +334,15 @@ var db *database.Database
 
 // Upload progress tracking
 type UploadProgress struct {
-	Total       int
-	Current     int
-	Complete    bool
-	Error       string
-	RedirectURL string
-	mu          sync.RWMutex
+	Total            int
+	Current          int
+	Complete         bool
+	Error            string
+	RedirectURL      string
+	NeedsCoordinates bool
+	TrackID          string
+	FileName         string
+	mu               sync.RWMutex
 }
 
 var uploadProgress = struct {
@@ -4215,6 +4219,9 @@ func progressHandler(w http.ResponseWriter, r *http.Request) {
 			complete := prog.Complete
 			errMsg := prog.Error
 			redirectURL := prog.RedirectURL
+			needsCoordinates := prog.NeedsCoordinates
+			progTrackID := prog.TrackID
+			fileName := prog.FileName
 			prog.mu.RUnlock()
 
 			percent := 0
@@ -4227,6 +4234,9 @@ func progressHandler(w http.ResponseWriter, r *http.Request) {
 				if errMsg != "" {
 					fmt.Fprintf(w, "data: {\"current\":%d,\"total\":%d,\"percent\":%d,\"complete\":true,\"error\":%q}\n\n", 
 						current, total, percent, errMsg)
+				} else if complete && needsCoordinates {
+					fmt.Fprintf(w, "data: {\"current\":%d,\"total\":%d,\"percent\":100,\"complete\":true,\"redirectURL\":%q,\"needsCoordinates\":true,\"trackID\":%q,\"fileName\":%q}\n\n", 
+						current, total, redirectURL, progTrackID, fileName)
 				} else if complete {
 					fmt.Fprintf(w, "data: {\"current\":%d,\"total\":%d,\"percent\":100,\"complete\":true,\"redirectURL\":%q}\n\n", 
 						current, total, redirectURL)
@@ -4494,6 +4504,14 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 				prog.Error = lastError.Error()
 			} else {
 				prog.RedirectURL = trackURL
+				if isSpectrumUpload && needsCoordinates {
+					prog.NeedsCoordinates = true
+					prog.TrackID = trackID
+					// Get first filename for display
+					if len(fileDataList) > 0 {
+						prog.FileName = fileDataList[0].filename
+					}
+				}
 			}
 			prog.mu.Unlock()
 		}
@@ -6152,7 +6170,7 @@ func adminImportFromSafecastHandler(w http.ResponseWriter, r *http.Request) {
 	// Note: API returns ~25-50 items per page. With 2042+ pages total, we need high limit.
 	// Loop will stop early once we pass the start date, so this is just a safety ceiling.
 	for page := 1; page <= 3000; page++ { // Safety limit (enough for all historical imports)
-		imports, err := client.FetchApprovedImports(ctx, req.StartDate, page)
+		imports, err := client.FetchApprovedImports(ctx, req.StartDate, page, false) // oldest first for batch import
 		if err != nil {
 			log.Printf("[admin-import] Error fetching page %d: %v", page, err)
 			break
@@ -8695,10 +8713,11 @@ func main() {
 			Importer:     importerFunc,
 			Logf:         log.Printf,
 			BackfillMode: *safecastFetcherBackfill,
+			NewestFirst:  *safecastFetcherNewestFirst,
 		})
 
-		log.Printf("safecast API fetcher enabled: interval=%s batch=%d start_date=%s backfill=%v",
-			*safecastFetcherInterval, *safecastFetcherBatchSize, *safecastFetcherStartDate, *safecastFetcherBackfill)
+		log.Printf("safecast API fetcher enabled: interval=%s batch=%d start_date=%s backfill=%v newest_first=%v",
+			*safecastFetcherInterval, *safecastFetcherBatchSize, *safecastFetcherStartDate, *safecastFetcherBackfill, *safecastFetcherNewestFirst)
 	}
 
 	// Build a JSON archive tgz with all known exported tracks only when

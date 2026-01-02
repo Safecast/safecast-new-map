@@ -4771,14 +4771,15 @@ function drawLiveChart(canvas, radiationPoints, extrasByKey, options) {
 
     if (hasVisible) {
       minY = 0;
-      maxY = visibleMaxY;
+      // Add 10% headroom above highest reading
+      maxY = visibleMaxY * 1.1;
     } else {
       // Fallback if no points visible in this X range
       minY = 0;
-      maxY = canvas._zoomRanges.maxY;
+      maxY = canvas._zoomRanges.maxY * 1.1;
     }
   } else {
-    // Original scaling logic: Start at 0, end at max level
+    // Original scaling logic: Start at 0, end at max level with 10% headroom
     minY = 0;
     let foundMax = -Infinity;
     if (hasRadiation) {
@@ -4791,7 +4792,8 @@ function drawLiveChart(canvas, radiationPoints, extrasByKey, options) {
         if (point.value > foundMax) foundMax = point.value;
       });
     }
-    maxY = (foundMax === -Infinity) ? 1.0 : foundMax;
+    // Add 10% headroom above highest reading
+    maxY = (foundMax === -Infinity) ? 1.0 : foundMax * 1.1;
   }
 
   if (minY === maxY) {
@@ -4849,6 +4851,11 @@ function drawLiveChart(canvas, radiationPoints, extrasByKey, options) {
       minVal -= delta;
       maxVal += delta;
     }
+    
+    // Add 10% headroom above highest reading for extra series
+    const headroom = (maxVal - minVal) * 0.1;
+    maxVal += headroom;
+    
     extraRanges[key] = { min: minVal, max: maxVal };
   });
 
@@ -7089,6 +7096,15 @@ function centerMapToLocation() {
                       if (data.error) {
                         serverProcessing.innerText = '✘ Error: ' + data.error;
                         serverProcessing.style.color = 'red';
+                      } else if (data.needsCoordinates && data.trackID) {
+                        // Spectrum file needs location
+                        serverProcessing.innerText = '⚠ Needs location';
+                        serverProcessing.style.color = 'orange';
+                        pendingCoordinateUpdate = { 
+                          trackID: data.trackID, 
+                          fileName: data.fileName || file.name, 
+                          trackURL: data.redirectURL 
+                        };
                       } else {
                         serverProcessing.innerText = translate('processing_on_server') + ' 100%';
                         serverProcessing.style.color = '#4caf50';
