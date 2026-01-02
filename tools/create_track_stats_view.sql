@@ -17,7 +17,10 @@ SELECT
     MIN(m.lon) as min_lon,
     MAX(m.lon) as max_lon,
     AVG(m.doserate) as avg_doserate,
-    MAX(m.doserate) as max_doserate
+    MAX(m.doserate) as max_doserate,
+    -- Get the most common detector for this track (mode)
+    (SELECT detector FROM markers WHERE trackID = t.trackID AND detector IS NOT NULL AND detector != '' 
+     GROUP BY detector ORDER BY COUNT(*) DESC LIMIT 1) as detector
 FROM tracks t
 LEFT JOIN markers m ON t.trackID = m.trackID
 WHERE t.trackID NOT LIKE 'live:%'
@@ -28,6 +31,7 @@ CREATE INDEX idx_track_stats_trackid ON track_statistics(trackID);
 CREATE INDEX idx_track_stats_last_date ON track_statistics(last_date DESC);
 CREATE INDEX idx_track_stats_marker_count ON track_statistics(marker_count DESC);
 CREATE INDEX idx_track_stats_spectra_count ON track_statistics(spectra_count DESC) WHERE spectra_count > 0;
+CREATE INDEX idx_track_stats_detector ON track_statistics(detector) WHERE detector IS NOT NULL;
 
 -- Refresh the view immediately
 REFRESH MATERIALIZED VIEW track_statistics;
