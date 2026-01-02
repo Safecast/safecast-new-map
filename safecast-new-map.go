@@ -1763,8 +1763,25 @@ func radiusForZoom(zoom int) float64 {
 	return markerRadiusPx * float64(zoom) / 20.0
 }
 
-// precomputeMarkersForAllZoomLevels создаёт агрегаты для z=1…20
-// Параллельно: для каждого зума — своя goroutine, сбор через канал.
+// clusterMarkersForZoom applies on-the-fly clustering to raw markers (zoom=0)
+// for display at a specific zoom level. This enables storing only raw markers
+// in the database while still providing clustered views for lower zoom levels.
+// At zoom >= 15, returns markers unchanged for maximum detail.
+func clusterMarkersForZoom(markers []database.Marker, requestedZoom int) []database.Marker {
+	if len(markers) == 0 {
+		return markers
+	}
+	// At high zoom levels (15+), show raw markers for maximum detail
+	if requestedZoom >= 15 {
+		return markers
+	}
+	// For lower zoom levels, cluster markers to reduce visual clutter
+	return fastMergeMarkersByZoom(markers, requestedZoom, radiusForZoom(requestedZoom))
+}
+
+// precomputeMarkersForAllZoomLevels creates aggregates for z=1…20
+// DEPRECATED: This is kept for backward compatibility but no longer used.
+// New uploads store only zoom=0 markers and cluster on-the-fly.
 func precomputeMarkersForAllZoomLevels(src []database.Marker) []database.Marker {
 	type job struct {
 		z   int
@@ -3989,17 +4006,19 @@ func processAndStoreMarkersWithContext(
 		return bbox, trackID, err
 	}
 
-	// ── step 5: build aggregates for 20 zooms — O(N)+goroutines ─────
+	// ── step 5: store only raw markers (zoom=0) ─────────────────────
+	// OPTIMIZATION: Instead of pre-computing 20 zoom levels (10x storage),
+	// we store only raw markers and cluster on-the-fly at query time.
+	// This reduces database size by ~90% and speeds up uploads significantly.
 	if err := observeContext(ctx); err != nil {
 		return bbox, trackID, err
 	}
-	// We keep the raw zoom=0 markers in front so downstream exports
-	// retain the exact coordinates users uploaded while still storing
-	// clustered variants for map views. Mixing raw and aggregates was
-	// the root cause of shifted coordinates in legacy .cim exports
-	// because the database lacked an unsmoothed copy to serialize.
-	allZoom := append(markers, precomputeMarkersForAllZoomLevels(markers)...)
-	logT(trackID, "Store", "precomputed %d zoom-markers", len(allZoom))
+	// Ensure all markers have zoom=0 (raw/original resolution)
+	for i := range markers {
+		markers[i].Zoom = 0
+	}
+	allZoom := markers
+	logT(trackID, "Store", "storing %d raw markers (on-the-fly clustering enabled)", len(allZoom))
 
 	// Initialize progress tracking using initTrackID (not trackID which may have changed)
 	// This ensures the client monitoring the original trackID sees the progress updates
@@ -7475,6 +7494,9 @@ func getMarkersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// ----- запрос к БД  ------------------------------------------
+	// ON-THE-FLY CLUSTERING: Always query zoom=0 (raw markers), then cluster client-side
+	// This allows storing only raw markers in DB (~10x storage savings)
+	const rawZoom = 0
 	var (
 		markers []database.Marker
 		err     error
@@ -7482,7 +7504,7 @@ func getMarkersHandler(w http.ResponseWriter, r *http.Request) {
 	if trackID != "" {
 		markers, err = db.GetMarkersByTrackIDZoomBoundsSpeed(
 			ctx,
-			trackID, zoom, minLat, minLon, maxLat, maxLon,
+			trackID, rawZoom, minLat, minLon, maxLat, maxLon,
 			dateFrom, dateTo, sr, *dbType)
 	} else if trackIDsParam != "" {
 		// Handle multiple tracks
@@ -7494,7 +7516,7 @@ func getMarkersHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			trackMarkers, trackErr := db.GetMarkersByTrackIDZoomBoundsSpeed(
 				ctx,
-				tid, zoom, minLat, minLon, maxLat, maxLon,
+				tid, rawZoom, minLat, minLon, maxLat, maxLon,
 				dateFrom, dateTo, sr, *dbType)
 			if trackErr != nil {
 				log.Printf("Error fetching markers for track %s: %v", tid, trackErr)
@@ -7505,14 +7527,17 @@ func getMarkersHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		markers, err = db.GetMarkersByZoomBoundsSpeed(
 			ctx,
-			zoom, minLat, minLon, maxLat, maxLon,
+			rawZoom, minLat, minLon, maxLat, maxLon,
 			dateFrom, dateTo, sr, *dbType)
 	}
 	if err != nil {
-		log.Printf("Error fetching markers: %v (zoom=%d, bounds=[%f,%f,%f,%f], dbType=%s)", err, zoom, minLat, minLon, maxLat, maxLon, *dbType)
+		log.Printf("Error fetching markers: %v (zoom=%d, bounds=[%f,%f,%f,%f], dbType=%s)", err, rawZoom, minLat, minLon, maxLat, maxLon, *dbType)
 		http.Error(w, "Error fetching markers", http.StatusInternalServerError)
 		return
 	}
+
+	// Apply on-the-fly clustering based on requested zoom level
+	markers = clusterMarkersForZoom(markers, zoom)
 
 	if *safecastRealtimeEnabled {
 		// We only touch realtime tables when the operator explicitly enables the feature.
@@ -7743,6 +7768,10 @@ func streamMarkersHandler(w http.ResponseWriter, r *http.Request) {
 			zoom, sampleRate, sampleRate*100)
 	}
 
+	// ON-THE-FLY CLUSTERING: Always query zoom=0 (raw markers)
+	// The aggregateMarkers function will cluster based on requested zoom
+	const rawZoom = 0
+
 	// Choose streaming source: either entire map, a single track, or multiple tracks
 	ctx := r.Context()
 	var (
@@ -7750,13 +7779,13 @@ func streamMarkersHandler(w http.ResponseWriter, r *http.Request) {
 		errCh   <-chan error
 	)
 	if trackID != "" {
-		baseSrc, errCh = db.StreamMarkersByTrackIDZoomAndBounds(ctx, trackID, zoom, minLat, minLon, maxLat, maxLon, *dbType)
+		baseSrc, errCh = db.StreamMarkersByTrackIDZoomAndBounds(ctx, trackID, rawZoom, minLat, minLon, maxLat, maxLon, *dbType)
 	} else if trackIDsParam != "" {
 		// Handle multiple tracks by merging their streams
 		trackIDs := strings.Split(trackIDsParam, ",")
-		baseSrc, errCh = streamMultipleTracks(ctx, trackIDs, zoom, minLat, minLon, maxLat, maxLon, *dbType)
+		baseSrc, errCh = streamMultipleTracks(ctx, trackIDs, rawZoom, minLat, minLon, maxLat, maxLon, *dbType)
 	} else {
-		baseSrc, errCh = db.StreamMarkersByZoomAndBounds(ctx, zoom, minLat, minLon, maxLat, maxLon, *dbType)
+		baseSrc, errCh = db.StreamMarkersByZoomAndBounds(ctx, rawZoom, minLat, minLon, maxLat, maxLon, *dbType)
 	}
 
 	// Fetch current realtime points once so the map reflects network devices.
