@@ -23,6 +23,7 @@ type Fetcher struct {
 	importer     ImporterFunc
 	logf         func(string, ...any)
 	backfillMode bool // When true, imports all matching records regardless of lastID
+	newestFirst  bool // When true, fetch newest imports first
 }
 
 // Config contains configuration for the fetcher
@@ -35,6 +36,7 @@ type Config struct {
 	Importer     ImporterFunc
 	Logf         func(string, ...any)
 	BackfillMode bool // When true, imports all matching records regardless of database state
+	NewestFirst  bool // When true, fetch newest imports first instead of oldest
 }
 
 // Start launches the background polling service
@@ -43,8 +45,8 @@ func Start(ctx context.Context, cfg Config) {
 		cfg.Logf = func(string, ...any) {}
 	}
 
-	cfg.Logf("[safecast-fetcher] start: interval=%s batch=%d start_date=%s backfill=%v",
-		cfg.Interval, cfg.BatchSize, cfg.StartDate, cfg.BackfillMode)
+	cfg.Logf("[safecast-fetcher] start: interval=%s batch=%d start_date=%s backfill=%v newest_first=%v",
+		cfg.Interval, cfg.BatchSize, cfg.StartDate, cfg.BackfillMode, cfg.NewestFirst)
 
 	fetcher := &Fetcher{
 		client:       NewClient(),
@@ -55,6 +57,7 @@ func Start(ctx context.Context, cfg Config) {
 		importer:     cfg.Importer,
 		logf:         cfg.Logf,
 		backfillMode: cfg.BackfillMode,
+		newestFirst:  cfg.NewestFirst,
 	}
 
 	// Launch background polling goroutine
@@ -189,8 +192,8 @@ func (f *Fetcher) fetchNewImports(ctx context.Context, lastID int64) ([]Safecast
 	const perPageEstimate = 50 // Typical page size
 
 	for {
-		// Fetch page
-		imports, err := f.client.FetchApprovedImports(ctx, f.startDate, page)
+		// Fetch page (pass newestFirst to control sort order)
+		imports, err := f.client.FetchApprovedImports(ctx, f.startDate, page, f.newestFirst)
 		if err != nil {
 			return nil, fmt.Errorf("fetch page %d: %w", page, err)
 		}

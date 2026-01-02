@@ -63,7 +63,8 @@ func NewClient() *Client {
 // Parameters:
 //   - uploadedAfter: ISO date string (YYYY-MM-DD) to get imports after this date (empty for no filter)
 //   - page: pagination page number (1-indexed)
-func (c *Client) FetchApprovedImports(ctx context.Context, uploadedAfter string, page int) ([]SafecastImport, error) {
+//   - newestFirst: if true, return newest imports first (desc order)
+func (c *Client) FetchApprovedImports(ctx context.Context, uploadedAfter string, page int, newestFirst bool) ([]SafecastImport, error) {
 	// Build URL: GET /bgeigie_imports?status=approved&page=N
 	// Note: Alternative API requires Accept header instead of .json extension
 	u, err := url.Parse(fmt.Sprintf("%s/bgeigie_imports", c.baseURL))
@@ -73,9 +74,12 @@ func (c *Client) FetchApprovedImports(ctx context.Context, uploadedAfter string,
 
 	query := u.Query()
 	query.Set("status", "approved")
-	// Use ascending order to get oldest imports first, ensuring historical data is fetched
-	// before newer data when paginating with the 10-page limit
-	query.Set("order", "created_at asc")
+	// Order by created_at - ascending for oldest first, descending for newest first
+	if newestFirst {
+		query.Set("order", "created_at desc")
+	} else {
+		query.Set("order", "created_at asc")
+	}
 	if uploadedAfter != "" {
 		query.Set("uploaded_after", uploadedAfter)
 	}
