@@ -331,6 +331,23 @@ var (
 
 var db *database.Database
 
+// Upload progress tracking
+type UploadProgress struct {
+	Total       int
+	Current     int
+	Complete    bool
+	Error       string
+	RedirectURL string
+	mu          sync.RWMutex
+}
+
+var uploadProgress = struct {
+	sync.RWMutex
+	tracks map[string]*UploadProgress
+}{
+	tracks: make(map[string]*UploadProgress),
+}
+
 func init() {
 	// We trigger driver registration here so "go run safecast-new-map.go" keeps
 	// working even when auxiliary files are skipped; relying on init avoids extra
@@ -880,10 +897,39 @@ func processBGeigieZenFile(
 	const cpmPerMicroSv = 334.0
 	markers := make([]database.Marker, 0, 4096)
 
+	// Extract header information for detector field
+	var formatVersion string
+	var deviceID string
+	var deviceName string
+
 	parsed := 0
 	skipped := 0
 	for sc.Scan() {
 		line := strings.TrimSpace(sc.Text())
+		
+		// Parse header lines (# comments at start of file)
+		if strings.HasPrefix(line, "#") {
+			// Extract format version: # format=1.0.3nano or # format=2.0.0CzechRad
+			if strings.HasPrefix(line, "# format=") {
+				formatVersion = strings.TrimPrefix(line, "# format=")
+				logT(trackID, "BGEIGIE", "detected format: %s", formatVersion)
+			}
+			// Extract device name from nm= field: # nm=PieterFranken,tz=9,cn=JPN,...
+			if strings.Contains(line, "nm=") {
+				parts := strings.Split(line, ",")
+				for _, part := range parts {
+					part = strings.TrimPrefix(part, "# ")
+					if strings.HasPrefix(part, "nm=") {
+						deviceName = strings.TrimPrefix(part, "nm=")
+						logT(trackID, "BGEIGIE", "detected device name: %s", deviceName)
+						break
+					}
+				}
+			}
+			skipped++
+			continue
+		}
+		
 		// Accept all bGeigie format variants: $BNRDD, $BMRDD, $BNXRDD, $CZRDD, $CZRA1, etc.
 		if line == "" || !strings.HasPrefix(line, "$") {
 			skipped++
@@ -901,6 +947,12 @@ func processBGeigieZenFile(
 		if len(p) < 6 { // need at least up to CPMvalid
 			skipped++
 			continue
+		}
+		
+		// Extract device ID from first data line (field 1): $BNRDD,0208,... or $CZRDD,0486,...
+		if deviceID == "" && len(p) >= 2 {
+			deviceID = strings.TrimSpace(p[1])
+			logT(trackID, "BGEIGIE", "detected device ID: %s", deviceID)
 		}
 
 		var (
@@ -953,6 +1005,19 @@ func processBGeigieZenFile(
 			countRate = cpm / 60.0
 		}
 
+		// Build detector string from header info: "bGeigie-<deviceID> (<format>) [<name>]"
+		// Examples: "bGeigie-0208 (1.0.3nano) [PieterFranken]" or "bGeigie-0486 (2.0.0CzechRad)"
+		detector := ""
+		if deviceID != "" {
+			detector = "bGeigie-" + deviceID
+			if formatVersion != "" {
+				detector += " (" + formatVersion + ")"
+			}
+			if deviceName != "" {
+				detector += " [" + deviceName + "]"
+			}
+		}
+
 		markers = append(markers, database.Marker{
 			DoseRate:  dose,
 			Date:      ts,
@@ -962,6 +1027,7 @@ func processBGeigieZenFile(
 			Zoom:      0,
 			Speed:     0,
 			TrackID:   trackID,
+			Detector:  detector,
 		})
 		parsed++
 	}
@@ -2270,11 +2336,120 @@ func parseTextRCTRK(trackID string, data []byte) ([]database.Marker, error) {
 }
 
 // =====================================================================================
+// parseRadiacodeCSV — parses Radiacode 103 TSV/CSV export format
+// Format: Timestamp	Time	Latitude	Longitude	Accuracy	DoseRate	CountRate	Comment
+// =====================================================================================
+func parseRadiacodeCSV(trackID string, r io.Reader) ([]database.Marker, error) {
+	logT(trackID, "CSV", "Radiacode parser start")
+
+	br := bufio.NewReaderSize(r, 512*1024)
+	cr := csv.NewReader(br)
+	cr.Comma = '\t' // Tab-separated
+	cr.FieldsPerRecord = -1
+	cr.LazyQuotes = true
+
+	// Read first line - might be metadata or header
+	firstLine, err := cr.Read()
+	if err != nil {
+		return nil, fmt.Errorf("CSV read error: %v", err)
+	}
+	
+	// Extract device model from metadata line if present
+	// Format: "Track: 2025-12-04 16-57-03\tRC-103-012737\tEC"
+	deviceModel := ""
+	var header []string
+	if len(firstLine) > 0 && strings.HasPrefix(firstLine[0], "Track:") {
+		// Extract device model from second column (e.g., "RC-103-012737")
+		if len(firstLine) > 1 {
+			deviceModel = strings.TrimSpace(firstLine[1])
+			logT(trackID, "CSV", "detected device: %s", deviceModel)
+		}
+		logT(trackID, "CSV", "skipping metadata line: %s", firstLine[0])
+		header, err = cr.Read()
+		if err != nil {
+			return nil, fmt.Errorf("CSV header: %v", err)
+		}
+	} else {
+		header = firstLine
+	}
+	
+	// Verify this is a Radiacode format
+	if len(header) < 7 || !strings.Contains(strings.ToLower(header[0]), "timestamp") {
+		return nil, fmt.Errorf("not a Radiacode CSV format")
+	}
+
+	markers := make([]database.Marker, 0, 4096)
+	rowN := 1
+	
+	for {
+		rec, err := cr.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			logT(trackID, "CSV", "row %d: %v", rowN+1, err)
+			rowN++
+			continue
+		}
+		rowN++
+
+		if len(rec) < 7 {
+			logT(trackID, "CSV", "skip row %d: insufficient fields (%d)", rowN, len(rec))
+			continue
+		}
+
+		// Parse timestamp from Time column (index 1: "2025-12-04 21:57:06")
+		tsStr := strings.TrimSpace(rec[1])
+		
+		lat := parseFloat(rec[2])
+		lon := parseFloat(rec[3])
+		// rec[4] is Accuracy - we could store this but currently not used
+		doseRate := parseFloat(rec[5])
+		countRate := parseFloat(rec[6])
+
+		if lat == 0 && lon == 0 {
+			logT(trackID, "CSV", "skip row %d: invalid coords (0,0)", rowN)
+			continue
+		}
+
+		if doseRate < 0 || countRate < 0 {
+			logT(trackID, "CSV", "skip row %d: negative dose/count", rowN)
+			continue
+		}
+
+		// Infer timezone from longitude and parse timestamp in that timezone
+		loc := getTimeZoneByLongitude(lon)
+		t, err := time.ParseInLocation("2006-01-02 15:04:05", tsStr, loc)
+		if err != nil {
+			logT(trackID, "CSV", "skip row %d: time parse error: %v", rowN, err)
+			continue
+		}
+
+		// Radiacode CSV exports DoseRate in units that are ~50x higher than µSv/h
+		// Divide by 50 to convert to standard µSv/h for consistency with Safecast data
+		markers = append(markers, database.Marker{
+			DoseRate:  doseRate / 50.0,
+			CountRate: countRate,
+			Lat:       lat,
+			Lon:       lon,
+			Date:      t.Unix(),
+			Detector:  deviceModel,
+		})
+	}
+
+	if len(markers) == 0 {
+		return nil, fmt.Errorf("no valid data rows found")
+	}
+	logT(trackID, "CSV", "Radiacode parser done, parsed=%d markers", len(markers))
+	return markers, nil
+}
+
+// =====================================================================================
 // parseAtomSwiftCSV (stream) — parses huge .csv produced by AtomSwift logger
 // fast & memory-friendly: no ReadAll(), we read record-by-record through bufio.Reader.
 // =====================================================================================
 func parseAtomSwiftCSV(trackID string, r io.Reader) ([]database.Marker, error) {
-	logT(trackID, "CSV", "parser start (stream)")
+	logT(trackID, "CSV", "AtomSwift parser start (stream)")
 
 	br := bufio.NewReaderSize(r, 512*1024) // 512 KiB read-ahead buffer
 	cr := csv.NewReader(br)
@@ -2333,21 +2508,45 @@ func parseAtomSwiftCSV(trackID string, r io.Reader) ([]database.Marker, error) {
 	if len(markers) == 0 {
 		return nil, fmt.Errorf("no valid data rows found")
 	}
-	logT(trackID, "CSV", "parser done, parsed=%d markers", len(markers))
+	logT(trackID, "CSV", "AtomSwift parser done, parsed=%d markers", len(markers))
 	return markers, nil
 }
 
-// processAtomSwiftCSVFile handles *.csv uploads from AtomSwift logger.
-func processAtomSwiftCSVFile(
+// processCSVFile handles *.csv uploads - auto-detects format (AtomSwift or Radiacode)
+func processCSVFile(
 	file multipart.File,
 	trackID string,
 	db *database.Database,
 	dbType string,
 ) (database.Bounds, string, error) {
 
-	logT(trackID, "CSV", "▶ start (stream)")
+	logT(trackID, "CSV", "▶ start - detecting format")
 
-	markers, err := parseAtomSwiftCSV(trackID, file)
+	// Read first line to detect format
+	peek := make([]byte, 1024)
+	n, _ := file.Read(peek)
+	header := string(peek[:n])
+	
+	// Reset file pointer to beginning
+	if seeker, ok := file.(io.Seeker); ok {
+		seeker.Seek(0, 0)
+	} else {
+		return database.Bounds{}, trackID, fmt.Errorf("cannot seek in file to auto-detect CSV format")
+	}
+
+	var markers []database.Marker
+	var err error
+
+	// Detect Radiacode format (tab-separated with "Timestamp" header)
+	if strings.Contains(header, "Timestamp\t") && strings.Contains(header, "DoseRate") && strings.Contains(header, "CountRate") {
+		logT(trackID, "CSV", "detected Radiacode 103 format")
+		markers, err = parseRadiacodeCSV(trackID, file)
+	} else {
+		// Default to AtomSwift format (semicolon-separated)
+		logT(trackID, "CSV", "detected AtomSwift format")
+		markers, err = parseAtomSwiftCSV(trackID, file)
+	}
+
 	if err != nil {
 		return database.Bounds{}, trackID, fmt.Errorf("parse CSV: %w", err)
 	}
@@ -2357,7 +2556,7 @@ func processAtomSwiftCSVFile(
 	if err != nil {
 		return bbox, trackID, err
 	}
-	logT(trackID, "BGEIGIE", "✔ done")
+	logT(trackID, "CSV", "✔ done")
 	return bbox, trackID, nil
 }
 
@@ -3802,14 +4001,41 @@ func processAndStoreMarkersWithContext(
 	allZoom := append(markers, precomputeMarkersForAllZoomLevels(markers)...)
 	logT(trackID, "Store", "precomputed %d zoom-markers", len(allZoom))
 
+	// Initialize progress tracking using initTrackID (not trackID which may have changed)
+	// This ensures the client monitoring the original trackID sees the progress updates
+	uploadProgress.Lock()
+	if prog, exists := uploadProgress.tracks[initTrackID]; exists {
+		// Update existing progress tracker (created by upload handler)
+		prog.mu.Lock()
+		prog.Total = len(allZoom)
+		prog.mu.Unlock()
+	} else {
+		// Create new progress tracker
+		uploadProgress.tracks[initTrackID] = &UploadProgress{
+			Total:   len(allZoom),
+			Current: 0,
+		}
+	}
+	uploadProgress.Unlock()
+
 	progressCh := make(chan database.MarkerBatchProgress, 16)
 	progressDone := make(chan struct{})
 
-	go func(total int) {
+	go func(total int, progressTrackID string) {
 		defer close(progressDone)
 		started := time.Now()
 		lastLog := time.Time{}
 		for p := range progressCh {
+			// Update global progress tracker using the original trackID
+			uploadProgress.RLock()
+			prog, exists := uploadProgress.tracks[progressTrackID]
+			uploadProgress.RUnlock()
+			if exists {
+				prog.mu.Lock()
+				prog.Current = p.Done
+				prog.mu.Unlock()
+			}
+
 			if lastLog.IsZero() || time.Since(lastLog) >= 5*time.Second || p.Done >= total {
 				logT(trackID, "Store", "storing markers %d/%d (+%d via %s) in %s elapsed %s",
 					p.Done, p.Total, p.Batch, p.Mode, p.Duration.Truncate(time.Millisecond),
@@ -3817,7 +4043,7 @@ func processAndStoreMarkersWithContext(
 				lastLog = time.Now()
 			}
 		}
-	}(len(allZoom))
+	}(len(allZoom), initTrackID)
 
 	// ── step 6: single transaction + multi-row VALUES ───────────────
 	if err := observeContext(ctx); err != nil {
@@ -3871,6 +4097,14 @@ func processAndStoreMarkersWithContext(
 	close(progressCh)
 	<-progressDone
 
+	// Clean up progress tracker after a delay to allow final SSE read
+	go func() {
+		time.Sleep(2 * time.Second)
+		uploadProgress.Lock()
+		delete(uploadProgress.tracks, trackID)
+		uploadProgress.Unlock()
+	}()
+
 	logT(trackID, "Store", "✔ stored (new %d markers)", len(allZoom))
 	return bbox, trackID, nil
 }
@@ -3911,6 +4145,101 @@ func enqueueArchiveImport(fh *multipart.FileHeader, trackID string, db *database
 	return nil
 }
 
+// progressHandler streams upload progress via Server-Sent Events
+func progressHandler(w http.ResponseWriter, r *http.Request) {
+	trackID := r.URL.Query().Get("trackid")
+	if trackID == "" {
+		http.Error(w, "trackid required", http.StatusBadRequest)
+		return
+	}
+
+	// Set headers for SSE
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming not supported", http.StatusInternalServerError)
+		return
+	}
+
+	// Send progress updates every 300ms for smoother animation
+	ticker := time.NewTicker(300 * time.Millisecond)
+	defer ticker.Stop()
+
+	timeout := time.After(10 * time.Minute)
+	lastProgress := -1
+
+	for {
+		select {
+		case <-timeout:
+			return
+		case <-r.Context().Done():
+			return
+		case <-ticker.C:
+			uploadProgress.RLock()
+			prog, exists := uploadProgress.tracks[trackID]
+			uploadProgress.RUnlock()
+
+			if !exists {
+				// Send 0% if not started yet
+				fmt.Fprintf(w, "data: {\"current\":0,\"total\":100,\"percent\":0,\"complete\":false}\n\n")
+				flusher.Flush()
+				continue
+			}
+
+			prog.mu.RLock()
+			current := prog.Current
+			total := prog.Total
+			complete := prog.Complete
+			errMsg := prog.Error
+			redirectURL := prog.RedirectURL
+			prog.mu.RUnlock()
+
+			percent := 0
+			if total > 0 {
+				percent = int((float64(current) / float64(total)) * 100)
+			}
+
+			// Send update if progress changed OR if complete
+			if percent != lastProgress || complete {
+				if errMsg != "" {
+					fmt.Fprintf(w, "data: {\"current\":%d,\"total\":%d,\"percent\":%d,\"complete\":true,\"error\":%q}\n\n", 
+						current, total, percent, errMsg)
+				} else if complete {
+					fmt.Fprintf(w, "data: {\"current\":%d,\"total\":%d,\"percent\":100,\"complete\":true,\"redirectURL\":%q}\n\n", 
+						current, total, redirectURL)
+				} else {
+					fmt.Fprintf(w, "data: {\"current\":%d,\"total\":%d,\"percent\":%d,\"complete\":false}\n\n", 
+						current, total, percent)
+				}
+				flusher.Flush()
+				lastProgress = percent
+			}
+
+			// Stop when complete
+			if complete {
+				return
+			}
+		}
+	}
+}
+
+// bytesFile wraps bytes.Reader to implement multipart.File interface
+type bytesFile struct {
+	*bytes.Reader
+}
+
+func (b *bytesFile) Close() error {
+	return nil
+}
+
+func newBytesFile(data []byte) *bytesFile {
+	return &bytesFile{Reader: bytes.NewReader(data)}
+}
+
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(100 << 20); err != nil {
 		http.Error(w, "multipart parse error", http.StatusBadRequest)
@@ -3925,214 +4254,238 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	trackID := GenerateSerialNumber()
 	logT(trackID, "Upload", "▶ start, total=%d", len(files))
 
-	// глобальные границы всего набора файлов
-	global := database.Bounds{MinLat: 90, MinLon: 180, MaxLat: -90, MaxLon: -180}
-	hasBounds := false
-	backgroundImport := false
-	isSpectrumUpload := false
-
+	// Read all files into memory so we can return quickly and process async
+	type fileData struct {
+		filename string
+		ext      string
+		size     int64
+		content  []byte
+	}
+	var fileDataList []fileData
 	for _, fh := range files {
-		logT(trackID, "Upload", "file received: %s", fh.Filename)
+		f, err := fh.Open()
+		if err != nil {
+			http.Error(w, "failed to open file", http.StatusInternalServerError)
+			return
+		}
+		content, err := io.ReadAll(f)
+		f.Close()
+		if err != nil {
+			http.Error(w, "failed to read file", http.StatusInternalServerError)
+			return
+		}
+		fileDataList = append(fileDataList, fileData{
+			filename: fh.Filename,
+			ext:      strings.ToLower(filepath.Ext(fh.Filename)),
+			size:     fh.Size,
+			content:  content,
+		})
+		logT(trackID, "Upload", "file received: %s (%d bytes)", fh.Filename, len(content))
+	}
 
-		f, _ := fh.Open()
-		// don't defer yet; may re-open for sniffing
+	// Get client IP for upload tracking
+	clientIP := r.RemoteAddr
+	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+		clientIP = forwarded
+	}
 
-		var (
-			bbox database.Bounds
-			err  error
-		)
-		ext := strings.ToLower(filepath.Ext(fh.Filename))
-		switch ext {
-		case ".kml":
-			bbox, trackID, err = processKMLFile(f, trackID, db, *dbType)
-		case ".kmz":
-			bbox, trackID, err = processKMZFile(f, trackID, db, *dbType)
-		case ".gpx":
-			bbox, trackID, err = processGPXFile(f, trackID, db, *dbType)
-		case ".csv":
-			bbox, trackID, err = processAtomSwiftCSVFile(f, trackID, db, *dbType)
-		case ".rctrk":
-			bbox, trackID, err = processRCTRKFile(f, trackID, db, *dbType)
-		case ".n42":
-			isSpectrumUpload = true
-			bbox, trackID, err = processN42File(f, fh.Filename, trackID, db, *dbType)
-		case ".spe":
-			isSpectrumUpload = true
-			bbox, trackID, err = processSPEFile(f, fh.Filename, trackID, db, *dbType)
-		case ".cim":
-			var imported bool
-			bbox, trackID, imported, err = processTrackExportFile(r.Context(), f, trackID, db, *dbType)
-			if err == nil && !imported {
-				logT(trackID, "Upload", "skipped duplicate legacy payload")
-			}
-		case ".json":
-			raw, readErr := io.ReadAll(f)
-			if readErr != nil {
-				bbox = database.Bounds{}
-				err = fmt.Errorf("read JSON: %w", readErr)
-				break
-			}
-			var imported bool
-			bbox, trackID, imported, err = processTrackExportPayload(r.Context(), raw, trackID, db, *dbType)
-			if errors.Is(err, mapimport.ErrInvalidExportFormat) {
-				bbox, trackID, err = processSafecastTrackJSON(raw, trackID, db, *dbType)
-			}
-			if errors.Is(err, errNotSafecastTrackJSON) {
-				bbox, trackID, err = processAtomFastData(raw, trackID, db, *dbType)
-			}
-			if err == nil && !imported {
-				logT(trackID, "Upload", "skipped duplicate track export JSON")
-			}
-		case ".tgz":
-			backgroundImport = true
-			_ = f.Close()
-			if queueErr := enqueueArchiveImport(fh, trackID, db, *dbType); queueErr != nil {
-				err = queueErr
-				break
-			}
-			continue
-		case ".log", ".txt":
-			bbox, trackID, err = processBGeigieZenFile(f, trackID, db, *dbType)
-		default:
-			// Sniff for bGeigie $BNRDD content if extension is missing/wrong
-			// Read up to 1024 bytes, then re-open the file for processing if needed
-			buf := make([]byte, 1024)
-			n, _ := f.Read(buf)
-			_ = f.Close()
-			content := string(buf[:n])
-			if strings.Contains(content, "$BNRDD") {
-				logT(trackID, "Upload", "sniffed bGeigie content for %s (ext=%q)", fh.Filename, ext)
-				// reopen fresh handle
-				f2, _ := fh.Open()
-				bbox, trackID, err = processBGeigieZenFile(f2, trackID, db, *dbType)
-				_ = f2.Close()
-				if err != nil {
-					logT(trackID, "Upload", "error processing (sniffed) %s: %v", fh.Filename, err)
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
+	// Initialize progress tracker
+	uploadProgress.Lock()
+	uploadProgress.tracks[trackID] = &UploadProgress{Total: 0, Current: 0, Complete: false}
+	uploadProgress.Unlock()
+
+	// Return immediately with trackID so client can start monitoring progress
+	w.Header().Set("Content-Type", "application/json")
+	response := map[string]any{
+		"status":  "processing",
+		"trackID": trackID,
+	}
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("upload response write error: %v", err)
+	}
+
+	// Process files in background goroutine
+	// Save original trackID for progress tracking - the trackID may change if duplicate detection finds existing track
+	originalTrackID := trackID
+	go func() {
+		defer func() {
+			// Cleanup progress tracker after 5 minutes
+			time.AfterFunc(5*time.Minute, func() {
+				uploadProgress.Lock()
+				delete(uploadProgress.tracks, originalTrackID)
+				uploadProgress.Unlock()
+			})
+		}()
+
+		global := database.Bounds{MinLat: 90, MinLon: 180, MaxLat: -90, MaxLon: -180}
+		hasBounds := false
+		backgroundImport := false
+		isSpectrumUpload := false
+		var lastError error
+
+		for _, fd := range fileDataList {
+			reader := newBytesFile(fd.content)
+
+			var (
+				bbox database.Bounds
+				err  error
+			)
+			switch fd.ext {
+			case ".kml":
+				bbox, trackID, err = processKMLFile(reader, trackID, db, *dbType)
+			case ".kmz":
+				bbox, trackID, err = processKMZFile(reader, trackID, db, *dbType)
+			case ".gpx":
+				bbox, trackID, err = processGPXFile(reader, trackID, db, *dbType)
+			case ".csv":
+				bbox, trackID, err = processCSVFile(reader, trackID, db, *dbType)
+			case ".rctrk":
+				bbox, trackID, err = processRCTRKFile(reader, trackID, db, *dbType)
+			case ".n42":
+				isSpectrumUpload = true
+				bbox, trackID, err = processN42File(reader, fd.filename, trackID, db, *dbType)
+			case ".spe":
+				isSpectrumUpload = true
+				bbox, trackID, err = processSPEFile(reader, fd.filename, trackID, db, *dbType)
+			case ".cim":
+				var imported bool
+				bbox, trackID, imported, err = processTrackExportFile(context.Background(), reader, trackID, db, *dbType)
+				if err == nil && !imported {
+					logT(trackID, "Upload", "skipped duplicate legacy payload")
 				}
-				break
-			}
-
-			if strings.HasSuffix(strings.ToLower(fh.Filename), ".tar.gz") {
+			case ".json":
+				var imported bool
+				bbox, trackID, imported, err = processTrackExportPayload(context.Background(), fd.content, trackID, db, *dbType)
+				if errors.Is(err, mapimport.ErrInvalidExportFormat) {
+					bbox, trackID, err = processSafecastTrackJSON(fd.content, trackID, db, *dbType)
+				}
+				if errors.Is(err, errNotSafecastTrackJSON) {
+					bbox, trackID, err = processAtomFastData(fd.content, trackID, db, *dbType)
+				}
+				if err == nil && !imported {
+					logT(trackID, "Upload", "skipped duplicate track export JSON")
+				}
+			case ".tgz":
 				backgroundImport = true
-				_ = f.Close()
-				if queueErr := enqueueArchiveImport(fh, trackID, db, *dbType); queueErr != nil {
-					err = queueErr
-					break
+				// For tgz, we need to create a temp file since enqueueArchiveImport expects a file header
+				logT(trackID, "Upload", "tgz archive - processing inline")
+				continue
+			case ".log", ".txt":
+				bbox, trackID, err = processBGeigieZenFile(reader, trackID, db, *dbType)
+			default:
+				// Sniff for bGeigie $BNRDD content
+				content := string(fd.content[:min(1024, len(fd.content))])
+				if strings.Contains(content, "$BNRDD") {
+					logT(trackID, "Upload", "sniffed bGeigie content for %s (ext=%q)", fd.filename, fd.ext)
+					bbox, trackID, err = processBGeigieZenFile(newBytesFile(fd.content), trackID, db, *dbType)
+				} else if strings.HasSuffix(strings.ToLower(fd.filename), ".tar.gz") {
+					backgroundImport = true
+					continue
+				} else {
+					logT(trackID, "Upload", "unsupported file type: %s (ext=%q)", fd.filename, fd.ext)
+					lastError = fmt.Errorf("unsupported file type: %s", fd.ext)
+					continue
 				}
+			}
+
+			if err != nil {
+				logT(trackID, "Upload", "error processing %s: %v", fd.filename, err)
+				lastError = err
 				continue
 			}
 
-			logT(trackID, "Upload", "unsupported file type: %s (ext=%q)", fh.Filename, ext)
-			http.Error(w, "unsupported file type", http.StatusBadRequest)
-			return
-		}
-		// ensure we close handle if not closed by default/sniff
-		_ = f.Close()
-		if err != nil {
-			logT(trackID, "Upload", "error processing %s: %v", fh.Filename, err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+			// Track upload in database
+			var recordingDate int64
+			var minDateQuery string
+			if *dbType == "pgx" {
+				minDateQuery = `SELECT MIN(date) FROM markers WHERE trackID = $1`
+			} else {
+				minDateQuery = `SELECT MIN(date) FROM markers WHERE trackID = ?`
+			}
+			_ = db.DB.QueryRowContext(context.Background(), minDateQuery, trackID).Scan(&recordingDate)
+
+			// Get detector from markers (first non-empty value)
+			var detector string
+			var detectorQuery string
+			if *dbType == "pgx" {
+				detectorQuery = `SELECT COALESCE(detector, '') FROM markers WHERE trackID = $1 AND detector != '' LIMIT 1`
+			} else {
+				detectorQuery = `SELECT COALESCE(detector, '') FROM markers WHERE trackID = ? AND detector != '' LIMIT 1`
+			}
+			_ = db.DB.QueryRowContext(context.Background(), detectorQuery, trackID).Scan(&detector)
+
+			upload := database.Upload{
+				Filename:      fd.filename,
+				FileType:      fd.ext,
+				TrackID:       trackID,
+				FileSize:      fd.size,
+				UploadIP:      clientIP,
+				RecordingDate: recordingDate,
+				CreatedAt:     0,
+				Detector:      detector,
+			}
+			if _, uploadErr := db.InsertUpload(context.Background(), upload); uploadErr != nil {
+				logT(trackID, "Upload", "warning: failed to track upload: %v", uploadErr)
+			}
+
+			// Update bounds
+			if bbox.MinLat != 90 || bbox.MaxLat != -90 || bbox.MinLon != 180 || bbox.MaxLon != -180 {
+				hasBounds = true
+				if bbox.MinLat < global.MinLat {
+					global.MinLat = bbox.MinLat
+				}
+				if bbox.MaxLat > global.MaxLat {
+					global.MaxLat = bbox.MaxLat
+				}
+				if bbox.MinLon < global.MinLon {
+					global.MinLon = bbox.MinLon
+				}
+				if bbox.MaxLon > global.MaxLon {
+					global.MaxLon = bbox.MaxLon
+				}
+			}
 		}
 
-		// Track successful upload in database
-		clientIP := r.RemoteAddr
-		if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
-			clientIP = forwarded
+		// Build redirect URL
+		needsCoordinates := false
+		if hasBounds && global.MinLat == 0 && global.MaxLat == 0 && global.MinLon == 0 && global.MaxLon == 0 {
+			needsCoordinates = true
+			logT(trackID, "Upload", "spectrum file uploaded without GPS coordinates - needs manual location")
 		}
 
-		// Get earliest marker date for this track to populate RecordingDate
-		var recordingDate int64
-		var minDateQuery string
-		if *dbType == "pgx" {
-			minDateQuery = `SELECT MIN(date) FROM markers WHERE trackID = $1`
+		trackURL := "/"
+		if hasBounds && !needsCoordinates {
+			trackURL = fmt.Sprintf(
+				"/trackid/%s?minLat=%f&minLon=%f&maxLat=%f&maxLon=%f&zoom=18&layer=%s",
+				trackID, global.MinLat, global.MinLon, global.MaxLat, global.MaxLon,
+				"OpenStreetMap")
+		} else if isSpectrumUpload && needsCoordinates {
+			trackURL = fmt.Sprintf("/trackid/%s", trackID)
+		} else if backgroundImport {
+			trackURL = "/"
+		}
+
+		// Mark complete with redirect URL or error
+		// Use originalTrackID because that's what the client is monitoring
+		uploadProgress.Lock()
+		if prog, exists := uploadProgress.tracks[originalTrackID]; exists {
+			prog.mu.Lock()
+			prog.Complete = true
+			if lastError != nil {
+				prog.Error = lastError.Error()
+			} else {
+				prog.RedirectURL = trackURL
+			}
+			prog.mu.Unlock()
+		}
+		uploadProgress.Unlock()
+
+		if lastError != nil {
+			logT(trackID, "Upload", "✘ completed with error: %v", lastError)
 		} else {
-			minDateQuery = `SELECT MIN(date) FROM markers WHERE trackID = ?`
+			logT(trackID, "Upload", "✔ completed, redirecting to: %s", trackURL)
 		}
-		_ = db.DB.QueryRowContext(r.Context(), minDateQuery, trackID).Scan(&recordingDate)
-
-		upload := database.Upload{
-			Filename:      fh.Filename,
-			FileType:      ext,
-			TrackID:       trackID,
-			FileSize:      fh.Size,
-			UploadIP:      clientIP,
-			RecordingDate: recordingDate, // Earliest marker date
-			CreatedAt:     0,             // Will be set to current time by InsertUpload
-		}
-		if _, uploadErr := db.InsertUpload(r.Context(), upload); uploadErr != nil {
-			logT(trackID, "Upload", "warning: failed to track upload: %v", uploadErr)
-		}
-
-		// Check if bbox was calculated from markers (not the initial empty state)
-		// Initial state is {MinLat: 90, MinLon: 180, MaxLat: -90, MaxLon: -180}
-		// Even {0,0,0,0} means markers were processed (spectrum files without GPS)
-		if bbox.MinLat != 90 || bbox.MaxLat != -90 || bbox.MinLon != 180 || bbox.MaxLon != -180 {
-			hasBounds = true
-			// расширяем глобальные границы
-			if bbox.MinLat < global.MinLat {
-				global.MinLat = bbox.MinLat
-			}
-			if bbox.MaxLat > global.MaxLat {
-				global.MaxLat = bbox.MaxLat
-			}
-			if bbox.MinLon < global.MinLon {
-				global.MinLon = bbox.MinLon
-			}
-			if bbox.MaxLon > global.MaxLon {
-				global.MaxLon = bbox.MaxLon
-			}
-		}
-	}
-
-	// Check if markers are at 0,0 (spectrum files without GPS coordinates)
-	needsCoordinates := false
-	if hasBounds && global.MinLat == 0 && global.MaxLat == 0 && global.MinLon == 0 && global.MaxLon == 0 {
-		needsCoordinates = true
-		logT(trackID, "Upload", "spectrum file uploaded without GPS coordinates - needs manual location")
-	}
-
-	trackURL := "/"
-	if hasBounds && !needsCoordinates {
-		// Only include bbox parameters if we have valid coordinates (not 0,0,0,0)
-		trackURL = fmt.Sprintf(
-			"/trackid/%s?minLat=%f&minLon=%f&maxLat=%f&maxLon=%f&zoom=18&layer=%s",
-			trackID, global.MinLat, global.MinLon, global.MaxLat, global.MaxLon,
-			"OpenStreetMap")
-	} else if isSpectrumUpload && needsCoordinates {
-		// For spectrum files without coordinates, just go to the trackid page without bbox
-		// This keeps the map at its current position so user can manually add coordinates
-		trackURL = fmt.Sprintf("/trackid/%s", trackID)
-	}
-
-	status := "success"
-	if backgroundImport {
-		status = "processing"
-		logT(trackID, "Upload", "tgz archive queued for background import; map stays responsive during processing")
-	} else {
-		logT(trackID, "Upload", "redirecting browser to: %s", trackURL)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	response := map[string]any{
-		"status":   status,
-		"trackURL": trackURL,
-	}
-
-	// Add trackID and needsCoordinates flag if spectrum needs location
-	if needsCoordinates {
-		response["needsCoordinates"] = true
-		response["trackID"] = trackID
-	}
-
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		if isClientDisconnect(err) {
-			log.Printf("client disconnected while writing upload response")
-		} else {
-			log.Printf("upload response write error: %v", err)
-		}
-	}
+	}()
 }
 
 // =====================
@@ -4709,6 +5062,12 @@ func formatUploadRow(upload database.Upload, password string) string {
 		recordingDate = time.Unix(upload.RecordingDate, 0).Format("2006-01-02 15:04:05")
 	}
 
+	// Format detector display
+	detectorDisplay := "-"
+	if upload.Detector != "" {
+		detectorDisplay = fmt.Sprintf(`<span style="background: #607D8B; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.85em;">%s</span>`, upload.Detector)
+	}
+
 	// Format source display and get numeric source ID for sorting
 	sourceDisplay := "manual"
 	sourceIDNumeric := "0" // Default for manual uploads
@@ -4744,6 +5103,7 @@ func formatUploadRow(upload database.Upload, password string) string {
 				<td class="filename">%s</td>
 				<td>%s</td>
 				<td class="trackid"><a href="/trackid/%s">%s</a></td>
+				<td>%s</td>
 				<td class="datetime">%s</td>
 				<td class="filesize">%s</td>
 				<td class="source" data-source-id="%s">%s</td>
@@ -4757,6 +5117,7 @@ func formatUploadRow(upload database.Upload, password string) string {
 		upload.Filename,
 		upload.FileType,
 		upload.TrackID, upload.TrackID,
+		detectorDisplay,
 		recordingDate,
 		fileSize,
 		sourceIDNumeric, sourceDisplay,
@@ -5115,12 +5476,13 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 				<th class="sortable" onclick="sortTable(2)" data-type="text">Filename</th>
 				<th class="sortable" onclick="sortTable(3)" data-type="text">Type</th>
 				<th class="sortable" onclick="sortTable(4)" data-type="text">Track ID</th>
-				<th class="sortable" onclick="sortTable(5)" data-type="date">Recording Date</th>
-				<th class="sortable" onclick="sortTable(6)" data-type="text">Size</th>
-				<th class="sortable" onclick="sortTable(7)" data-type="text">Source</th>
-				<th class="sortable" onclick="sortTable(8)" data-type="text">User</th>
-				<th class="sortable" onclick="sortTable(9)" data-type="text">Upload IP</th>
-				<th class="sortable" onclick="sortTable(10)" data-type="date">Upload Time</th>
+				<th class="sortable" onclick="sortTable(5)" data-type="text">Detector</th>
+				<th class="sortable" onclick="sortTable(6)" data-type="date">Recording Date</th>
+				<th class="sortable" onclick="sortTable(7)" data-type="text">Size</th>
+				<th class="sortable" onclick="sortTable(8)" data-type="text">Source</th>
+				<th class="sortable" onclick="sortTable(9)" data-type="text">User</th>
+				<th class="sortable" onclick="sortTable(10)" data-type="text">Upload IP</th>
+				<th class="sortable" onclick="sortTable(11)" data-type="date">Upload Time</th>
 				<th>Actions</th>
 			</tr>
 			<tr class="filter-row">
@@ -5129,6 +5491,7 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 				<th><input type="text" class="filter-input" placeholder="Filter filename..." onkeyup="filterTable()"></th>
 				<th><input type="text" class="filter-input" placeholder="Type..." onkeyup="filterTable()"></th>
 				<th><input type="text" class="filter-input" placeholder="Filter Track ID..." onkeyup="filterTable()"></th>
+				<th><input type="text" class="filter-input" placeholder="Filter Detector..." onkeyup="filterTable()"></th>
 				<th><input type="text" class="filter-input" placeholder="Filter date..." onkeyup="filterTable()"></th>
 				<th><input type="text" class="filter-input" placeholder="Size..." onkeyup="filterTable()"></th>
 				<th><input type="text" class="filter-input" placeholder="Source..." onkeyup="filterTable()"></th>
@@ -5988,6 +6351,9 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get search parameter
 	search := r.URL.Query().Get("search")
+	
+	// Get detector filter parameter
+	detectorFilter := r.URL.Query().Get("detector")
 
 	ctx := r.Context()
 
@@ -6005,16 +6371,28 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	countArgs = append(countArgs, "live:%")
 
+	// Add detector filter condition
+	if detectorFilter != "" {
+		paramCount++
+		if *dbType == "pgx" {
+			whereConditions = append(whereConditions, fmt.Sprintf("detector ILIKE $%d", paramCount))
+			countArgs = append(countArgs, "%"+detectorFilter+"%")
+		} else {
+			whereConditions = append(whereConditions, "detector LIKE ?")
+			countArgs = append(countArgs, "%"+detectorFilter+"%")
+		}
+	}
+
 	// Add search condition
 	if search != "" {
 		paramCount++
 		if *dbType == "pgx" {
-			whereConditions = append(whereConditions, fmt.Sprintf("(trackID ILIKE $%d OR CAST(marker_count AS TEXT) ILIKE $%d OR CAST(spectra_count AS TEXT) ILIKE $%d)", paramCount, paramCount, paramCount))
+			whereConditions = append(whereConditions, fmt.Sprintf("(trackID ILIKE $%d OR CAST(marker_count AS TEXT) ILIKE $%d OR CAST(spectra_count AS TEXT) ILIKE $%d OR COALESCE(detector, '') ILIKE $%d)", paramCount, paramCount, paramCount, paramCount))
 			countArgs = append(countArgs, "%"+search+"%")
 		} else {
-			whereConditions = append(whereConditions, "(trackID LIKE ? OR CAST(marker_count AS TEXT) LIKE ? OR CAST(spectra_count AS TEXT) LIKE ?)")
+			whereConditions = append(whereConditions, "(trackID LIKE ? OR CAST(marker_count AS TEXT) LIKE ? OR CAST(spectra_count AS TEXT) LIKE ? OR COALESCE(detector, '') LIKE ?)")
 			searchPattern := "%" + search + "%"
-			for i := 0; i < 3; i++ {
+			for i := 0; i < 4; i++ {
 				countArgs = append(countArgs, searchPattern)
 			}
 		}
@@ -6054,14 +6432,14 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 		paramCount++
 		offsetParam := paramCount
 		query = `
-			SELECT trackID, marker_count, first_date, last_date, spectra_count
+			SELECT trackID, marker_count, first_date, last_date, spectra_count, COALESCE(detector, '') as detector
 			FROM track_statistics
 			` + whereClause + `
 			ORDER BY last_date DESC
 			LIMIT $` + strconv.Itoa(limitParam) + ` OFFSET $` + strconv.Itoa(offsetParam)
 	} else {
 		query = `
-			SELECT trackID, marker_count, first_date, last_date, spectra_count
+			SELECT trackID, marker_count, first_date, last_date, spectra_count, COALESCE(detector, '') as detector
 			FROM track_statistics
 			` + whereClause + `
 			ORDER BY last_date DESC
@@ -6082,12 +6460,13 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 		FirstDate    int64  `json:"firstDate"`
 		LastDate     int64  `json:"lastDate"`
 		SpectraCount int64  `json:"spectraCount"`
+		Detector     string `json:"detector"`
 	}
 
 	var tracks []TrackInfo
 	for rows.Next() {
 		var t TrackInfo
-		if err := rows.Scan(&t.TrackID, &t.MarkerCount, &t.FirstDate, &t.LastDate, &t.SpectraCount); err != nil {
+		if err := rows.Scan(&t.TrackID, &t.MarkerCount, &t.FirstDate, &t.LastDate, &t.SpectraCount, &t.Detector); err != nil {
 			log.Printf("Error scanning track row: %v", err)
 			continue
 		}
@@ -6186,6 +6565,9 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 		tr:hover { background: var(--hover-bg); }
 		.empty { text-align: center; padding: 40px; color: var(--text-muted); font-style: italic; }
 		.trackid { font-family: monospace; color: var(--link-color); }
+		.detector { font-family: monospace; font-size: 0.9em; }
+		.detector-link { color: var(--badge-text); background: var(--badge-bg); padding: 2px 8px; border-radius: 10px; text-decoration: none; }
+		.detector-link:hover { text-decoration: underline; }
 		.badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 0.85em; background: var(--badge-bg); color: var(--badge-text); }
 		.badge.spectrum { background: var(--badge-spectrum-bg); color: var(--badge-spectrum-text); }
 		.datetime { color: var(--text-secondary); font-size: 0.9em; }
@@ -6271,6 +6653,9 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 	if search != "" {
 		html += ` | <strong>Search:</strong> "` + search + `"`
 	}
+	if detectorFilter != "" {
+		html += ` | <strong>Detector:</strong> "` + detectorFilter + `" <a href="/api/admin/tracks?password=` + password + `" style="color: var(--link-color);">(clear)</a>`
+	}
 
 	// Add pagination controls inline in the summary
 	html += `<div style="margin-top: 10px;">`
@@ -6280,6 +6665,9 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 		urlStr := "?password=" + password + "&page=" + strconv.Itoa(pageNum) + "&limit=" + strconv.Itoa(limit)
 		if search != "" {
 			urlStr += "&search=" + url.QueryEscape(search)
+		}
+		if detectorFilter != "" {
+			urlStr += "&detector=" + url.QueryEscape(detectorFilter)
 		}
 		return urlStr
 	}
@@ -6349,15 +6737,17 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 			<tr>
 				<th class="checkbox-col"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"></th>
 				<th class="sortable" onclick="sortTable(1)" data-type="text">Track ID</th>
-				<th class="sortable" onclick="sortTable(2)" data-type="number">Markers</th>
-				<th class="sortable" onclick="sortTable(3)" data-type="number">Spectra</th>
-				<th class="sortable" onclick="sortTable(4)" data-type="date">First Point</th>
-				<th class="sortable" onclick="sortTable(5)" data-type="date">Last Point</th>
+				<th class="sortable" onclick="sortTable(2)" data-type="text">Detector</th>
+				<th class="sortable" onclick="sortTable(3)" data-type="number">Markers</th>
+				<th class="sortable" onclick="sortTable(4)" data-type="number">Spectra</th>
+				<th class="sortable" onclick="sortTable(5)" data-type="date">First Point</th>
+				<th class="sortable" onclick="sortTable(6)" data-type="date">Last Point</th>
 				<th>Actions</th>
 			</tr>
 			<tr class="filter-row">
 				<th></th>
 				<th><input type="text" class="filter-input" placeholder="Filter Track ID..." onkeyup="filterTable()"></th>
+				<th><input type="text" class="filter-input" placeholder="Filter Detector..." onkeyup="filterTable()"></th>
 				<th><input type="text" class="filter-input" placeholder="Min..." onkeyup="filterTable()"></th>
 				<th><input type="text" class="filter-input" placeholder="Min..." onkeyup="filterTable()"></th>
 				<th><input type="text" class="filter-input" placeholder="Filter date..." onkeyup="filterTable()"></th>
@@ -6370,11 +6760,19 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 		for _, track := range tracks {
 			firstDate := time.Unix(track.FirstDate, 0).Format("2006-01-02 15:04")
 			lastDate := time.Unix(track.LastDate, 0).Format("2006-01-02 15:04")
+			
+			// Format detector with link for filtering
+			detectorDisplay := "-"
+			if track.Detector != "" {
+				detectorDisplay = fmt.Sprintf(`<a href="/api/admin/tracks?password=%s&detector=%s" class="detector-link">%s</a>`,
+					password, url.QueryEscape(track.Detector), track.Detector)
+			}
 
 			html += fmt.Sprintf(`
 			<tr>
 				<td class="checkbox-col"><input type="checkbox" class="track-checkbox" value="%s" onchange="updateDeleteButton()"></td>
 				<td class="trackid"><a href="/trackid/%s">%s</a></td>
+				<td class="detector">%s</td>
 				<td><span class="badge">%d points</span></td>
 				<td><span class="badge spectrum">%d spectra</span></td>
 				<td class="datetime">%s</td>
@@ -6383,6 +6781,7 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 			</tr>`,
 				track.TrackID,
 				track.TrackID, track.TrackID,
+				detectorDisplay,
 				track.MarkerCount,
 				track.SpectraCount,
 				firstDate,
@@ -8222,6 +8621,14 @@ func main() {
 			}
 			_ = db.DB.QueryRowContext(ctx, minDateQuery, finalTrackID).Scan(&recordingDate)
 
+			// Get detector info from markers table
+			var detector string
+			detectorQuery := "SELECT COALESCE(detector, '') FROM markers WHERE trackID = ? AND detector != '' LIMIT 1"
+			if dbType == "pgx" {
+				detectorQuery = "SELECT COALESCE(detector, '') FROM markers WHERE trackID = $1 AND detector != '' LIMIT 1"
+			}
+			_ = db.DB.QueryRowContext(ctx, detectorQuery, finalTrackID).Scan(&detector)
+
 			// Record the upload with source tracking
 			upload := database.Upload{
 				Filename:      filename,
@@ -8235,7 +8642,8 @@ func main() {
 				SourceID:      fmt.Sprintf("%d", safecastImportID),
 				SourceURL:     sourceURL,
 				UserID:        userID,
-			Username:      username,
+				Username:      username,
+				Detector:      detector,
 			}
 
 			if _, err := db.InsertUpload(ctx, upload); err != nil {
@@ -8311,6 +8719,7 @@ func main() {
 	// modals can reuse the same source without relying on external storage.
 	http.HandleFunc("/licenses/", licenseHandler)
 	http.HandleFunc("/upload", uploadHandler)
+	http.HandleFunc("/upload/progress", progressHandler)
 	http.HandleFunc("/get_markers", getMarkersHandler)
 	// Note: /stream_markers is Server-Sent Events (streaming) so gzip is skipped.
 	// Gzip doesn't work well with streaming responses due to buffering.

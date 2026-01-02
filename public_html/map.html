@@ -567,6 +567,41 @@ body, html {
           width: 0%;
         }
 
+        /* Progress bar striped animation for server processing */
+        .progress-bar-inner.processing {
+          background-image: linear-gradient(
+            45deg,
+            rgba(255,255,255,.15) 25%,
+            transparent 25%,
+            transparent 50%,
+            rgba(255,255,255,.15) 50%,
+            rgba(255,255,255,.15) 75%,
+            transparent 75%,
+            transparent
+          );
+          background-size: 40px 40px;
+          animation: progress-stripes 1s linear infinite;
+        }
+
+        @keyframes progress-stripes {
+          0% {
+            background-position: 0 0;
+          }
+          100% {
+            background-position: 40px 0;
+          }
+        }
+
+        /* Progress bar pulse animation for server processing */
+        @keyframes progress-pulse {
+          0%, 100% {
+            opacity: 0.6;
+          }
+          50% {
+            opacity: 1;
+          }
+        }
+
         /* Server processing indicator */
         .server-processing {
           margin-left: 10px;
@@ -3742,6 +3777,14 @@ function updateMarkers(){
     // Viewport and filters unchanged in global view - skip full redraw
     return;
   }
+  
+  // In track view, only reload if filters changed or this is the first load
+  // We load ALL markers at once, so viewport changes don't require reloading
+  if ((currentTrackID || currentTrackIDs) && !filterChanged && Object.keys(circleMarkers).length > 0) {
+    // Track view: markers already loaded and filters unchanged - skip reload
+    return;
+  }
+  
   lastViewportKey = newViewportKey;
   lastFilterState = newFilterState;  // Track filter state to detect future changes
 
@@ -3765,8 +3808,9 @@ function updateMarkers(){
     // Clear tile cache when filters change so we fetch fresh data
     tileCache.clear();
     console.log('Speed filter changed - cleared all markers, batch queue, and cache');
-  } else {
-    // Otherwise, remove only markers that are now off-screen
+  } else if (!currentTrackID && !currentTrackIDs) {
+    // In global view: remove only markers that are now off-screen
+    // Skip this for track view since we load ALL track markers regardless of viewport
     const markersToRemove = [];
     
     for (const key in circleMarkers) {
@@ -6999,35 +7043,111 @@ function centerMapToLocation() {
           const xhr = new XMLHttpRequest();
           xhr.open('POST', '/upload', true);
 
-          /* file upload progress */
+          let eventSource = null;
+          let trackID = null;
+          let sseStarted = false;
+
+          /* file upload progress (uploading to server) */
           xhr.upload.onprogress = e => {
             if (e.lengthComputable) {
               const percent = (e.loaded / e.total) * 100;
               progressBarInner.style.width = percent + '%';
+              
+              // When upload completes (100%), show processing state
+              if (percent >= 100) {
+                progressBarInner.classList.add('processing');
+                serverProcessing.innerText = translate('processing_on_server') + ' ...';
+                serverProcessing.style.color = '#ff9800';
+              }
             }
           };
 
-          /* handle server response */
+          /* handle server response - now returns immediately with trackID */
           xhr.onload = () => {
             if (xhr.status === 200) {
               const response = JSON.parse(xhr.responseText);
-              if (response.status === 'success') {
-                lastTrackURL               = response.trackURL;   // remember
-                serverProcessing.innerText = translate('processing_complete');
-                serverProcessing.style.color = 'green';
+              
+              // Server returns trackID immediately, processing happens in background
+              if (response.status === 'processing' && response.trackID) {
+                trackID = response.trackID;
+                sseStarted = true;
+                serverProcessing.innerText = translate('processing_on_server') + ' 0%';
+                
+                // Start SSE connection for real-time progress
+                eventSource = new EventSource('/upload/progress?trackid=' + trackID);
+                eventSource.onmessage = (event) => {
+                  try {
+                    const data = JSON.parse(event.data);
+                    const pct = Math.round(data.percent);
+                    serverProcessing.innerText = translate('processing_on_server') + ' ' + pct + '%';
+                    
+                    // Check if processing is complete
+                    if (data.complete) {
+                      eventSource.close();
+                      progressBarInner.classList.remove('processing');
+                      
+                      if (data.error) {
+                        serverProcessing.innerText = '✘ Error: ' + data.error;
+                        serverProcessing.style.color = 'red';
+                      } else {
+                        serverProcessing.innerText = translate('processing_on_server') + ' 100%';
+                        serverProcessing.style.color = '#4caf50';
+                        
+                        if (data.redirectURL) {
+                          lastTrackURL = data.redirectURL;
+                        }
+                      }
+                      
+                      // Trigger completion handler
+                      completedUploads++;
+                      if (completedUploads === totalFiles) {
+                        setTimeout(() => {
+                          fileOverlay.style.display = 'none';
+                          if (pendingCoordinateUpdate) {
+                            showCoordinateDialog(pendingCoordinateUpdate.trackID, pendingCoordinateUpdate.fileName, pendingCoordinateUpdate.trackURL);
+                          } else if (lastTrackURL) {
+                            window.location.href = lastTrackURL;
+                          } else {
+                            updateMarkers();
+                          }
+                        }, 700);
+                      }
+                    }
+                  } catch(e) {
+                    console.error('Progress parse error:', e);
+                  }
+                };
+                eventSource.onerror = () => {
+                  if (eventSource) eventSource.close();
+                  serverProcessing.innerText = '✘ Connection lost';
+                  serverProcessing.style.color = 'red';
+                };
+              } else if (response.status === 'success') {
+                // Legacy sync response (shouldn't happen now, but keep for compatibility)
+                lastTrackURL = response.trackURL;
+                progressBarInner.classList.remove('processing');
+                serverProcessing.innerText = translate('processing_on_server') + ' 100%';
+                serverProcessing.style.color = '#4caf50';
 
-                // Check if this is a spectrum file without coordinates
                 if (response.needsCoordinates && response.trackID) {
                   serverProcessing.innerText = '⚠ Needs location';
                   serverProcessing.style.color = 'orange';
-                  // Show coordinate input dialog after all uploads complete
                   pendingCoordinateUpdate = { trackID: response.trackID, fileName: file.name, trackURL: response.trackURL };
                 }
-              } else if (response.status === 'processing') {
-                lastTrackURL               = null;
-                serverProcessing.innerText = translate('processing_complete');
-                serverProcessing.style.color = 'green';
-                startBackgroundImportRefresh();
+                
+                completedUploads++;
+                if (completedUploads === totalFiles) {
+                  setTimeout(() => {
+                    fileOverlay.style.display = 'none';
+                    if (pendingCoordinateUpdate) {
+                      showCoordinateDialog(pendingCoordinateUpdate.trackID, pendingCoordinateUpdate.fileName, pendingCoordinateUpdate.trackURL);
+                    } else if (lastTrackURL) {
+                      window.location.href = lastTrackURL;
+                    } else {
+                      updateMarkers();
+                    }
+                  }, 700);
+                }
               } else {
                 serverProcessing.innerText = translate('error_processing_files');
                 serverProcessing.style.color = 'red';
@@ -7035,23 +7155,6 @@ function centerMapToLocation() {
             } else {
               serverProcessing.innerText = translate('error_during_upload');
               serverProcessing.style.color = 'red';
-            }
-
-            /* increment counter and redirect when done */
-              completedUploads++;
-            if (completedUploads === totalFiles) {
-              setTimeout(() => {
-                fileOverlay.style.display = 'none';
-
-                // Show coordinate dialog if needed, otherwise redirect
-                if (pendingCoordinateUpdate) {
-                  showCoordinateDialog(pendingCoordinateUpdate.trackID, pendingCoordinateUpdate.fileName, pendingCoordinateUpdate.trackURL);
-                } else if (lastTrackURL) {
-                  window.location.href = lastTrackURL;
-                } else {
-                  updateMarkers();   // keep the map open for background imports
-                }
-              }, 700);
             }
           };
 
