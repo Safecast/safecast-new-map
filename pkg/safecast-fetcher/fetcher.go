@@ -93,9 +93,25 @@ func (f *Fetcher) poll(ctx context.Context) error {
 	// Get the last imported Safecast ID
 	// In backfill mode, start from 0 to import all historical data
 	var lastID int64
+	var startPage int = 1
 	if f.backfillMode {
 		lastID = 0
-		f.logf("[safecast-fetcher] poll: BACKFILL MODE - importing all records from startDate=%s", f.startDate)
+		// Count how many records we've imported to calculate starting page
+		count, err := f.db.CountImportsBySource(ctx, SourceTypeSafecastAPI)
+		if err == nil && count > 0 {
+			minID, _ := f.db.GetMinImportedSafecastID(ctx, SourceTypeSafecastAPI)
+			maxID, _ := f.db.GetLastImportedSafecastID(ctx, SourceTypeSafecastAPI)
+			// Calculate page based on how many records we've actually imported
+			// 25 records per page, start a few pages earlier to be safe
+			pagesImported := count / 25
+			startPage = pagesImported - 5 // Start 5 pages earlier to catch gaps
+			if startPage < 1 {
+				startPage = 1
+			}
+			f.logf("[safecast-fetcher] poll: BACKFILL MODE - imported=%d, min_id=%d, max_id=%d, starting at page %d", count, minID, maxID, startPage)
+		} else {
+			f.logf("[safecast-fetcher] poll: BACKFILL MODE - importing all records from startDate=%s", f.startDate)
+		}
 	} else {
 		var err error
 		lastID, err = f.db.GetLastImportedSafecastID(ctx, SourceTypeSafecastAPI)
@@ -106,7 +122,7 @@ func (f *Fetcher) poll(ctx context.Context) error {
 	}
 
 	// Fetch approved imports from API with pagination
-	allImports, err := f.fetchNewImports(ctx, lastID)
+	allImports, err := f.fetchNewImports(ctx, lastID, startPage)
 	if err != nil {
 		return fmt.Errorf("fetch imports: %w", err)
 	}
@@ -186,10 +202,10 @@ func (f *Fetcher) poll(ctx context.Context) error {
 }
 
 // fetchNewImports retrieves all new imports from the API with pagination
-func (f *Fetcher) fetchNewImports(ctx context.Context, lastID int64) ([]SafecastImport, error) {
+func (f *Fetcher) fetchNewImports(ctx context.Context, lastID int64, startPage int) ([]SafecastImport, error) {
 	var allImports []SafecastImport
-	page := 1
-	const perPageEstimate = 50 // Typical page size
+	page := startPage
+	consecutiveSkipped := 0 // Track how many consecutive pages have all-skipped records
 
 	for {
 		// Fetch page (pass newestFirst to control sort order)
@@ -214,12 +230,32 @@ func (f *Fetcher) fetchNewImports(ctx context.Context, lastID int64) ([]Safecast
 		newImports := 0
 		for _, imp := range imports {
 			if imp.ID > lastID {
+				// In backfill mode, also check if already exists in DB
+				if f.backfillMode {
+					exists, err := f.db.CheckImportExists(ctx, SourceTypeSafecastAPI, imp.ID)
+					if err == nil && exists {
+						continue // Skip already imported
+					}
+				}
 				allImports = append(allImports, imp)
 				newImports++
 			}
 		}
 
 		f.logf("[safecast-fetcher] page %d: found %d new imports (> %d)", page, newImports, lastID)
+
+		// In backfill mode, track consecutive pages with no new imports
+		if f.backfillMode {
+			if newImports == 0 {
+				consecutiveSkipped++
+				// Continue through a few skipped pages in case there are gaps
+				if consecutiveSkipped >= 3 {
+					f.logf("[safecast-fetcher] backfill: 3 consecutive pages with no new records, checking deeper...")
+				}
+			} else {
+				consecutiveSkipped = 0
+			}
+		}
 
 		// Check if we've hit our batch size limit
 		if f.batchSize > 0 && len(allImports) >= f.batchSize {
@@ -230,9 +266,14 @@ func (f *Fetcher) fetchNewImports(ctx context.Context, lastID int64) ([]Safecast
 		// Move to next page
 		page++
 
-		// Safety: don't fetch more than 10 pages in one poll cycle
-		if page > 500 {
-			f.logf("[safecast-fetcher] warning: stopped at page 500, consider increasing poll interval")
+		// Safety: don't fetch more than 3000 pages in one poll cycle (75,000 records)
+		// In backfill mode with all records imported, stop after 100 consecutive empty pages (2500 records gap)
+		if f.backfillMode && consecutiveSkipped >= 100 {
+			f.logf("[safecast-fetcher] backfill: 100 consecutive pages with no new records, assuming complete")
+			break
+		}
+		if page > 3000 {
+			f.logf("[safecast-fetcher] warning: stopped at page 3000, consider increasing poll interval")
 			break
 		}
 	}
