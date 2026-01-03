@@ -334,6 +334,65 @@ func (db *Database) GetLastImportedSafecastID(ctx context.Context, sourceType st
 	return lastID, nil
 }
 
+// GetMinImportedSafecastID returns the lowest Safecast import ID that has been processed.
+// This is used for backfill to know where to continue from.
+func (db *Database) GetMinImportedSafecastID(ctx context.Context, sourceType string) (int64, error) {
+	var query string
+	var args []interface{}
+
+	switch db.Driver {
+	case "pgx", "duckdb":
+		query = `
+			SELECT COALESCE(MIN(CAST(source_id AS INTEGER)), 0)
+			FROM uploads
+			WHERE source = $1 AND source_id IS NOT NULL AND source_id != ''
+		`
+		args = []interface{}{sourceType}
+	case "sqlite", "chai":
+		query = `
+			SELECT COALESCE(MIN(CAST(source_id AS INTEGER)), 0)
+			FROM uploads
+			WHERE source = ? AND source_id IS NOT NULL AND source_id != ''
+		`
+		args = []interface{}{sourceType}
+	default:
+		return 0, fmt.Errorf("unsupported database driver: %s", db.Driver)
+	}
+
+	var minID int64
+	err := db.DB.QueryRowContext(ctx, query, args...).Scan(&minID)
+	if err != nil {
+		return 0, fmt.Errorf("get min imported safecast ID: %w", err)
+	}
+
+	return minID, nil
+}
+
+// CountImportsBySource returns the number of uploads from a specific source.
+func (db *Database) CountImportsBySource(ctx context.Context, sourceType string) (int, error) {
+	var query string
+	var args []interface{}
+
+	switch db.Driver {
+	case "pgx", "duckdb":
+		query = `SELECT COUNT(*) FROM uploads WHERE source = $1`
+		args = []interface{}{sourceType}
+	case "sqlite", "chai":
+		query = `SELECT COUNT(*) FROM uploads WHERE source = ?`
+		args = []interface{}{sourceType}
+	default:
+		return 0, fmt.Errorf("unsupported database driver: %s", db.Driver)
+	}
+
+	var count int
+	err := db.DB.QueryRowContext(ctx, query, args...).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("count imports by source: %w", err)
+	}
+
+	return count, nil
+}
+
 // CountUploads returns the total number of uploads, optionally filtered by user_id and search term
 func (db *Database) CountUploads(ctx context.Context, userID string, search string) (int, error) {
 	var query string
