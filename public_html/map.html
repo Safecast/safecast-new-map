@@ -234,35 +234,9 @@ body, html {
           color: var(--modal-text);
         }
 
-        /* Small centered pill that surfaces the shareable short link */
+        /* Old short link display - now hidden, replaced by icon button */
         #shortLinkDisplay {
-          position: absolute;
-          top: 12px;
-          left: 50%;
-          transform: translateX(-50%);
-          background: var(--overlay-bg);
-          border: var(--legend-border);
-          border-radius: 999px;
-          padding: 4px 10px;
-          font-size: var(--font-size-xs);
-          color: var(--modal-text);
-          opacity: 0.75;
-          z-index: 1200;
-          cursor: pointer;
-          display: none;
-          user-select: none;
-          transition: opacity 0.2s ease;
-        }
-
-        #shortLinkDisplay:hover,
-        #shortLinkDisplay:focus,
-        #shortLinkDisplay.copied {
-          opacity: 1;
-          outline: none;
-        }
-
-        #shortLinkDisplay.copied {
-          background: var(--control-bg-hover);
+          display: none !important;
         }
 
         /* API quickstart cards inside the info modal stay theme aware through shared variables. */
@@ -870,6 +844,116 @@ body, html {
         .qr-btn:hover { background: var(--control-bg-hover); }
         .qr-btn svg { width: 22px; height: 22px; display: block; }
 
+        /* Search box container at top of page */
+        .search-container {
+          position: absolute;
+          top: 20px;
+          left: 50%;
+          transform: translateX(-50%);
+          z-index: 1001;
+          width: 90%;
+          max-width: 400px;
+        }
+
+        /* Search input field */
+        .search-input {
+          width: 100%;
+          padding: 10px 40px 10px 15px;
+          font-size: var(--font-size-base);
+          font-family: var(--font-family-base);
+          background-color: var(--control-bg);
+          color: var(--modal-text);
+          border: var(--legend-border);
+          border-radius: 4px;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+          backdrop-filter: blur(10px);
+          box-sizing: border-box;
+        }
+
+        .search-input:focus {
+          outline: none;
+          background-color: var(--control-bg-hover);
+          box-shadow: 0 2px 15px rgba(0, 0, 0, 0.4);
+        }
+
+        .search-input::placeholder {
+          color: var(--modal-text);
+          opacity: 0.6;
+        }
+
+        /* Search results dropdown */
+        .search-results {
+          position: absolute;
+          top: 100%;
+          left: 0;
+          right: 0;
+          margin-top: 5px;
+          background-color: var(--control-bg);
+          border: var(--legend-border);
+          border-radius: 4px;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+          backdrop-filter: blur(10px);
+          max-height: 300px;
+          overflow-y: auto;
+          display: none;
+        }
+
+        .search-results.active {
+          display: block;
+        }
+
+        .search-result-item {
+          padding: 10px 15px;
+          cursor: pointer;
+          color: var(--modal-text);
+          font-size: var(--font-size-base);
+          border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+        }
+
+        .search-result-item:last-child {
+          border-bottom: none;
+        }
+
+        .search-result-item:hover {
+          background-color: var(--control-bg-hover);
+        }
+
+        .search-result-name {
+          font-weight: bold;
+        }
+
+        .search-result-details {
+          font-size: var(--font-size-sm);
+          opacity: 0.8;
+          margin-top: 2px;
+        }
+
+        /* Search clear button */
+        .search-clear {
+          position: absolute;
+          right: 10px;
+          top: 50%;
+          transform: translateY(-50%);
+          background: none;
+          border: none;
+          color: var(--modal-text);
+          cursor: pointer;
+          font-size: 18px;
+          opacity: 0.6;
+          padding: 0;
+          width: 24px;
+          height: 24px;
+          display: none;
+        }
+
+        .search-clear:hover {
+          opacity: 1;
+        }
+
+        .search-clear.active {
+          display: block;
+        }
+
         /* Leaflet controls use theme variables so colors follow the current theme */
         .leaflet-control-layers,
         .leaflet-control-layers-toggle,
@@ -1406,6 +1490,21 @@ body, html {
         onchange="uploadFiles()">
     </div>
 
+    <!-- Search box container -->
+    <div class="search-container">
+      <div style="position: relative;">
+        <input
+          type="text"
+          id="searchInput"
+          class="search-input"
+          placeholder="Search for a city or location..."
+          autocomplete="off"
+          aria-label="Search for a city or location">
+        <button id="searchClear" class="search-clear" aria-label="Clear search">&times;</button>
+      </div>
+      <div id="searchResults" class="search-results"></div>
+    </div>
+
     <!-- Container for geolocation button -->
     <div class="locate-btn-container leaflet-control">
       <button id="locateButton" class="locate-btn" aria-label="{{translate "locate_button_tooltip"}}">
@@ -1434,6 +1533,14 @@ body, html {
           <rect x="60" y="60" width="8" height="8" fill="#000"/>
           <rect x="76" y="60" width="8" height="8" fill="#000"/>
           <rect x="28" y="44" width="8" height="8" fill="#000"/>
+        </svg>
+      </button>
+      <br>
+      <!-- Short link button under QR -->
+      <button id="shortLinkButton" class="qr-btn" aria-label="{{translate "short_link_tooltip"}}" style="display:none;">
+        <svg viewBox="0 0 24 24" role="img" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
         </svg>
       </button>
     </div>
@@ -2535,7 +2642,7 @@ function getFilterStateKey() {
   const state = loadSpeedFilterState();
   return JSON.stringify(state);
 }
-const shortLinkBox = document.getElementById('shortLinkDisplay');
+const shortLinkBox = document.getElementById('shortLinkButton');
 let shortLinkTimer = null;
 let shortLinkAbort = null;
 let lastShortLinkFull = '';
@@ -2980,10 +3087,10 @@ document.addEventListener('DOMContentLoaded', function () {
     maxWidth: 260,
   });
 
-  var shortLink = document.getElementById('shortLinkDisplay');
+  var shortLink = document.getElementById('shortLinkButton');
   if (shortLink) {
     var shortLinkHandle = attachControlTooltip(shortLink, {
-      placement: 'bottom',
+      placement: 'left',
       content: function () { return translate('short_link_tooltip'); },
       maxWidth: 260,
     });
@@ -6550,7 +6657,6 @@ function applyShortLink(details) {
     return;
   }
   shortLinkBox.style.display = 'block';
-  shortLinkBox.textContent = shortURL;
   shortLinkBox.dataset.href = shortURL;
   shortLinkBox.dataset.code = code;
   shortLinkBox.dataset.target = target;
@@ -6833,7 +6939,19 @@ function loadMapFromUrl() {
   const maxLat = parseFloat(params.get('maxLat'));
   const maxLon = parseFloat(params.get('maxLon'));
 
-  if (!isNaN(minLat) && !isNaN(minLon) && !isNaN(maxLat) && !isNaN(maxLon)) {
+  // Check for place parameter for city/location search
+  const placeParam = params.get('place');
+  if (placeParam) {
+    // Set the search input value and trigger search after map is ready
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+      searchInput.value = decodeURIComponent(placeParam);
+      // Trigger search after a brief delay to ensure map is initialized
+      setTimeout(() => {
+        performSearch(decodeURIComponent(placeParam), true);
+      }, 100);
+    }
+  } else if (!isNaN(minLat) && !isNaN(minLon) && !isNaN(maxLat) && !isNaN(maxLon)) {
     map.fitBounds([[minLat, minLon], [maxLat, maxLon]]);
     adjustMarkerRadius();
   } else if (storedView) {
@@ -6845,7 +6963,9 @@ function loadMapFromUrl() {
     map.setView([defaultCfg.lat, defaultCfg.lon], defaultCfg.zoom);
   }
 
-  autoLocateUser();
+  if (!placeParam) {
+    autoLocateUser();
+  }
 }
 
 function updateUrl() {
@@ -6920,6 +7040,196 @@ function initializeUIElements() {
   }
 
   scheduleShortLinkRefresh();
+
+  // Initialize search functionality
+  initializeSearch();
+}
+
+// Search functionality using Nominatim geocoding
+var searchTimeout = null;
+var currentSearchQuery = '';
+
+function initializeSearch() {
+  const searchInput = document.getElementById('searchInput');
+  const searchResults = document.getElementById('searchResults');
+  const searchClear = document.getElementById('searchClear');
+
+  if (!searchInput || !searchResults || !searchClear) return;
+
+  // Handle input changes with debouncing
+  searchInput.addEventListener('input', function() {
+    const query = this.value.trim();
+
+    // Show/hide clear button
+    if (query.length > 0) {
+      searchClear.classList.add('active');
+    } else {
+      searchClear.classList.remove('active');
+      searchResults.classList.remove('active');
+      searchResults.innerHTML = '';
+    }
+
+    // Debounce search
+    clearTimeout(searchTimeout);
+    if (query.length >= 2) {
+      searchTimeout = setTimeout(() => performSearch(query), 300);
+    }
+  });
+
+  // Handle clear button
+  searchClear.addEventListener('click', function() {
+    searchInput.value = '';
+    searchClear.classList.remove('active');
+    searchResults.classList.remove('active');
+    searchResults.innerHTML = '';
+    currentSearchQuery = '';
+  });
+
+  // Handle Enter key
+  searchInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const query = this.value.trim();
+      if (query.length >= 2) {
+        performSearch(query, true);
+      }
+    }
+  });
+
+  // Close results when clicking outside
+  document.addEventListener('click', function(e) {
+    if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+      searchResults.classList.remove('active');
+    }
+  });
+}
+
+async function performSearch(query, selectFirst = false) {
+  const searchResults = document.getElementById('searchResults');
+  if (!searchResults) return;
+
+  try {
+    // Use Nominatim API for geocoding
+    const url = `https://nominatim.openstreetmap.org/search?` +
+      `format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`;
+
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Safecast Map (https://map.safecast.org)'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Search failed');
+    }
+
+    const results = await response.json();
+
+    if (results.length === 0) {
+      searchResults.innerHTML = '<div class="search-result-item">No results found</div>';
+      searchResults.classList.add('active');
+      return;
+    }
+
+    // If selectFirst is true (Enter key pressed), go to first result
+    if (selectFirst && results.length > 0) {
+      selectSearchResult(results[0], query);
+      return;
+    }
+
+    // Display results
+    searchResults.innerHTML = results.map(result => {
+      const name = result.display_name.split(',')[0];
+      const details = result.display_name.split(',').slice(1).join(',').trim();
+      return `
+        <div class="search-result-item" data-lat="${result.lat}" data-lon="${result.lon}" data-name="${escapeHtml(result.display_name)}">
+          <div class="search-result-name">${escapeHtml(name)}</div>
+          <div class="search-result-details">${escapeHtml(details)}</div>
+        </div>
+      `;
+    }).join('');
+
+    // Add click handlers to results
+    searchResults.querySelectorAll('.search-result-item').forEach((item, index) => {
+      item.addEventListener('click', () => {
+        selectSearchResult(results[index], query);
+      });
+    });
+
+    searchResults.classList.add('active');
+  } catch (error) {
+    console.error('Search error:', error);
+    searchResults.innerHTML = '<div class="search-result-item">Search error. Please try again.</div>';
+    searchResults.classList.add('active');
+  }
+}
+
+function selectSearchResult(result, query) {
+  const searchInput = document.getElementById('searchInput');
+  const searchResults = document.getElementById('searchResults');
+  const searchClear = document.getElementById('searchClear');
+
+  // Store the search query
+  currentSearchQuery = query;
+
+  // Hide results
+  if (searchResults) {
+    searchResults.classList.remove('active');
+  }
+
+  // Update input
+  if (searchInput) {
+    searchInput.value = result.display_name.split(',')[0];
+  }
+
+  // Pan to location with appropriate zoom
+  const lat = parseFloat(result.lat);
+  const lon = parseFloat(result.lon);
+
+  // Debug: log what we received to help identify classification issues
+  console.log('Search result:', {
+    name: result.display_name,
+    type: result.type,
+    class: result.class,
+    addresstype: result.addresstype,
+    place_rank: result.place_rank
+  });
+
+  // Determine zoom level based on result type and class
+  // Use place_rank from Nominatim: 1-3=country, 4-11=state/region, 12-16=city, 17-18=town, 19-20=village
+  let zoom = 15; // Default for cities - closer street-level view
+
+  // Only treat as country if explicitly marked as country (place_rank 1-3)
+  if (result.type === 'country' || result.addresstype === 'country' ||
+      (result.class === 'boundary' && result.type === 'administrative' && result.place_rank <= 3)) {
+    zoom = 6;
+  }
+  // Handle states, provinces, regions (place_rank 4-11)
+  else if (result.type === 'state' || result.type === 'province' || result.type === 'region' ||
+           (result.class === 'boundary' && result.type === 'administrative' && result.place_rank >= 4 && result.place_rank <= 11)) {
+    zoom = 9;
+  }
+  // Handle cities - place_rank 12-16 or explicit city type
+  else if (result.type === 'city' ||
+           (result.class === 'boundary' && result.type === 'administrative' && result.place_rank >= 12 && result.place_rank <= 16) ||
+           (result.class === 'place' && result.addresstype === 'city')) {
+    zoom = 15;
+  }
+  // Handle towns, villages, hamlets, suburbs - zoom in close for small towns (place_rank 17+)
+  else if (result.type === 'town' || result.type === 'village' || result.type === 'hamlet' ||
+           result.type === 'suburb' || result.type === 'neighbourhood' || result.type === 'quarter' ||
+           (result.class === 'place') || (result.place_rank >= 17)) {
+    zoom = 16;
+  }
+  // Handle specific addresses and points of interest
+  else if (result.type === 'house' || result.type === 'building' || result.class === 'amenity') {
+    zoom = 17;
+  }
+
+  map.setView([lat, lon], zoom);
+  saveMapViewState();
+
+  // Update URL will be called by the map's moveend event
 }
 
 function centerMapToLocation() {
