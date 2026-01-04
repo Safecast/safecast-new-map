@@ -308,7 +308,7 @@ go run scripts/crosscompile/crosscompile.go
 ## Community & Support
 
 This project is developed and maintained by the Safecast community with contributions from:
-- Matvey Gladkikh (primary designer/developer)
+- [ Matvey Gladkikh](https://github.com/matveynator) (primary designer/developer) 
 - Rob Oudendijk (developer)
 - Safecast volunteers worldwide
 - AtomFast community
