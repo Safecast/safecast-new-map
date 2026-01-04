@@ -205,14 +205,38 @@ func (f *Fetcher) poll(ctx context.Context) error {
 func (f *Fetcher) fetchNewImports(ctx context.Context, lastID int64, startPage int) ([]SafecastImport, error) {
 	var allImports []SafecastImport
 	page := startPage
-	consecutiveSkipped := 0 // Track how many consecutive pages have all-skipped records
+	consecutiveSkipped := 0   // Track how many consecutive pages have all-skipped records
+	consecutiveErrors := 0    // Track consecutive page fetch errors
+	var failedPages []int     // Track which pages failed for logging
 
 	for {
 		// Fetch page (pass newestFirst to control sort order)
 		imports, err := f.client.FetchApprovedImports(ctx, f.startDate, page, f.newestFirst)
 		if err != nil {
-			return nil, fmt.Errorf("fetch page %d: %w", page, err)
+			// Log error and skip this page in backfill mode
+			f.logf("[safecast-fetcher] page %d: ERROR - %v (skipping page)", page, err)
+			failedPages = append(failedPages, page)
+			consecutiveErrors++
+
+			// If we hit too many consecutive errors, something might be wrong
+			if consecutiveErrors >= 10 {
+				f.logf("[safecast-fetcher] ERROR: 10 consecutive page errors, stopping backfill")
+				if len(failedPages) > 0 {
+					f.logf("[safecast-fetcher] Failed pages: %v", failedPages)
+				}
+				return nil, fmt.Errorf("too many consecutive errors at page %d", page)
+			}
+
+			// Skip this page and continue
+			page++
+			if page > 3000 {
+				break
+			}
+			continue
 		}
+
+		// Reset consecutive errors on success
+		consecutiveErrors = 0
 
 		// No more results
 		if len(imports) == 0 {
@@ -276,6 +300,12 @@ func (f *Fetcher) fetchNewImports(ctx context.Context, lastID int64, startPage i
 			f.logf("[safecast-fetcher] warning: stopped at page 3000, consider increasing poll interval")
 			break
 		}
+	}
+
+	// Log any failed pages at the end
+	if len(failedPages) > 0 {
+		f.logf("[safecast-fetcher] WARNING: %d pages failed during fetch: %v", len(failedPages), failedPages)
+		f.logf("[safecast-fetcher] You may want to retry these pages later or investigate the API issues")
 	}
 
 	return allImports, nil

@@ -4256,6 +4256,13 @@ function setupMarkerStream(es, tracks, minTs, maxTs, savedRange, tileIndex, cach
     console.warn('WARNING: loadingEl is undefined in setupMarkerStream! This will cause errors.');
   }
 
+  // PERFORMANCE: Track timing for bottleneck analysis
+  const perfStart = performance.now();
+  let markerCount = 0;
+  let parseTime = 0;
+  let createTime = 0;
+  let firstMarkerTime = null;
+
   // Track bounds while loading markers
   let markerBounds = { minLat: 90, minLon: 180, maxLat: -90, maxLon: -180, hasData: false };
 
@@ -4264,7 +4271,21 @@ function setupMarkerStream(es, tracks, minTs, maxTs, savedRange, tileIndex, cach
 
   // BUG FIX: Shared cleanup function for stream completion
   const handleStreamComplete = () => {
+    const batchStart = performance.now();
     flushMarkerBatch(true);  // Flush any remaining markers
+    const batchTime = performance.now() - batchStart;
+
+    // PERFORMANCE: Report timing breakdown
+    const totalTime = performance.now() - perfStart;
+    const networkTime = firstMarkerTime ? firstMarkerTime - perfStart : 0;
+    const streamTime = firstMarkerTime ? performance.now() - firstMarkerTime : totalTime;
+
+    console.log(`[Performance] Redraw complete: ${markerCount} markers in ${totalTime.toFixed(0)}ms`);
+    console.log(`  └─ Network: ${networkTime.toFixed(0)}ms (time to first marker)`);
+    console.log(`  └─ Streaming: ${streamTime.toFixed(0)}ms`);
+    console.log(`  └─ JSON parse: ${parseTime.toFixed(0)}ms (${(parseTime/markerCount).toFixed(2)}ms avg)`);
+    console.log(`  └─ Marker create: ${createTime.toFixed(0)}ms (${(createTime/markerCount).toFixed(2)}ms avg)`);
+    console.log(`  └─ Final batch flush: ${batchTime.toFixed(0)}ms`);
 
     // Store tile data in cache
     if (cacheKey && tileMarkers) {
@@ -4323,7 +4344,15 @@ function setupMarkerStream(es, tracks, minTs, maxTs, savedRange, tileIndex, cach
       return;
     }
 
+    // PERFORMANCE: Track time to first marker (network latency)
+    if (!firstMarkerTime) {
+      firstMarkerTime = performance.now();
+    }
+
+    // PERFORMANCE: Measure JSON parsing
+    const parseStart = performance.now();
     let m; try { m = JSON.parse(e.data); } catch { return; }
+    parseTime += performance.now() - parseStart;
 
     // NOTE: Server-side density-based sampling is now enabled for zoom < 8
     // No client-side sampling needed - server already reduces data at low zoom
@@ -4344,10 +4373,14 @@ function setupMarkerStream(es, tracks, minTs, maxTs, savedRange, tileIndex, cach
     if (savedRange && (m.date < savedRange[0] || m.date > savedRange[1])) return;
     if (!shouldDisplayBySpeed(m.speed)) return;
 
-    // OPTIMIZED: Use unified marker creation function (eliminates duplicate code)
+    // PERFORMANCE: Measure marker creation
+    const createStart = performance.now();
     const marker = createMarkerFromData(m, zoom);
+    createTime += performance.now() - createStart;
+
     if (!marker) return; // Marker filtered out (e.g., old realtime device)
 
+    markerCount++;
     queueMarkerForBatch(marker, m.id);
     circleMarkers[m.id || m.trackID] = marker;
 
