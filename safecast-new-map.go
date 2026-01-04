@@ -999,10 +999,8 @@ func processBGeigieZenFile(
 			dose = cpm / cpmPerMicroSv
 		} else if cps > 0 {
 			dose = (cps * 60.0) / cpmPerMicroSv
-		} else {
-			skipped++
-			continue
 		}
+		// Allow zero-dose records: GPS tracks are valuable even without radiation data
 
 		countRate := cps
 		if countRate == 0 && cpm > 0 {
