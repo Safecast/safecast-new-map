@@ -1,0 +1,21 @@
+name: Test Workflow
+
+on:
+  push:
+    branches:
+      - main  # Adjust to your branch
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  test-job:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Hello World
+        run: echo "Hello, GitHub Actions! This is a test workflow."
+
+      - name: List files
+        run: ls -la
