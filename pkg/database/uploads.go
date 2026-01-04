@@ -272,7 +272,7 @@ func (db *Database) DeleteTrack(ctx context.Context, trackID string) error {
 	return nil
 }
 
-// CheckImportExists returns true if a Safecast import ID has already been imported.
+// CheckImportExists returns true if a Safecast import ID has already been imported AND has data points.
 func (db *Database) CheckImportExists(ctx context.Context, sourceType string, importID int64) (bool, error) {
 	var query string
 	var args []interface{}
@@ -281,10 +281,16 @@ func (db *Database) CheckImportExists(ctx context.Context, sourceType string, im
 
 	switch db.Driver {
 	case "pgx", "duckdb":
-		query = `SELECT COUNT(*) FROM uploads WHERE source = $1 AND source_id = $2`
+		// Check if upload exists AND has markers (actual data points)
+		query = `SELECT COUNT(*) FROM uploads u
+		         WHERE u.source = $1 AND u.source_id = $2
+		         AND EXISTS (SELECT 1 FROM markers m WHERE m.trackid = u.track_id LIMIT 1)`
 		args = []interface{}{sourceType, sourceIDStr}
 	case "sqlite", "chai":
-		query = `SELECT COUNT(*) FROM uploads WHERE source = ? AND source_id = ?`
+		// Check if upload exists AND has markers (actual data points)
+		query = `SELECT COUNT(*) FROM uploads u
+		         WHERE u.source = ? AND u.source_id = ?
+		         AND EXISTS (SELECT 1 FROM markers m WHERE m.trackid = u.track_id LIMIT 1)`
 		args = []interface{}{sourceType, sourceIDStr}
 	default:
 		return false, fmt.Errorf("unsupported database driver: %s", db.Driver)

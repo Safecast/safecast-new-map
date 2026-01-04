@@ -4238,7 +4238,8 @@ function renderCachedMarker(m, tracks, minTs, maxTs, savedRange, zoom) {
   const isLive = m.speed < 0;
   if (!isLive && m.trackID) tracks.add(m.trackID);
 
-  if (savedRange && (m.date < savedRange[0] || m.date > savedRange[1])) return;
+  // In single-track view, show all markers regardless of date filter
+  if (!isTrackView && savedRange && (m.date < savedRange[0] || m.date > savedRange[1])) return;
   if (!shouldDisplayBySpeed(m.speed)) return;
 
   // OPTIMIZED: Use unified marker creation function
@@ -4370,7 +4371,8 @@ function setupMarkerStream(es, tracks, minTs, maxTs, savedRange, tileIndex, cach
       markerBounds.maxLon = Math.max(markerBounds.maxLon, m.lon);
       markerBounds.hasData = true;
     }
-    if (savedRange && (m.date < savedRange[0] || m.date > savedRange[1])) return;
+    // In single-track view, show all markers regardless of date filter
+    if (!isTrackView && savedRange && (m.date < savedRange[0] || m.date > savedRange[1])) return;
     if (!shouldDisplayBySpeed(m.speed)) return;
 
     // PERFORMANCE: Measure marker creation
