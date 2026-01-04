@@ -3,7 +3,7 @@ name: Test Workflow
 on:
   push:
     branches:
-      - main  # Adjust to your branch
+      - feature/canvas-rendering  # Changed to your current branch
   workflow_dispatch:  # Manual trigger
 
 jobs:
