@@ -304,24 +304,32 @@ func (f *Fetcher) fetchNewImports(ctx context.Context, lastID int64, startPage i
 		// Filter out already-processed imports
 		newImports := 0
 		for _, imp := range imports {
-			if imp.ID > lastID {
-				// In backfill mode, also check if already exists in DB
-				if f.backfillMode {
-					exists, err := f.db.CheckImportExists(ctx, SourceTypeSafecastAPI, imp.ID)
-					if err == nil && exists {
-						continue // Skip already imported
-					}
-				}
-				allImports = append(allImports, imp)
-				newImports++
-				// Track the latest import date for pagination workaround
-				if !imp.CreatedAt.IsZero() {
-					lastImportDate = imp.CreatedAt.Format("2006-01-02") // YYYY-MM-DD
-				}
-			}
+		// In normal mode, check all imports on first 5 pages (catches out-of-order approvals)
+		// In backfill mode, only process imports with ID > lastID
+		shouldProcess := false
+		if f.backfillMode {
+			shouldProcess = imp.ID > lastID
+		} else {
+			// Normal mode: check all imports on first 5 pages
+			shouldProcess = true
 		}
 
-		f.logf("[safecast-fetcher] page %d: found %d new imports (> %d)", page, newImports, lastID)
+		if shouldProcess {
+			// Check if already exists in DB
+			exists, err := f.db.CheckImportExists(ctx, SourceTypeSafecastAPI, imp.ID)
+			if err == nil && exists {
+				continue // Skip already imported
+			}
+			allImports = append(allImports, imp)
+			newImports++
+			// Track the latest import date for pagination workaround
+			if !imp.CreatedAt.IsZero() {
+				lastImportDate = imp.CreatedAt.Format("2006-01-02") // YYYY-MM-DD
+			}
+		}
+		}
+
+		f.logf("[safecast-fetcher] page %d: found %d new imports", page, newImports)
 
 		// In backfill mode, track consecutive pages with no new imports
 		if f.backfillMode {
