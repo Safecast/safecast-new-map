@@ -6974,7 +6974,13 @@ function loadMapFromUrl() {
   const maxLat = parseFloat(params.get('maxLat'));
   const maxLon = parseFloat(params.get('maxLon'));
 
-  // Check for place parameter for city/location search
+  // Read lat/lon/zoom params (simpler format)
+  const lat = parseFloat(params.get('lat'));
+  const lon = parseFloat(params.get('lon'));
+  const zoomParam = params.get('zoom');
+  const urlZoom = zoomParam !== null ? parseInt(zoomParam) : null;
+
+  // Check for place parameter for city/location search (highest priority)
   const placeParam = params.get('place');
   if (placeParam) {
     // Set the search input value and trigger search after map is ready
@@ -6986,15 +6992,26 @@ function loadMapFromUrl() {
         performSearch(decodeURIComponent(placeParam), true);
       }, 100);
     }
-  } else if (!isNaN(minLat) && !isNaN(minLon) && !isNaN(maxLat) && !isNaN(maxLon)) {
+  }
+  // Check for lat/lon/zoom format (simpler alternative to bounds)
+  else if (!isNaN(lat) && !isNaN(lon)) {
+    const targetZoom = urlZoom !== null && !isNaN(urlZoom) ? urlZoom : 13;
+    map.setView([lat, lon], targetZoom);
+    adjustMarkerRadius();
+  }
+  // Check for bounds format (backward compatibility)
+  else if (!isNaN(minLat) && !isNaN(minLon) && !isNaN(maxLat) && !isNaN(maxLon)) {
     map.fitBounds([[minLat, minLon], [maxLat, maxLon]]);
     adjustMarkerRadius();
-  } else if (storedView) {
+  }
+  else if (storedView) {
     map.setView([storedView.lat, storedView.lon], storedView.zoom);
     adjustMarkerRadius();
-  } else if (isTrackView && trackBounds) {
+  }
+  else if (isTrackView && trackBounds) {
     map.fitBounds(trackBounds);
-  } else {
+  }
+  else {
     map.setView([defaultCfg.lat, defaultCfg.lon], defaultCfg.zoom);
   }
 
@@ -7016,6 +7033,11 @@ function updateUrl() {
   var isLegendVisible = legendBox && legendBox.style.display !== 'none' ? '1' : '0';
 
   var newUrl = `${window.location.pathname}?minLat=${minLat}&minLon=${minLon}&maxLat=${maxLat}&maxLon=${maxLon}&zoom=${zoom}&layer=${encodeURIComponent(layer)}&unit=${currentUnit}&legend=${isLegendVisible}&coloring=${currentColoring}&lang=${currentLang}`;
+
+  // Add place parameter if a search was performed
+  if (currentSearchQuery && currentSearchQuery.trim()) {
+    newUrl += `&place=${encodeURIComponent(currentSearchQuery)}`;
+  }
 
   window.history.replaceState({}, '', newUrl);
   saveMapViewState();
