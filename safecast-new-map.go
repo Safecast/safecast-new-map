@@ -4833,6 +4833,50 @@ func mapHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// homeHandler serves the home page with location search interface.
+// The home page shows an empty map with a centered modal prompting for location entry.
+func homeHandler(w http.ResponseWriter, r *http.Request) {
+	lang := getPreferredLanguage(r)
+
+	// Prepare template
+	tmpl := template.Must(template.New("home.html").Funcs(template.FuncMap{
+		"translate": func(key string) string {
+			if val, ok := translations[lang][key]; ok {
+				return val
+			}
+			return translations["en"][key]
+		},
+	}).ParseFS(content, "public_html/home.html"))
+
+	// Template data
+	data := struct {
+		Version      string
+		Translations map[string]map[string]string
+		Lang         string
+	}{
+		Version:      CompileVersion,
+		Translations: translations,
+		Lang:         lang,
+	}
+
+	// Render to buffer
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		log.Printf("Error executing home template: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if _, err := buf.WriteTo(w); err != nil {
+		if isClientDisconnect(err) {
+			log.Printf("client disconnected while writing home response")
+		} else {
+			log.Printf("Error writing home response: %v", err)
+		}
+	}
+}
+
 // geoIPHandler returns a lightweight latitude/longitude pair derived from the
 // remote address. We keep it optional behind a flag so operators can disable
 // automatic centring if local policy demands manual map starts instead.
@@ -8880,6 +8924,7 @@ func main() {
 
 	http.Handle("/static/", http.StripPrefix("/static/",
 		http.FileServer(http.FS(staticFS))))
+	http.HandleFunc("/home", homeHandler)
 	http.HandleFunc("/", mapHandler)
 	// Serve license documents straight from the embedded filesystem so UI
 	// modals can reuse the same source without relying on external storage.
