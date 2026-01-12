@@ -954,6 +954,208 @@ body, html {
           display: block;
         }
 
+        /* Home/Welcome Overlay */
+        .home-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.7);
+          z-index: 2500;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          backdrop-filter: blur(4px);
+        }
+
+        .home-overlay.hidden {
+          display: none;
+        }
+
+        .home-popup {
+          background: var(--modal-bg);
+          color: var(--modal-text);
+          border-radius: 16px;
+          padding: 40px 50px;
+          max-width: 500px;
+          width: 90%;
+          text-align: center;
+          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+          animation: homePopupFadeIn 0.4s ease-out;
+        }
+
+        @keyframes homePopupFadeIn {
+          from {
+            opacity: 0;
+            transform: scale(0.9) translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+          }
+        }
+
+        .home-popup-logo {
+          width: 80px;
+          height: 80px;
+          margin-bottom: 20px;
+        }
+
+        .home-popup-title {
+          font-size: 28px;
+          font-weight: 700;
+          margin-bottom: 10px;
+          color: var(--modal-text);
+        }
+
+        .home-popup-subtitle {
+          font-size: 16px;
+          opacity: 0.8;
+          margin-bottom: 30px;
+          line-height: 1.5;
+        }
+
+        .home-search-wrapper {
+          position: relative;
+          margin-bottom: 20px;
+        }
+
+        .home-search-input {
+          width: 100%;
+          padding: 16px 50px 16px 20px;
+          font-size: 18px;
+          font-family: var(--font-family-base);
+          background: var(--control-bg);
+          color: var(--modal-text);
+          border: 2px solid rgba(128, 128, 128, 0.3);
+          border-radius: 12px;
+          box-sizing: border-box;
+          transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .home-search-input:focus {
+          outline: none;
+          border-color: #4caf50;
+          box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
+        }
+
+        .home-search-input::placeholder {
+          color: var(--modal-text);
+          opacity: 0.5;
+        }
+
+        .home-search-icon {
+          position: absolute;
+          right: 16px;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 24px;
+          height: 24px;
+          opacity: 0.5;
+          pointer-events: none;
+        }
+
+        .home-search-results {
+          position: absolute;
+          top: 100%;
+          left: 0;
+          right: 0;
+          margin-top: 8px;
+          background: var(--modal-bg);
+          border: 1px solid rgba(128, 128, 128, 0.3);
+          border-radius: 12px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+          max-height: 250px;
+          overflow-y: auto;
+          display: none;
+          text-align: left;
+        }
+
+        .home-search-results.active {
+          display: block;
+        }
+
+        .home-search-result-item {
+          padding: 14px 20px;
+          cursor: pointer;
+          border-bottom: 1px solid rgba(128, 128, 128, 0.15);
+          transition: background 0.15s;
+        }
+
+        .home-search-result-item:last-child {
+          border-bottom: none;
+        }
+
+        .home-search-result-item:hover {
+          background: var(--control-bg-hover);
+        }
+
+        .home-search-result-name {
+          font-weight: 600;
+          font-size: 15px;
+        }
+
+        .home-search-result-details {
+          font-size: 13px;
+          opacity: 0.7;
+          margin-top: 4px;
+        }
+
+        .home-or-divider {
+          display: flex;
+          align-items: center;
+          margin: 20px 0;
+          opacity: 0.6;
+        }
+
+        .home-or-divider::before,
+        .home-or-divider::after {
+          content: '';
+          flex: 1;
+          height: 1px;
+          background: currentColor;
+        }
+
+        .home-or-divider span {
+          padding: 0 15px;
+          font-size: 14px;
+        }
+
+        .home-locate-btn {
+          background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+          color: white;
+          border: none;
+          border-radius: 10px;
+          padding: 14px 30px;
+          font-size: 16px;
+          font-family: var(--font-family-base);
+          cursor: pointer;
+          transition: transform 0.2s, box-shadow 0.2s;
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .home-locate-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+        }
+
+        .home-skip-link {
+          display: block;
+          margin-top: 25px;
+          color: var(--link-color);
+          font-size: 14px;
+          cursor: pointer;
+          opacity: 0.8;
+          text-decoration: underline;
+        }
+
+        .home-skip-link:hover {
+          opacity: 1;
+        }
+
         /* Leaflet controls use theme variables so colors follow the current theme */
         .leaflet-control-layers,
         .leaflet-control-layers-toggle,
@@ -1503,6 +1705,43 @@ body, html {
         <button id="searchClear" class="search-clear" aria-label="Clear search">&times;</button>
       </div>
       <div id="searchResults" class="search-results"></div>
+    </div>
+
+    <!-- Home/Welcome Overlay -->
+    <div id="homeOverlay" class="home-overlay">
+      <div class="home-popup">
+        <img src="/static/images/safecast-heart-logo.png" alt="Safecast" class="home-popup-logo">
+        <h1 class="home-popup-title">{{translate "title"}}</h1>
+        <p class="home-popup-subtitle">{{translate "home_subtitle"}}</p>
+        
+        <div class="home-search-wrapper">
+          <input
+            type="text"
+            id="homeSearchInput"
+            class="home-search-input"
+            placeholder="{{translate "home_search_placeholder"}}"
+            autocomplete="off"
+            aria-label="{{translate "home_search_placeholder"}}">
+          <svg class="home-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="M21 21l-4.35-4.35"></path>
+          </svg>
+          <div id="homeSearchResults" class="home-search-results"></div>
+        </div>
+        
+        <div class="home-or-divider"><span>{{translate "home_or"}}</span></div>
+        
+        <button id="homeLocateBtn" class="home-locate-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path>
+          </svg>
+          {{translate "home_use_location"}}
+        </button>
+        
+        <a id="homeSkipLink" class="home-skip-link">{{translate "home_explore_global"}}</a>
+      </div>
     </div>
 
     <!-- Container for geolocation button -->
@@ -3927,6 +4166,11 @@ function invalidateMarkerStyleCache() {
  * and keep the date sliders in sync with the viewport.
  */
 function updateMarkers(){
+  // Don't load markers if home overlay is still showing (unless in track view)
+  if (!homeOverlayDismissed && !isTrackView && shouldShowHomeOverlay()) {
+    return;
+  }
+  
   const loadingEl = document.getElementById('loadingOverlay');
   if (loadingEl) loadingEl.style.display='block';
 
@@ -7100,6 +7344,9 @@ function initializeUIElements() {
 
   // Initialize search functionality
   initializeSearch();
+  
+  // Initialize home overlay
+  initializeHomeOverlay();
 }
 
 // Search functionality using Nominatim geocoding
@@ -7337,6 +7584,214 @@ function centerMapToLocation() {
     });
   }
 }
+
+// ===== HOME OVERLAY FUNCTIONALITY =====
+// Tracks whether markers should be loaded (false until user selects location)
+var homeOverlayDismissed = false;
+
+function shouldShowHomeOverlay() {
+  // Don't show home overlay if:
+  // 1. We're in track view mode
+  // 2. URL has location parameters (user came with specific location)
+  // 3. User has previously dismissed the overlay this session
+  // 4. There's a saved map view state
+  
+  if (isTrackView) return false;
+  
+  const params = new URLSearchParams(window.location.search);
+  const hasLocationParams = params.has('minLat') || params.has('place') || params.has('lat');
+  if (hasLocationParams) return false;
+  
+  if (sessionStorage.getItem('homeOverlayDismissed')) return false;
+  
+  if (loadMapViewState()) return false;
+  
+  return true;
+}
+
+function dismissHomeOverlay() {
+  const overlay = document.getElementById('homeOverlay');
+  if (overlay) {
+    overlay.classList.add('hidden');
+  }
+  homeOverlayDismissed = true;
+  sessionStorage.setItem('homeOverlayDismissed', 'true');
+  
+  // Now that the overlay is dismissed, load markers
+  if (typeof debounceUpdateMarkers === 'function') {
+    debounceUpdateMarkers();
+  }
+}
+
+function initializeHomeOverlay() {
+  const homeOverlay = document.getElementById('homeOverlay');
+  const homeSearchInput = document.getElementById('homeSearchInput');
+  const homeSearchResults = document.getElementById('homeSearchResults');
+  const homeLocateBtn = document.getElementById('homeLocateBtn');
+  const homeSkipLink = document.getElementById('homeSkipLink');
+  
+  if (!homeOverlay) return;
+  
+  // Check if we should show the overlay
+  if (!shouldShowHomeOverlay()) {
+    homeOverlay.classList.add('hidden');
+    homeOverlayDismissed = true;
+    return;
+  }
+  
+  // Home search functionality
+  let homeSearchTimeout = null;
+  
+  if (homeSearchInput) {
+    homeSearchInput.addEventListener('input', function() {
+      const query = this.value.trim();
+      
+      clearTimeout(homeSearchTimeout);
+      if (query.length >= 2) {
+        homeSearchTimeout = setTimeout(() => performHomeSearch(query), 300);
+      } else {
+        homeSearchResults.classList.remove('active');
+        homeSearchResults.innerHTML = '';
+      }
+    });
+    
+    homeSearchInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const query = this.value.trim();
+        if (query.length >= 2) {
+          performHomeSearch(query, true);
+        }
+      }
+    });
+    
+    // Focus the search input when overlay shows
+    setTimeout(() => homeSearchInput.focus(), 100);
+  }
+  
+  // Use my location button
+  if (homeLocateBtn) {
+    homeLocateBtn.addEventListener('click', function() {
+      dismissHomeOverlay();
+      // Small delay to let the overlay fade, then locate
+      setTimeout(() => centerMapToLocation(), 100);
+    });
+  }
+  
+  // Skip link - explore globally
+  if (homeSkipLink) {
+    homeSkipLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      dismissHomeOverlay();
+    });
+  }
+  
+  // Close results when clicking outside
+  document.addEventListener('click', function(e) {
+    if (homeSearchResults && !homeSearchInput.contains(e.target) && !homeSearchResults.contains(e.target)) {
+      homeSearchResults.classList.remove('active');
+    }
+  });
+}
+
+async function performHomeSearch(query, selectFirst = false) {
+  const homeSearchResults = document.getElementById('homeSearchResults');
+  if (!homeSearchResults) return;
+
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?` +
+      `format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`;
+
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Safecast Map (https://map.safecast.org)'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Search failed');
+    }
+
+    const results = await response.json();
+
+    if (results.length === 0) {
+      homeSearchResults.innerHTML = '<div class="home-search-result-item">' + translate('no_results_found') + '</div>';
+      homeSearchResults.classList.add('active');
+      return;
+    }
+
+    if (selectFirst && results.length > 0) {
+      selectHomeSearchResult(results[0], query);
+      return;
+    }
+
+    homeSearchResults.innerHTML = results.map(result => {
+      const name = result.display_name.split(',')[0];
+      const details = result.display_name.split(',').slice(1).join(',').trim();
+      return `
+        <div class="home-search-result-item" data-lat="${result.lat}" data-lon="${result.lon}">
+          <div class="home-search-result-name">${escapeHtml(name)}</div>
+          <div class="home-search-result-details">${escapeHtml(details)}</div>
+        </div>
+      `;
+    }).join('');
+
+    homeSearchResults.querySelectorAll('.home-search-result-item').forEach((item, index) => {
+      item.addEventListener('click', () => {
+        selectHomeSearchResult(results[index], query);
+      });
+    });
+
+    homeSearchResults.classList.add('active');
+  } catch (error) {
+    console.error('Home search error:', error);
+    homeSearchResults.innerHTML = '<div class="home-search-result-item">' + translate('search_error') + '</div>';
+    homeSearchResults.classList.add('active');
+  }
+}
+
+function selectHomeSearchResult(result, query) {
+  // Store the search query for URL
+  currentSearchQuery = query;
+  
+  // Dismiss the overlay first
+  dismissHomeOverlay();
+  
+  // Update the main search input
+  const mainSearchInput = document.getElementById('searchInput');
+  if (mainSearchInput) {
+    mainSearchInput.value = result.display_name.split(',')[0];
+  }
+  
+  // Navigate to location with appropriate zoom
+  const lat = parseFloat(result.lat);
+  const lon = parseFloat(result.lon);
+  
+  // Determine zoom level based on result type
+  let zoom = 15;
+  if (result.type === 'country' || result.addresstype === 'country' ||
+      (result.class === 'boundary' && result.type === 'administrative' && result.place_rank <= 3)) {
+    zoom = 6;
+  } else if (result.type === 'state' || result.type === 'province' || result.type === 'region' ||
+             (result.class === 'boundary' && result.type === 'administrative' && result.place_rank >= 4 && result.place_rank <= 11)) {
+    zoom = 9;
+  } else if (result.type === 'city' ||
+             (result.class === 'boundary' && result.type === 'administrative' && result.place_rank >= 12 && result.place_rank <= 16) ||
+             (result.class === 'place' && result.addresstype === 'city')) {
+    zoom = 15;
+  } else if (result.type === 'town' || result.type === 'village' || result.type === 'hamlet' ||
+             result.type === 'suburb' || result.type === 'neighbourhood' || result.type === 'quarter' ||
+             (result.class === 'place') || (result.place_rank >= 17)) {
+    zoom = 16;
+  } else if (result.type === 'house' || result.type === 'building' || result.class === 'amenity') {
+    zoom = 17;
+  }
+
+  map.setView([lat, lon], zoom);
+  saveMapViewState();
+}
+// ===== END HOME OVERLAY =====
+
     </script>
 
     <!-- File upload script -->
