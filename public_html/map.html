@@ -2132,6 +2132,120 @@ body, html {
   </div>
 </div>
 
+<!-- Authentication Modals -->
+<!-- Login Modal -->
+<div id="loginModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 10002; align-items: center; justify-content: center;">
+  <div style="background: var(--modal-bg); padding: 32px; border-radius: 12px; max-width: 450px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+    <h2 style="margin: 0 0 24px 0; color: var(--modal-text); font-size: 24px;">Login to Safecast</h2>
+    <form id="loginForm">
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">Email:</label>
+        <input type="email" id="loginEmail" placeholder="your@email.com" required
+               style="width: 100%; padding: 12px; border: var(--legend-border); border-radius: 6px; background: var(--control-bg); color: var(--modal-text); font-size: var(--font-size-base); box-sizing: border-box;">
+      </div>
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">Password:</label>
+        <input type="password" id="loginPassword" placeholder="Password" required
+               style="width: 100%; padding: 12px; border: var(--legend-border); border-radius: 6px; background: var(--control-bg); color: var(--modal-text); font-size: var(--font-size-base); box-sizing: border-box;">
+      </div>
+      <button type="submit" style="width: 100%; padding: 14px; background: #4CAF50; border: none; border-radius: 6px; cursor: pointer; color: white; font-weight: 600; font-size: 16px; margin-bottom: 12px;">
+        Login
+      </button>
+      <p id="loginError" style="color: #f44336; font-size: var(--font-size-sm); margin: 12px 0 0 0; display: none;"></p>
+    </form>
+    <div style="margin-top: 20px; text-align: center; color: var(--modal-text); font-size: var(--font-size-sm);">
+      <p style="margin: 8px 0;"><a href="#" onclick="showForgotPassword(); return false;" style="color: var(--isotope-highlight); text-decoration: none;">Forgot password?</a></p>
+      <p style="margin: 8px 0;">Don't have an account? <a href="#" onclick="showRegister(); return false;" style="color: var(--isotope-highlight); text-decoration: none;">Register</a></p>
+    </div>
+    <button type="button" onclick="closeLoginModal()" style="margin-top: 16px; width: 100%; padding: 10px; background: transparent; border: var(--legend-border); border-radius: 6px; cursor: pointer; color: var(--modal-text);">
+      Close
+    </button>
+  </div>
+</div>
+
+<!-- Register Modal -->
+<div id="registerModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 10002; align-items: center; justify-content: center;">
+  <div style="background: var(--modal-bg); padding: 32px; border-radius: 12px; max-width: 450px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+    <h2 style="margin: 0 0 24px 0; color: var(--modal-text); font-size: 24px;">Create Account</h2>
+    <form id="registerForm">
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">Email:</label>
+        <input type="email" id="registerEmail" placeholder="your@email.com" required
+               style="width: 100%; padding: 12px; border: var(--legend-border); border-radius: 6px; background: var(--control-bg); color: var(--modal-text); font-size: var(--font-size-base); box-sizing: border-box;">
+      </div>
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">Username (optional):</label>
+        <input type="text" id="registerUsername" placeholder="username"
+               style="width: 100%; padding: 12px; border: var(--legend-border); border-radius: 6px; background: var(--control-bg); color: var(--modal-text); font-size: var(--font-size-base); box-sizing: border-box;">
+      </div>
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">Password:</label>
+        <input type="password" id="registerPassword" placeholder="At least 8 characters" required
+               style="width: 100%; padding: 12px; border: var(--legend-border); border-radius: 6px; background: var(--control-bg); color: var(--modal-text); font-size: var(--font-size-base); box-sizing: border-box;">
+      </div>
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">Confirm Password:</label>
+        <input type="password" id="registerPasswordConfirm" placeholder="Re-enter password" required
+               style="width: 100%; padding: 12px; border: var(--legend-border); border-radius: 6px; background: var(--control-bg); color: var(--modal-text); font-size: var(--font-size-base); box-sizing: border-box;">
+      </div>
+      <button type="submit" style="width: 100%; padding: 14px; background: #4CAF50; border: none; border-radius: 6px; cursor: pointer; color: white; font-weight: 600; font-size: 16px; margin-bottom: 12px;">
+        Register
+      </button>
+      <p id="registerError" style="color: #f44336; font-size: var(--font-size-sm); margin: 12px 0 0 0; display: none;"></p>
+    </form>
+    <div style="margin-top: 20px; text-align: center; color: var(--modal-text); font-size: var(--font-size-sm);">
+      <p style="margin: 8px 0;">Already have an account? <a href="#" onclick="showLogin(); return false;" style="color: var(--isotope-highlight); text-decoration: none;">Login</a></p>
+    </div>
+    <button type="button" onclick="closeRegisterModal()" style="margin-top: 16px; width: 100%; padding: 10px; background: transparent; border: var(--legend-border); border-radius: 6px; cursor: pointer; color: var(--modal-text);">
+      Close
+    </button>
+  </div>
+</div>
+
+<!-- Forgot Password Modal -->
+<div id="forgotPasswordModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 10002; align-items: center; justify-content: center;">
+  <div style="background: var(--modal-bg); padding: 32px; border-radius: 12px; max-width: 450px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+    <h2 style="margin: 0 0 16px 0; color: var(--modal-text); font-size: 24px;">Reset Password</h2>
+    <p style="margin: 0 0 24px 0; color: var(--modal-text); opacity: 0.8; font-size: var(--font-size-base);">
+      Enter your email address and we'll send you a link to reset your password.
+    </p>
+    <form id="forgotPasswordForm">
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">Email:</label>
+        <input type="email" id="forgotEmail" placeholder="your@email.com" required
+               style="width: 100%; padding: 12px; border: var(--legend-border); border-radius: 6px; background: var(--control-bg); color: var(--modal-text); font-size: var(--font-size-base); box-sizing: border-box;">
+      </div>
+      <button type="submit" style="width: 100%; padding: 14px; background: #4CAF50; border: none; border-radius: 6px; cursor: pointer; color: white; font-weight: 600; font-size: 16px; margin-bottom: 12px;">
+        Send Reset Link
+      </button>
+      <p id="forgotPasswordMessage" style="color: var(--isotope-highlight); font-size: var(--font-size-sm); margin: 12px 0 0 0; display: none;"></p>
+    </form>
+    <div style="margin-top: 20px; text-align: center; color: var(--modal-text); font-size: var(--font-size-sm);">
+      <p style="margin: 8px 0;"><a href="#" onclick="showLogin(); return false;" style="color: var(--isotope-highlight); text-decoration: none;">Back to login</a></p>
+    </div>
+    <button type="button" onclick="closeForgotPasswordModal()" style="margin-top: 16px; width: 100%; padding: 10px; background: transparent; border: var(--legend-border); border-radius: 6px; cursor: pointer; color: var(--modal-text);">
+      Close
+    </button>
+  </div>
+</div>
+
+<!-- User Menu (shown when logged in) -->
+<div id="userMenu" style="display: none; position: fixed; top: 16px; right: 16px; z-index: 1000; background: var(--modal-bg); padding: 12px 16px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); border: var(--legend-border);">
+  <div style="display: flex; align-items: center; gap: 12px;">
+    <span id="userMenuName" style="color: var(--modal-text); font-weight: 600;"></span>
+    <button onclick="logout()" style="padding: 6px 12px; background: #f44336; border: none; border-radius: 4px; cursor: pointer; color: white; font-size: var(--font-size-sm);">
+      Logout
+    </button>
+  </div>
+</div>
+
+<!-- Login Button (shown when logged out) -->
+<div id="loginButton" style="display: none; position: fixed; top: 16px; right: 16px; z-index: 1000;">
+  <button onclick="showLogin()" style="padding: 10px 20px; background: #4CAF50; border: none; border-radius: 6px; cursor: pointer; color: white; font-weight: 600; box-shadow: 0 2px 10px rgba(0,0,0,0.2);">
+    Login
+  </button>
+</div>
+
     <!-- Load Leaflet JavaScript library -->
     <script src="/static/leaflet.js"></script>
     
@@ -2147,7 +2261,278 @@ body, html {
     <script src="/static/nouislider.min.js"></script>
     <script src="/static/wNumb.min.js"></script>
 
+    <!-- Authentication JavaScript -->
+    <script>
+      // Authentication state
+      let currentUser = null;
 
+      // Check authentication status on page load
+      async function checkAuthStatus() {
+        try {
+          const response = await fetch('/api/user/profile');
+          if (response.ok) {
+            currentUser = await response.json();
+            updateUIForLoggedInUser();
+          } else {
+            currentUser = null;
+            updateUIForLoggedOutUser();
+          }
+        } catch (error) {
+          console.error('Auth check failed:', error);
+          currentUser = null;
+          updateUIForLoggedOutUser();
+        }
+      }
+
+      function updateUIForLoggedInUser() {
+        const loginBtn = document.getElementById('loginButton');
+        const userMenu = document.getElementById('userMenu');
+        const userMenuName = document.getElementById('userMenuName');
+
+        if (loginBtn) loginBtn.style.display = 'none';
+        if (userMenu) {
+          userMenu.style.display = 'block';
+          if (userMenuName && currentUser) {
+            userMenuName.textContent = currentUser.username || currentUser.email;
+          }
+        }
+      }
+
+      function updateUIForLoggedOutUser() {
+        const loginBtn = document.getElementById('loginButton');
+        const userMenu = document.getElementById('userMenu');
+
+        if (loginBtn) loginBtn.style.display = 'block';
+        if (userMenu) userMenu.style.display = 'none';
+      }
+
+      // Login function
+      async function login(email, password) {
+        try {
+          const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+          });
+
+          const errorEl = document.getElementById('loginError');
+
+          if (response.ok) {
+            await checkAuthStatus();
+            closeLoginModal();
+            if (errorEl) errorEl.style.display = 'none';
+          } else {
+            const error = await response.json();
+            if (errorEl) {
+              errorEl.textContent = error.error || 'Login failed';
+              errorEl.style.display = 'block';
+            }
+          }
+        } catch (error) {
+          const errorEl = document.getElementById('loginError');
+          if (errorEl) {
+            errorEl.textContent = 'Network error. Please try again.';
+            errorEl.style.display = 'block';
+          }
+        }
+      }
+
+      // Register function
+      async function register(email, username, password) {
+        try {
+          const response = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, username, password })
+          });
+
+          const errorEl = document.getElementById('registerError');
+
+          if (response.ok) {
+            closeRegisterModal();
+            alert('Registration successful! Please check your email to verify your account.');
+            if (errorEl) errorEl.style.display = 'none';
+          } else {
+            const error = await response.json();
+            if (errorEl) {
+              errorEl.textContent = error.error || 'Registration failed';
+              errorEl.style.display = 'block';
+            }
+          }
+        } catch (error) {
+          const errorEl = document.getElementById('registerError');
+          if (errorEl) {
+            errorEl.textContent = 'Network error. Please try again.';
+            errorEl.style.display = 'block';
+          }
+        }
+      }
+
+      // Logout function
+      async function logout() {
+        try {
+          await fetch('/api/auth/logout', { method: 'POST' });
+          currentUser = null;
+          updateUIForLoggedOutUser();
+          alert('Logged out successfully');
+        } catch (error) {
+          console.error('Logout failed:', error);
+        }
+      }
+
+      // Forgot password function
+      async function forgotPassword(email) {
+        try {
+          const response = await fetch('/api/auth/forgot-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+          });
+
+          const msgEl = document.getElementById('forgotPasswordMessage');
+
+          if (response.ok) {
+            if (msgEl) {
+              msgEl.textContent = 'Password reset link sent! Check your email.';
+              msgEl.style.display = 'block';
+              msgEl.style.color = 'var(--isotope-highlight)';
+            }
+          } else {
+            const error = await response.json();
+            if (msgEl) {
+              msgEl.textContent = error.error || 'Request failed';
+              msgEl.style.display = 'block';
+              msgEl.style.color = '#f44336';
+            }
+          }
+        } catch (error) {
+          const msgEl = document.getElementById('forgotPasswordMessage');
+          if (msgEl) {
+            msgEl.textContent = 'Network error. Please try again.';
+            msgEl.style.display = 'block';
+            msgEl.style.color = '#f44336';
+          }
+        }
+      }
+
+      // Modal control functions
+      function showLogin() {
+        closeRegisterModal();
+        closeForgotPasswordModal();
+        const modal = document.getElementById('loginModal');
+        if (modal) {
+          modal.style.display = 'flex';
+          const errorEl = document.getElementById('loginError');
+          if (errorEl) errorEl.style.display = 'none';
+        }
+      }
+
+      function closeLoginModal() {
+        const modal = document.getElementById('loginModal');
+        if (modal) {
+          modal.style.display = 'none';
+          const errorEl = document.getElementById('loginError');
+          if (errorEl) errorEl.style.display = 'none';
+        }
+      }
+
+      function showRegister() {
+        closeLoginModal();
+        closeForgotPasswordModal();
+        const modal = document.getElementById('registerModal');
+        if (modal) {
+          modal.style.display = 'flex';
+          const errorEl = document.getElementById('registerError');
+          if (errorEl) errorEl.style.display = 'none';
+        }
+      }
+
+      function closeRegisterModal() {
+        const modal = document.getElementById('registerModal');
+        if (modal) {
+          modal.style.display = 'none';
+          const errorEl = document.getElementById('registerError');
+          if (errorEl) errorEl.style.display = 'none';
+        }
+      }
+
+      function showForgotPassword() {
+        closeLoginModal();
+        closeRegisterModal();
+        const modal = document.getElementById('forgotPasswordModal');
+        if (modal) {
+          modal.style.display = 'flex';
+          const msgEl = document.getElementById('forgotPasswordMessage');
+          if (msgEl) msgEl.style.display = 'none';
+        }
+      }
+
+      function closeForgotPasswordModal() {
+        const modal = document.getElementById('forgotPasswordModal');
+        if (modal) {
+          modal.style.display = 'none';
+          const msgEl = document.getElementById('forgotPasswordMessage');
+          if (msgEl) msgEl.style.display = 'none';
+        }
+      }
+
+      // Form submit handlers
+      window.addEventListener('load', function() {
+        // Check auth status on page load
+        checkAuthStatus();
+
+        // Check for email verification success
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('emailVerified') === 'true') {
+          alert('Email verified successfully! You can now login.');
+        }
+
+        // Login form
+        const loginForm = document.getElementById('loginForm');
+        if (loginForm) {
+          loginForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            login(email, password);
+          });
+        }
+
+        // Register form
+        const registerForm = document.getElementById('registerForm');
+        if (registerForm) {
+          registerForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const email = document.getElementById('registerEmail').value;
+            const username = document.getElementById('registerUsername').value;
+            const password = document.getElementById('registerPassword').value;
+            const confirm = document.getElementById('registerPasswordConfirm').value;
+
+            const errorEl = document.getElementById('registerError');
+
+            if (password !== confirm) {
+              if (errorEl) {
+                errorEl.textContent = 'Passwords do not match';
+                errorEl.style.display = 'block';
+              }
+              return;
+            }
+
+            register(email, username, password);
+          });
+        }
+
+        // Forgot password form
+        const forgotForm = document.getElementById('forgotPasswordForm');
+        if (forgotForm) {
+          forgotForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const email = document.getElementById('forgotEmail').value;
+            forgotPassword(email);
+          });
+        }
+      });
+    </script>
 
     <!-- Helper functions -->
     <script>
