@@ -16,3 +16,6 @@ binaries
 chicha-isotope-map
 selfupgrade-cache
 certs
+
+# User data files (containing sensitive information)
+API users_*.csv

@@ -1570,6 +1570,66 @@ CREATE INDEX IF NOT EXISTS idx_uploads_track_id ON uploads(track_id);
 CREATE INDEX IF NOT EXISTS idx_uploads_created_at ON uploads(created_at);
 CREATE INDEX IF NOT EXISTS idx_uploads_user_id ON uploads(user_id);
 CREATE INDEX IF NOT EXISTS idx_uploads_username ON uploads(username);
+
+-- Authentication tables
+CREATE TABLE IF NOT EXISTS users (
+  id              BIGSERIAL PRIMARY KEY,
+  email           TEXT UNIQUE NOT NULL,
+  password_hash   TEXT NOT NULL,
+  username        TEXT UNIQUE,
+  email_verified  BOOLEAN DEFAULT FALSE,
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ DEFAULT NOW(),
+  last_login_at   TIMESTAMPTZ,
+  is_active       BOOLEAN DEFAULT TRUE,
+  external_id     TEXT,
+  external_source TEXT,
+  requires_password_setup BOOLEAN DEFAULT FALSE
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_external_id ON users(external_id);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id           TEXT PRIMARY KEY,
+  user_id      BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at   TIMESTAMPTZ DEFAULT NOW(),
+  expires_at   TIMESTAMPTZ NOT NULL,
+  ip_address   TEXT,
+  user_agent   TEXT,
+  last_activity_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
+
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  id         BIGSERIAL PRIMARY KEY,
+  user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token      TEXT UNIQUE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ NOT NULL,
+  used       BOOLEAN DEFAULT FALSE,
+  used_at    TIMESTAMPTZ,
+  ip_address TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token ON password_reset_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON password_reset_tokens(user_id);
+
+CREATE TABLE IF NOT EXISTS email_verification_tokens (
+  id         BIGSERIAL PRIMARY KEY,
+  user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token      TEXT UNIQUE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ NOT NULL,
+  used       BOOLEAN DEFAULT FALSE,
+  used_at    TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_token ON email_verification_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_user_id ON email_verification_tokens(user_id);
 `
 
 	case "sqlite", "chai":
@@ -1668,6 +1728,69 @@ CREATE TABLE IF NOT EXISTS uploads (
 CREATE INDEX IF NOT EXISTS idx_uploads_track_id ON uploads(track_id);
 CREATE INDEX IF NOT EXISTS idx_uploads_created_at ON uploads(created_at);
 CREATE INDEX IF NOT EXISTS idx_uploads_user_id ON uploads(user_id);
+
+-- Authentication tables
+CREATE TABLE IF NOT EXISTS users (
+  id              INTEGER PRIMARY KEY,
+  email           TEXT UNIQUE NOT NULL,
+  password_hash   TEXT NOT NULL,
+  username        TEXT UNIQUE,
+  email_verified  INTEGER DEFAULT 0,
+  created_at      INTEGER NOT NULL,
+  updated_at      INTEGER NOT NULL,
+  last_login_at   INTEGER,
+  is_active       INTEGER DEFAULT 1,
+  external_id     TEXT,
+  external_source TEXT,
+  requires_password_setup INTEGER DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_external_id ON users(external_id);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id           TEXT PRIMARY KEY,
+  user_id      INTEGER NOT NULL,
+  created_at   INTEGER NOT NULL,
+  expires_at   INTEGER NOT NULL,
+  ip_address   TEXT,
+  user_agent   TEXT,
+  last_activity_at INTEGER NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
+
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  id         INTEGER PRIMARY KEY,
+  user_id    INTEGER NOT NULL,
+  token      TEXT UNIQUE NOT NULL,
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL,
+  used       INTEGER DEFAULT 0,
+  used_at    INTEGER,
+  ip_address TEXT,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token ON password_reset_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON password_reset_tokens(user_id);
+
+CREATE TABLE IF NOT EXISTS email_verification_tokens (
+  id         INTEGER PRIMARY KEY,
+  user_id    INTEGER NOT NULL,
+  token      TEXT UNIQUE NOT NULL,
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL,
+  used       INTEGER DEFAULT 0,
+  used_at    INTEGER,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_token ON email_verification_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_user_id ON email_verification_tokens(user_id);
 `
 
 	case "duckdb":
@@ -1771,6 +1894,69 @@ CREATE TABLE IF NOT EXISTS uploads (
 CREATE INDEX IF NOT EXISTS idx_uploads_track_id ON uploads(track_id);
 CREATE INDEX IF NOT EXISTS idx_uploads_created_at ON uploads(created_at);
 CREATE INDEX IF NOT EXISTS idx_uploads_user_id ON uploads(user_id);
+
+-- Authentication tables
+CREATE SEQUENCE IF NOT EXISTS users_id_seq START 1;
+CREATE TABLE IF NOT EXISTS users (
+  id              BIGINT PRIMARY KEY DEFAULT nextval('users_id_seq'),
+  email           TEXT UNIQUE NOT NULL,
+  password_hash   TEXT NOT NULL,
+  username        TEXT UNIQUE,
+  email_verified  BOOLEAN DEFAULT FALSE,
+  created_at      TIMESTAMP DEFAULT NOW(),
+  updated_at      TIMESTAMP DEFAULT NOW(),
+  last_login_at   TIMESTAMP,
+  is_active       BOOLEAN DEFAULT TRUE,
+  external_id     TEXT,
+  external_source TEXT,
+  requires_password_setup BOOLEAN DEFAULT FALSE
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_external_id ON users(external_id);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id           TEXT PRIMARY KEY,
+  user_id      BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at   TIMESTAMP DEFAULT NOW(),
+  expires_at   TIMESTAMP NOT NULL,
+  ip_address   TEXT,
+  user_agent   TEXT,
+  last_activity_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
+
+CREATE SEQUENCE IF NOT EXISTS password_reset_tokens_id_seq START 1;
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  id         BIGINT PRIMARY KEY DEFAULT nextval('password_reset_tokens_id_seq'),
+  user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token      TEXT UNIQUE NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  expires_at TIMESTAMP NOT NULL,
+  used       BOOLEAN DEFAULT FALSE,
+  used_at    TIMESTAMP,
+  ip_address TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token ON password_reset_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON password_reset_tokens(user_id);
+
+CREATE SEQUENCE IF NOT EXISTS email_verification_tokens_id_seq START 1;
+CREATE TABLE IF NOT EXISTS email_verification_tokens (
+  id         BIGINT PRIMARY KEY DEFAULT nextval('email_verification_tokens_id_seq'),
+  user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token      TEXT UNIQUE NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  expires_at TIMESTAMP NOT NULL,
+  used       BOOLEAN DEFAULT FALSE,
+  used_at    TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_token ON email_verification_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_user_id ON email_verification_tokens(user_id);
 `
 
 	case "clickhouse":
