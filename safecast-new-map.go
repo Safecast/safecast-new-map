@@ -9003,10 +9003,63 @@ func main() {
 		http.HandleFunc("/api/auth/verify-email", authManager.VerifyEmailHandler)
 		http.HandleFunc("/api/user/profile", authManager.RequireAuth(authManager.ProfileHandler))
 
-		// Admin routes (protected with RequireAuth middleware)
-		http.HandleFunc("/api/admin/users", authManager.RequireAuth(authManager.AdminListUsersHandler))
-		http.HandleFunc("/api/admin/users/create", authManager.RequireAuth(authManager.AdminCreateUserHandler))
-		http.HandleFunc("/api/admin/users/", authManager.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		// Serve reset-password page
+		http.HandleFunc("/reset-password", func(w http.ResponseWriter, r *http.Request) {
+			data, err := content.ReadFile("public_html/reset-password.html")
+			if err != nil {
+				http.Error(w, "Reset password page not found", http.StatusNotFound)
+				return
+			}
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Write(data)
+		})
+	}
+
+	// User admin routes (uses password parameter like existing admin system)
+	if authManager != nil && *adminPassword != "" {
+		// Helper function to check admin password
+		checkAdminPassword := func(w http.ResponseWriter, r *http.Request) bool {
+			password := r.URL.Query().Get("password")
+			if password != *adminPassword {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return false
+			}
+			return true
+		}
+
+		// Serve admin users page
+		http.HandleFunc("/admin/users", func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminPassword(w, r) {
+				return
+			}
+			data, err := content.ReadFile("public_html/admin-users.html")
+			if err != nil {
+				http.Error(w, "Admin page not found", http.StatusNotFound)
+				return
+			}
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Write(data)
+		})
+
+		// Admin API routes
+		http.HandleFunc("/api/admin/users", func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminPassword(w, r) {
+				return
+			}
+			authManager.AdminListUsersHandler(w, r)
+		})
+
+		http.HandleFunc("/api/admin/users/create", func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminPassword(w, r) {
+				return
+			}
+			authManager.AdminCreateUserHandler(w, r)
+		})
+
+		http.HandleFunc("/api/admin/users/", func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminPassword(w, r) {
+				return
+			}
 			switch r.Method {
 			case http.MethodPut, http.MethodPatch:
 				authManager.AdminUpdateUserHandler(w, r)
@@ -9022,29 +9075,7 @@ func main() {
 			default:
 				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			}
-		}))
-
-		// Serve reset-password page
-		http.HandleFunc("/reset-password", func(w http.ResponseWriter, r *http.Request) {
-			data, err := content.ReadFile("public_html/reset-password.html")
-			if err != nil {
-				http.Error(w, "Reset password page not found", http.StatusNotFound)
-				return
-			}
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.Write(data)
 		})
-
-		// Serve admin page
-		http.HandleFunc("/admin/users", authManager.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
-			data, err := content.ReadFile("public_html/admin-users.html")
-			if err != nil {
-				http.Error(w, "Admin page not found", http.StatusNotFound)
-				return
-			}
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.Write(data)
-		}))
 	}
 
 	// Upload endpoint - protected with auth if required

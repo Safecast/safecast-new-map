@@ -56,6 +56,7 @@ func main() {
 
 	// Parse CSV
 	reader := csv.NewReader(file)
+	reader.FieldsPerRecord = -1 // Allow variable number of fields per record
 	records, err := reader.ReadAll()
 	if err != nil {
 		log.Fatalf("Error reading CSV file: %v", err)
@@ -201,7 +202,7 @@ func main() {
 
 		// Link existing uploads to this user
 		if externalUserID != "" {
-			err = auth.LinkUserIDToUploads(ctx, db, *dbType, externalUserID, userID)
+			err = auth.LinkUserIDToUploads(ctx, db, *dbType, externalUserID, fmt.Sprintf("%d", userID))
 			if err != nil {
 				log.Printf("Line %d: Warning: Could not link uploads for external ID '%s': %v",
 					lineNum, externalUserID, err)
@@ -267,7 +268,9 @@ func main() {
 // It tries multiple possible column names (case-insensitive).
 func findColumnIndex(header []string, names ...string) int {
 	for i, col := range header {
-		colLower := strings.ToLower(strings.TrimSpace(col))
+		// Remove BOM if present and trim whitespace
+		colClean := strings.TrimPrefix(col, "\uFEFF")
+		colLower := strings.ToLower(strings.TrimSpace(colClean))
 		for _, name := range names {
 			if colLower == strings.ToLower(name) {
 				return i

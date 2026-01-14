@@ -1563,20 +1563,22 @@ CREATE TABLE IF NOT EXISTS uploads (
   source_id       TEXT,
   source_url      TEXT,
   user_id         TEXT,
-  username        TEXT
+  username        TEXT,
+  internal_user_id TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_uploads_track_id ON uploads(track_id);
 CREATE INDEX IF NOT EXISTS idx_uploads_created_at ON uploads(created_at);
 CREATE INDEX IF NOT EXISTS idx_uploads_user_id ON uploads(user_id);
 CREATE INDEX IF NOT EXISTS idx_uploads_username ON uploads(username);
+CREATE INDEX IF NOT EXISTS idx_uploads_internal_user_id ON uploads(internal_user_id);
 
 -- Authentication tables
 CREATE TABLE IF NOT EXISTS users (
   id              BIGSERIAL PRIMARY KEY,
   email           TEXT UNIQUE NOT NULL,
   password_hash   TEXT NOT NULL,
-  username        TEXT UNIQUE,
+  username        VARCHAR(50) UNIQUE,
   email_verified  BOOLEAN DEFAULT FALSE,
   created_at      TIMESTAMPTZ DEFAULT NOW(),
   updated_at      TIMESTAMPTZ DEFAULT NOW(),
@@ -1584,12 +1586,14 @@ CREATE TABLE IF NOT EXISTS users (
   is_active       BOOLEAN DEFAULT TRUE,
   external_id     TEXT,
   external_source TEXT,
-  requires_password_setup BOOLEAN DEFAULT FALSE
+  requires_password_setup BOOLEAN DEFAULT FALSE,
+  api_key         TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 CREATE INDEX IF NOT EXISTS idx_users_external_id ON users(external_id);
+CREATE INDEX IF NOT EXISTS idx_users_api_key ON users(api_key);
 
 CREATE TABLE IF NOT EXISTS sessions (
   id           TEXT PRIMARY KEY,
@@ -1723,18 +1727,22 @@ CREATE TABLE IF NOT EXISTS uploads (
   source          TEXT,
   source_id       TEXT,
   source_url      TEXT,
-  user_id         TEXT
+  user_id         TEXT,
+  username        TEXT,
+  internal_user_id TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_uploads_track_id ON uploads(track_id);
 CREATE INDEX IF NOT EXISTS idx_uploads_created_at ON uploads(created_at);
 CREATE INDEX IF NOT EXISTS idx_uploads_user_id ON uploads(user_id);
+CREATE INDEX IF NOT EXISTS idx_uploads_username ON uploads(username);
+CREATE INDEX IF NOT EXISTS idx_uploads_internal_user_id ON uploads(internal_user_id);
 
 -- Authentication tables
 CREATE TABLE IF NOT EXISTS users (
   id              INTEGER PRIMARY KEY,
   email           TEXT UNIQUE NOT NULL,
   password_hash   TEXT NOT NULL,
-  username        TEXT UNIQUE,
+  username        VARCHAR(50) UNIQUE,
   email_verified  INTEGER DEFAULT 0,
   created_at      INTEGER NOT NULL,
   updated_at      INTEGER NOT NULL,
@@ -1742,12 +1750,14 @@ CREATE TABLE IF NOT EXISTS users (
   is_active       INTEGER DEFAULT 1,
   external_id     TEXT,
   external_source TEXT,
-  requires_password_setup INTEGER DEFAULT 0
+  requires_password_setup INTEGER DEFAULT 0,
+  api_key         TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 CREATE INDEX IF NOT EXISTS idx_users_external_id ON users(external_id);
+CREATE INDEX IF NOT EXISTS idx_users_api_key ON users(api_key);
 
 CREATE TABLE IF NOT EXISTS sessions (
   id           TEXT PRIMARY KEY,
@@ -1889,11 +1899,15 @@ CREATE TABLE IF NOT EXISTS uploads (
   source          TEXT,
   source_id       TEXT,
   source_url      TEXT,
-  user_id         TEXT
+  user_id         TEXT,
+  username        TEXT,
+  internal_user_id TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_uploads_track_id ON uploads(track_id);
 CREATE INDEX IF NOT EXISTS idx_uploads_created_at ON uploads(created_at);
 CREATE INDEX IF NOT EXISTS idx_uploads_user_id ON uploads(user_id);
+CREATE INDEX IF NOT EXISTS idx_uploads_username ON uploads(username);
+CREATE INDEX IF NOT EXISTS idx_uploads_internal_user_id ON uploads(internal_user_id);
 
 -- Authentication tables
 CREATE SEQUENCE IF NOT EXISTS users_id_seq START 1;
@@ -1901,7 +1915,7 @@ CREATE TABLE IF NOT EXISTS users (
   id              BIGINT PRIMARY KEY DEFAULT nextval('users_id_seq'),
   email           TEXT UNIQUE NOT NULL,
   password_hash   TEXT NOT NULL,
-  username        TEXT UNIQUE,
+  username        VARCHAR(50) UNIQUE,
   email_verified  BOOLEAN DEFAULT FALSE,
   created_at      TIMESTAMP DEFAULT NOW(),
   updated_at      TIMESTAMP DEFAULT NOW(),
@@ -1909,12 +1923,14 @@ CREATE TABLE IF NOT EXISTS users (
   is_active       BOOLEAN DEFAULT TRUE,
   external_id     TEXT,
   external_source TEXT,
-  requires_password_setup BOOLEAN DEFAULT FALSE
+  requires_password_setup BOOLEAN DEFAULT FALSE,
+  api_key         TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 CREATE INDEX IF NOT EXISTS idx_users_external_id ON users(external_id);
+CREATE INDEX IF NOT EXISTS idx_users_api_key ON users(api_key);
 
 CREATE TABLE IF NOT EXISTS sessions (
   id           TEXT PRIMARY KEY,
@@ -2039,7 +2055,9 @@ ORDER BY (marker_id, id);`,
   source     String,
   source_id  String,
   source_url String,
-  user_id    String
+  user_id    String,
+  username   String,
+  internal_user_id String
 ) ENGINE = MergeTree()
 ORDER BY (created_at, id);`,
 		}

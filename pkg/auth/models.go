@@ -2,18 +2,19 @@ package auth
 
 // User represents a user account in the system.
 type User struct {
-	ID                   int64  `json:"id"`
-	Email                string `json:"email"`
-	PasswordHash         string `json:"-"` // Never expose password hash in JSON
-	Username             string `json:"username,omitempty"`
-	EmailVerified        bool   `json:"emailVerified"`
-	CreatedAt            int64  `json:"createdAt"`
-	UpdatedAt            int64  `json:"updatedAt"`
-	LastLoginAt          int64  `json:"lastLoginAt,omitempty"`
-	IsActive             bool   `json:"isActive"`
-	ExternalID           string `json:"externalId,omitempty"`
-	ExternalSource       string `json:"externalSource,omitempty"`
-	RequiresPasswordSetup bool  `json:"requiresPasswordSetup"`
+	ID                    int64  `json:"id"`
+	Email                 string `json:"email"`
+	PasswordHash          string `json:"-"` // Never expose password hash in JSON
+	Username              string `json:"username,omitempty"`
+	EmailVerified         bool   `json:"email_verified"`
+	CreatedAt             int64  `json:"created_at"`
+	UpdatedAt             int64  `json:"updated_at"`
+	LastLoginAt           int64  `json:"last_login_at,omitempty"`
+	IsActive              bool   `json:"is_active"`
+	ExternalID            string `json:"external_id,omitempty"`
+	ExternalSource        string `json:"external_source,omitempty"`
+	RequiresPasswordSetup bool   `json:"requires_password_setup"`
+	APIKey                string `json:"api_key,omitempty"`
 }
 
 // Session represents a user session stored in the database.
