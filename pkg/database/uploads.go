@@ -19,9 +19,10 @@ type Upload struct {
 	Source        string `json:"source,omitempty"`        // Import source (e.g., "safecast-api", "user-upload")
 	SourceID      string `json:"sourceID,omitempty"`      // External reference ID (e.g., Safecast import ID)
 	SourceURL     string `json:"sourceURL,omitempty"`     // Source file URL (e.g., S3 URL)
-	UserID        string `json:"userID,omitempty"`        // User ID from source (e.g., Safecast user ID)
-	Username      string `json:"username,omitempty"`      // Username from source (fetched from API)
-	Detector      string `json:"detector,omitempty"`      // Detector info from track_statistics
+	UserID         string `json:"userID,omitempty"`         // User ID from source (e.g., Safecast user ID)
+	Username       string `json:"username,omitempty"`       // Username from source (fetched from API)
+	InternalUserID string `json:"internalUserID,omitempty"` // Internal user ID from users table (for authenticated uploads)
+	Detector       string `json:"detector,omitempty"`       // Detector info from track_statistics
 }
 
 // InsertUpload records a file upload in the uploads table.
@@ -38,8 +39,8 @@ func (db *Database) InsertUpload(ctx context.Context, upload Upload) (int64, err
 	switch db.Driver {
 	case "pgx":
 		query = `
-			INSERT INTO uploads (filename, file_type, track_id, file_size, upload_ip, created_at, recording_date, source, source_id, source_url, user_id, username, detector)
-			VALUES ($1, $2, $3, $4, $5, to_timestamp($6), to_timestamp($7), $8, $9, $10, $11, $12, $13)
+			INSERT INTO uploads (filename, file_type, track_id, file_size, upload_ip, created_at, recording_date, source, source_id, source_url, user_id, username, internal_user_id, detector)
+			VALUES ($1, $2, $3, $4, $5, to_timestamp($6), to_timestamp($7), $8, $9, $10, $11, $12, $13, $14)
 			RETURNING id
 		`
 		recordingDateArg := upload.RecordingDate
@@ -49,15 +50,15 @@ func (db *Database) InsertUpload(ctx context.Context, upload Upload) (int64, err
 		args = []interface{}{
 			upload.Filename, upload.FileType, upload.TrackID,
 			upload.FileSize, upload.UploadIP, createdAt, recordingDateArg,
-			upload.Source, upload.SourceID, upload.SourceURL, upload.UserID, upload.Username, upload.Detector,
+			upload.Source, upload.SourceID, upload.SourceURL, upload.UserID, upload.Username, upload.InternalUserID, upload.Detector,
 		}
 		err := db.DB.QueryRowContext(ctx, query, args...).Scan(&id)
 		return id, err
 
 	case "duckdb":
 		query = `
-			INSERT INTO uploads (filename, file_type, track_id, file_size, upload_ip, created_at, recording_date, source, source_id, source_url, user_id, username, detector)
-			VALUES ($1, $2, $3, $4, $5, to_timestamp($6), to_timestamp($7), $8, $9, $10, $11, $12, $13)
+			INSERT INTO uploads (filename, file_type, track_id, file_size, upload_ip, created_at, recording_date, source, source_id, source_url, user_id, username, internal_user_id, detector)
+			VALUES ($1, $2, $3, $4, $5, to_timestamp($6), to_timestamp($7), $8, $9, $10, $11, $12, $13, $14)
 			RETURNING id
 		`
 		recordingDateArg := upload.RecordingDate
@@ -67,15 +68,15 @@ func (db *Database) InsertUpload(ctx context.Context, upload Upload) (int64, err
 		args = []interface{}{
 			upload.Filename, upload.FileType, upload.TrackID,
 			upload.FileSize, upload.UploadIP, createdAt, recordingDateArg,
-			upload.Source, upload.SourceID, upload.SourceURL, upload.UserID, upload.Username, upload.Detector,
+			upload.Source, upload.SourceID, upload.SourceURL, upload.UserID, upload.Username, upload.InternalUserID, upload.Detector,
 		}
 		err := db.DB.QueryRowContext(ctx, query, args...).Scan(&id)
 		return id, err
 
 	case "sqlite", "chai":
 		query = `
-			INSERT INTO uploads (filename, file_type, track_id, file_size, upload_ip, created_at, recording_date, source, source_id, source_url, user_id, username, detector)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			INSERT INTO uploads (filename, file_type, track_id, file_size, upload_ip, created_at, recording_date, source, source_id, source_url, user_id, username, internal_user_id, detector)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		`
 		recordingDateArg := upload.RecordingDate
 		if recordingDateArg == 0 {
@@ -84,7 +85,7 @@ func (db *Database) InsertUpload(ctx context.Context, upload Upload) (int64, err
 		args = []interface{}{
 			upload.Filename, upload.FileType, upload.TrackID,
 			upload.FileSize, upload.UploadIP, createdAt, recordingDateArg,
-			upload.Source, upload.SourceID, upload.SourceURL, upload.UserID, upload.Username, upload.Detector,
+			upload.Source, upload.SourceID, upload.SourceURL, upload.UserID, upload.Username, upload.InternalUserID, upload.Detector,
 		}
 		result, err := db.DB.ExecContext(ctx, query, args...)
 		if err != nil {

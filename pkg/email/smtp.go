@@ -72,15 +72,72 @@ func (s *Sender) Send(to, subject, htmlBody, textBody string) error {
 
 	// Send email
 	if s.config.UseTLS {
-		// Use TLS
-		return s.sendWithTLS(addr, auth, s.config.From, []string{to}, []byte(message))
+		// Use STARTTLS (port 587) instead of direct TLS (port 465)
+		return s.sendWithSTARTTLS(addr, auth, s.config.From, []string{to}, []byte(message))
 	}
 
 	// Use plain SMTP
 	return smtp.SendMail(addr, auth, s.config.From, []string{to}, []byte(message))
 }
 
-// sendWithTLS sends email using TLS encryption.
+// sendWithSTARTTLS sends email using STARTTLS (for port 587).
+func (s *Sender) sendWithSTARTTLS(addr string, auth smtp.Auth, from string, to []string, msg []byte) error {
+	// Connect to SMTP server
+	client, err := smtp.Dial(addr)
+	if err != nil {
+		return fmt.Errorf("failed to connect to SMTP server: %w", err)
+	}
+	defer client.Quit()
+
+	// Start TLS
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: false,
+		ServerName:         s.config.Host,
+	}
+
+	if err = client.StartTLS(tlsConfig); err != nil {
+		return fmt.Errorf("failed to start TLS: %w", err)
+	}
+
+	// Authenticate
+	if auth != nil {
+		if err = client.Auth(auth); err != nil {
+			return fmt.Errorf("SMTP authentication failed: %w", err)
+		}
+	}
+
+	// Set sender
+	if err = client.Mail(from); err != nil {
+		return fmt.Errorf("failed to set sender: %w", err)
+	}
+
+	// Set recipients
+	for _, addr := range to {
+		if err = client.Rcpt(addr); err != nil {
+			return fmt.Errorf("failed to set recipient: %w", err)
+		}
+	}
+
+	// Send email body
+	w, err := client.Data()
+	if err != nil {
+		return fmt.Errorf("failed to get data writer: %w", err)
+	}
+
+	_, err = w.Write(msg)
+	if err != nil {
+		return fmt.Errorf("failed to write email body: %w", err)
+	}
+
+	err = w.Close()
+	if err != nil {
+		return fmt.Errorf("failed to close data writer: %w", err)
+	}
+
+	return nil
+}
+
+// sendWithTLS sends email using direct TLS encryption (for port 465).
 func (s *Sender) sendWithTLS(addr string, auth smtp.Auth, from string, to []string, msg []byte) error {
 	// Connect to SMTP server with TLS
 	tlsConfig := &tls.Config{
