@@ -99,6 +99,16 @@ Open [http://localhost:8765](http://localhost:8765)
 ### Database Options
 
 **PostgreSQL (Recommended for Production)**
+
+Requires PostGIS extension for spatial indexing:
+```bash
+# Ubuntu/Debian
+sudo apt install postgresql-16-postgis-3
+
+# RHEL/CentOS/Rocky
+sudo dnf install postgis34_16
+```
+
 ```bash
 ./safecast-new-map -db-type pgx -db-conn "postgres://user:pass@host:5432/dbname?sslmode=require"
 ```
