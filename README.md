@@ -233,16 +233,28 @@ Customize map views with URL parameters:
 
 | Parameter | Values | Description |
 |-----------|--------|-------------|
+| `place` | City, country, or location name | Navigate to a specific location by name |
+| `lat` | Latitude (-90 to 90) | Latitude coordinate for map center |
+| `lon` | Longitude (-180 to 180) | Longitude coordinate for map center |
+| `zoom` | 1-18 | Zoom level (used with lat/lon) |
+| `minLat`, `minLon`, `maxLat`, `maxLon` | Coordinates | Define map bounds (legacy format) |
 | `coloring` | safecast, chicha | Scientific gradient vs. safety bins |
 | `unit` | uSv, uR | Display units (microsieverts or microroentgen) |
 | `legend` | 1, 0 | Show/hide legend |
 | `lang` | en, ru, ja, etc. | Interface language |
 | `layer` | OpenStreetMap, Google Satellite | Base map |
 
-**Examples:**
+**Location Examples:**
+- Direct to Tokyo: `/?place=Tokyo`
+- Coordinates with zoom: `/?lat=48.8566&lon=2.3522&zoom=13`
+- Share search result: `/?place=São%20Paulo` (auto-generated when searching)
+
+**Display Examples:**
 - Safety view: `/?coloring=chicha&unit=uR`
 - Clean embed: `/?legend=0`
 - Russian interface: `/?lang=ru`
+
+**Parameter Priority:** When loading URLs, `place` takes priority over `lat/lon`, which takes priority over bounds (`minLat/maxLat`).
 
 ---
 

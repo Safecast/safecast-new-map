@@ -51,8 +51,10 @@ import (
 	"golang.org/x/crypto/acme/autocert"
 
 	"safecast-new-map/pkg/api"
+	"safecast-new-map/pkg/auth"
 	"safecast-new-map/pkg/database"
 	"safecast-new-map/pkg/database/drivers"
+	"safecast-new-map/pkg/email"
 	"safecast-new-map/pkg/jsonarchive"
 	"safecast-new-map/pkg/logger"
 	"safecast-new-map/pkg/mapimport"
@@ -99,6 +101,20 @@ var safecastFetcherStartDate = flag.String("safecast-fetcher-start-date", "", "O
 var safecastFetcherBackfill = flag.Bool("safecast-fetcher-backfill", false, "Backfill mode: import all matching records from start-date, ignoring what's already in database")
 var safecastFetcherNewestFirst = flag.Bool("safecast-fetcher-newest-first", false, "Fetch newest imports first instead of oldest first")
 
+// Authentication flags
+var smtpHost = flag.String("smtp-host", "", "SMTP server hostname for sending emails")
+var smtpPort = flag.Int("smtp-port", 587, "SMTP server port")
+var smtpUsername = flag.String("smtp-username", "", "SMTP username")
+var smtpPassword = flag.String("smtp-password", "", "SMTP password")
+var smtpFrom = flag.String("smtp-from", "", "Email from address")
+var smtpFromName = flag.String("smtp-from-name", "Safecast", "Email from name")
+var sessionSecret = flag.String("session-secret", "", "Secret key for session encryption (required for authentication)")
+var sessionCookieName = flag.String("session-cookie-name", "safecast_session", "Name of the session cookie")
+var requireAuth = flag.Bool("require-auth", false, "Require authentication for uploads")
+var allowRegistration = flag.Bool("allow-registration", true, "Allow new user registration")
+var sessionDuration = flag.Duration("session-duration", 30*24*time.Hour, "Session duration (default: 30 days)")
+var baseURL = flag.String("base-url", "http://localhost:8765", "Base URL for the application (used in emails)")
+
 // debugIPAllowlist keeps a fast lookup of remote addresses that should see the
 // technical overlay. We keep it as a map so lookups stay O(1) without extra
 // synchronization, following "Clear is better than clever" by leaning on Go's
@@ -118,6 +134,8 @@ var cliUsageSections = []usageSection{
 	{Title: "Map defaults", Flags: []string{"default-lat", "default-lon", "default-zoom", "default-layer", "auto-locate-default"}},
 	{Title: "Realtime & archives", Flags: []string{"safecast-realtime", "json-archive-path", "json-archive-frequency", "import-tgz-url", "import-tgz-file"}},
 	{Title: "Safecast API fetcher", Flags: []string{"safecast-fetcher", "safecast-fetcher-interval", "safecast-fetcher-batch-size", "safecast-fetcher-start-date"}},
+	{Title: "Authentication", Flags: []string{"require-auth", "allow-registration", "session-secret", "session-cookie-name", "session-duration", "base-url"}},
+	{Title: "Email (SMTP)", Flags: []string{"smtp-host", "smtp-port", "smtp-username", "smtp-password", "smtp-from", "smtp-from-name"}},
 	{Title: "Self-upgrade", Flags: []string{"selfupgrade", "selfupgrade-url"}},
 }
 
@@ -999,10 +1017,8 @@ func processBGeigieZenFile(
 			dose = cpm / cpmPerMicroSv
 		} else if cps > 0 {
 			dose = (cps * 60.0) / cpmPerMicroSv
-		} else {
-			skipped++
-			continue
 		}
+		// Allow zero-dose records: GPS tracks are valuable even without radiation data
 
 		countRate := cps
 		if countRate == 0 && cpm > 0 {
@@ -2971,6 +2987,113 @@ func processSPEFile(
 	return bounds, storedTrackID, nil
 }
 
+// processRCXMLFile handles RadiaCode proprietary XML spectrum files.
+func processRCXMLFile(
+	file multipart.File,
+	filename string,
+	trackID string,
+	db *database.Database,
+	dbType string,
+) (database.Bounds, string, error) {
+	logT(trackID, "RCXML", "▶ start")
+
+	raw, err := io.ReadAll(file)
+	if err != nil {
+		return database.Bounds{}, trackID, fmt.Errorf("read RCXML: %w", err)
+	}
+
+	// Parse RadiaCode XML file to extract spectra and markers
+	spectra, markers, err := spectrum.ParseRCXML(raw)
+	if err != nil {
+		return database.Bounds{}, trackID, fmt.Errorf("parse RCXML: %w", err)
+	}
+
+	logT(trackID, "RCXML", "parsed %d spectra, %d markers", len(spectra), len(markers))
+
+	if len(markers) == 0 {
+		return database.Bounds{}, trackID, fmt.Errorf("no markers found in RCXML file")
+	}
+
+	// Set trackID for all markers
+	for i := range markers {
+		if markers[i].TrackID == "" {
+			markers[i].TrackID = trackID
+		}
+	}
+
+	// Store markers and get their IDs
+	bounds, storedTrackID, err := processAndStoreMarkers(markers, trackID, db, dbType)
+	if err != nil {
+		return bounds, storedTrackID, fmt.Errorf("store markers: %w", err)
+	}
+
+	// Get the marker IDs from database to link spectra
+	ctx := context.Background()
+	for i := range spectra {
+		if i < len(markers) {
+			// Query for ALL marker IDs with this location and timestamp (across all zoom levels)
+			query := "SELECT id FROM markers WHERE lat = ? AND lon = ? AND date = ?"
+			args := []interface{}{markers[i].Lat, markers[i].Lon, markers[i].Date}
+
+			if dbType == "pgx" {
+				query = "SELECT id FROM markers WHERE lat = $1 AND lon = $2 AND date = $3"
+			}
+
+			rows, err := db.DB.QueryContext(ctx, query, args...)
+			if err != nil {
+				logT(trackID, "RCXML", "warning: could not query markers for spectrum %d: %v", i, err)
+				continue
+			}
+
+			var markerIDs []int64
+			for rows.Next() {
+				var mid int64
+				if err := rows.Scan(&mid); err != nil {
+					logT(trackID, "RCXML", "warning: failed to scan marker ID: %v", err)
+					continue
+				}
+				markerIDs = append(markerIDs, mid)
+			}
+			rows.Close()
+
+			if len(markerIDs) == 0 {
+				logT(trackID, "RCXML", "warning: no markers found for spectrum %d", i)
+				continue
+			}
+
+			// Insert spectrum using the first marker ID (typically zoom=0)
+			spectra[i].MarkerID = markerIDs[0]
+			spectra[i].RawData = raw // Store original RCXML file
+			spectra[i].Filename = filename
+
+			spectrumID, err := db.InsertSpectrum(ctx, spectra[i])
+			if err != nil {
+				logT(trackID, "RCXML", "warning: failed to insert spectrum %d: %v", i, err)
+				continue
+			}
+
+			// Update has_spectrum flag for ALL markers at this location/time (all zoom levels)
+			updateQuery := "UPDATE markers SET has_spectrum = ? WHERE lat = ? AND lon = ? AND date = ?"
+			updateArgs := []interface{}{true, markers[i].Lat, markers[i].Lon, markers[i].Date}
+			if dbType == "pgx" {
+				updateQuery = "UPDATE markers SET has_spectrum = $1 WHERE lat = $2 AND lon = $3 AND date = $4"
+			}
+
+			result, err := db.DB.ExecContext(ctx, updateQuery, updateArgs...)
+			if err != nil {
+				logT(trackID, "RCXML", "warning: failed to update has_spectrum flags: %v", err)
+			} else {
+				if count, _ := result.RowsAffected(); count > 0 {
+					logT(trackID, "RCXML", "inserted spectrum %d for marker %d (updated %d zoom levels)", spectrumID, markerIDs[0], count)
+				}
+			}
+		}
+	}
+
+	logT(trackID, "RCXML", "✓ complete")
+	return bounds, storedTrackID, nil
+}
+
 // processAtomFastFile handles Atom Fast JSON export (*.json).
 func processAtomFastFile(
 	file multipart.File,
@@ -4227,6 +4350,9 @@ func progressHandler(w http.ResponseWriter, r *http.Request) {
 			percent := 0
 			if total > 0 {
 				percent = int((float64(current) / float64(total)) * 100)
+			} else if complete {
+				// If complete but total is 0, show 100%
+				percent = 100
 			}
 
 			// Send update if progress changed OR if complete
@@ -4318,6 +4444,17 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		clientIP = forwarded
 	}
 
+	// Extract authenticated user if present
+	var userID, username string
+	if user, ok := auth.GetUserFromContext(r.Context()); ok {
+		userID = fmt.Sprintf("%d", user.ID)
+		username = user.Username
+		if username == "" {
+			username = user.Email
+		}
+		logT(trackID, "Upload", "authenticated user: %s (ID: %s)", username, userID)
+	}
+
 	// Initialize progress tracker
 	uploadProgress.Lock()
 	uploadProgress.tracks[trackID] = &UploadProgress{Total: 0, Current: 0, Complete: false}
@@ -4376,6 +4513,16 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			case ".spe":
 				isSpectrumUpload = true
 				bbox, trackID, err = processSPEFile(reader, fd.filename, trackID, db, *dbType)
+			case ".xml":
+				// Check if this is RadiaCode XML format
+				if spectrum.IsRCXMLFormat(fd.content) {
+					isSpectrumUpload = true
+					bbox, trackID, err = processRCXMLFile(reader, fd.filename, trackID, db, *dbType)
+				} else {
+					logT(trackID, "Upload", "unsupported XML format: %s", fd.filename)
+					lastError = fmt.Errorf("unsupported XML format (not RadiaCode)")
+					continue
+				}
 			case ".cim":
 				var imported bool
 				bbox, trackID, imported, err = processTrackExportFile(context.Background(), reader, trackID, db, *dbType)
@@ -4452,6 +4599,9 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 				RecordingDate: recordingDate,
 				CreatedAt:     0,
 				Detector:      detector,
+				UserID:        userID,
+				Username:      username,
+				Source:        "user-upload",
 			}
 			if _, uploadErr := db.InsertUpload(context.Background(), upload); uploadErr != nil {
 				logT(trackID, "Upload", "warning: failed to track upload: %v", uploadErr)
@@ -4711,6 +4861,50 @@ func mapHandler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("client disconnected while writing response")
 		} else {
 			log.Printf("Error writing response: %v", err)
+		}
+	}
+}
+
+// homeHandler serves the home page with location search interface.
+// The home page shows an empty map with a centered modal prompting for location entry.
+func homeHandler(w http.ResponseWriter, r *http.Request) {
+	lang := getPreferredLanguage(r)
+
+	// Prepare template
+	tmpl := template.Must(template.New("home.html").Funcs(template.FuncMap{
+		"translate": func(key string) string {
+			if val, ok := translations[lang][key]; ok {
+				return val
+			}
+			return translations["en"][key]
+		},
+	}).ParseFS(content, "public_html/home.html"))
+
+	// Template data
+	data := struct {
+		Version      string
+		Translations map[string]map[string]string
+		Lang         string
+	}{
+		Version:      CompileVersion,
+		Translations: translations,
+		Lang:         lang,
+	}
+
+	// Render to buffer
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		log.Printf("Error executing home template: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if _, err := buf.WriteTo(w); err != nil {
+		if isClientDisconnect(err) {
+			log.Printf("client disconnected while writing home response")
+		} else {
+			log.Printf("Error writing home response: %v", err)
 		}
 	}
 }
@@ -8589,6 +8783,37 @@ func main() {
 	}
 	queueDuckDBMaintenanceAfterImport(driverName, db, log.Printf, "startup")
 
+	// Initialize authentication system if configured
+	var authManager *auth.Manager
+	var emailSender *email.Sender
+	if *sessionSecret != "" && *smtpHost != "" {
+		// Initialize email sender
+		emailConfig := email.SMTPConfig{
+			Host:     *smtpHost,
+			Port:     *smtpPort,
+			Username: *smtpUsername,
+			Password: *smtpPassword,
+			From:     *smtpFrom,
+			FromName: *smtpFromName,
+			UseTLS:   true,
+		}
+		emailSender = email.NewSender(emailConfig)
+
+		// Initialize auth manager
+		authManager = &auth.Manager{
+			DB:                db.DB,
+			DBDriver:          driverName,
+			SessionCookieName: *sessionCookieName,
+			AllowRegistration: *allowRegistration,
+			EmailSender:       emailSender,
+			BaseURL:           *baseURL,
+		}
+
+		log.Printf("Authentication system enabled")
+	} else if *requireAuth {
+		log.Fatalf("Authentication required but not properly configured. Set -session-secret and -smtp-host")
+	}
+
 	remoteURL := strings.TrimSpace(*importTGZURLFlag)
 	localArchive := strings.TrimSpace(*importTGZFileFlag)
 	if remoteURL != "" && localArchive != "" {
@@ -8762,11 +8987,103 @@ func main() {
 
 	http.Handle("/static/", http.StripPrefix("/static/",
 		http.FileServer(http.FS(staticFS))))
+	http.HandleFunc("/home", homeHandler)
 	http.HandleFunc("/", mapHandler)
 	// Serve license documents straight from the embedded filesystem so UI
 	// modals can reuse the same source without relying on external storage.
 	http.HandleFunc("/licenses/", licenseHandler)
-	http.HandleFunc("/upload", uploadHandler)
+
+	// Register authentication routes if auth system is enabled
+	if authManager != nil {
+		http.HandleFunc("/api/auth/register", authManager.RegisterHandler)
+		http.HandleFunc("/api/auth/login", authManager.LoginHandler)
+		http.HandleFunc("/api/auth/logout", authManager.LogoutHandler)
+		http.HandleFunc("/api/auth/forgot-password", authManager.ForgotPasswordHandler)
+		http.HandleFunc("/api/auth/reset-password", authManager.ResetPasswordHandler)
+		http.HandleFunc("/api/auth/verify-email", authManager.VerifyEmailHandler)
+		http.HandleFunc("/api/user/profile", authManager.RequireAuth(authManager.ProfileHandler))
+
+		// Serve reset-password page
+		http.HandleFunc("/reset-password", func(w http.ResponseWriter, r *http.Request) {
+			data, err := content.ReadFile("public_html/reset-password.html")
+			if err != nil {
+				http.Error(w, "Reset password page not found", http.StatusNotFound)
+				return
+			}
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Write(data)
+		})
+	}
+
+	// User admin routes (uses password parameter like existing admin system)
+	if authManager != nil && *adminPassword != "" {
+		// Helper function to check admin password
+		checkAdminPassword := func(w http.ResponseWriter, r *http.Request) bool {
+			password := r.URL.Query().Get("password")
+			if password != *adminPassword {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return false
+			}
+			return true
+		}
+
+		// Serve admin users page
+		http.HandleFunc("/admin/users", func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminPassword(w, r) {
+				return
+			}
+			data, err := content.ReadFile("public_html/admin-users.html")
+			if err != nil {
+				http.Error(w, "Admin page not found", http.StatusNotFound)
+				return
+			}
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Write(data)
+		})
+
+		// Admin API routes
+		http.HandleFunc("/api/admin/users", func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminPassword(w, r) {
+				return
+			}
+			authManager.AdminListUsersHandler(w, r)
+		})
+
+		http.HandleFunc("/api/admin/users/create", func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminPassword(w, r) {
+				return
+			}
+			authManager.AdminCreateUserHandler(w, r)
+		})
+
+		http.HandleFunc("/api/admin/users/", func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminPassword(w, r) {
+				return
+			}
+			switch r.Method {
+			case http.MethodPut, http.MethodPatch:
+				authManager.AdminUpdateUserHandler(w, r)
+			case http.MethodDelete:
+				authManager.AdminDeleteUserHandler(w, r)
+			case http.MethodPost:
+				// Check if it's a reset password action
+				if strings.HasSuffix(r.URL.Path, "/reset-password") {
+					authManager.AdminResetUserPasswordHandler(w, r)
+				} else {
+					http.Error(w, "Not found", http.StatusNotFound)
+				}
+			default:
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			}
+		})
+	}
+
+	// Upload endpoint - protected with auth if required
+	if *requireAuth && authManager != nil {
+		http.HandleFunc("/upload", authManager.RequireAuth(uploadHandler))
+	} else {
+		http.HandleFunc("/upload", uploadHandler)
+	}
 	http.HandleFunc("/upload/progress", progressHandler)
 	http.HandleFunc("/get_markers", getMarkersHandler)
 	// Note: /stream_markers is Server-Sent Events (streaming) so gzip is skipped.

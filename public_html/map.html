@@ -954,6 +954,208 @@ body, html {
           display: block;
         }
 
+        /* Home/Welcome Overlay */
+        .home-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.7);
+          z-index: 2500;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          backdrop-filter: blur(4px);
+        }
+
+        .home-overlay.hidden {
+          display: none;
+        }
+
+        .home-popup {
+          background: var(--modal-bg);
+          color: var(--modal-text);
+          border-radius: 16px;
+          padding: 40px 50px;
+          max-width: 500px;
+          width: 90%;
+          text-align: center;
+          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+          animation: homePopupFadeIn 0.4s ease-out;
+        }
+
+        @keyframes homePopupFadeIn {
+          from {
+            opacity: 0;
+            transform: scale(0.9) translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+          }
+        }
+
+        .home-popup-logo {
+          width: 80px;
+          height: 80px;
+          margin-bottom: 20px;
+        }
+
+        .home-popup-title {
+          font-size: 28px;
+          font-weight: 700;
+          margin-bottom: 10px;
+          color: var(--modal-text);
+        }
+
+        .home-popup-subtitle {
+          font-size: 16px;
+          opacity: 0.8;
+          margin-bottom: 30px;
+          line-height: 1.5;
+        }
+
+        .home-search-wrapper {
+          position: relative;
+          margin-bottom: 20px;
+        }
+
+        .home-search-input {
+          width: 100%;
+          padding: 16px 50px 16px 20px;
+          font-size: 18px;
+          font-family: var(--font-family-base);
+          background: var(--control-bg);
+          color: var(--modal-text);
+          border: 2px solid rgba(128, 128, 128, 0.3);
+          border-radius: 12px;
+          box-sizing: border-box;
+          transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .home-search-input:focus {
+          outline: none;
+          border-color: #4caf50;
+          box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
+        }
+
+        .home-search-input::placeholder {
+          color: var(--modal-text);
+          opacity: 0.5;
+        }
+
+        .home-search-icon {
+          position: absolute;
+          right: 16px;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 24px;
+          height: 24px;
+          opacity: 0.5;
+          pointer-events: none;
+        }
+
+        .home-search-results {
+          position: absolute;
+          top: 100%;
+          left: 0;
+          right: 0;
+          margin-top: 8px;
+          background: var(--modal-bg);
+          border: 1px solid rgba(128, 128, 128, 0.3);
+          border-radius: 12px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+          max-height: 250px;
+          overflow-y: auto;
+          display: none;
+          text-align: left;
+        }
+
+        .home-search-results.active {
+          display: block;
+        }
+
+        .home-search-result-item {
+          padding: 14px 20px;
+          cursor: pointer;
+          border-bottom: 1px solid rgba(128, 128, 128, 0.15);
+          transition: background 0.15s;
+        }
+
+        .home-search-result-item:last-child {
+          border-bottom: none;
+        }
+
+        .home-search-result-item:hover {
+          background: var(--control-bg-hover);
+        }
+
+        .home-search-result-name {
+          font-weight: 600;
+          font-size: 15px;
+        }
+
+        .home-search-result-details {
+          font-size: 13px;
+          opacity: 0.7;
+          margin-top: 4px;
+        }
+
+        .home-or-divider {
+          display: flex;
+          align-items: center;
+          margin: 20px 0;
+          opacity: 0.6;
+        }
+
+        .home-or-divider::before,
+        .home-or-divider::after {
+          content: '';
+          flex: 1;
+          height: 1px;
+          background: currentColor;
+        }
+
+        .home-or-divider span {
+          padding: 0 15px;
+          font-size: 14px;
+        }
+
+        .home-locate-btn {
+          background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+          color: white;
+          border: none;
+          border-radius: 10px;
+          padding: 14px 30px;
+          font-size: 16px;
+          font-family: var(--font-family-base);
+          cursor: pointer;
+          transition: transform 0.2s, box-shadow 0.2s;
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .home-locate-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+        }
+
+        .home-skip-link {
+          display: block;
+          margin-top: 25px;
+          color: var(--link-color);
+          font-size: 14px;
+          cursor: pointer;
+          opacity: 0.8;
+          text-decoration: underline;
+        }
+
+        .home-skip-link:hover {
+          opacity: 1;
+        }
+
         /* Leaflet controls use theme variables so colors follow the current theme */
         .leaflet-control-layers,
         .leaflet-control-layers-toggle,
@@ -1505,6 +1707,43 @@ body, html {
       <div id="searchResults" class="search-results"></div>
     </div>
 
+    <!-- Home/Welcome Overlay -->
+    <div id="homeOverlay" class="home-overlay">
+      <div class="home-popup">
+        <img src="/static/images/safecast-heart-logo.png" alt="Safecast" class="home-popup-logo">
+        <h1 class="home-popup-title">{{translate "title"}}</h1>
+        <p class="home-popup-subtitle">{{translate "home_subtitle"}}</p>
+        
+        <div class="home-search-wrapper">
+          <input
+            type="text"
+            id="homeSearchInput"
+            class="home-search-input"
+            placeholder="{{translate "home_search_placeholder"}}"
+            autocomplete="off"
+            aria-label="{{translate "home_search_placeholder"}}">
+          <svg class="home-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="M21 21l-4.35-4.35"></path>
+          </svg>
+          <div id="homeSearchResults" class="home-search-results"></div>
+        </div>
+        
+        <div class="home-or-divider"><span>{{translate "home_or"}}</span></div>
+        
+        <button id="homeLocateBtn" class="home-locate-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path>
+          </svg>
+          {{translate "home_use_location"}}
+        </button>
+        
+        <a id="homeSkipLink" class="home-skip-link">{{translate "home_explore_global"}}</a>
+      </div>
+    </div>
+
     <!-- Container for geolocation button -->
     <div class="locate-btn-container leaflet-control">
       <button id="locateButton" class="locate-btn" aria-label="{{translate "locate_button_tooltip"}}">
@@ -1893,6 +2132,120 @@ body, html {
   </div>
 </div>
 
+<!-- Authentication Modals -->
+<!-- Login Modal -->
+<div id="loginModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 10002; align-items: center; justify-content: center;">
+  <div style="background: var(--modal-bg); padding: 32px; border-radius: 12px; max-width: 450px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+    <h2 style="margin: 0 0 24px 0; color: var(--modal-text); font-size: 24px;">Login to Safecast</h2>
+    <form id="loginForm">
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">Email:</label>
+        <input type="email" id="loginEmail" placeholder="your@email.com" required
+               style="width: 100%; padding: 12px; border: var(--legend-border); border-radius: 6px; background: var(--control-bg); color: var(--modal-text); font-size: var(--font-size-base); box-sizing: border-box;">
+      </div>
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">Password:</label>
+        <input type="password" id="loginPassword" placeholder="Password" required
+               style="width: 100%; padding: 12px; border: var(--legend-border); border-radius: 6px; background: var(--control-bg); color: var(--modal-text); font-size: var(--font-size-base); box-sizing: border-box;">
+      </div>
+      <button type="submit" style="width: 100%; padding: 14px; background: #4CAF50; border: none; border-radius: 6px; cursor: pointer; color: white; font-weight: 600; font-size: 16px; margin-bottom: 12px;">
+        Login
+      </button>
+      <p id="loginError" style="color: #f44336; font-size: var(--font-size-sm); margin: 12px 0 0 0; display: none;"></p>
+    </form>
+    <div style="margin-top: 20px; text-align: center; color: var(--modal-text); font-size: var(--font-size-sm);">
+      <p style="margin: 8px 0;"><a href="#" onclick="showForgotPassword(); return false;" style="color: var(--isotope-highlight); text-decoration: none;">Forgot password?</a></p>
+      <p style="margin: 8px 0;">Don't have an account? <a href="#" onclick="showRegister(); return false;" style="color: var(--isotope-highlight); text-decoration: none;">Register</a></p>
+    </div>
+    <button type="button" onclick="closeLoginModal()" style="margin-top: 16px; width: 100%; padding: 10px; background: transparent; border: var(--legend-border); border-radius: 6px; cursor: pointer; color: var(--modal-text);">
+      Close
+    </button>
+  </div>
+</div>
+
+<!-- Register Modal -->
+<div id="registerModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 10002; align-items: center; justify-content: center;">
+  <div style="background: var(--modal-bg); padding: 32px; border-radius: 12px; max-width: 450px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+    <h2 style="margin: 0 0 24px 0; color: var(--modal-text); font-size: 24px;">Create Account</h2>
+    <form id="registerForm">
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">Email:</label>
+        <input type="email" id="registerEmail" placeholder="your@email.com" required
+               style="width: 100%; padding: 12px; border: var(--legend-border); border-radius: 6px; background: var(--control-bg); color: var(--modal-text); font-size: var(--font-size-base); box-sizing: border-box;">
+      </div>
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">Username (optional):</label>
+        <input type="text" id="registerUsername" placeholder="username"
+               style="width: 100%; padding: 12px; border: var(--legend-border); border-radius: 6px; background: var(--control-bg); color: var(--modal-text); font-size: var(--font-size-base); box-sizing: border-box;">
+      </div>
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">Password:</label>
+        <input type="password" id="registerPassword" placeholder="At least 8 characters" required
+               style="width: 100%; padding: 12px; border: var(--legend-border); border-radius: 6px; background: var(--control-bg); color: var(--modal-text); font-size: var(--font-size-base); box-sizing: border-box;">
+      </div>
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">Confirm Password:</label>
+        <input type="password" id="registerPasswordConfirm" placeholder="Re-enter password" required
+               style="width: 100%; padding: 12px; border: var(--legend-border); border-radius: 6px; background: var(--control-bg); color: var(--modal-text); font-size: var(--font-size-base); box-sizing: border-box;">
+      </div>
+      <button type="submit" style="width: 100%; padding: 14px; background: #4CAF50; border: none; border-radius: 6px; cursor: pointer; color: white; font-weight: 600; font-size: 16px; margin-bottom: 12px;">
+        Register
+      </button>
+      <p id="registerError" style="color: #f44336; font-size: var(--font-size-sm); margin: 12px 0 0 0; display: none;"></p>
+    </form>
+    <div style="margin-top: 20px; text-align: center; color: var(--modal-text); font-size: var(--font-size-sm);">
+      <p style="margin: 8px 0;">Already have an account? <a href="#" onclick="showLogin(); return false;" style="color: var(--isotope-highlight); text-decoration: none;">Login</a></p>
+    </div>
+    <button type="button" onclick="closeRegisterModal()" style="margin-top: 16px; width: 100%; padding: 10px; background: transparent; border: var(--legend-border); border-radius: 6px; cursor: pointer; color: var(--modal-text);">
+      Close
+    </button>
+  </div>
+</div>
+
+<!-- Forgot Password Modal -->
+<div id="forgotPasswordModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 10002; align-items: center; justify-content: center;">
+  <div style="background: var(--modal-bg); padding: 32px; border-radius: 12px; max-width: 450px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+    <h2 style="margin: 0 0 16px 0; color: var(--modal-text); font-size: 24px;">Reset Password</h2>
+    <p style="margin: 0 0 24px 0; color: var(--modal-text); opacity: 0.8; font-size: var(--font-size-base);">
+      Enter your email address and we'll send you a link to reset your password.
+    </p>
+    <form id="forgotPasswordForm">
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">Email:</label>
+        <input type="email" id="forgotEmail" placeholder="your@email.com" required
+               style="width: 100%; padding: 12px; border: var(--legend-border); border-radius: 6px; background: var(--control-bg); color: var(--modal-text); font-size: var(--font-size-base); box-sizing: border-box;">
+      </div>
+      <button type="submit" style="width: 100%; padding: 14px; background: #4CAF50; border: none; border-radius: 6px; cursor: pointer; color: white; font-weight: 600; font-size: 16px; margin-bottom: 12px;">
+        Send Reset Link
+      </button>
+      <p id="forgotPasswordMessage" style="color: var(--isotope-highlight); font-size: var(--font-size-sm); margin: 12px 0 0 0; display: none;"></p>
+    </form>
+    <div style="margin-top: 20px; text-align: center; color: var(--modal-text); font-size: var(--font-size-sm);">
+      <p style="margin: 8px 0;"><a href="#" onclick="showLogin(); return false;" style="color: var(--isotope-highlight); text-decoration: none;">Back to login</a></p>
+    </div>
+    <button type="button" onclick="closeForgotPasswordModal()" style="margin-top: 16px; width: 100%; padding: 10px; background: transparent; border: var(--legend-border); border-radius: 6px; cursor: pointer; color: var(--modal-text);">
+      Close
+    </button>
+  </div>
+</div>
+
+<!-- User Menu (shown when logged in) -->
+<div id="userMenu" style="display: none; position: fixed; top: 16px; right: 16px; z-index: 1000; background: var(--modal-bg); padding: 12px 16px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); border: var(--legend-border);">
+  <div style="display: flex; align-items: center; gap: 12px;">
+    <span id="userMenuName" style="color: var(--modal-text); font-weight: 600;"></span>
+    <button onclick="logout()" style="padding: 6px 12px; background: #f44336; border: none; border-radius: 4px; cursor: pointer; color: white; font-size: var(--font-size-sm);">
+      Logout
+    </button>
+  </div>
+</div>
+
+<!-- Login Button (shown when logged out) -->
+<div id="loginButton" style="display: none; position: fixed; top: 16px; right: 16px; z-index: 1000;">
+  <button onclick="showLogin()" style="padding: 10px 20px; background: #4CAF50; border: none; border-radius: 6px; cursor: pointer; color: white; font-weight: 600; box-shadow: 0 2px 10px rgba(0,0,0,0.2);">
+    Login
+  </button>
+</div>
+
     <!-- Load Leaflet JavaScript library -->
     <script src="/static/leaflet.js"></script>
     
@@ -1908,7 +2261,278 @@ body, html {
     <script src="/static/nouislider.min.js"></script>
     <script src="/static/wNumb.min.js"></script>
 
+    <!-- Authentication JavaScript -->
+    <script>
+      // Authentication state
+      let currentUser = null;
 
+      // Check authentication status on page load
+      async function checkAuthStatus() {
+        try {
+          const response = await fetch('/api/user/profile');
+          if (response.ok) {
+            currentUser = await response.json();
+            updateUIForLoggedInUser();
+          } else {
+            currentUser = null;
+            updateUIForLoggedOutUser();
+          }
+        } catch (error) {
+          console.error('Auth check failed:', error);
+          currentUser = null;
+          updateUIForLoggedOutUser();
+        }
+      }
+
+      function updateUIForLoggedInUser() {
+        const loginBtn = document.getElementById('loginButton');
+        const userMenu = document.getElementById('userMenu');
+        const userMenuName = document.getElementById('userMenuName');
+
+        if (loginBtn) loginBtn.style.display = 'none';
+        if (userMenu) {
+          userMenu.style.display = 'block';
+          if (userMenuName && currentUser) {
+            userMenuName.textContent = currentUser.username || currentUser.email;
+          }
+        }
+      }
+
+      function updateUIForLoggedOutUser() {
+        const loginBtn = document.getElementById('loginButton');
+        const userMenu = document.getElementById('userMenu');
+
+        if (loginBtn) loginBtn.style.display = 'block';
+        if (userMenu) userMenu.style.display = 'none';
+      }
+
+      // Login function
+      async function login(email, password) {
+        try {
+          const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+          });
+
+          const errorEl = document.getElementById('loginError');
+
+          if (response.ok) {
+            await checkAuthStatus();
+            closeLoginModal();
+            if (errorEl) errorEl.style.display = 'none';
+          } else {
+            const error = await response.json();
+            if (errorEl) {
+              errorEl.textContent = error.error || 'Login failed';
+              errorEl.style.display = 'block';
+            }
+          }
+        } catch (error) {
+          const errorEl = document.getElementById('loginError');
+          if (errorEl) {
+            errorEl.textContent = 'Network error. Please try again.';
+            errorEl.style.display = 'block';
+          }
+        }
+      }
+
+      // Register function
+      async function register(email, username, password) {
+        try {
+          const response = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, username, password })
+          });
+
+          const errorEl = document.getElementById('registerError');
+
+          if (response.ok) {
+            closeRegisterModal();
+            alert('Registration successful! Please check your email to verify your account.');
+            if (errorEl) errorEl.style.display = 'none';
+          } else {
+            const error = await response.json();
+            if (errorEl) {
+              errorEl.textContent = error.error || 'Registration failed';
+              errorEl.style.display = 'block';
+            }
+          }
+        } catch (error) {
+          const errorEl = document.getElementById('registerError');
+          if (errorEl) {
+            errorEl.textContent = 'Network error. Please try again.';
+            errorEl.style.display = 'block';
+          }
+        }
+      }
+
+      // Logout function
+      async function logout() {
+        try {
+          await fetch('/api/auth/logout', { method: 'POST' });
+          currentUser = null;
+          updateUIForLoggedOutUser();
+          alert('Logged out successfully');
+        } catch (error) {
+          console.error('Logout failed:', error);
+        }
+      }
+
+      // Forgot password function
+      async function forgotPassword(email) {
+        try {
+          const response = await fetch('/api/auth/forgot-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+          });
+
+          const msgEl = document.getElementById('forgotPasswordMessage');
+
+          if (response.ok) {
+            if (msgEl) {
+              msgEl.textContent = 'Password reset link sent! Check your email.';
+              msgEl.style.display = 'block';
+              msgEl.style.color = 'var(--isotope-highlight)';
+            }
+          } else {
+            const error = await response.json();
+            if (msgEl) {
+              msgEl.textContent = error.error || 'Request failed';
+              msgEl.style.display = 'block';
+              msgEl.style.color = '#f44336';
+            }
+          }
+        } catch (error) {
+          const msgEl = document.getElementById('forgotPasswordMessage');
+          if (msgEl) {
+            msgEl.textContent = 'Network error. Please try again.';
+            msgEl.style.display = 'block';
+            msgEl.style.color = '#f44336';
+          }
+        }
+      }
+
+      // Modal control functions
+      function showLogin() {
+        closeRegisterModal();
+        closeForgotPasswordModal();
+        const modal = document.getElementById('loginModal');
+        if (modal) {
+          modal.style.display = 'flex';
+          const errorEl = document.getElementById('loginError');
+          if (errorEl) errorEl.style.display = 'none';
+        }
+      }
+
+      function closeLoginModal() {
+        const modal = document.getElementById('loginModal');
+        if (modal) {
+          modal.style.display = 'none';
+          const errorEl = document.getElementById('loginError');
+          if (errorEl) errorEl.style.display = 'none';
+        }
+      }
+
+      function showRegister() {
+        closeLoginModal();
+        closeForgotPasswordModal();
+        const modal = document.getElementById('registerModal');
+        if (modal) {
+          modal.style.display = 'flex';
+          const errorEl = document.getElementById('registerError');
+          if (errorEl) errorEl.style.display = 'none';
+        }
+      }
+
+      function closeRegisterModal() {
+        const modal = document.getElementById('registerModal');
+        if (modal) {
+          modal.style.display = 'none';
+          const errorEl = document.getElementById('registerError');
+          if (errorEl) errorEl.style.display = 'none';
+        }
+      }
+
+      function showForgotPassword() {
+        closeLoginModal();
+        closeRegisterModal();
+        const modal = document.getElementById('forgotPasswordModal');
+        if (modal) {
+          modal.style.display = 'flex';
+          const msgEl = document.getElementById('forgotPasswordMessage');
+          if (msgEl) msgEl.style.display = 'none';
+        }
+      }
+
+      function closeForgotPasswordModal() {
+        const modal = document.getElementById('forgotPasswordModal');
+        if (modal) {
+          modal.style.display = 'none';
+          const msgEl = document.getElementById('forgotPasswordMessage');
+          if (msgEl) msgEl.style.display = 'none';
+        }
+      }
+
+      // Form submit handlers
+      window.addEventListener('load', function() {
+        // Check auth status on page load
+        checkAuthStatus();
+
+        // Check for email verification success
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('emailVerified') === 'true') {
+          alert('Email verified successfully! You can now login.');
+        }
+
+        // Login form
+        const loginForm = document.getElementById('loginForm');
+        if (loginForm) {
+          loginForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            login(email, password);
+          });
+        }
+
+        // Register form
+        const registerForm = document.getElementById('registerForm');
+        if (registerForm) {
+          registerForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const email = document.getElementById('registerEmail').value;
+            const username = document.getElementById('registerUsername').value;
+            const password = document.getElementById('registerPassword').value;
+            const confirm = document.getElementById('registerPasswordConfirm').value;
+
+            const errorEl = document.getElementById('registerError');
+
+            if (password !== confirm) {
+              if (errorEl) {
+                errorEl.textContent = 'Passwords do not match';
+                errorEl.style.display = 'block';
+              }
+              return;
+            }
+
+            register(email, username, password);
+          });
+        }
+
+        // Forgot password form
+        const forgotForm = document.getElementById('forgotPasswordForm');
+        if (forgotForm) {
+          forgotForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const email = document.getElementById('forgotEmail').value;
+            forgotPassword(email);
+          });
+        }
+      });
+    </script>
 
     <!-- Helper functions -->
     <script>
@@ -3927,6 +4551,11 @@ function invalidateMarkerStyleCache() {
  * and keep the date sliders in sync with the viewport.
  */
 function updateMarkers(){
+  // Don't load markers if home overlay is still showing (unless in track view)
+  if (!homeOverlayDismissed && !isTrackView && shouldShowHomeOverlay()) {
+    return;
+  }
+  
   const loadingEl = document.getElementById('loadingOverlay');
   if (loadingEl) loadingEl.style.display='block';
 
@@ -4238,7 +4867,8 @@ function renderCachedMarker(m, tracks, minTs, maxTs, savedRange, zoom) {
   const isLive = m.speed < 0;
   if (!isLive && m.trackID) tracks.add(m.trackID);
 
-  if (savedRange && (m.date < savedRange[0] || m.date > savedRange[1])) return;
+  // In single-track view, show all markers regardless of date filter
+  if (!isTrackView && savedRange && (m.date < savedRange[0] || m.date > savedRange[1])) return;
   if (!shouldDisplayBySpeed(m.speed)) return;
 
   // OPTIMIZED: Use unified marker creation function
@@ -4370,7 +5000,8 @@ function setupMarkerStream(es, tracks, minTs, maxTs, savedRange, tileIndex, cach
       markerBounds.maxLon = Math.max(markerBounds.maxLon, m.lon);
       markerBounds.hasData = true;
     }
-    if (savedRange && (m.date < savedRange[0] || m.date > savedRange[1])) return;
+    // In single-track view, show all markers regardless of date filter
+    if (!isTrackView && savedRange && (m.date < savedRange[0] || m.date > savedRange[1])) return;
     if (!shouldDisplayBySpeed(m.speed)) return;
 
     // PERFORMANCE: Measure marker creation
@@ -6972,7 +7603,13 @@ function loadMapFromUrl() {
   const maxLat = parseFloat(params.get('maxLat'));
   const maxLon = parseFloat(params.get('maxLon'));
 
-  // Check for place parameter for city/location search
+  // Read lat/lon/zoom params (simpler format)
+  const lat = parseFloat(params.get('lat'));
+  const lon = parseFloat(params.get('lon'));
+  const zoomParam = params.get('zoom');
+  const urlZoom = zoomParam !== null ? parseInt(zoomParam) : null;
+
+  // Check for place parameter for city/location search (highest priority)
   const placeParam = params.get('place');
   if (placeParam) {
     // Set the search input value and trigger search after map is ready
@@ -6984,15 +7621,26 @@ function loadMapFromUrl() {
         performSearch(decodeURIComponent(placeParam), true);
       }, 100);
     }
-  } else if (!isNaN(minLat) && !isNaN(minLon) && !isNaN(maxLat) && !isNaN(maxLon)) {
+  }
+  // Check for lat/lon/zoom format (simpler alternative to bounds)
+  else if (!isNaN(lat) && !isNaN(lon)) {
+    const targetZoom = urlZoom !== null && !isNaN(urlZoom) ? urlZoom : 13;
+    map.setView([lat, lon], targetZoom);
+    adjustMarkerRadius();
+  }
+  // Check for bounds format (backward compatibility)
+  else if (!isNaN(minLat) && !isNaN(minLon) && !isNaN(maxLat) && !isNaN(maxLon)) {
     map.fitBounds([[minLat, minLon], [maxLat, maxLon]]);
     adjustMarkerRadius();
-  } else if (storedView) {
+  }
+  else if (storedView) {
     map.setView([storedView.lat, storedView.lon], storedView.zoom);
     adjustMarkerRadius();
-  } else if (isTrackView && trackBounds) {
+  }
+  else if (isTrackView && trackBounds) {
     map.fitBounds(trackBounds);
-  } else {
+  }
+  else {
     map.setView([defaultCfg.lat, defaultCfg.lon], defaultCfg.zoom);
   }
 
@@ -7014,6 +7662,11 @@ function updateUrl() {
   var isLegendVisible = legendBox && legendBox.style.display !== 'none' ? '1' : '0';
 
   var newUrl = `${window.location.pathname}?minLat=${minLat}&minLon=${minLon}&maxLat=${maxLat}&maxLon=${maxLon}&zoom=${zoom}&layer=${encodeURIComponent(layer)}&unit=${currentUnit}&legend=${isLegendVisible}&coloring=${currentColoring}&lang=${currentLang}`;
+
+  // Add place parameter if a search was performed
+  if (currentSearchQuery && currentSearchQuery.trim()) {
+    newUrl += `&place=${encodeURIComponent(currentSearchQuery)}`;
+  }
 
   window.history.replaceState({}, '', newUrl);
   saveMapViewState();
@@ -7076,6 +7729,9 @@ function initializeUIElements() {
 
   // Initialize search functionality
   initializeSearch();
+  
+  // Initialize home overlay
+  initializeHomeOverlay();
 }
 
 // Search functionality using Nominatim geocoding
@@ -7313,6 +7969,214 @@ function centerMapToLocation() {
     });
   }
 }
+
+// ===== HOME OVERLAY FUNCTIONALITY =====
+// Tracks whether markers should be loaded (false until user selects location)
+var homeOverlayDismissed = false;
+
+function shouldShowHomeOverlay() {
+  // Don't show home overlay if:
+  // 1. We're in track view mode
+  // 2. URL has location parameters (user came with specific location)
+  // 3. User has previously dismissed the overlay this session
+  // 4. There's a saved map view state
+  
+  if (isTrackView) return false;
+  
+  const params = new URLSearchParams(window.location.search);
+  const hasLocationParams = params.has('minLat') || params.has('place') || params.has('lat');
+  if (hasLocationParams) return false;
+  
+  if (sessionStorage.getItem('homeOverlayDismissed')) return false;
+  
+  if (loadMapViewState()) return false;
+  
+  return true;
+}
+
+function dismissHomeOverlay() {
+  const overlay = document.getElementById('homeOverlay');
+  if (overlay) {
+    overlay.classList.add('hidden');
+  }
+  homeOverlayDismissed = true;
+  sessionStorage.setItem('homeOverlayDismissed', 'true');
+  
+  // Now that the overlay is dismissed, load markers
+  if (typeof debounceUpdateMarkers === 'function') {
+    debounceUpdateMarkers();
+  }
+}
+
+function initializeHomeOverlay() {
+  const homeOverlay = document.getElementById('homeOverlay');
+  const homeSearchInput = document.getElementById('homeSearchInput');
+  const homeSearchResults = document.getElementById('homeSearchResults');
+  const homeLocateBtn = document.getElementById('homeLocateBtn');
+  const homeSkipLink = document.getElementById('homeSkipLink');
+  
+  if (!homeOverlay) return;
+  
+  // Check if we should show the overlay
+  if (!shouldShowHomeOverlay()) {
+    homeOverlay.classList.add('hidden');
+    homeOverlayDismissed = true;
+    return;
+  }
+  
+  // Home search functionality
+  let homeSearchTimeout = null;
+  
+  if (homeSearchInput) {
+    homeSearchInput.addEventListener('input', function() {
+      const query = this.value.trim();
+      
+      clearTimeout(homeSearchTimeout);
+      if (query.length >= 2) {
+        homeSearchTimeout = setTimeout(() => performHomeSearch(query), 300);
+      } else {
+        homeSearchResults.classList.remove('active');
+        homeSearchResults.innerHTML = '';
+      }
+    });
+    
+    homeSearchInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const query = this.value.trim();
+        if (query.length >= 2) {
+          performHomeSearch(query, true);
+        }
+      }
+    });
+    
+    // Focus the search input when overlay shows
+    setTimeout(() => homeSearchInput.focus(), 100);
+  }
+  
+  // Use my location button
+  if (homeLocateBtn) {
+    homeLocateBtn.addEventListener('click', function() {
+      dismissHomeOverlay();
+      // Small delay to let the overlay fade, then locate
+      setTimeout(() => centerMapToLocation(), 100);
+    });
+  }
+  
+  // Skip link - explore globally
+  if (homeSkipLink) {
+    homeSkipLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      dismissHomeOverlay();
+    });
+  }
+  
+  // Close results when clicking outside
+  document.addEventListener('click', function(e) {
+    if (homeSearchResults && !homeSearchInput.contains(e.target) && !homeSearchResults.contains(e.target)) {
+      homeSearchResults.classList.remove('active');
+    }
+  });
+}
+
+async function performHomeSearch(query, selectFirst = false) {
+  const homeSearchResults = document.getElementById('homeSearchResults');
+  if (!homeSearchResults) return;
+
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?` +
+      `format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`;
+
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Safecast Map (https://map.safecast.org)'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Search failed');
+    }
+
+    const results = await response.json();
+
+    if (results.length === 0) {
+      homeSearchResults.innerHTML = '<div class="home-search-result-item">' + translate('no_results_found') + '</div>';
+      homeSearchResults.classList.add('active');
+      return;
+    }
+
+    if (selectFirst && results.length > 0) {
+      selectHomeSearchResult(results[0], query);
+      return;
+    }
+
+    homeSearchResults.innerHTML = results.map(result => {
+      const name = result.display_name.split(',')[0];
+      const details = result.display_name.split(',').slice(1).join(',').trim();
+      return `
+        <div class="home-search-result-item" data-lat="${result.lat}" data-lon="${result.lon}">
+          <div class="home-search-result-name">${escapeHtml(name)}</div>
+          <div class="home-search-result-details">${escapeHtml(details)}</div>
+        </div>
+      `;
+    }).join('');
+
+    homeSearchResults.querySelectorAll('.home-search-result-item').forEach((item, index) => {
+      item.addEventListener('click', () => {
+        selectHomeSearchResult(results[index], query);
+      });
+    });
+
+    homeSearchResults.classList.add('active');
+  } catch (error) {
+    console.error('Home search error:', error);
+    homeSearchResults.innerHTML = '<div class="home-search-result-item">' + translate('search_error') + '</div>';
+    homeSearchResults.classList.add('active');
+  }
+}
+
+function selectHomeSearchResult(result, query) {
+  // Store the search query for URL
+  currentSearchQuery = query;
+  
+  // Dismiss the overlay first
+  dismissHomeOverlay();
+  
+  // Update the main search input
+  const mainSearchInput = document.getElementById('searchInput');
+  if (mainSearchInput) {
+    mainSearchInput.value = result.display_name.split(',')[0];
+  }
+  
+  // Navigate to location with appropriate zoom
+  const lat = parseFloat(result.lat);
+  const lon = parseFloat(result.lon);
+  
+  // Determine zoom level based on result type
+  let zoom = 15;
+  if (result.type === 'country' || result.addresstype === 'country' ||
+      (result.class === 'boundary' && result.type === 'administrative' && result.place_rank <= 3)) {
+    zoom = 6;
+  } else if (result.type === 'state' || result.type === 'province' || result.type === 'region' ||
+             (result.class === 'boundary' && result.type === 'administrative' && result.place_rank >= 4 && result.place_rank <= 11)) {
+    zoom = 9;
+  } else if (result.type === 'city' ||
+             (result.class === 'boundary' && result.type === 'administrative' && result.place_rank >= 12 && result.place_rank <= 16) ||
+             (result.class === 'place' && result.addresstype === 'city')) {
+    zoom = 15;
+  } else if (result.type === 'town' || result.type === 'village' || result.type === 'hamlet' ||
+             result.type === 'suburb' || result.type === 'neighbourhood' || result.type === 'quarter' ||
+             (result.class === 'place') || (result.place_rank >= 17)) {
+    zoom = 16;
+  } else if (result.type === 'house' || result.type === 'building' || result.class === 'amenity') {
+    zoom = 17;
+  }
+
+  map.setView([lat, lon], zoom);
+  saveMapViewState();
+}
+// ===== END HOME OVERLAY =====
+
     </script>
 
     <!-- File upload script -->
