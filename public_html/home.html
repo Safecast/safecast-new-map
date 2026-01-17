@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{translate "title"}} - Home</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="/static/leaflet.css">
+
+    <!-- favicon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/images/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/images/favicon-16x16.png">
+    <link rel="manifest" href="/static/images/site.webmanifest">
+
+    <style>
+      /* CSS Variables for theming */
+      :root {
+        --overlay-bg: rgba(255, 255, 255, 0.95);
+        --text-color: #333333;
+        --text-secondary: #666666;
+        --input-bg: #ffffff;
+        --input-border: #ddd;
+        --button-bg: #4caf50;
+        --button-hover: #388e3c;
+        --shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        --link-color: #667eea;
+        --modal-bg: rgba(255, 255, 255, 0.98);
+        color-scheme: light;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --overlay-bg: rgba(30, 30, 50, 0.95);
+          --text-color: #ffffff;
+          --text-secondary: #aaaaaa;
+          --input-bg: #2a2a4a;
+          --input-border: #444;
+          --button-bg: #4caf50;
+          --button-hover: #66bb6a;
+          --shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+          --link-color: #64b5f6;
+          --modal-bg: rgba(30, 30, 50, 0.98);
+          color-scheme: dark;
+        }
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body, html {
+        height: 100%;
+        font-family: "Segoe UI", "Noto Sans", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+        overflow: hidden;
+      }
+
+      #map {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+      }
+
+      /* Location search modal overlay */
+      .location-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        background: rgba(0, 0, 0, 0.15);
+        animation: fadeIn 0.3s ease-in;
+      }
+
+      .location-modal.hidden {
+        display: none;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      .location-modal-content {
+        background: var(--modal-bg);
+        border-radius: 20px;
+        padding: 50px 40px;
+        max-width: 500px;
+        width: 90%;
+        box-shadow: var(--shadow);
+        text-align: center;
+        animation: slideIn 0.4s ease-out;
+      }
+
+      @keyframes slideIn {
+        from {
+          transform: translateY(-30px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+
+      .logo {
+        width: 100px;
+        height: auto;
+        margin-bottom: 20px;
+      }
+
+      h1 {
+        color: var(--text-color);
+        font-size: 2rem;
+        margin-bottom: 10px;
+        font-weight: 600;
+      }
+
+      .subtitle {
+        color: var(--text-secondary);
+        font-size: 1rem;
+        margin-bottom: 30px;
+        line-height: 1.5;
+      }
+
+      .search-wrapper {
+        position: relative;
+        margin-bottom: 20px;
+      }
+
+      .location-search-input {
+        width: 100%;
+        padding: 16px 20px;
+        font-size: 1.1rem;
+        border: 2px solid var(--input-border);
+        border-radius: 12px;
+        background: var(--input-bg);
+        color: var(--text-color);
+        outline: none;
+        transition: border-color 0.3s, box-shadow 0.3s;
+      }
+
+      .location-search-input:focus {
+        border-color: var(--button-bg);
+        box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
+      }
+
+      .location-search-input::placeholder {
+        color: var(--text-secondary);
+      }
+
+      .search-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: var(--overlay-bg);
+        border: 1px solid var(--input-border);
+        border-radius: 12px;
+        margin-top: 8px;
+        max-height: 300px;
+        overflow-y: auto;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        display: none;
+        z-index: 100;
+        text-align: left;
+      }
+
+      .search-results.active {
+        display: block;
+      }
+
+      .search-result-item {
+        padding: 14px 20px;
+        cursor: pointer;
+        border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+        transition: background-color 0.2s;
+      }
+
+      .search-result-item:last-child {
+        border-bottom: none;
+      }
+
+      .search-result-item:hover {
+        background: rgba(76, 175, 80, 0.1);
+      }
+
+      .search-result-name {
+        font-weight: 600;
+        color: var(--text-color);
+        margin-bottom: 4px;
+      }
+
+      .search-result-details {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+      }
+
+      .divider {
+        display: flex;
+        align-items: center;
+        margin: 25px 0;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+      }
+
+      .divider::before,
+      .divider::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: var(--input-border);
+      }
+
+      .divider span {
+        padding: 0 15px;
+      }
+
+      .skip-link {
+        color: var(--link-color);
+        text-decoration: none;
+        font-size: 0.95rem;
+        transition: opacity 0.2s;
+        cursor: pointer;
+      }
+
+      .skip-link:hover {
+        opacity: 0.8;
+        text-decoration: underline;
+      }
+
+      @media (max-width: 480px) {
+        .location-modal-content {
+          padding: 30px 25px;
+        }
+
+        h1 {
+          font-size: 1.6rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Map container (empty, no markers) -->
+    <div id="map"></div>
+
+    <!-- Location search modal -->
+    <div id="locationModal" class="location-modal">
+      <div class="location-modal-content">
+        <img src="/static/images/safecast-logo-squared.png" alt="Safecast" class="logo">
+
+        <h1>{{translate "home_title"}}</h1>
+        <p class="subtitle">{{translate "home_subtitle"}}</p>
+
+        <div class="search-wrapper">
+          <input
+            type="text"
+            id="locationSearchInput"
+            class="location-search-input"
+            placeholder="{{translate "home_search_placeholder"}}"
+            autocomplete="off"
+            aria-label="{{translate "home_search_placeholder"}}">
+          <div id="locationSearchResults" class="search-results"></div>
+        </div>
+
+        <div class="divider"><span>{{translate "home_or"}}</span></div>
+
+        <a class="skip-link" id="skipToMap">{{translate "home_explore_global"}}</a>
+      </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="/static/leaflet.js"></script>
+
+    <script>
+      var map;
+      var searchTimeout = null;
+
+      function escapeHtml(value) {
+        if (value === null || value === undefined) return '';
+        var map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+        return String(value).replace(/[&<>"']/g, function(m) { return map[m]; });
+      }
+
+      // Initialize empty map
+      function initMap() {
+        map = L.map('map', {
+          center: [35.6762, 139.6503], // Tokyo as default center
+          zoom: 3,
+          zoomControl: true,
+          attributionControl: true
+        });
+
+        // Add tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          maxZoom: 19
+        }).addTo(map);
+
+        // Disable interactions until location is selected
+        map.dragging.disable();
+        map.touchZoom.disable();
+        map.doubleClickZoom.disable();
+        map.scrollWheelZoom.disable();
+        map.boxZoom.disable();
+        map.keyboard.disable();
+        if (map.tap) map.tap.disable();
+
+        // Try to center map on user's approximate location
+        centerMapOnUser();
+      }
+
+      // Try to center the map on the user's location using GeoIP
+      async function centerMapOnUser() {
+        try {
+          var response = await fetch('/api/geoip');
+          if (response.ok) {
+            var data = await response.json();
+            if (data.lat && data.lon) {
+              map.setView([data.lat, data.lon], 6, { animate: false });
+            }
+          }
+        } catch (error) {
+          console.log('Could not determine user location');
+        }
+      }
+
+      // Initialize location search
+      function initLocationSearch() {
+        var searchInput = document.getElementById('locationSearchInput');
+        var searchResults = document.getElementById('locationSearchResults');
+        var skipToMap = document.getElementById('skipToMap');
+
+        if (!searchInput || !searchResults) return;
+
+        // Focus on input when page loads
+        searchInput.focus();
+
+        // Handle input changes with debouncing
+        searchInput.addEventListener('input', function() {
+          var query = this.value.trim();
+
+          if (query.length < 2) {
+            searchResults.classList.remove('active');
+            searchResults.innerHTML = '';
+            return;
+          }
+
+          // Debounce search
+          clearTimeout(searchTimeout);
+          searchTimeout = setTimeout(function() { performSearch(query); }, 300);
+        });
+
+        // Handle Enter key
+        searchInput.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            var query = this.value.trim();
+            if (query.length >= 2) {
+              performSearch(query, true);
+            }
+          }
+        });
+
+        // Handle skip link
+        skipToMap.addEventListener('click', function(e) {
+          e.preventDefault();
+          goToGlobalView();
+        });
+
+        // Close results when clicking outside
+        document.addEventListener('click', function(e) {
+          if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+            searchResults.classList.remove('active');
+          }
+        });
+      }
+
+      async function performSearch(query, selectFirst) {
+        var searchResults = document.getElementById('locationSearchResults');
+        if (!searchResults) return;
+
+        try {
+          // Use Nominatim API for geocoding
+          var url = 'https://nominatim.openstreetmap.org/search?' +
+            'format=json&q=' + encodeURIComponent(query) + '&limit=5&addressdetails=1';
+
+          var response = await fetch(url, {
+            headers: {
+              'User-Agent': 'Safecast Map (https://map.safecast.org)'
+            }
+          });
+
+          if (!response.ok) {
+            throw new Error('Search failed');
+          }
+
+          var results = await response.json();
+
+          if (results.length === 0) {
+            searchResults.innerHTML = '<div class="search-result-item">{{translate "no_results_found"}}</div>';
+            searchResults.classList.add('active');
+            return;
+          }
+
+          // If selectFirst is true (Enter key pressed), go to first result
+          if (selectFirst && results.length > 0) {
+            goToLocation(results[0]);
+            return;
+          }
+
+          // Display results
+          searchResults.innerHTML = results.map(function(result) {
+            var name = result.display_name.split(',')[0];
+            var details = result.display_name.split(',').slice(1).join(',').trim();
+            return '<div class="search-result-item" data-lat="' + result.lat + '" data-lon="' + result.lon + '" data-type="' + (result.type || '') + '" data-rank="' + (result.place_rank || 30) + '">' +
+              '<div class="search-result-name">' + escapeHtml(name) + '</div>' +
+              '<div class="search-result-details">' + escapeHtml(details) + '</div>' +
+              '</div>';
+          }).join('');
+
+          // Add click handlers to results
+          searchResults.querySelectorAll('.search-result-item').forEach(function(item, index) {
+            item.addEventListener('click', function() {
+              goToLocation(results[index]);
+            });
+          });
+
+          searchResults.classList.add('active');
+        } catch (error) {
+          console.error('Search error:', error);
+          searchResults.innerHTML = '<div class="search-result-item">{{translate "search_error"}}</div>';
+          searchResults.classList.add('active');
+        }
+      }
+
+      function goToLocation(result) {
+        var lat = parseFloat(result.lat);
+        var lon = parseFloat(result.lon);
+
+        // Determine zoom level based on result type
+        var zoom = 15; // Default for cities
+        var placeRank = result.place_rank || 30;
+
+        if (result.type === 'country' || result.addresstype === 'country' || placeRank <= 3) {
+          zoom = 6;
+        } else if (result.type === 'state' || result.type === 'province' || result.type === 'region' || (placeRank >= 4 && placeRank <= 11)) {
+          zoom = 9;
+        } else if (result.type === 'city' || (placeRank >= 12 && placeRank <= 16)) {
+          zoom = 15;
+        } else if (result.type === 'town' || result.type === 'village' || placeRank >= 17) {
+          zoom = 16;
+        }
+
+        // Redirect to the map with location parameters (using query string format, no place param)
+        window.location.href = '/map?lat=' + lat.toFixed(6) + '&lon=' + lon.toFixed(6) + '&zoom=' + zoom;
+      }
+
+      function goToGlobalView() {
+        // Go to the full map without specific location
+        window.location.href = '/map';
+      }
+
+      // Initialize on page load
+      document.addEventListener('DOMContentLoaded', function() {
+        initMap();
+        initLocationSearch();
+      });
+    </script>
+  </body>
+</html>
