@@ -19,3 +19,6 @@ certs
 
 # User data files (containing sensitive information)
 API users_*.csv
+
+# Ignore Claude settings
+.claude/settings.json
