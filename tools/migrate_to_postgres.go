@@ -173,10 +173,14 @@ CREATE TABLE IF NOT EXISTS uploads (
   file_size BIGINT,
   upload_ip TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
+  recording_date TIMESTAMPTZ,
   source TEXT,
   source_id TEXT,
   source_url TEXT,
-  user_id TEXT
+  user_id TEXT,
+  username TEXT,
+  internal_user_id TEXT,
+  detector TEXT
 );
 
 -- Create standard B-tree indexes
