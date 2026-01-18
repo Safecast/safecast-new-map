@@ -16,6 +16,7 @@
       --shadow: 0 1px 3px rgba(0,0,0,0.1);
       --th-bg: #424242;
       --hover-bg: #f9f9f9;
+      --btn-border-radius: 8px;
     }
     @media (prefers-color-scheme: dark) {
       :root {
@@ -60,13 +61,13 @@
     }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; margin: 20px; background: var(--bg-primary); color: var(--text-primary); }
     h1 { color: var(--text-primary); }
-    .nav { background: var(--bg-card); padding: 15px; margin-bottom: 20px; border-radius: 5px; box-shadow: var(--shadow); display: flex; align-items: center; justify-content: space-between; }
+    .nav { background: var(--bg-card); padding: 15px; margin-bottom: 20px; border-radius: var(--btn-border-radius); box-shadow: var(--shadow); display: flex; align-items: center; justify-content: space-between; }
     .nav-left { display: flex; align-items: center; gap: 15px; }
     .nav a { color: var(--link-color); text-decoration: none; }
     .nav a:hover { text-decoration: underline; }
-    .back-to-map-btn { background: #2196F3 !important; color: white !important; padding: 8px 16px; border-radius: 4px; text-decoration: none !important; font-weight: 500; transition: background 0.2s; }
+    .back-to-map-btn { background: #2196F3 !important; color: white !important; padding: 8px 16px; border-radius: var(--btn-border-radius); text-decoration: none !important; font-weight: 500; transition: background 0.2s; }
     .back-to-map-btn:hover { background: #1976D2 !important; text-decoration: none !important; }
-    .summary { background: var(--bg-card); padding: 15px; margin-bottom: 20px; border-radius: 5px; box-shadow: var(--shadow); }
+    .summary { background: var(--bg-card); padding: 15px; margin-bottom: 20px; border-radius: var(--btn-border-radius); box-shadow: var(--shadow); }
     table { border-collapse: collapse; width: 100%; background: var(--bg-card); box-shadow: var(--shadow); }
     th { background: var(--th-bg); color: white; padding: 12px; text-align: left; font-weight: 600; }
     td { padding: 6px 8px; border-bottom: 1px solid var(--border-color); }
@@ -78,16 +79,16 @@
     .sortable::after { content: '⇅'; position: absolute; right: 8px; opacity: 0.5; }
     .sortable.asc::after { content: '▲'; opacity: 1; }
     .sortable.desc::after { content: '▼'; opacity: 1; }
-    .filter-input { width: 100%; padding: 4px 8px; border: 1px solid var(--border-color); border-radius: 3px; background: var(--bg-card); color: var(--text-primary); font-size: 0.85em; box-sizing: border-box; }
+    .filter-input { width: 100%; padding: 4px 8px; border: 1px solid var(--border-color); border-radius: var(--btn-border-radius); background: var(--bg-card); color: var(--text-primary); font-size: 0.85em; box-sizing: border-box; }
     .filter-row th { background: var(--bg-card); padding: 8px 12px; }
-    .delete-btn { background: #f44336; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 0.85em; }
+    .delete-btn { background: #f44336; color: white; border: none; padding: 5px 10px; border-radius: var(--btn-border-radius); cursor: pointer; font-size: 0.85em; }
     .delete-btn:hover { background: #d32f2f; }
-    .delete-selected-btn { background: #f44336; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer; font-size: 1em; margin-left: 10px; }
+    .delete-selected-btn { background: #f44336; color: white; border: none; padding: 10px 20px; border-radius: var(--btn-border-radius); cursor: pointer; font-size: 1em; margin-left: 10px; }
     .delete-selected-btn:hover { background: #d32f2f; }
     .delete-selected-btn:disabled { background: #ccc; cursor: not-allowed; }
-    .add-user-btn { background: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer; font-size: 1em; margin-left: 10px; }
+    .add-user-btn { background: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: var(--btn-border-radius); cursor: pointer; font-size: 1em; margin-left: 10px; }
     .add-user-btn:hover { background: #45a049; }
-    .badge { padding: 4px 8px; border-radius: 3px; font-size: 0.75em; font-weight: 600; text-transform: uppercase; }
+    .badge { padding: 4px 8px; border-radius: var(--btn-border-radius); font-size: 0.75em; font-weight: 600; text-transform: uppercase; }
     .badge-active { background: #4CAF50; color: white; }
     .badge-inactive { background: #f44336; color: white; }
     .badge-verified { background: #4CAF50; color: white; }
@@ -104,35 +105,35 @@
     .close:hover { color: var(--text-primary); }
     .form-group { margin-bottom: 15px; }
     .form-group label { display: block; margin-bottom: 5px; color: var(--text-secondary); font-weight: 500; }
-    .form-group input, .form-group select { width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-card); color: var(--text-primary); font-size: 14px; }
+    .form-group input, .form-group select { width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--btn-border-radius); background: var(--bg-card); color: var(--text-primary); font-size: 14px; }
     .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--link-color); }
     .form-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 20px; border-top: 1px solid var(--border-color); }
-    .btn-primary { background: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500; }
+    .btn-primary { background: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: var(--btn-border-radius); cursor: pointer; font-size: 14px; font-weight: 500; }
     .btn-primary:hover { background: #45a049; }
-    .btn-secondary { background: var(--border-color); color: var(--text-primary); border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500; }
+    .btn-secondary { background: var(--border-color); color: var(--text-primary); border: none; padding: 10px 20px; border-radius: var(--btn-border-radius); cursor: pointer; font-size: 14px; font-weight: 500; }
     .btn-secondary:hover { opacity: 0.8; }
-    .btn-warning { background: #ff9800; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 0.85em; margin: 0 2px; }
+    .btn-warning { background: #ff9800; color: white; border: none; padding: 5px 10px; border-radius: var(--btn-border-radius); cursor: pointer; font-size: 0.85em; margin: 0 2px; }
     .btn-warning:hover { background: #fb8c00; }
-    .btn-edit { background: #2196F3; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 0.85em; margin: 0 2px; }
+    .btn-edit { background: #2196F3; color: white; border: none; padding: 5px 10px; border-radius: var(--btn-border-radius); cursor: pointer; font-size: 0.85em; margin: 0 2px; }
     .btn-edit:hover { background: #1976D2; }
     .actions-cell { white-space: nowrap; }
     .api-key-cell { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; font-size: 0.85em; }
-    .message { padding: 12px; margin-bottom: 15px; border-radius: 4px; display: none; }
+    .message { padding: 12px; margin-bottom: 15px; border-radius: var(--btn-border-radius); display: none; }
     .message.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
     .message.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
 
     /* Pagination styles */
-    .pagination { display: flex; align-items: center; justify-content: space-between; background: var(--bg-card); padding: 15px; margin-top: 20px; border-radius: 5px; box-shadow: var(--shadow); flex-wrap: wrap; gap: 10px; }
+    .pagination { display: flex; align-items: center; justify-content: space-between; background: var(--bg-card); padding: 15px; margin-top: 20px; border-radius: var(--btn-border-radius); box-shadow: var(--shadow); flex-wrap: wrap; gap: 10px; }
     .pagination-info { color: var(--text-secondary); }
     .pagination-controls { display: flex; align-items: center; gap: 5px; }
-    .pagination-btn { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+    .pagination-btn { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); padding: 8px 12px; border-radius: var(--btn-border-radius); cursor: pointer; font-size: 14px; }
     .pagination-btn:hover:not(:disabled) { background: var(--hover-bg); }
     .pagination-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .pagination-btn.active { background: #2196F3; color: white; border-color: #2196F3; }
-    .page-size-select { padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-card); color: var(--text-primary); }
-    .search-btn { background: #2196F3; color: white; border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; margin-left: 5px; }
+    .page-size-select { padding: 8px; border: 1px solid var(--border-color); border-radius: var(--btn-border-radius); background: var(--bg-card); color: var(--text-primary); }
+    .search-btn { background: #2196F3; color: white; border: none; padding: 5px 12px; border-radius: var(--btn-border-radius); cursor: pointer; margin-left: 5px; }
     .search-btn:hover { background: #1976D2; }
-    .clear-search-btn { background: var(--border-color); color: var(--text-primary); border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; margin-left: 5px; }
+    .clear-search-btn { background: var(--border-color); color: var(--text-primary); border: none; padding: 5px 12px; border-radius: var(--btn-border-radius); cursor: pointer; margin-left: 5px; }
     .clear-search-btn:hover { opacity: 0.8; }
   </style>
 </head>
@@ -165,7 +166,7 @@
       <div id="paginationTop" class="pagination-controls" style="display: none;"></div>
       <div style="display: flex; align-items: center;">
         <label for="searchInput"><strong>Search:</strong></label>
-        <input type="text" id="searchInput" placeholder="Search email, username, ID..." style="margin-left: 5px; padding: 6px 10px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); width: 250px;" onkeyup="handleSearchKeyup(event)">
+        <input type="text" id="searchInput" placeholder="Search email, username, ID..." style="margin-left: 5px; padding: 6px 10px; border-radius: var(--btn-border-radius); border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); width: 250px;" onkeyup="handleSearchKeyup(event)">
         <button class="search-btn" onclick="doSearch()">Search</button>
         <button class="clear-search-btn" onclick="clearSearch()" id="clearSearchBtn" style="display: none;">Clear</button>
       </div>

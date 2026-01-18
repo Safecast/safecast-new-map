@@ -1559,12 +1559,14 @@ CREATE TABLE IF NOT EXISTS uploads (
   file_size       BIGINT,
   upload_ip       TEXT,
   created_at      TIMESTAMPTZ DEFAULT NOW(),
+  recording_date  TIMESTAMPTZ,
   source          TEXT,
   source_id       TEXT,
   source_url      TEXT,
   user_id         TEXT,
   username        TEXT,
-  internal_user_id TEXT
+  internal_user_id TEXT,
+  detector        TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_uploads_track_id ON uploads(track_id);
@@ -1724,12 +1726,14 @@ CREATE TABLE IF NOT EXISTS uploads (
   file_size       INTEGER,
   upload_ip       TEXT,
   created_at      BIGINT NOT NULL,
+  recording_date  BIGINT,
   source          TEXT,
   source_id       TEXT,
   source_url      TEXT,
   user_id         TEXT,
   username        TEXT,
-  internal_user_id TEXT
+  internal_user_id TEXT,
+  detector        TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_uploads_track_id ON uploads(track_id);
 CREATE INDEX IF NOT EXISTS idx_uploads_created_at ON uploads(created_at);
@@ -1896,12 +1900,14 @@ CREATE TABLE IF NOT EXISTS uploads (
   file_size       BIGINT,
   upload_ip       TEXT,
   created_at      TIMESTAMP DEFAULT NOW(),
+  recording_date  TIMESTAMP,
   source          TEXT,
   source_id       TEXT,
   source_url      TEXT,
   user_id         TEXT,
   username        TEXT,
-  internal_user_id TEXT
+  internal_user_id TEXT,
+  detector        TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_uploads_track_id ON uploads(track_id);
 CREATE INDEX IF NOT EXISTS idx_uploads_created_at ON uploads(created_at);
@@ -2052,12 +2058,14 @@ ORDER BY (marker_id, id);`,
   file_size  Int64,
   upload_ip  String,
   created_at DateTime DEFAULT now(),
+  recording_date DateTime,
   source     String,
   source_id  String,
   source_url String,
   user_id    String,
   username   String,
-  internal_user_id String
+  internal_user_id String,
+  detector   String
 ) ENGINE = MergeTree()
 ORDER BY (created_at, id);`,
 		}

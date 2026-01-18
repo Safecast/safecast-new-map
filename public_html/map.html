@@ -51,6 +51,7 @@ body, html {
           --modal-text: #333333;
           --modal-border: 1px solid #888;
           --link-color: #007bff;
+          --btn-border-radius: 8px;
           --info-card-bg: rgba(255, 255, 255, 0.9);
           --info-card-border: 1px solid rgba(0, 0, 0, 0.08);
           --api-method-bg: rgba(0, 123, 255, 0.1);
@@ -472,21 +473,26 @@ body, html {
         /* Container for upload button */
         .upload-btn-container {
           position: absolute;
-          top: 20px;
+          top: 48px;
           right: 20px;
           z-index: 1000;
         }
 
         /* Upload button styling, theme-aware */
         .upload-btn {
+          display: inline-block;
           background-color: var(--upload-btn-bg); /* Use site green for familiarity */
           border: var(--legend-border);
-          border-radius: 4px;
-          padding: 5px 10px;
+          border-radius: var(--btn-border-radius);
+          padding: 6px 0;
+          width: 100px;
+          text-align: center;
           cursor: pointer;
-          font-size: var(--font-size-base);
+          font-size: 13px;
+          font-weight: 600;
           color: #ffffff; /* White text stays readable across themes */
           box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+          box-sizing: border-box;
         }
 
         /* File upload overlay */
@@ -591,17 +597,22 @@ body, html {
         /* Container for geolocation button */
         .locate-btn-container {
           position: absolute;
-          top: 60px;
+          top: 95px;
           right: 20px;
           z-index: 1000;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
         }
 
         /* Geolocation button styling, theme-aware */
         .locate-btn {
           background-color: var(--control-bg);
           border: var(--legend-border);
-          border-radius: 4px;
-          padding: 5px 10px;
+          border-radius: var(--btn-border-radius);
+          padding: 10px;
+          width: 44px;
+          height: 44px;
           cursor: pointer;
           font-size: var(--font-size-base);
           color: var(--modal-text);
@@ -833,16 +844,16 @@ body, html {
         .qr-btn {
           background: var(--control-bg);
           border: var(--legend-border);
-          border-radius: 4px;
-          width: 42px; height: 42px;
-          padding: 4px;
+          border-radius: var(--btn-border-radius);
+          width: 44px; height: 44px;
+          padding: 8px;
           display: flex; align-items: center; justify-content: center;
           cursor: pointer;
           color: var(--modal-text);
           box-shadow: 0 1px 5px rgba(0,0,0,0.65);
         }
         .qr-btn:hover { background: var(--control-bg-hover); }
-        .qr-btn svg { width: 22px; height: 22px; display: block; }
+        .qr-btn svg { width: 24px; height: 24px; display: block; }
 
         /* Search box container at top of page */
         .search-container {
@@ -1747,10 +1758,9 @@ body, html {
     <!-- Container for geolocation button -->
     <div class="locate-btn-container leaflet-control">
       <button id="locateButton" class="locate-btn" aria-label="{{translate "locate_button_tooltip"}}">
-        <img src="/static/images/marker-icon-2x.png" alt="Locate" style="width:20px;">
+        <img src="/static/images/marker-icon-2x.png" alt="Locate" style="width:24px;">
       </button>
-      <br>
-      <!-- Small QR button under geolocate -->
+      <!-- QR button under geolocate -->
       <button id="qrButton" class="qr-btn" aria-label="{{translate "qr_button_tooltip"}}">
         <svg viewBox="0 0 100 100" role="img" aria-hidden="true">
           <rect x="0" y="0" width="100" height="100" fill="#fff"/>
@@ -1774,7 +1784,6 @@ body, html {
           <rect x="28" y="44" width="8" height="8" fill="#000"/>
         </svg>
       </button>
-      <br>
       <!-- Short link button under QR -->
       <button id="shortLinkButton" class="qr-btn" aria-label="{{translate "short_link_tooltip"}}" style="display:none;">
         <svg viewBox="0 0 24 24" role="img" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2">
@@ -2230,18 +2239,18 @@ body, html {
 </div>
 
 <!-- User Menu (shown when logged in) -->
-<div id="userMenu" style="display: none; position: fixed; top: 16px; right: 16px; z-index: 1000; background: var(--modal-bg); padding: 12px 16px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); border: var(--legend-border);">
-  <div style="display: flex; align-items: center; gap: 12px;">
-    <span id="userMenuName" style="color: var(--modal-text); font-weight: 600;"></span>
-    <button onclick="logout()" style="padding: 6px 12px; background: #f44336; border: none; border-radius: 4px; cursor: pointer; color: white; font-size: var(--font-size-sm);">
+<div id="userMenu" style="display: none; position: fixed; top: 16px; right: 20px; z-index: 1000; background: var(--modal-bg); padding: 8px 12px; border-radius: var(--btn-border-radius, 8px); box-shadow: 0 1px 5px rgba(0,0,0,0.65); border: var(--legend-border);">
+  <div style="display: flex; align-items: center; gap: 10px;">
+    <span id="userMenuName" style="color: var(--modal-text); font-weight: 600; font-size: 14px;"></span>
+    <button onclick="logout()" style="padding: 6px 12px; background: #f44336; border: none; border-radius: var(--btn-border-radius, 8px); cursor: pointer; color: white; font-size: 12px;">
       Logout
     </button>
   </div>
 </div>
 
 <!-- Login Button (shown when logged out) -->
-<div id="loginButton" style="display: none; position: fixed; top: 16px; right: 16px; z-index: 1000;">
-  <button onclick="showLogin()" style="padding: 10px 20px; background: #4CAF50; border: none; border-radius: 6px; cursor: pointer; color: white; font-weight: 600; box-shadow: 0 2px 10px rgba(0,0,0,0.2);">
+<div id="loginButton" style="display: none; position: fixed; top: 10px; right: 20px; z-index: 1000;">
+  <button onclick="showLogin()" style="padding: 6px 0; width: 100px; text-align: center; background: var(--upload-btn-bg, #4CAF50); border: var(--legend-border, none); border-radius: var(--btn-border-radius, 8px); cursor: pointer; color: white; font-weight: 600; font-size: 13px; box-shadow: 0 1px 5px rgba(0,0,0,0.65); box-sizing: border-box;">
     Login
   </button>
 </div>
