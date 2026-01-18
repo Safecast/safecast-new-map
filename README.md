@@ -327,6 +327,47 @@ go run scripts/crosscompile/crosscompile.go
 
 ---
 
+## Database Maintenance
+
+### PostgreSQL Sequence Reset
+
+After data migration or restore, you may encounter "duplicate key value violates unique constraint" errors. This happens when PostgreSQL sequences are out of sync with existing data.
+
+**Fix the markers sequence:**
+```bash
+psql -h 127.0.0.1 -U postgres -d safecast -c \
+  "SELECT setval('markers_id_seq', (SELECT MAX(id) FROM markers) + 1);"
+```
+
+**Fix all sequences at once:**
+```bash
+./tools/reset_postgres_sequences.sh
+```
+
+### Adding Missing Columns
+
+If you see errors like `column X does not exist`, the database schema may need updating:
+
+```bash
+psql -h 127.0.0.1 -U postgres -d safecast -c "
+  ALTER TABLE uploads ADD COLUMN IF NOT EXISTS recording_date TIMESTAMPTZ;
+  ALTER TABLE uploads ADD COLUMN IF NOT EXISTS detector TEXT;
+  ALTER TABLE uploads ADD COLUMN IF NOT EXISTS username TEXT;
+  ALTER TABLE uploads ADD COLUMN IF NOT EXISTS internal_user_id TEXT;
+"
+```
+
+### Useful Maintenance Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `tools/reset_postgres_sequences.sh` | Reset all PostgreSQL sequences after migration |
+| `tools/reset_postgres_marker_sequence.sh` | Reset only the markers sequence |
+| `tools/refresh_track_stats.sh` | Refresh track statistics materialized view |
+| `tools/populate_usernames.sh` | Fetch usernames from Safecast API for uploads |
+
+---
+
 ## Community & Support
 
 This project is developed and maintained by the Safecast community with contributions from:
