@@ -7,7 +7,9 @@ toolchain go1.24.7
 require (
 	github.com/jackc/pgx/v5 v5.7.1
 	github.com/marcboeker/go-duckdb v1.8.5
+	github.com/mattn/go-sqlite3 v1.14.33
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
+	github.com/vmihailenco/msgpack/v5 v5.4.1
 	golang.org/x/crypto v0.32.0
 	modernc.org/sqlite v1.33.1
 )
@@ -26,10 +28,10 @@ require (
 	github.com/klauspost/compress v1.17.11 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.9 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mattn/go-sqlite3 v1.14.33 // indirect
 	github.com/ncruces/go-strftime v0.1.9 // indirect
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
+	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/zeebo/xxh3 v1.0.2 // indirect
 	golang.org/x/exp v0.0.0-20250128182459-e0ece0dbea4c // indirect
 	golang.org/x/mod v0.22.0 // indirect
