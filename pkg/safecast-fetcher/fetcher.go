@@ -15,15 +15,16 @@ const (
 
 // Fetcher handles periodic polling and importing from Safecast API
 type Fetcher struct {
-	client       *Client
-	db           *database.Database
-	dbType       string
-	batchSize    int
-	startDate    string
-	importer     ImporterFunc
-	logf         func(string, ...any)
-	backfillMode bool // When true, imports all matching records regardless of lastID
-	newestFirst  bool // When true, fetch newest imports first
+	client             *Client
+	db                 *database.Database
+	dbType             string
+	batchSize          int
+	startDate          string
+	effectiveStartDate string // Tracks where to resume backfill (updated as we import)
+	importer           ImporterFunc
+	logf               func(string, ...any)
+	backfillMode       bool // When true, imports all matching records regardless of lastID
+	newestFirst        bool // When true, fetch newest imports first
 }
 
 // Config contains configuration for the fetcher
@@ -96,10 +97,22 @@ func (f *Fetcher) poll(ctx context.Context) error {
 	var startPage int = 1
 	if f.backfillMode {
 		lastID = 0
-		// If start_date is specified, always start from page 1 to respect the date filter
+		// If start_date is specified, check if we can resume from a later date
 		if f.startDate != "" {
+			// Check for existing imports to resume from where we left off
+			latestDate, err := f.db.GetLatestImportDate(ctx, SourceTypeSafecastAPI)
+			if err == nil && latestDate != "" && latestDate > f.startDate {
+				// Resume from the day after the latest import
+				f.effectiveStartDate = latestDate
+				f.logf("[safecast-fetcher] poll: BACKFILL MODE - resuming from %s (latest import date)", f.effectiveStartDate)
+			} else if f.effectiveStartDate == "" || f.effectiveStartDate < f.startDate {
+				// First run or reset - use configured start date
+				f.effectiveStartDate = f.startDate
+				f.logf("[safecast-fetcher] poll: BACKFILL MODE - starting from %s", f.effectiveStartDate)
+			} else {
+				f.logf("[safecast-fetcher] poll: BACKFILL MODE - continuing from %s", f.effectiveStartDate)
+			}
 			startPage = 1
-			f.logf("[safecast-fetcher] poll: BACKFILL MODE - starting from page 1 with start_date=%s", f.startDate)
 		} else {
 			// Count how many records we've imported to calculate starting page
 			count, err := f.db.CountImportsBySource(ctx, SourceTypeSafecastAPI)
@@ -204,6 +217,16 @@ func (f *Fetcher) poll(ctx context.Context) error {
 	f.logf("[safecast-fetcher] summary: imported %d/%d, skipped %d, errors %d",
 		imported, len(allImports), skipped, errors)
 
+	// In backfill mode, update effectiveStartDate based on latest import
+	// so next poll cycle resumes from where we left off
+	if f.backfillMode && imported > 0 {
+		latestDate, err := f.db.GetLatestImportDate(ctx, SourceTypeSafecastAPI)
+		if err == nil && latestDate != "" && latestDate > f.effectiveStartDate {
+			f.effectiveStartDate = latestDate
+			f.logf("[safecast-fetcher] backfill: updated resume point to %s", f.effectiveStartDate)
+		}
+	}
+
 	return nil
 }
 
@@ -214,7 +237,11 @@ func (f *Fetcher) fetchNewImports(ctx context.Context, lastID int64, startPage i
 	consecutiveSkipped := 0   // Track how many consecutive pages have all-skipped records
 	consecutiveErrors := 0    // Track consecutive page fetch errors
 	var failedPages []int     // Track which pages failed for logging
-	currentStartDate := f.startDate  // Dynamic date filter for pagination workaround
+	// Use effectiveStartDate in backfill mode (tracks where we left off)
+	currentStartDate := f.startDate
+	if f.backfillMode && f.effectiveStartDate != "" {
+		currentStartDate = f.effectiveStartDate
+	}
 	var lastImportDate string        // Track last successful import date
 
 	// In normal mode, always fetch newest first to find recent imports quickly

@@ -1213,16 +1213,13 @@ body, html {
           overflow: hidden;
         }
 
-        .live-marker-heart {
+        .live-marker-logo {
           display: block;
-          width: 60%;
-          height: auto;
           pointer-events: none;
         }
 
         .live-marker-value {
           line-height: 1;
-          font-size: 0.55em;
           letter-spacing: -0.02em;
         }
 
@@ -1298,8 +1295,8 @@ body, html {
 					min-width: 0;                   /* critical for proper flex text shrinking */
 				}
 
-				/* Fixed-size heart icon so it doesn't affect layout */
-				.live-tooltip-heart {
+				/* Fixed-size logo so it doesn't affect layout */
+				.live-tooltip-logo {
 					width: 28px;
 					height: 28px;
 					flex: 0 0 28px;
@@ -1519,7 +1516,7 @@ body, html {
           border-color: #ff7043;
         }
 
-        .live-modal-heart {
+        .live-modal-logo {
           width: 40px;
           height: 40px;
         }
@@ -2029,7 +2026,7 @@ body, html {
 <div id="liveModal">
   <div class="live-modal-content">
     <div class="live-modal-header">
-      <img src="/static/images/safecast-heart-logo.png" alt="Safecast realtime sensor" class="live-modal-heart">
+      <img src="/static/images/safecast-logo-squared.png" alt="Safecast realtime sensor" class="live-modal-logo">
       <div>
         <h3 id="liveModalTitle" class="live-modal-title"></h3>
         <p id="liveModalDescription" class="live-modal-description"></p>
@@ -3108,14 +3105,14 @@ function buildRealtimeIcon(marker, zoomLevel, nowSec) {
   const textColor = isDarkColor(active ? baseColor : fill) ? '#ffffff' : '#000000';
 
   const radius = getRadius(marker.doseRate, zoomLevel) * 3;
-  const size = radius * 3.7;
+  const size = radius * 5.55;  // 1.5x bigger circle
   const value = formatPrimaryUnit(marker.doseRate);
-  const fontSize = Math.max(Math.round(size * 0.32), 11);
-  const heartSize = Math.max(Math.round(size * 0.5), 14);
+  const fontSize = Math.max(Math.round(size * 0.32), 14);  // keep text same size
+  const logoSize = Math.max(Math.round(size * 0.21), 12);  // 1.25x bigger logo
 
   const html = `
     <div class="live-marker" data-age="${ageCategory}" style="background:${fill};border:2px solid ${border};color:${textColor};width:${size}px;height:${size}px;font-size:${fontSize}px;">
-      <img class="live-marker-heart" src="/static/images/safecast-heart-logo.png" alt="Safecast" style="width:${heartSize}px;"/>
+      <img class="live-marker-logo" src="/static/images/safecast-logo-squared.png" alt="Safecast" style="width:${logoSize}px;height:${logoSize}px;"/>
       <div class="live-marker-value">${value}</div>
     </div>`;
 
@@ -4332,7 +4329,7 @@ function createDateRangeSlider(){
     return `
       <div class="custom-tooltip live-tooltip">
         <div class="live-tooltip-header">
-          <img src="/static/images/safecast-heart-logo.png" alt="Safecast realtime" class="live-tooltip-heart">
+          <img src="/static/images/safecast-logo-squared.png" alt="Safecast realtime" class="live-tooltip-logo">
           <div>
             <div class="live-tooltip-title">${translate('live_marker_title')}</div>
             <p class="live-tooltip-desc">${describeLiveSensor(marker)}</p>

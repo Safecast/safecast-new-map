@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 )
@@ -398,6 +399,39 @@ func (db *Database) CountImportsBySource(ctx context.Context, sourceType string)
 	}
 
 	return count, nil
+}
+
+// GetLatestImportDate returns the latest created_at date for imports from a specific source.
+// Returns empty string if no imports exist.
+func (db *Database) GetLatestImportDate(ctx context.Context, sourceType string) (string, error) {
+	var query string
+	var args []interface{}
+
+	switch db.Driver {
+	case "pgx":
+		query = `SELECT TO_CHAR(MAX(created_at), 'YYYY-MM-DD') FROM uploads WHERE source = $1`
+		args = []interface{}{sourceType}
+	case "duckdb":
+		query = `SELECT strftime(MAX(created_at), '%Y-%m-%d') FROM uploads WHERE source = $1`
+		args = []interface{}{sourceType}
+	case "sqlite", "chai":
+		query = `SELECT strftime('%Y-%m-%d', MAX(created_at), 'unixepoch') FROM uploads WHERE source = ?`
+		args = []interface{}{sourceType}
+	default:
+		return "", fmt.Errorf("unsupported database driver: %s", db.Driver)
+	}
+
+	var dateStr sql.NullString
+	err := db.DB.QueryRowContext(ctx, query, args...).Scan(&dateStr)
+	if err != nil {
+		return "", fmt.Errorf("get latest import date: %w", err)
+	}
+
+	if !dateStr.Valid {
+		return "", nil
+	}
+
+	return dateStr.String, nil
 }
 
 // CountUploads returns the total number of uploads, optionally filtered by user_id and search term
