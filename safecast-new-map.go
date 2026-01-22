@@ -17,9 +17,12 @@ import (
 	"crypto/tls"
 	"database/sql"
 	"embed"
+	"encoding/binary"
 	"encoding/csv"
 	"encoding/json"
 	"encoding/xml"
+
+	"github.com/vmihailenco/msgpack/v5"
 	"errors"
 	"flag"
 	"fmt"
@@ -7960,8 +7963,9 @@ func streamMultipleTracks(ctx context.Context, trackIDs []string, zoom int, minL
 	return out, errOut
 }
 
-// streamMarkersHandler streams markers via Server-Sent Events.
+// streamMarkersHandler streams markers via Server-Sent Events or MessagePack binary.
 // Markers are emitted as soon as they are read and aggregated.
+// Use ?format=msgpack for binary encoding (~60% smaller, faster parsing).
 func streamMarkersHandler(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	zoom, _ := strconv.Atoi(q.Get("zoom"))
@@ -7971,6 +7975,10 @@ func streamMarkersHandler(w http.ResponseWriter, r *http.Request) {
 	maxLon, _ := strconv.ParseFloat(q.Get("maxLon"), 64)
 	trackID := q.Get("trackID")
 	trackIDsParam := q.Get("trackIDs")
+
+	// Check if client requests MessagePack binary format
+	useMsgpack := q.Get("format") == "msgpack" ||
+		strings.Contains(r.Header.Get("Accept"), "application/msgpack")
 
 	// PERFORMANCE: Calculate density-based sampling rate for low zoom levels
 	// This reduces network traffic and client-side processing for dense views
@@ -8024,7 +8032,13 @@ func streamMarkersHandler(w http.ResponseWriter, r *http.Request) {
 
 	agg := aggregateMarkers(ctx, sampledSrc, nil, zoom)
 
-	w.Header().Set("Content-Type", "text/event-stream")
+	// Set appropriate headers based on format
+	if useMsgpack {
+		w.Header().Set("Content-Type", "application/octet-stream")
+		w.Header().Set("X-Content-Format", "msgpack")
+	} else {
+		w.Header().Set("Content-Type", "text/event-stream")
+	}
 	w.Header().Set("Cache-Control", "no-cache")
 	flusher, ok := w.(http.Flusher)
 	if !ok {
@@ -8032,10 +8046,23 @@ func streamMarkersHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Helper to write a msgpack frame: 4-byte length prefix + data
+	writeMsgpackFrame := func(data []byte) {
+		lenBuf := make([]byte, 4)
+		binary.BigEndian.PutUint32(lenBuf, uint32(len(data)))
+		w.Write(lenBuf)
+		w.Write(data)
+	}
+
 	// Emit realtime markers first when enabled.
 	for _, m := range rtMarks {
-		b, _ := json.Marshal(m)
-		fmt.Fprintf(w, "data: %s\n\n", b)
+		if useMsgpack {
+			b, _ := msgpack.Marshal(m)
+			writeMsgpackFrame(b)
+		} else {
+			b, _ := json.Marshal(m)
+			fmt.Fprintf(w, "data: %s\n\n", b)
+		}
 	}
 	flusher.Flush()
 
@@ -8049,19 +8076,34 @@ func streamMarkersHandler(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			if err != nil {
-				fmt.Fprintf(w, "event: done\ndata: %v\n\n", err)
+				if useMsgpack {
+					// Send zero-length frame as error indicator
+					w.Write([]byte{0, 0, 0, 0})
+				} else {
+					fmt.Fprintf(w, "event: done\ndata: %v\n\n", err)
+				}
 				flusher.Flush()
 				return
 			}
 			errCh = nil
 		case m, ok := <-agg:
 			if !ok {
-				fmt.Fprint(w, "event: done\ndata: end\n\n")
+				if useMsgpack {
+					// Send zero-length frame as end marker
+					w.Write([]byte{0, 0, 0, 0})
+				} else {
+					fmt.Fprint(w, "event: done\ndata: end\n\n")
+				}
 				flusher.Flush()
 				return
 			}
-			b, _ := json.Marshal(m)
-			fmt.Fprintf(w, "data: %s\n\n", b)
+			if useMsgpack {
+				b, _ := msgpack.Marshal(m)
+				writeMsgpackFrame(b)
+			} else {
+				b, _ := json.Marshal(m)
+				fmt.Fprintf(w, "data: %s\n\n", b)
+			}
 			flusher.Flush()
 		}
 	}
