@@ -253,6 +253,7 @@ Customize map views with URL parameters:
 | `legend` | 1, 0 | Show/hide legend |
 | `lang` | en, ru, ja, etc. | Interface language |
 | `layer` | OpenStreetMap, Google Satellite | Base map |
+| `show` | rt | Filter to show only realtime sensors |
 
 **Location Examples:**
 - Direct to Tokyo: `/?place=Tokyo`
@@ -263,6 +264,7 @@ Customize map views with URL parameters:
 - Safety view: `/?coloring=chicha&unit=uR`
 - Clean embed: `/?legend=0`
 - Russian interface: `/?lang=ru`
+- Realtime sensors only: `/?show=rt`
 
 **Parameter Priority:** When loading URLs, `place` takes priority over `lat/lon`, which takes priority over bounds (`minLat/maxLat`).
 

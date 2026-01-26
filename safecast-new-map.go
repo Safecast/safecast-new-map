@@ -7975,6 +7975,7 @@ func streamMarkersHandler(w http.ResponseWriter, r *http.Request) {
 	maxLon, _ := strconv.ParseFloat(q.Get("maxLon"), 64)
 	trackID := q.Get("trackID")
 	trackIDsParam := q.Get("trackIDs")
+	showFilter := q.Get("show") // "rt" = realtime only, skip historical data
 
 	// Check if client requests MessagePack binary format
 	useMsgpack := q.Get("format") == "msgpack" ||
@@ -7993,12 +7994,20 @@ func streamMarkersHandler(w http.ResponseWriter, r *http.Request) {
 	const rawZoom = 0
 
 	// Choose streaming source: either entire map, a single track, or multiple tracks
+	// When showFilter=="rt", skip historical data entirely for faster RT-only views.
 	ctx := r.Context()
 	var (
 		baseSrc <-chan database.Marker
 		errCh   <-chan error
 	)
-	if trackID != "" {
+	rtOnly := showFilter == "rt"
+	if rtOnly {
+		// Return empty channel - no historical data needed
+		emptyCh := make(chan database.Marker)
+		close(emptyCh)
+		baseSrc = emptyCh
+		errCh = nil
+	} else if trackID != "" {
 		baseSrc, errCh = db.StreamMarkersByTrackIDZoomAndBounds(ctx, trackID, rawZoom, minLat, minLon, maxLat, maxLon, *dbType)
 	} else if trackIDsParam != "" {
 		// Handle multiple tracks by merging their streams
