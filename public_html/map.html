@@ -4299,6 +4299,18 @@ document.addEventListener('DOMContentLoaded', function () {
             state.car   = div.querySelector('#sfCar').checked;
             state.ped   = div.querySelector('#sfPed').checked;
             saveSpeedFilterState(state);   // remember choice
+
+            // Sync show=rt with filter state:
+            // Add if only RT is active, remove otherwise
+            const url = new URL(window.location.href);
+            const isRtOnly = state.live && !state.plane && !state.car && !state.ped;
+            if (isRtOnly) {
+              url.searchParams.set('show', 'rt');
+            } else {
+              url.searchParams.delete('show');
+            }
+            window.history.replaceState({}, '', url.toString());
+
             debounceUpdateMarkers();       // redraw with new filter
           });
         });
@@ -4949,6 +4961,12 @@ function updateMarkers(){
     baseParams.minLon = -180;
     baseParams.maxLat = 90;
     baseParams.maxLon = 180;
+  }
+
+  // Pass show filter to backend (e.g., show=rt skips historical data)
+  const showParam = new URLSearchParams(window.location.search).get('show');
+  if (showParam) {
+    baseParams.show = showParam;
   }
 
   const savedRange = loadDateRangeState();
@@ -8149,6 +8167,13 @@ function loadMapFromUrl() {
     if (unitToggle) unitToggle.style.display = 'block';
   }
 
+  /* sensor filter from URL (e.g., show=rt for realtime only) */
+  const showParam = params.get('show');
+  if (showParam === 'rt' && window.safecastRealtimeEnabled) {
+    // Override filter state to show only RT sensors
+    saveSpeedFilterState({ live: true, plane: false, car: false, ped: false });
+  }
+
   /* read remaining params */
   const minLat = parseFloat(params.get('minLat'));
   const minLon = parseFloat(params.get('minLon'));
@@ -8218,6 +8243,12 @@ function updateUrl() {
   // Add place parameter if a search was performed
   if (currentSearchQuery && currentSearchQuery.trim()) {
     newUrl += `&place=${encodeURIComponent(currentSearchQuery)}`;
+  }
+
+  // Preserve show parameter (e.g., show=rt for realtime only)
+  const showParam = new URLSearchParams(window.location.search).get('show');
+  if (showParam) {
+    newUrl += `&show=${encodeURIComponent(showParam)}`;
   }
 
   window.history.replaceState({}, '', newUrl);
