@@ -3105,7 +3105,7 @@ function buildRealtimeIcon(marker, zoomLevel, nowSec) {
   const textColor = isDarkColor(active ? baseColor : fill) ? '#ffffff' : '#000000';
 
   const radius = getRadius(marker.doseRate, zoomLevel) * 3;
-  const size = radius * 5.55;  // 1.5x bigger circle
+  const size = radius * 4.16;  // 75% of original size
   const value = formatPrimaryUnit(marker.doseRate);
   const fontSize = Math.max(Math.round(size * 0.32), 14);  // keep text same size
   const logoSize = Math.max(Math.round(size * 0.21), 12);  // 1.25x bigger logo
