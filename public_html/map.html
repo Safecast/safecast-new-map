@@ -5272,7 +5272,12 @@ function createMarkerFromData(m, zoom) {
     });
 
     // Directly open chart modal on click for realtime sensors
-    marker.on('click', function() {
+    marker.on('click', function(e) {
+      // If picking location for upload, capture coordinates instead
+      if (isPickingLocation && pickLocationHandler) {
+        map.fire('click', { latlng: L.latLng(m.lat, m.lon) });
+        return;
+      }
       const deviceID = m.deviceID || (m.trackID ? m.trackID.replace(/^live:/, '') : '');
       if (deviceID) {
         const fallback = {
@@ -5320,7 +5325,13 @@ function createMarkerFromData(m, zoom) {
     });
 
     // Open spectrum modal on click
-    marker.on('click', function() { openSpectrumModal(m.id, m); });
+    marker.on('click', function() {
+      if (isPickingLocation && pickLocationHandler) {
+        map.fire('click', { latlng: L.latLng(m.lat, m.lon) });
+        return;
+      }
+      openSpectrumModal(m.id, m);
+    });
   } else {
     // Regular circle marker - use pool for better performance
     const markerStyle = getCachedMarkerStyle(m.doseRate, zoom, m.speed);
@@ -5331,6 +5342,10 @@ function createMarkerFromData(m, zoom) {
     if (zoom <= 7) {
       // Simplified: click to view track only
       marker.on('click', function() {
+        if (isPickingLocation && pickLocationHandler) {
+          map.fire('click', { latlng: L.latLng(m.lat, m.lon) });
+          return;
+        }
         if (m.trackID) {
           viewTrack(m.trackID);
         }
@@ -5349,6 +5364,10 @@ function createMarkerFromData(m, zoom) {
       });
 
       marker.on('click', function() {
+        if (isPickingLocation && pickLocationHandler) {
+          map.fire('click', { latlng: L.latLng(m.lat, m.lon) });
+          return;
+        }
         if (m.trackID) {
           viewTrack(m.trackID);
         }
@@ -8959,6 +8978,8 @@ function selectHomeSearchResult(result, query) {
     <!-- Coordinate Input Dialog Script -->
     <script>
       let pendingCoordinateUpdate = null;
+      let isPickingLocation = false;
+      let pickLocationHandler = null;
 
       function showCoordinateDialog(trackID, fileName, trackURL) {
         pendingCoordinateUpdate = { trackID, fileName, trackURL };
@@ -8983,6 +9004,12 @@ function selectHomeSearchResult(result, query) {
       function hideCoordinateDialog() {
         document.getElementById('coordinateInputDialog').style.display = 'none';
         pendingCoordinateUpdate = null;
+        // Clean up picking mode if active
+        if (isPickingLocation && pickLocationHandler) {
+          map.off('click', pickLocationHandler);
+        }
+        isPickingLocation = false;
+        pickLocationHandler = null;
       }
 
       async function submitCoordinates() {
@@ -9078,14 +9105,20 @@ function selectHomeSearchResult(result, query) {
           const currentUpdate = pendingCoordinateUpdate;
           hideCoordinateDialog();
 
+          // Set picking mode flag so marker clicks are intercepted
+          isPickingLocation = true;
+
           // Add one-time click handler to map
           const mapClickHandler = function(e) {
             document.getElementById('coordInputLat').value = e.latlng.lat.toFixed(6);
             document.getElementById('coordInputLon').value = e.latlng.lng.toFixed(6);
+            isPickingLocation = false;
+            pickLocationHandler = null;
             showCoordinateDialog(currentUpdate.trackID, currentUpdate.fileName, currentUpdate.trackURL);
             map.off('click', mapClickHandler);
           };
 
+          pickLocationHandler = mapClickHandler;
           map.once('click', mapClickHandler);
         });
 
