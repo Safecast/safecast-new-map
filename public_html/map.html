@@ -1715,8 +1715,8 @@ body, html {
       <div id="searchResults" class="search-results"></div>
     </div>
 
-    <!-- Home/Welcome Overlay -->
-    <div id="homeOverlay" class="home-overlay">
+    <!-- Home/Welcome Overlay (hidden by default; JS shows it when appropriate) -->
+    <div id="homeOverlay" class="home-overlay hidden">
       <div class="home-popup">
         <img src="/static/images/safecast-heart-logo.png" alt="Safecast" class="home-popup-logo">
         <h1 class="home-popup-title">{{translate "title"}}</h1>
@@ -4041,6 +4041,20 @@ document.addEventListener('DOMContentLoaded', function () {
     content: function () { return translate('theme_toggle_tooltip'); },
     maxWidth: 260,
   });
+
+  var searchContainer = document.querySelector('.search-container');
+  var searchInput = document.getElementById('searchInput');
+  if (searchContainer) {
+    var searchTooltipHandle = attachControlTooltip(searchContainer, {
+      placement: 'bottom',
+      content: function () { return translate('search_input_tooltip'); },
+      maxWidth: 300,
+    });
+    // Hide tooltip when user focuses the input to type
+    if (searchInput) {
+      searchInput.addEventListener('focus', function () { searchTooltipHandle.hide(); });
+    }
+  }
 
   var shortLink = document.getElementById('shortLinkButton');
   if (shortLink) {
@@ -8619,12 +8633,12 @@ function initializeHomeOverlay() {
   
   if (!homeOverlay) return;
   
-  // Check if we should show the overlay
+  // Overlay starts hidden in HTML; only reveal when appropriate
   if (!shouldShowHomeOverlay()) {
-    homeOverlay.classList.add('hidden');
     homeOverlayDismissed = true;
     return;
   }
+  homeOverlay.classList.remove('hidden');
   
   // Home search functionality
   let homeSearchTimeout = null;
