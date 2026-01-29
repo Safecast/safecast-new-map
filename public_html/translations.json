@@ -785,7 +785,8 @@
     "home_use_location": "Use my location",
     "home_explore_global": "Skip and explore the global map",
     "no_results_found": "No results found",
-    "search_error": "Search error. Please try again."
+    "search_error": "Search error. Please try again.",
+    "search_input_tooltip": "Search for a place by typing the first few characters of its name. A list of suggestions will appear — it may take a few seconds."
   },
   "es": {
     "api_example_archive_desc": "Descarga un paquete tgz con todos los archivos .json publicados cuando el archivo JSON está activado.",
