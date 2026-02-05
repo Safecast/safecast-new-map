@@ -132,6 +132,128 @@ func (m *Manager) OptionalAuth(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// RequireAdmin is middleware that requires admin authentication.
+// If the user is not authenticated or is not an admin, it returns an error.
+func (m *Manager) RequireAdmin(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user, err := m.getUserFromSession(r)
+		if err != nil {
+			http.Error(w, "Authentication error", http.StatusInternalServerError)
+			return
+		}
+
+		if user == nil {
+			http.Error(w, "Unauthorized - Please login", http.StatusUnauthorized)
+			return
+		}
+
+		if !user.IsAdmin {
+			http.Error(w, "Forbidden - Admin access required", http.StatusForbidden)
+			return
+		}
+
+		// Add user to request context
+		ctx := WithAuthContext(r.Context(), user)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	}
+}
+
+// GetUserByAPIKey retrieves a user by their API key.
+func GetUserByAPIKey(ctx context.Context, db *sql.DB, dbDriver string, apiKey string) (*User, error) {
+	var user User
+	var query string
+
+	switch dbDriver {
+	case "pgx", "duckdb":
+		query = `
+			SELECT id, email, password_hash, username, email_verified,
+			       EXTRACT(EPOCH FROM created_at)::BIGINT,
+			       EXTRACT(EPOCH FROM updated_at)::BIGINT,
+			       COALESCE(EXTRACT(EPOCH FROM last_login_at)::BIGINT, 0),
+			       is_active, is_admin, COALESCE(external_id, ''), COALESCE(external_source, ''),
+			       requires_password_setup, COALESCE(api_key, '')
+			FROM users
+			WHERE api_key = $1 AND is_active = TRUE
+		`
+	case "sqlite", "chai":
+		query = `
+			SELECT id, email, password_hash, username, email_verified,
+			       created_at, updated_at, COALESCE(last_login_at, 0),
+			       is_active, COALESCE(is_admin, 0), COALESCE(external_id, ''), COALESCE(external_source, ''),
+			       requires_password_setup, COALESCE(api_key, '')
+			FROM users
+			WHERE api_key = ? AND is_active = 1
+		`
+	default:
+		return nil, sql.ErrNoRows
+	}
+
+	var emailVerifiedInt int
+	var isActiveInt int
+	var isAdminInt int
+	var requiresPasswordSetupInt int
+
+	if dbDriver == "sqlite" || dbDriver == "chai" {
+		err := db.QueryRowContext(ctx, query, apiKey).Scan(
+			&user.ID, &user.Email, &user.PasswordHash, &user.Username,
+			&emailVerifiedInt, &user.CreatedAt, &user.UpdatedAt, &user.LastLoginAt,
+			&isActiveInt, &isAdminInt, &user.ExternalID, &user.ExternalSource, &requiresPasswordSetupInt,
+			&user.APIKey,
+		)
+		if err != nil {
+			return nil, err
+		}
+		user.EmailVerified = emailVerifiedInt != 0
+		user.IsActive = isActiveInt != 0
+		user.IsAdmin = isAdminInt != 0
+		user.RequiresPasswordSetup = requiresPasswordSetupInt != 0
+	} else {
+		err := db.QueryRowContext(ctx, query, apiKey).Scan(
+			&user.ID, &user.Email, &user.PasswordHash, &user.Username,
+			&user.EmailVerified, &user.CreatedAt, &user.UpdatedAt, &user.LastLoginAt,
+			&user.IsActive, &user.IsAdmin, &user.ExternalID, &user.ExternalSource, &user.RequiresPasswordSetup,
+			&user.APIKey,
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &user, nil
+}
+
+// RequireAuthOrAPIKey is middleware that requires either session authentication or API key.
+// This is useful for endpoints that need to support both browser and programmatic access.
+func (m *Manager) RequireAuthOrAPIKey(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// First try session authentication
+		user, err := m.getUserFromSession(r)
+		if err == nil && user != nil {
+			ctx := WithAuthContext(r.Context(), user)
+			next.ServeHTTP(w, r.WithContext(ctx))
+			return
+		}
+
+		// Then try API key authentication
+		apiKey := r.Header.Get("X-API-Key")
+		if apiKey == "" {
+			// Also check query parameter for convenience
+			apiKey = r.URL.Query().Get("api_key")
+		}
+
+		if apiKey != "" {
+			user, err = GetUserByAPIKey(r.Context(), m.DB, m.DBDriver, apiKey)
+			if err == nil && user != nil {
+				ctx := WithAuthContext(r.Context(), user)
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
+		}
+
+		http.Error(w, "Unauthorized - Please login or provide API key", http.StatusUnauthorized)
+	}
+}
+
 // setSessionCookie sets the session cookie in the response.
 func (m *Manager) setSessionCookie(w http.ResponseWriter, sessionID string, expiresAt int64) {
 	cookie := &http.Cookie{

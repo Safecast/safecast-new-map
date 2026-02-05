@@ -5362,21 +5362,40 @@ func formatUploadRow(upload database.Upload, password string) string {
 	)
 }
 
+// checkAdminAuth verifies admin access via URL password or session-based admin user.
+// Returns (authorized bool, password string for backwards compat in templates).
+// If not authorized, it writes an HTTP error response and returns false.
+func checkAdminAuth(w http.ResponseWriter, r *http.Request) (bool, string) {
+	// First check if user is authenticated via session and is admin
+	if user, ok := auth.GetUserFromContext(r.Context()); ok && user.IsAdmin {
+		// For backwards compatibility, return a dummy password value for templates
+		// This allows existing links in the HTML to still work
+		return true, "session"
+	}
+
+	// Fall back to URL password authentication
+	if *adminPassword == "" {
+		http.Error(w, "Admin endpoints are disabled - please login as admin", http.StatusForbidden)
+		return false, ""
+	}
+
+	password := r.URL.Query().Get("password")
+	if password != *adminPassword {
+		http.Error(w, "Unauthorized - Invalid password or not logged in as admin", http.StatusUnauthorized)
+		return false, ""
+	}
+
+	return true, password
+}
+
 // adminUploadsHandler lists all file uploads with metadata.
 // GET /api/admin/uploads?password=xxx&limit=100
 func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
-	// Check if admin password is set
-	if *adminPassword == "" {
-		http.Error(w, "Admin endpoints are disabled", http.StatusForbidden)
+	authorized, password := checkAdminAuth(w, r)
+	if !authorized {
 		return
 	}
-
-	// Verify password
-	password := r.URL.Query().Get("password")
-	if password != *adminPassword {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
+	_ = password // Used in HTML template generation below
 
 	if db == nil || db.DB == nil {
 		http.Error(w, "Database not available", http.StatusServiceUnavailable)
@@ -6134,16 +6153,10 @@ func formatFileSize(bytes int64) string {
 
 // adminDeleteTrackHandler deletes a track and all associated data.
 // POST /api/admin/delete
-// Body: {"password": "xxx", "trackID": "abc123"}
+// Body: {"password": "xxx", "trackID": "abc123"} (password optional if session-authenticated)
 func adminDeleteTrackHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	// Check if admin password is set
-	if *adminPassword == "" {
-		http.Error(w, "Admin endpoints are disabled", http.StatusForbidden)
 		return
 	}
 
@@ -6163,10 +6176,22 @@ func adminDeleteTrackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify password
-	if req.Password != *adminPassword {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
+	// Check for admin access: session-based or password-based
+	isSessionAdmin := false
+	if user, ok := auth.GetUserFromContext(r.Context()); ok && user.IsAdmin {
+		isSessionAdmin = true
+	}
+
+	if !isSessionAdmin {
+		// Fall back to password authentication
+		if *adminPassword == "" {
+			http.Error(w, "Admin endpoints are disabled - please login as admin", http.StatusForbidden)
+			return
+		}
+		if req.Password != *adminPassword {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
 	}
 
 	// Validate trackID
@@ -6195,16 +6220,10 @@ func adminDeleteTrackHandler(w http.ResponseWriter, r *http.Request) {
 
 // adminDeleteMultipleTracksHandler deletes multiple tracks and all associated data.
 // POST /api/admin/delete-multiple
-// Body: {"password": "xxx", "trackIDs": ["abc123", "def456"]}
+// Body: {"password": "xxx", "trackIDs": ["abc123", "def456"]} (password optional if session-authenticated)
 func adminDeleteMultipleTracksHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	// Check if admin password is set
-	if *adminPassword == "" {
-		http.Error(w, "Admin endpoints are disabled", http.StatusForbidden)
 		return
 	}
 
@@ -6224,10 +6243,22 @@ func adminDeleteMultipleTracksHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify password
-	if req.Password != *adminPassword {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
+	// Check for admin access: session-based or password-based
+	isSessionAdmin := false
+	if user, ok := auth.GetUserFromContext(r.Context()); ok && user.IsAdmin {
+		isSessionAdmin = true
+	}
+
+	if !isSessionAdmin {
+		// Fall back to password authentication
+		if *adminPassword == "" {
+			http.Error(w, "Admin endpoints are disabled - please login as admin", http.StatusForbidden)
+			return
+		}
+		if req.Password != *adminPassword {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
 	}
 
 	// Validate trackIDs
@@ -6279,17 +6310,23 @@ func adminImportFromSafecastHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if admin password is set
-	if *adminPassword == "" {
-		http.Error(w, "Admin endpoints are disabled", http.StatusForbidden)
-		return
+	// Check for admin access: session-based or password-based
+	isSessionAdmin := false
+	if user, ok := auth.GetUserFromContext(r.Context()); ok && user.IsAdmin {
+		isSessionAdmin = true
 	}
 
-	// Verify password from query param
-	password := r.URL.Query().Get("password")
-	if password != *adminPassword {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
+	if !isSessionAdmin {
+		// Fall back to password authentication
+		if *adminPassword == "" {
+			http.Error(w, "Admin endpoints are disabled - please login as admin", http.StatusForbidden)
+			return
+		}
+		password := r.URL.Query().Get("password")
+		if password != *adminPassword {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
 	}
 
 	if db == nil || db.DB == nil {
@@ -6546,18 +6583,11 @@ func adminImportFromSafecastHandler(w http.ResponseWriter, r *http.Request) {
 // adminTracksHandler lists all tracks in the system with statistics.
 // GET /api/admin/tracks?password=xxx&limit=1000
 func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
-	// Check if admin password is set
-	if *adminPassword == "" {
-		http.Error(w, "Admin endpoints are disabled", http.StatusForbidden)
+	authorized, password := checkAdminAuth(w, r)
+	if !authorized {
 		return
 	}
-
-	// Verify password
-	password := r.URL.Query().Get("password")
-	if password != *adminPassword {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
+	_ = password // Used in HTML template generation below
 
 	if db == nil || db.DB == nil {
 		http.Error(w, "Database not available", http.StatusServiceUnavailable)
@@ -7252,17 +7282,23 @@ func adminBackfillHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if admin password is set
-	if *adminPassword == "" {
-		http.Error(w, "Admin endpoints are disabled", http.StatusForbidden)
-		return
+	// Check for admin access: session-based or password-based
+	isSessionAdmin := false
+	if user, ok := auth.GetUserFromContext(r.Context()); ok && user.IsAdmin {
+		isSessionAdmin = true
 	}
 
-	// Verify password
-	password := r.URL.Query().Get("password")
-	if password != *adminPassword {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
+	if !isSessionAdmin {
+		// Fall back to password authentication
+		if *adminPassword == "" {
+			http.Error(w, "Admin endpoints are disabled - please login as admin", http.StatusForbidden)
+			return
+		}
+		password := r.URL.Query().Get("password")
+		if password != *adminPassword {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
 	}
 
 	if db == nil || db.DB == nil {
@@ -9066,21 +9102,28 @@ func main() {
 		})
 	}
 
-	// User admin routes (uses password parameter like existing admin system)
-	if authManager != nil && *adminPassword != "" {
-		// Helper function to check admin password
-		checkAdminPassword := func(w http.ResponseWriter, r *http.Request) bool {
-			password := r.URL.Query().Get("password")
-			if password != *adminPassword {
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
-				return false
+	// User admin routes (supports both URL password and session-based admin auth)
+	if authManager != nil {
+		// Helper function to check admin access (session-based or password-based)
+		checkAdminAccess := func(w http.ResponseWriter, r *http.Request) bool {
+			// First check for session-based admin auth
+			if user, ok := auth.GetUserFromContext(r.Context()); ok && user.IsAdmin {
+				return true
 			}
-			return true
+			// Fall back to URL password
+			if *adminPassword != "" {
+				password := r.URL.Query().Get("password")
+				if password == *adminPassword {
+					return true
+				}
+			}
+			http.Error(w, "Unauthorized - Please login as admin or provide password", http.StatusUnauthorized)
+			return false
 		}
 
 		// Serve admin users page
-		http.HandleFunc("/admin/users", func(w http.ResponseWriter, r *http.Request) {
-			if !checkAdminPassword(w, r) {
+		http.HandleFunc("/admin/users", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminAccess(w, r) {
 				return
 			}
 			data, err := content.ReadFile("public_html/admin-users.html")
@@ -9090,25 +9133,25 @@ func main() {
 			}
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.Write(data)
-		})
+		}))
 
 		// Admin API routes
-		http.HandleFunc("/api/admin/users", func(w http.ResponseWriter, r *http.Request) {
-			if !checkAdminPassword(w, r) {
+		http.HandleFunc("/api/admin/users", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminAccess(w, r) {
 				return
 			}
 			authManager.AdminListUsersHandler(w, r)
-		})
+		}))
 
-		http.HandleFunc("/api/admin/users/create", func(w http.ResponseWriter, r *http.Request) {
-			if !checkAdminPassword(w, r) {
+		http.HandleFunc("/api/admin/users/create", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminAccess(w, r) {
 				return
 			}
 			authManager.AdminCreateUserHandler(w, r)
-		})
+		}))
 
-		http.HandleFunc("/api/admin/users/", func(w http.ResponseWriter, r *http.Request) {
-			if !checkAdminPassword(w, r) {
+		http.HandleFunc("/api/admin/users/", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminAccess(w, r) {
 				return
 			}
 			switch r.Method {
@@ -9126,7 +9169,7 @@ func main() {
 			default:
 				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			}
-		})
+		}))
 	}
 
 	// Upload endpoint - protected with auth if required
@@ -9151,12 +9194,22 @@ func main() {
 	http.HandleFunc("/api/markers/spectra", markersWithSpectraHandler)                 // GET /api/markers/spectra
 	http.HandleFunc("/api/tracks/bounds", apiTracksBoundsHandler)                      // GET /api/tracks/bounds?trackIDs=...
 	http.HandleFunc("/api/update-coordinates", updateCoordinatesHandler)               // POST /api/update-coordinates
-	http.HandleFunc("/api/admin/uploads", adminUploadsHandler)                         // GET /api/admin/uploads?password=<pwd>
-	http.HandleFunc("/api/admin/tracks", adminTracksHandler)                           // GET /api/admin/tracks?password=<pwd>
-	http.HandleFunc("/api/admin/backfill", adminBackfillHandler)                       // POST /api/admin/backfill?password=<pwd>
-	http.HandleFunc("/api/admin/delete", adminDeleteTrackHandler)                      // POST /api/admin/delete
-	http.HandleFunc("/api/admin/delete-multiple", adminDeleteMultipleTracksHandler)    // POST /api/admin/delete-multiple
-	http.HandleFunc("/api/admin/import-from-safecast", adminImportFromSafecastHandler) // POST /api/admin/import-from-safecast
+	// Admin endpoints - wrap with OptionalAuth to allow session-based admin auth
+	if authManager != nil {
+		http.HandleFunc("/api/admin/uploads", authManager.OptionalAuth(adminUploadsHandler))
+		http.HandleFunc("/api/admin/tracks", authManager.OptionalAuth(adminTracksHandler))
+		http.HandleFunc("/api/admin/backfill", authManager.OptionalAuth(adminBackfillHandler))
+		http.HandleFunc("/api/admin/delete", authManager.OptionalAuth(adminDeleteTrackHandler))
+		http.HandleFunc("/api/admin/delete-multiple", authManager.OptionalAuth(adminDeleteMultipleTracksHandler))
+		http.HandleFunc("/api/admin/import-from-safecast", authManager.OptionalAuth(adminImportFromSafecastHandler))
+	} else {
+		http.HandleFunc("/api/admin/uploads", adminUploadsHandler)
+		http.HandleFunc("/api/admin/tracks", adminTracksHandler)
+		http.HandleFunc("/api/admin/backfill", adminBackfillHandler)
+		http.HandleFunc("/api/admin/delete", adminDeleteTrackHandler)
+		http.HandleFunc("/api/admin/delete-multiple", adminDeleteMultipleTracksHandler)
+		http.HandleFunc("/api/admin/import-from-safecast", adminImportFromSafecastHandler)
+	}
 
 	// API endpoints ship JSON/archives. Keeping registration close to other
 	// routes avoids surprises for operators scanning main() for handlers.

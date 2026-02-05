@@ -93,6 +93,12 @@
     .badge-inactive { background: #f44336; color: white; }
     .badge-verified { background: #4CAF50; color: white; }
     .badge-unverified { background: #ff9800; color: white; }
+    .badge-admin { background: #9c27b0; color: white; }
+    .badge-user { background: #607d8b; color: white; }
+    .btn-admin { background: #9c27b0; color: white; border: none; padding: 5px 10px; border-radius: var(--btn-border-radius); cursor: pointer; font-size: 0.85em; margin: 0 2px; }
+    .btn-admin:hover { background: #7b1fa2; }
+    .btn-remove-admin { background: #607d8b; color: white; border: none; padding: 5px 10px; border-radius: var(--btn-border-radius); cursor: pointer; font-size: 0.85em; margin: 0 2px; }
+    .btn-remove-admin:hover { background: #455a64; }
     .username-cell { max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     /* Modal styles */
@@ -189,9 +195,10 @@
         <th class="sortable" onclick="sortTable(4)" data-type="text">External ID</th>
         <th class="sortable" onclick="sortTable(5)" data-type="text">API Key</th>
         <th class="sortable" onclick="sortTable(6)" data-type="text">Status</th>
-        <th class="sortable" onclick="sortTable(7)" data-type="text">Email Verified</th>
-        <th class="sortable" onclick="sortTable(8)" data-type="date">Created</th>
-        <th class="sortable" onclick="sortTable(9)" data-type="date">Last Login</th>
+        <th class="sortable" onclick="sortTable(7)" data-type="text">Admin</th>
+        <th class="sortable" onclick="sortTable(8)" data-type="text">Email Verified</th>
+        <th class="sortable" onclick="sortTable(9)" data-type="date">Created</th>
+        <th class="sortable" onclick="sortTable(10)" data-type="date">Last Login</th>
         <th>Actions</th>
       </tr>
       <tr class="filter-row">
@@ -202,6 +209,7 @@
         <th><input type="text" class="filter-input" placeholder="External ID..." onkeyup="filterTable()"></th>
         <th><input type="text" class="filter-input" placeholder="API Key..." onkeyup="filterTable()"></th>
         <th><input type="text" class="filter-input" placeholder="Status..." onkeyup="filterTable()"></th>
+        <th><input type="text" class="filter-input" placeholder="Admin..." onkeyup="filterTable()"></th>
         <th><input type="text" class="filter-input" placeholder="Verified..." onkeyup="filterTable()"></th>
         <th><input type="text" class="filter-input" placeholder="Created..." onkeyup="filterTable()"></th>
         <th><input type="text" class="filter-input" placeholder="Last Login..." onkeyup="filterTable()"></th>
@@ -260,6 +268,14 @@
             <select id="userStatus">
               <option value="true">Active</option>
               <option value="false">Inactive</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="userIsAdmin">Admin</label>
+            <select id="userIsAdmin">
+              <option value="false">No - Regular User</option>
+              <option value="true">Yes - Admin</option>
             </select>
           </div>
 
@@ -365,6 +381,12 @@
 
       users.forEach(user => {
         const tr = document.createElement('tr');
+        const adminBadge = user.is_admin
+          ? '<span class="badge badge-admin">Admin</span>'
+          : '<span class="badge badge-user">User</span>';
+        const adminButton = user.is_admin
+          ? `<button class="btn-remove-admin" onclick="toggleAdmin(${user.id}, false)">Remove Admin</button>`
+          : `<button class="btn-admin" onclick="toggleAdmin(${user.id}, true)">Make Admin</button>`;
         tr.innerHTML = `
           <td class="checkbox-col"><input type="checkbox" class="user-checkbox" value="${user.id}" onchange="updateDeleteButton()"></td>
           <td>${user.id}</td>
@@ -373,10 +395,12 @@
           <td>${user.external_id || '<em>none</em>'}</td>
           <td class="api-key-cell" title="${user.api_key || ''}">${user.api_key || '<em>none</em>'}</td>
           <td><span class="badge ${user.is_active ? 'badge-active' : 'badge-inactive'}">${user.is_active ? 'Active' : 'Inactive'}</span></td>
+          <td>${adminBadge}</td>
           <td><span class="badge ${user.email_verified ? 'badge-verified' : 'badge-unverified'}">${user.email_verified ? 'Verified' : 'Unverified'}</span></td>
           <td>${formatDate(user.created_at)}</td>
           <td>${user.last_login_at ? formatDate(user.last_login_at) : 'Never'}</td>
           <td class="actions-cell">
+            ${adminButton}
             <button class="btn-edit" onclick="editUser(${user.id})">Edit</button>
             <button class="btn-warning" onclick="resetUserPassword(${user.id})">Reset Password</button>
             <button class="delete-btn" onclick="deleteUser(${user.id})">Delete</button>
@@ -631,12 +655,35 @@
       loadUsers();
     }
 
+    async function toggleAdmin(userId, makeAdmin) {
+      const action = makeAdmin ? 'grant admin privileges to' : 'remove admin privileges from';
+      if (!confirm(`Are you sure you want to ${action} this user?`)) return;
+
+      try {
+        const response = await fetch(`/api/admin/users/${userId}?password=${encodeURIComponent(adminPassword)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_admin: makeAdmin })
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to update user');
+        }
+
+        loadUsers();
+      } catch (error) {
+        alert('Error: ' + error.message);
+      }
+    }
+
     function openAddUserModal() {
       document.getElementById('modalTitle').textContent = 'Add User';
       document.getElementById('userForm').reset();
       document.getElementById('userId').value = '';
       document.getElementById('userPassword').required = true;
       document.getElementById('userStatus').value = 'true';
+      document.getElementById('userIsAdmin').value = 'false';
       document.getElementById('userEmailVerified').value = 'false';
       document.getElementById('modalMessage').style.display = 'none';
       document.getElementById('userModal').style.display = 'block';
@@ -653,6 +700,7 @@
       document.getElementById('userPassword').value = '';
       document.getElementById('userPassword').required = false;
       document.getElementById('userStatus').value = user.is_active.toString();
+      document.getElementById('userIsAdmin').value = (user.is_admin || false).toString();
       document.getElementById('userEmailVerified').value = user.email_verified.toString();
       document.getElementById('userExternalId').value = user.external_id || '';
       document.getElementById('modalMessage').style.display = 'none';
@@ -672,6 +720,7 @@
         username: document.getElementById('userUsername').value || null,
         password: document.getElementById('userPassword').value || null,
         is_active: document.getElementById('userStatus').value === 'true',
+        is_admin: document.getElementById('userIsAdmin').value === 'true',
         email_verified: document.getElementById('userEmailVerified').value === 'true',
         external_id: document.getElementById('userExternalId').value || null
       };

@@ -60,13 +60,13 @@ func CreateUser(ctx context.Context, db *sql.DB, dbDriver string, user *User, pa
 	case "pgx", "duckdb":
 		query = `
 			INSERT INTO users (email, password_hash, username, email_verified, created_at, updated_at,
-			                   is_active, external_id, external_source, requires_password_setup, api_key)
-			VALUES ($1, $2, $3, $4, to_timestamp($5), to_timestamp($6), $7, $8, $9, $10, $11)
+			                   is_active, is_admin, external_id, external_source, requires_password_setup, api_key)
+			VALUES ($1, $2, $3, $4, to_timestamp($5), to_timestamp($6), $7, $8, $9, $10, $11, $12)
 			RETURNING id
 		`
 		args = []interface{}{
 			user.Email, passwordHash, user.Username, user.EmailVerified,
-			user.CreatedAt, user.UpdatedAt, user.IsActive,
+			user.CreatedAt, user.UpdatedAt, user.IsActive, user.IsAdmin,
 			user.ExternalID, user.ExternalSource, user.RequiresPasswordSetup, apiKey,
 		}
 		err = db.QueryRowContext(ctx, query, args...).Scan(&id)
@@ -75,8 +75,8 @@ func CreateUser(ctx context.Context, db *sql.DB, dbDriver string, user *User, pa
 	case "sqlite", "chai":
 		query = `
 			INSERT INTO users (email, password_hash, username, email_verified, created_at, updated_at,
-			                   is_active, external_id, external_source, requires_password_setup, api_key)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			                   is_active, is_admin, external_id, external_source, requires_password_setup, api_key)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		`
 		emailVerified := 0
 		if user.EmailVerified {
@@ -86,6 +86,10 @@ func CreateUser(ctx context.Context, db *sql.DB, dbDriver string, user *User, pa
 		if !user.IsActive {
 			isActive = 0
 		}
+		isAdmin := 0
+		if user.IsAdmin {
+			isAdmin = 1
+		}
 		requiresPasswordSetup := 0
 		if user.RequiresPasswordSetup {
 			requiresPasswordSetup = 1
@@ -93,7 +97,7 @@ func CreateUser(ctx context.Context, db *sql.DB, dbDriver string, user *User, pa
 
 		args = []interface{}{
 			user.Email, passwordHash, user.Username, emailVerified,
-			user.CreatedAt, user.UpdatedAt, isActive,
+			user.CreatedAt, user.UpdatedAt, isActive, isAdmin,
 			user.ExternalID, user.ExternalSource, requiresPasswordSetup, apiKey,
 		}
 		result, err := db.ExecContext(ctx, query, args...)
@@ -119,7 +123,7 @@ func GetUserByEmail(ctx context.Context, db *sql.DB, dbDriver string, email stri
 			       EXTRACT(EPOCH FROM created_at)::BIGINT,
 			       EXTRACT(EPOCH FROM updated_at)::BIGINT,
 			       COALESCE(EXTRACT(EPOCH FROM last_login_at)::BIGINT, 0),
-			       is_active, COALESCE(external_id, ''), COALESCE(external_source, ''),
+			       is_active, is_admin, COALESCE(external_id, ''), COALESCE(external_source, ''),
 			       requires_password_setup, COALESCE(api_key, '')
 			FROM users
 			WHERE email = $1
@@ -128,7 +132,7 @@ func GetUserByEmail(ctx context.Context, db *sql.DB, dbDriver string, email stri
 		query = `
 			SELECT id, email, password_hash, username, email_verified,
 			       created_at, updated_at, COALESCE(last_login_at, 0),
-			       is_active, COALESCE(external_id, ''), COALESCE(external_source, ''),
+			       is_active, COALESCE(is_admin, 0), COALESCE(external_id, ''), COALESCE(external_source, ''),
 			       requires_password_setup, COALESCE(api_key, '')
 			FROM users
 			WHERE email = ?
@@ -139,13 +143,14 @@ func GetUserByEmail(ctx context.Context, db *sql.DB, dbDriver string, email stri
 
 	var emailVerifiedInt int
 	var isActiveInt int
+	var isAdminInt int
 	var requiresPasswordSetupInt int
 
 	if dbDriver == "sqlite" || dbDriver == "chai" {
 		err := db.QueryRowContext(ctx, query, email).Scan(
 			&user.ID, &user.Email, &user.PasswordHash, &user.Username,
 			&emailVerifiedInt, &user.CreatedAt, &user.UpdatedAt, &user.LastLoginAt,
-			&isActiveInt, &user.ExternalID, &user.ExternalSource, &requiresPasswordSetupInt,
+			&isActiveInt, &isAdminInt, &user.ExternalID, &user.ExternalSource, &requiresPasswordSetupInt,
 			&user.APIKey,
 		)
 		if err != nil {
@@ -153,12 +158,13 @@ func GetUserByEmail(ctx context.Context, db *sql.DB, dbDriver string, email stri
 		}
 		user.EmailVerified = emailVerifiedInt != 0
 		user.IsActive = isActiveInt != 0
+		user.IsAdmin = isAdminInt != 0
 		user.RequiresPasswordSetup = requiresPasswordSetupInt != 0
 	} else {
 		err := db.QueryRowContext(ctx, query, email).Scan(
 			&user.ID, &user.Email, &user.PasswordHash, &user.Username,
 			&user.EmailVerified, &user.CreatedAt, &user.UpdatedAt, &user.LastLoginAt,
-			&user.IsActive, &user.ExternalID, &user.ExternalSource, &user.RequiresPasswordSetup,
+			&user.IsActive, &user.IsAdmin, &user.ExternalID, &user.ExternalSource, &user.RequiresPasswordSetup,
 			&user.APIKey,
 		)
 		if err != nil {
@@ -181,7 +187,7 @@ func GetUserByID(ctx context.Context, db *sql.DB, dbDriver string, userID int64)
 			       EXTRACT(EPOCH FROM created_at)::BIGINT,
 			       EXTRACT(EPOCH FROM updated_at)::BIGINT,
 			       COALESCE(EXTRACT(EPOCH FROM last_login_at)::BIGINT, 0),
-			       is_active, COALESCE(external_id, ''), COALESCE(external_source, ''),
+			       is_active, is_admin, COALESCE(external_id, ''), COALESCE(external_source, ''),
 			       requires_password_setup, COALESCE(api_key, '')
 			FROM users
 			WHERE id = $1
@@ -190,7 +196,7 @@ func GetUserByID(ctx context.Context, db *sql.DB, dbDriver string, userID int64)
 		query = `
 			SELECT id, email, password_hash, username, email_verified,
 			       created_at, updated_at, COALESCE(last_login_at, 0),
-			       is_active, COALESCE(external_id, ''), COALESCE(external_source, ''),
+			       is_active, COALESCE(is_admin, 0), COALESCE(external_id, ''), COALESCE(external_source, ''),
 			       requires_password_setup, COALESCE(api_key, '')
 			FROM users
 			WHERE id = ?
@@ -201,13 +207,14 @@ func GetUserByID(ctx context.Context, db *sql.DB, dbDriver string, userID int64)
 
 	var emailVerifiedInt int
 	var isActiveInt int
+	var isAdminInt int
 	var requiresPasswordSetupInt int
 
 	if dbDriver == "sqlite" || dbDriver == "chai" {
 		err := db.QueryRowContext(ctx, query, userID).Scan(
 			&user.ID, &user.Email, &user.PasswordHash, &user.Username,
 			&emailVerifiedInt, &user.CreatedAt, &user.UpdatedAt, &user.LastLoginAt,
-			&isActiveInt, &user.ExternalID, &user.ExternalSource, &requiresPasswordSetupInt,
+			&isActiveInt, &isAdminInt, &user.ExternalID, &user.ExternalSource, &requiresPasswordSetupInt,
 			&user.APIKey,
 		)
 		if err != nil {
@@ -215,12 +222,13 @@ func GetUserByID(ctx context.Context, db *sql.DB, dbDriver string, userID int64)
 		}
 		user.EmailVerified = emailVerifiedInt != 0
 		user.IsActive = isActiveInt != 0
+		user.IsAdmin = isAdminInt != 0
 		user.RequiresPasswordSetup = requiresPasswordSetupInt != 0
 	} else {
 		err := db.QueryRowContext(ctx, query, userID).Scan(
 			&user.ID, &user.Email, &user.PasswordHash, &user.Username,
 			&user.EmailVerified, &user.CreatedAt, &user.UpdatedAt, &user.LastLoginAt,
-			&user.IsActive, &user.ExternalID, &user.ExternalSource, &user.RequiresPasswordSetup,
+			&user.IsActive, &user.IsAdmin, &user.ExternalID, &user.ExternalSource, &user.RequiresPasswordSetup,
 			&user.APIKey,
 		)
 		if err != nil {
@@ -662,7 +670,7 @@ func GetAllUsers(ctx context.Context, db *sql.DB, dbDriver string) ([]*User, err
 			       EXTRACT(EPOCH FROM created_at)::BIGINT as created_at,
 			       EXTRACT(EPOCH FROM updated_at)::BIGINT as updated_at,
 			       COALESCE(EXTRACT(EPOCH FROM last_login_at)::BIGINT, 0) as last_login_at,
-			       is_active, COALESCE(external_id, ''), COALESCE(external_source, ''),
+			       is_active, is_admin, COALESCE(external_id, ''), COALESCE(external_source, ''),
 			       requires_password_setup, COALESCE(api_key, '')
 			FROM users
 			ORDER BY created_at DESC
@@ -671,7 +679,7 @@ func GetAllUsers(ctx context.Context, db *sql.DB, dbDriver string) ([]*User, err
 		query = `
 			SELECT id, email, password_hash, username, email_verified, created_at, updated_at,
 			       COALESCE(last_login_at, 0) as last_login_at,
-			       is_active, COALESCE(external_id, ''), COALESCE(external_source, ''),
+			       is_active, COALESCE(is_admin, 0), COALESCE(external_id, ''), COALESCE(external_source, ''),
 			       requires_password_setup, COALESCE(api_key, '')
 			FROM users
 			ORDER BY created_at DESC
@@ -692,7 +700,7 @@ func GetAllUsers(ctx context.Context, db *sql.DB, dbDriver string) ([]*User, err
 		err := rows.Scan(
 			&user.ID, &user.Email, &user.PasswordHash, &user.Username,
 			&user.EmailVerified, &user.CreatedAt, &user.UpdatedAt, &user.LastLoginAt,
-			&user.IsActive, &user.ExternalID, &user.ExternalSource,
+			&user.IsActive, &user.IsAdmin, &user.ExternalID, &user.ExternalSource,
 			&user.RequiresPasswordSetup, &user.APIKey,
 		)
 		if err != nil {
@@ -716,24 +724,24 @@ func UpdateUser(ctx context.Context, db *sql.DB, dbDriver string, user *User) er
 		query = `
 			UPDATE users
 			SET email = $1, username = $2, email_verified = $3, updated_at = to_timestamp($4),
-			    is_active = $5, external_id = $6, external_source = $7, requires_password_setup = $8
-			WHERE id = $9
+			    is_active = $5, is_admin = $6, external_id = $7, external_source = $8, requires_password_setup = $9
+			WHERE id = $10
 		`
 		args = []interface{}{
 			user.Email, user.Username, user.EmailVerified, user.UpdatedAt,
-			user.IsActive, user.ExternalID, user.ExternalSource, user.RequiresPasswordSetup,
+			user.IsActive, user.IsAdmin, user.ExternalID, user.ExternalSource, user.RequiresPasswordSetup,
 			user.ID,
 		}
 	case "sqlite", "chai":
 		query = `
 			UPDATE users
 			SET email = ?, username = ?, email_verified = ?, updated_at = ?,
-			    is_active = ?, external_id = ?, external_source = ?, requires_password_setup = ?
+			    is_active = ?, is_admin = ?, external_id = ?, external_source = ?, requires_password_setup = ?
 			WHERE id = ?
 		`
 		args = []interface{}{
 			user.Email, user.Username, user.EmailVerified, user.UpdatedAt,
-			user.IsActive, user.ExternalID, user.ExternalSource, user.RequiresPasswordSetup,
+			user.IsActive, user.IsAdmin, user.ExternalID, user.ExternalSource, user.RequiresPasswordSetup,
 			user.ID,
 		}
 	default:
@@ -797,7 +805,7 @@ func GetUsersPaginated(ctx context.Context, db *sql.DB, dbDriver string, limit, 
 			       EXTRACT(EPOCH FROM created_at)::BIGINT as created_at,
 			       EXTRACT(EPOCH FROM updated_at)::BIGINT as updated_at,
 			       COALESCE(EXTRACT(EPOCH FROM last_login_at)::BIGINT, 0) as last_login_at,
-			       is_active, COALESCE(external_id, ''), COALESCE(external_source, ''),
+			       is_active, is_admin, COALESCE(external_id, ''), COALESCE(external_source, ''),
 			       requires_password_setup, COALESCE(api_key, '')
 			FROM users
 		`
@@ -825,7 +833,7 @@ func GetUsersPaginated(ctx context.Context, db *sql.DB, dbDriver string, limit, 
 		query = `
 			SELECT id, email, password_hash, username, email_verified, created_at, updated_at,
 			       COALESCE(last_login_at, 0) as last_login_at,
-			       is_active, COALESCE(external_id, ''), COALESCE(external_source, ''),
+			       is_active, COALESCE(is_admin, 0), COALESCE(external_id, ''), COALESCE(external_source, ''),
 			       requires_password_setup, COALESCE(api_key, '')
 			FROM users
 		`
@@ -860,7 +868,7 @@ func GetUsersPaginated(ctx context.Context, db *sql.DB, dbDriver string, limit, 
 		err := rows.Scan(
 			&user.ID, &user.Email, &user.PasswordHash, &user.Username,
 			&user.EmailVerified, &user.CreatedAt, &user.UpdatedAt, &user.LastLoginAt,
-			&user.IsActive, &user.ExternalID, &user.ExternalSource,
+			&user.IsActive, &user.IsAdmin, &user.ExternalID, &user.ExternalSource,
 			&user.RequiresPasswordSetup, &user.APIKey,
 		)
 		if err != nil {
