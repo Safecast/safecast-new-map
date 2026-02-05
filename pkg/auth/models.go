@@ -11,6 +11,7 @@ type User struct {
 	UpdatedAt             int64  `json:"updated_at"`
 	LastLoginAt           int64  `json:"last_login_at,omitempty"`
 	IsActive              bool   `json:"is_active"`
+	IsAdmin               bool   `json:"is_admin"`
 	ExternalID            string `json:"external_id,omitempty"`
 	ExternalSource        string `json:"external_source,omitempty"`
 	RequiresPasswordSetup bool   `json:"requires_password_setup"`

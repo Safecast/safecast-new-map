@@ -199,6 +199,7 @@ func (m *Manager) AdminUpdateUserHandler(w http.ResponseWriter, r *http.Request)
 		Email         *string `json:"email"`
 		Username      *string `json:"username"`
 		IsActive      *bool   `json:"is_active"`
+		IsAdmin       *bool   `json:"is_admin"`
 		EmailVerified *bool   `json:"email_verified"`
 	}
 
@@ -239,6 +240,10 @@ func (m *Manager) AdminUpdateUserHandler(w http.ResponseWriter, r *http.Request)
 
 	if req.IsActive != nil {
 		targetUser.IsActive = *req.IsActive
+	}
+
+	if req.IsAdmin != nil {
+		targetUser.IsAdmin = *req.IsAdmin
 	}
 
 	if req.EmailVerified != nil {
@@ -361,13 +366,7 @@ func (m *Manager) AdminResetUserPasswordHandler(w http.ResponseWriter, r *http.R
 	}, http.StatusOK)
 }
 
-// isAdmin checks if a user has admin privileges.
-// TODO: Implement proper role-based access control.
-// For now, this is a placeholder that always returns true for authenticated users.
-// In production, you should check against a role field or admin flag.
-func isAdmin(user *User) bool {
-	// Placeholder: Check if user email contains "admin" or has a specific domain
-	// In production, add an IsAdmin or Role field to the User model
-	return strings.Contains(strings.ToLower(user.Email), "admin") ||
-		strings.Contains(strings.ToLower(user.Email), "@safecast.org")
+// IsAdmin checks if a user has admin privileges.
+func IsAdmin(user *User) bool {
+	return user != nil && user.IsAdmin
 }
