@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"safecast-new-map/pkg/countryresolver"
 	"safecast-new-map/pkg/database"
 	"safecast-new-map/pkg/jsonarchive"
 	"safecast-new-map/pkg/trackjson"
@@ -65,6 +66,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/tracks/months/", h.handleTracksByMonth)
 	mux.HandleFunc("/api/track/", h.handleTrackData)
 	mux.HandleFunc("/api/tracks/", h.handleTrackData) // legacy alias for older clients
+	mux.HandleFunc("/api/countries", h.handleCountries)
 	mux.HandleFunc("/api/shorten", h.handleShorten)
 	if h.Archive != nil {
 		// Expose the tarball endpoint only when archive generation is enabled
@@ -328,6 +330,11 @@ func (h *Handler) handleOverview(w http.ResponseWriter, r *http.Request) {
 				"method":      "GET",
 				"path":        "/api/tracks/months/{year}/{month}",
 				"description": "Lists all tracks for a calendar month without pagination.",
+			},
+			"countries": map[string]any{
+				"method":      "GET",
+				"path":        "/api/countries",
+				"description": "Lists all countries with radiation measurements and their aggregated statistics.",
 			},
 		}
 		if h.Archive != nil {
@@ -1298,4 +1305,90 @@ func parseFloatDefault(v string, def float64) float64 {
 		return def
 	}
 	return f
+}
+
+// handleCountries serves GET /api/countries with per-country measurement statistics.
+func (h *Handler) handleCountries(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if h.DB == nil || h.DB.DB == nil {
+		http.Error(w, "database unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
+	permit, ok := h.acquirePermit(w, r, RequestGeneral)
+	if !ok {
+		return
+	}
+	if permit != nil {
+		defer permit.Release()
+	}
+
+	ctx := r.Context()
+	data, err := h.cachedJSONWithTTL(ctx, "countries:list", 5*time.Minute, func(ctx context.Context) ([]byte, error) {
+		return h.buildCountriesJSON(ctx)
+	})
+	if err != nil {
+		h.handleCacheError(w, "countries list", err)
+		return
+	}
+
+	writeJSONBytes(w, data)
+}
+
+func (h *Handler) buildCountriesJSON(ctx context.Context) ([]byte, error) {
+	stats, err := h.DB.QueryCountryStats(ctx)
+	if err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return nil, newAPIError(http.StatusRequestTimeout, "request cancelled", "", err)
+		}
+		return nil, newAPIError(http.StatusInternalServerError, "country stats error", "country stats error", err)
+	}
+
+	type countryEntry struct {
+		Code         string  `json:"code"`
+		Name         string  `json:"name"`
+		Measurements int64   `json:"measurements"`
+		AvgDoseRate  float64 `json:"avgDoseRate"`
+		FirstSeenUTC string  `json:"firstSeenUTC"`
+		LastSeenUTC  string  `json:"lastSeenUTC"`
+	}
+
+	entries := make([]countryEntry, 0, len(stats))
+	for _, s := range stats {
+		name := countryresolver.NameFor(s.Country)
+		code := s.Country
+		if name == "" {
+			// The stored value is likely already a full name rather than a code.
+			name = s.Country
+			code = s.Country
+		}
+		entries = append(entries, countryEntry{
+			Code:         code,
+			Name:         name,
+			Measurements: s.Measurements,
+			AvgDoseRate:  s.AvgDoseRate,
+			FirstSeenUTC: time.Unix(s.FirstSeen, 0).UTC().Format(time.RFC3339),
+			LastSeenUTC:  time.Unix(s.LastSeen, 0).UTC().Format(time.RFC3339),
+		})
+	}
+
+	resp := struct {
+		Countries      []countryEntry    `json:"countries"`
+		TotalCountries int               `json:"totalCountries"`
+		Disclaimers    map[string]string `json:"disclaimers"`
+	}{
+		Countries:      entries,
+		TotalCountries: len(entries),
+		Disclaimers:    trackjson.CopyDisclaimers(),
+	}
+
+	data, err := encodeJSON(resp)
+	if err != nil {
+		return nil, newAPIError(http.StatusInternalServerError, "encode json", "encode countries list", err)
+	}
+	return data, nil
 }

@@ -55,6 +55,7 @@ import (
 
 	"safecast-new-map/pkg/api"
 	"safecast-new-map/pkg/auth"
+	"safecast-new-map/pkg/countryresolver"
 	"safecast-new-map/pkg/database"
 	"safecast-new-map/pkg/database/drivers"
 	"safecast-new-map/pkg/email"
@@ -7386,6 +7387,175 @@ func adminBackfillHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// countryBackfillRunning guards against concurrent backfill runs.
+var countryBackfillRunning sync.Mutex
+
+// adminBackfillCountriesHandler populates the country column for markers that
+// have coordinates but no country assigned.  The work runs in the background;
+// the endpoint returns immediately so the caller is not blocked.
+// POST /api/admin/backfill-countries?password=xxx
+func adminBackfillCountriesHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Check for admin access: session-based or password-based
+	isSessionAdmin := false
+	if user, ok := auth.GetUserFromContext(r.Context()); ok && user.IsAdmin {
+		isSessionAdmin = true
+	}
+	if !isSessionAdmin {
+		if *adminPassword == "" {
+			http.Error(w, "Admin endpoints are disabled - please login as admin", http.StatusForbidden)
+			return
+		}
+		password := r.URL.Query().Get("password")
+		if password != *adminPassword {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+	}
+
+	if db == nil || db.DB == nil {
+		http.Error(w, "Database not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	if !countryBackfillRunning.TryLock() {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":  "already_running",
+			"message": "Country backfill is already in progress.",
+		})
+		return
+	}
+
+	go func() {
+		defer countryBackfillRunning.Unlock()
+		backfillCountries()
+	}()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":  "started",
+		"message": "Country backfill started in background. Watch server logs for progress.",
+	})
+}
+
+func backfillCountries() {
+	const batchSize = 50000
+	const updateChunk = 10000 // max IDs per UPDATE statement
+
+	log.Printf("country backfill: starting (batch size %d)", batchSize)
+	start := time.Now()
+	var lastID int64
+	var totalUpdated int64
+
+	for {
+		rows, err := db.DB.QueryContext(context.Background(),
+			`SELECT id, lat, lon FROM markers
+			 WHERE id > $1 AND (country IS NULL OR country = '')
+			 ORDER BY id LIMIT $2`, lastID, batchSize)
+		if err != nil {
+			log.Printf("country backfill: query error: %v", err)
+			return
+		}
+
+		type markerRow struct {
+			id       int64
+			lat, lon float64
+		}
+		var batch []markerRow
+		for rows.Next() {
+			var r markerRow
+			if err := rows.Scan(&r.id, &r.lat, &r.lon); err != nil {
+				log.Printf("country backfill: scan error: %v", err)
+				rows.Close()
+				return
+			}
+			batch = append(batch, r)
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil {
+			log.Printf("country backfill: rows error: %v", err)
+			return
+		}
+
+		if len(batch) == 0 {
+			break
+		}
+		lastID = batch[len(batch)-1].id
+
+		// Resolve countries in parallel across CPU cores.
+		type resolved struct {
+			id      int64
+			country string
+		}
+		results := make([]resolved, len(batch))
+		workers := runtime.GOMAXPROCS(0)
+		var wg sync.WaitGroup
+		chunkSize := (len(batch) + workers - 1) / workers
+		for w := 0; w < workers; w++ {
+			lo := w * chunkSize
+			hi := lo + chunkSize
+			if lo >= len(batch) {
+				break
+			}
+			if hi > len(batch) {
+				hi = len(batch)
+			}
+			wg.Add(1)
+			go func(lo, hi int) {
+				defer wg.Done()
+				for i := lo; i < hi; i++ {
+					code, _ := countryresolver.Resolve(batch[i].lat, batch[i].lon)
+					if code == "" {
+						code = "unknown"
+					}
+					results[i] = resolved{id: batch[i].id, country: code}
+				}
+			}(lo, hi)
+		}
+		wg.Wait()
+
+		// Group by country code.
+		groups := make(map[string][]int64)
+		for _, r := range results {
+			groups[r.country] = append(groups[r.country], r.id)
+		}
+
+		// One UPDATE per country code, chunked to keep query size reasonable.
+		for code, ids := range groups {
+			for i := 0; i < len(ids); i += updateChunk {
+				end := i + updateChunk
+				if end > len(ids) {
+					end = len(ids)
+				}
+				chunk := ids[i:end]
+				ph := make([]string, len(chunk))
+				args := make([]interface{}, 1+len(chunk))
+				args[0] = code
+				for j, id := range chunk {
+					ph[j] = fmt.Sprintf("$%d", j+2)
+					args[j+1] = id
+				}
+				query := fmt.Sprintf("UPDATE markers SET country = $1 WHERE id IN (%s)", strings.Join(ph, ","))
+				if _, err := db.DB.ExecContext(context.Background(), query, args...); err != nil {
+					log.Printf("country backfill: update error for %s: %v", code, err)
+					return
+				}
+			}
+			totalUpdated += int64(len(ids))
+		}
+
+		rate := float64(totalUpdated) / time.Since(start).Seconds()
+		log.Printf("country backfill: id=%d, updated %d total (%.0f rows/sec)", lastID, totalUpdated, rate)
+	}
+
+	log.Printf("country backfill: finished, updated %d markers in %s", totalUpdated, time.Since(start).Round(time.Second))
+}
+
 // =====================
 // WEB  — страница трека
 // =====================
@@ -9199,6 +9369,7 @@ func main() {
 		http.HandleFunc("/api/admin/uploads", authManager.OptionalAuth(adminUploadsHandler))
 		http.HandleFunc("/api/admin/tracks", authManager.OptionalAuth(adminTracksHandler))
 		http.HandleFunc("/api/admin/backfill", authManager.OptionalAuth(adminBackfillHandler))
+		http.HandleFunc("/api/admin/backfill-countries", authManager.OptionalAuth(adminBackfillCountriesHandler))
 		http.HandleFunc("/api/admin/delete", authManager.OptionalAuth(adminDeleteTrackHandler))
 		http.HandleFunc("/api/admin/delete-multiple", authManager.OptionalAuth(adminDeleteMultipleTracksHandler))
 		http.HandleFunc("/api/admin/import-from-safecast", authManager.OptionalAuth(adminImportFromSafecastHandler))
@@ -9206,6 +9377,7 @@ func main() {
 		http.HandleFunc("/api/admin/uploads", adminUploadsHandler)
 		http.HandleFunc("/api/admin/tracks", adminTracksHandler)
 		http.HandleFunc("/api/admin/backfill", adminBackfillHandler)
+		http.HandleFunc("/api/admin/backfill-countries", adminBackfillCountriesHandler)
 		http.HandleFunc("/api/admin/delete", adminDeleteTrackHandler)
 		http.HandleFunc("/api/admin/delete-multiple", adminDeleteMultipleTracksHandler)
 		http.HandleFunc("/api/admin/import-from-safecast", adminImportFromSafecastHandler)
