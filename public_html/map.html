@@ -3140,15 +3140,15 @@ function shouldDisplayBySpeed(speed) {
     }
     return st.live;
   }
-  if (speed >= 70 && speed <= 500) return st.plane;  // ✈️
-  if (speed >= 7  && speed <  70)  return st.car;    // 🚗
-  /* speed < 7 m/s  → pedestrian */
-  return st.ped;                                      // 🚶
+  if (speed >= 55.56)                  return st.plane;  // ✈️  ≥200 km/h
+  if (speed >= 1.94  && speed < 55.56) return st.car;    // 🚗  7–200 km/h
+  /* speed < 1.94 m/s (7 km/h) → pedestrian */
+  return st.ped;                                          // 🚶
 }
 
 
 // Compute marker fill opacity based on speed
-// Speed ranges: Walking <7 m/s, Car 7-70 m/s, Plane ≥70 m/s
+// Speed ranges: Walking <1.94 m/s (7 km/h), Car 1.94-55.56 m/s (7-200 km/h), Plane ≥55.56 m/s (200 km/h)
 // PERFORMANCE OPTIMIZATION: Using full opacity (1.0) for all markers
 // to eliminate transparency blending overhead during zoom/pan operations.
 // Transparency blending is one of the most expensive rendering operations.
