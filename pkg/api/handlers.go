@@ -435,7 +435,7 @@ func (h *Handler) handleLatestNearby(w http.ResponseWriter, r *http.Request) {
 	}
 	radiusMeters = clampFloat(radiusMeters, 25, 50000)
 
-	limit := clampInt(parseIntDefault(strings.TrimSpace(query.Get("limit")), 25), 1, 200)
+	limit := clampInt(parseIntDefault(strings.TrimSpace(query.Get("limit")), 25), 1, 10000)
 
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
