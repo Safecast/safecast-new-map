@@ -23,6 +23,7 @@ import (
 	"encoding/xml"
 
 	"github.com/vmihailenco/msgpack/v5"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"errors"
 	"flag"
 	"fmt"
@@ -124,6 +125,11 @@ var baseURL = flag.String("base-url", "http://localhost:8765", "Base URL for the
 // synchronization, following "Clear is better than clever" by leaning on Go's
 // built-in map semantics.
 var debugIPAllowlist map[string]struct{}
+
+// tileCache stores precomputed clustered markers to avoid expensive on-the-fly clustering
+// for frequently requested map tiles. The cache uses a simple LRU strategy to limit memory usage.
+var tileCache *lru.Cache[string, []database.Marker]
+var tileCacheMu sync.RWMutex // Protects access to the tileCache
 
 // usageSection groups CLI flags so operators can scan help output quickly. This keeps
 // the help text approachable without duplicating flag registration everywhere.
@@ -379,6 +385,11 @@ func init() {
 	// working even when auxiliary files are skipped; relying on init avoids extra
 	// coordination primitives and mirrors Go's preference for simplicity.
 	drivers.Ready()
+	
+	// Initialize the tile cache to store precomputed clustered markers
+	// Using a cache size of 1000 entries which should be sufficient for most use cases
+	tileCache, _ = lru.New[string, []database.Marker](1000)
+	
 	// CLI usage grouping is also configured once during init so every entry point
 	// inherits the readable help layout without repeating boilerplate.
 	configureCLIUsage()
@@ -4255,6 +4266,13 @@ func processAndStoreMarkersWithContext(
 		uploadProgress.Unlock()
 	}()
 
+	// Invalidate cache entries that might be affected by the new markers
+	// Since we don't know exactly which tiles are affected, we clear the entire cache
+	// In a production system, we might want to be more selective about cache invalidation
+	tileCacheMu.Lock()
+	tileCache.Purge() // Clear all cached entries
+	tileCacheMu.Unlock()
+	
 	logT(trackID, "Store", "✔ stored (new %d markers)", len(allZoom))
 	return bbox, trackID, nil
 }
@@ -7443,6 +7461,58 @@ func adminBackfillCountriesHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// adminCacheHandler provides administrative access to cache management functions
+func adminCacheHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Check for admin access: session-based or password-based
+	isSessionAdmin := false
+	if user, ok := auth.GetUserFromContext(r.Context()); ok && user.IsAdmin {
+		isSessionAdmin = true
+	}
+	if !isSessionAdmin {
+		if *adminPassword == "" {
+			http.Error(w, "Admin endpoints are disabled - please login as admin", http.StatusForbidden)
+			return
+		}
+		password := r.URL.Query().Get("password")
+		if password != *adminPassword {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+	}
+
+	action := r.URL.Query().Get("action")
+	switch action {
+	case "clear":
+		tileCacheMu.Lock()
+		tileCache.Purge()
+		tileCacheMu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":  "success",
+			"message": "Cache cleared successfully",
+		})
+	case "stats":
+		tileCacheMu.RLock()
+		size := tileCache.Len()
+		capacity := 1000 // Our cache capacity
+		tileCacheMu.RUnlock()
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":   "success",
+			"size":     size,
+			"capacity": capacity,
+		})
+	default:
+		http.Error(w, "Invalid action. Use ?action=clear or ?action=stats", http.StatusBadRequest)
+		return
+	}
+}
+
 func backfillCountries() {
 	const batchSize = 50000
 	const updateChunk = 10000 // max IDs per UPDATE statement
@@ -7871,6 +7941,20 @@ func qrPngHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// generateTileCacheKey creates a unique key for caching clustered markers based on request parameters
+// The key includes zoom level, bounding box, track ID, speed filters, and date filters
+func generateTileCacheKey(zoom int, minLat, minLon, maxLat, maxLon float64, trackID, trackIDsParam string, speedRanges []database.SpeedRange, dateFrom, dateTo int64) string {
+	// Create a string representation of speed ranges
+	speedStr := ""
+	for _, sr := range speedRanges {
+		speedStr += fmt.Sprintf("%.2f-%.2f,", sr.Min, sr.Max)
+	}
+	
+	// Format the key with all relevant parameters
+	return fmt.Sprintf("tile:%d:%.6f:%.6f:%.6f:%.6f:%s:%s:%s:%d:%d", 
+		zoom, minLat, minLon, maxLat, maxLon, trackID, trackIDsParam, speedStr, dateFrom, dateTo)
+}
+
 // getMarkersHandler — берёт маркеры в заданном окне и фильтрах
 // +НОВОЕ: dateFrom/dateTo (UNIX-seconds) диапазон времени.
 func getMarkersHandler(w http.ResponseWriter, r *http.Request) {
@@ -7957,20 +8041,56 @@ func getMarkersHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Apply on-the-fly clustering based on requested zoom level
-	markers = clusterMarkersForZoom(markers, zoom)
-
-	if *safecastRealtimeEnabled {
-		// We only touch realtime tables when the operator explicitly enables the feature.
-		if rt, err := db.GetLatestRealtimeByBounds(ctx, minLat, minLon, maxLat, maxLon, *dbType); err == nil {
-			for i := range rt {
-				// Sanitise detector names on the fly so legacy rows without
-				// the new resolver still produce friendly popups.
-				rt[i].Tube = safecastrealtime.DetectorLabel(rt[i].Tube, rt[i].Transport, rt[i].DeviceName)
+	// Generate cache key based on request parameters
+	cacheKey := generateTileCacheKey(zoom, minLat, minLon, maxLat, maxLon, trackID, trackIDsParam, sr, dateFrom, dateTo)
+	
+	// Check if clustered markers are already in cache
+	tileCacheMu.RLock()
+	cachedMarkers, found := tileCache.Get(cacheKey)
+	tileCacheMu.RUnlock()
+	
+	if found {
+		// Use cached markers if available
+		markers = cachedMarkers
+		
+		// Add realtime markers if enabled (these shouldn't be cached as they change frequently)
+		if *safecastRealtimeEnabled {
+			// We only touch realtime tables when the operator explicitly enables the feature.
+			if rt, err := db.GetLatestRealtimeByBounds(ctx, minLat, minLon, maxLat, maxLon, *dbType); err == nil {
+				for i := range rt {
+					// Sanitise detector names on the fly so legacy rows without
+					// the new resolver still produce friendly popups.
+					rt[i].Tube = safecastrealtime.DetectorLabel(rt[i].Tube, rt[i].Transport, rt[i].DeviceName)
+				}
+				markers = append(markers, rt...)
+			} else {
+				log.Printf("realtime query: %v", err)
 			}
-			markers = append(markers, rt...)
-		} else {
-			log.Printf("realtime query: %v", err)
+		}
+	} else {
+		// Apply on-the-fly clustering based on requested zoom level (this is the expensive operation)
+		markers = clusterMarkersForZoom(markers, zoom)
+		
+		// Add to cache for future requests (but don't cache if there are too many markers to avoid memory issues)
+		if len(markers) < 10000 { // arbitrary limit to prevent cache bloat
+			tileCacheMu.Lock()
+			tileCache.Add(cacheKey, markers)
+			tileCacheMu.Unlock()
+		}
+		
+		// Add realtime markers if enabled
+		if *safecastRealtimeEnabled {
+			// We only touch realtime tables when the operator explicitly enables the feature.
+			if rt, err := db.GetLatestRealtimeByBounds(ctx, minLat, minLon, maxLat, maxLon, *dbType); err == nil {
+				for i := range rt {
+					// Sanitise detector names on the fly so legacy rows without
+					// the new resolver still produce friendly popups.
+					rt[i].Tube = safecastrealtime.DetectorLabel(rt[i].Tube, rt[i].Transport, rt[i].DeviceName)
+				}
+				markers = append(markers, rt...)
+			} else {
+				log.Printf("realtime query: %v", err)
+			}
 		}
 	}
 
@@ -9242,8 +9362,16 @@ func main() {
 		log.Fatalf("static fs: %v", err)
 	}
 
+	// Serve static files from embedded filesystem - this must come BEFORE the catch-all route
+	// to avoid the map handler catching static file requests
 	http.Handle("/static/", http.StripPrefix("/static/",
 		http.FileServer(http.FS(staticFS))))
+	
+	// Serve JS files from the physical directory as a workaround
+	// This ensures the marker-worker.js file is accessible to the browser
+	// Access files from public_html root and let StripPrefix handle the path
+	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("public_html/"))))
+	
 	http.HandleFunc("/home", homeHandler)
 	http.HandleFunc("/", mapHandler)
 	// Serve license documents straight from the embedded filesystem so UI
@@ -9373,6 +9501,7 @@ func main() {
 		http.HandleFunc("/api/admin/delete", authManager.OptionalAuth(adminDeleteTrackHandler))
 		http.HandleFunc("/api/admin/delete-multiple", authManager.OptionalAuth(adminDeleteMultipleTracksHandler))
 		http.HandleFunc("/api/admin/import-from-safecast", authManager.OptionalAuth(adminImportFromSafecastHandler))
+		http.HandleFunc("/api/admin/cache", authManager.OptionalAuth(adminCacheHandler))
 	} else {
 		http.HandleFunc("/api/admin/uploads", adminUploadsHandler)
 		http.HandleFunc("/api/admin/tracks", adminTracksHandler)
@@ -9381,6 +9510,7 @@ func main() {
 		http.HandleFunc("/api/admin/delete", adminDeleteTrackHandler)
 		http.HandleFunc("/api/admin/delete-multiple", adminDeleteMultipleTracksHandler)
 		http.HandleFunc("/api/admin/import-from-safecast", adminImportFromSafecastHandler)
+		http.HandleFunc("/api/admin/cache", adminCacheHandler)
 	}
 
 	// API endpoints ship JSON/archives. Keeping registration close to other
