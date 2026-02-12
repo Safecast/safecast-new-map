@@ -54,6 +54,7 @@ import (
 	"golang.org/x/crypto/acme/autocert"
 
 	"safecast-new-map/pkg/api"
+	"safecast-new-map/pkg/api/safecast"
 	"safecast-new-map/pkg/auth"
 	"safecast-new-map/pkg/countryresolver"
 	"safecast-new-map/pkg/database"
@@ -9388,6 +9389,10 @@ func main() {
 	limiter := api.NewRateLimiter(time.Minute)
 	apiHandler := api.NewHandler(db, *dbType, archiveGen, limiter, log.Printf, archiveFrequency)
 	apiHandler.Register(http.DefaultServeMux)
+
+	// Safecast API (api.safecast.org replacement) — adapter + v2 share same core
+	safecastHandler := safecast.NewHandler(db, dbCfg.DBType, authManager, *baseURL, log.Printf)
+	safecastHandler.Register(http.DefaultServeMux)
 
 	// Selfupgrade runs in the background only when explicitly enabled so existing
 	// installations keep their manual release cadence. We assemble the config
