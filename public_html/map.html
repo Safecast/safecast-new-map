@@ -3594,8 +3594,10 @@ function getViewportKey() {
 
 function getFilterStateKey() {
   // Create a string that uniquely identifies the current filter state
-  const state = loadSpeedFilterState();
-  return JSON.stringify(state);
+  return JSON.stringify({
+    speed: loadSpeedFilterState(),
+    dateRange: loadDateRangeState()
+  });
 }
 const shortLinkBox = document.getElementById('shortLinkButton');
 let shortLinkTimer = null;
