@@ -79,3 +79,20 @@
 2026/02/15 22:51:12 realtime sample: id=geigiecast:61099 name="" lat=22.318070 lon=114.157710 val=53.000000 unit=lnd_7318u
 2026/02/15 22:51:12 realtime poll: devices 119 stored 360 next=5m0s
 2026/02/15 22:51:12 realtime summary: ??:1 avg=0.10 Canada (CA):3 avg=0.09 Georgia (GE):1 avg=0.08 Germany (DE):1 avg=0.09 Japan (JP):29 avg=0.21 Peru (PE):1 avg=0.15 Switzerland (CH):1 avg=0.12 Taiwan (TW):2 avg=0.11 Ukraine (UA):60 avg=0.16 United States of America (US):20 avg=0.09 added=0 removed=0
+2026/02/15 22:56:06 [safecast-fetcher] poll: checking for imports after ID 70363
+2026/02/15 22:56:07 [safecast-fetcher] page 1: fetched 25 imports (IDs 70363-70335)
+2026/02/15 22:56:07 [safecast-fetcher] page 1: found 0 new imports
+2026/02/15 22:56:07 [safecast-fetcher] page 2: fetched 25 imports (IDs 70334-70310)
+2026/02/15 22:56:07 [safecast-fetcher] page 2: found 0 new imports
+2026/02/15 22:56:07 [safecast-fetcher] page 3: fetched 25 imports (IDs 70309-70229)
+2026/02/15 22:56:07 [safecast-fetcher] page 3: found 0 new imports
+2026/02/15 22:56:07 [safecast-fetcher] page 4: fetched 25 imports (IDs 70226-70183)
+2026/02/15 22:56:07 [safecast-fetcher] page 4: found 0 new imports
+2026/02/15 22:56:07 [safecast-fetcher] page 5: fetched 25 imports (IDs 70182-70157)
+2026/02/15 22:56:07 [safecast-fetcher] page 5: found 0 new imports
+2026/02/15 22:56:07 [safecast-fetcher] normal mode: stopped after 5 pages
+2026/02/15 22:56:07 [safecast-fetcher] poll: found 0 new approved imports
+2026/02/15 22:56:12 realtime fetch: devices 1551
+2026/02/15 22:56:12 realtime sample: id=geigiecast:61099 name="" lat=22.318070 lon=114.157710 val=53.000000 unit=lnd_7318u
+2026/02/15 22:56:12 realtime poll: devices 119 stored 360 next=5m0s
+2026/02/15 22:56:12 realtime summary: ??:1 avg=0.10 Canada (CA):3 avg=0.08 Georgia (GE):1 avg=0.08 Germany (DE):1 avg=0.10 Japan (JP):29 avg=0.21 Peru (PE):1 avg=0.15 Switzerland (CH):1 avg=0.12 Taiwan (TW):2 avg=0.11 Ukraine (UA):60 avg=0.16 United States of America (US):20 avg=0.10 added=0 removed=0
