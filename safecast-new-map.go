@@ -9387,6 +9387,78 @@ func main() {
 		http.HandleFunc("/api/auth/reset-password", authManager.ResetPasswordHandler)
 		http.HandleFunc("/api/auth/verify-email", authManager.VerifyEmailHandler)
 		http.HandleFunc("/api/user/profile", authManager.RequireAuth(authManager.ProfileHandler))
+		http.HandleFunc("/api/user/change-password", authManager.RequireAuth(authManager.ChangePasswordHandler))
+		http.HandleFunc("/api/user/uploads", authManager.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodGet {
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			user, ok := auth.GetUserFromContext(r.Context())
+			if !ok {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+			if db == nil || db.DB == nil {
+				http.Error(w, "Database not available", http.StatusServiceUnavailable)
+				return
+			}
+
+			limit := 100
+			if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+				if parsed, err := strconv.Atoi(limitStr); err == nil && parsed > 0 && parsed <= 1000 {
+					limit = parsed
+				}
+			}
+			offset := 0
+			if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
+				if parsed, err := strconv.Atoi(offsetStr); err == nil && parsed >= 0 {
+					offset = parsed
+				}
+			}
+
+			// Query uploads matching this user's external_id (maps to user_id in uploads table)
+			userID := user.ExternalID
+			if userID == "" {
+				// No external_id linked — user has no uploads to show
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"uploads": []interface{}{},
+					"total":   0,
+					"limit":   limit,
+					"offset":  offset,
+				})
+				return
+			}
+
+			ctx := r.Context()
+			uploads, err := db.GetUploadsPaginated(ctx, limit, offset, userID, "")
+			if err != nil {
+				log.Printf("Error fetching user uploads: %v", err)
+				http.Error(w, "Failed to fetch uploads", http.StatusInternalServerError)
+				return
+			}
+
+			totalCount, _ := db.CountUploads(ctx, userID, "")
+
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"uploads": uploads,
+				"total":   totalCount,
+				"limit":   limit,
+				"offset":  offset,
+			})
+		}))
+
+		// Serve profile page
+		http.HandleFunc("/profile", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			data, err := content.ReadFile("public_html/profile.html")
+			if err != nil {
+				http.Error(w, "Profile page not found", http.StatusNotFound)
+				return
+			}
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Write(data)
+		}))
 
 		// Serve reset-password page
 		http.HandleFunc("/reset-password", func(w http.ResponseWriter, r *http.Request) {

@@ -2161,6 +2161,7 @@ body, html {
     </form>
     <div style="margin-top: 20px; text-align: center; color: var(--modal-text); font-size: var(--font-size-sm);">
       <p style="margin: 8px 0;"><a href="#" onclick="showForgotPassword(); return false;" style="color: var(--isotope-highlight); text-decoration: none;">Forgot password?</a></p>
+      <p style="margin: 8px 0;"><a href="#" onclick="showForgotPassword(); return false;" style="color: var(--isotope-highlight); text-decoration: none; font-weight: 600;">First time? Set up your password</a></p>
       <p style="margin: 8px 0;">Don't have an account? <a href="#" onclick="showRegister(); return false;" style="color: var(--isotope-highlight); text-decoration: none;">Register</a></p>
     </div>
     <button type="button" onclick="closeLoginModal()" style="margin-top: 16px; width: 100%; padding: 10px; background: transparent; border: var(--legend-border); border-radius: 6px; cursor: pointer; color: var(--modal-text);">
@@ -2239,6 +2240,9 @@ body, html {
 <div id="userMenu" style="display: none; position: fixed; top: 10px; right: 20px; z-index: 1001; background: var(--modal-bg); padding: 6px 10px; border-radius: var(--btn-border-radius, 8px); box-shadow: 0 1px 5px rgba(0,0,0,0.65); border: var(--legend-border);">
   <div style="display: flex; align-items: center; gap: 8px;">
     <span id="userMenuName" style="color: var(--modal-text); font-weight: 600; font-size: 12px;"></span>
+    <a href="/profile" style="padding: 4px 10px; background: #4CAF50; border: none; border-radius: var(--btn-border-radius, 8px); color: white; font-size: 11px; text-decoration: none;">
+      Profile
+    </a>
     <button onclick="logout()" style="padding: 4px 10px; background: #f44336; border: none; border-radius: var(--btn-border-radius, 8px); cursor: pointer; color: white; font-size: 11px;">
       Logout
     </button>
