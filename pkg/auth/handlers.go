@@ -439,6 +439,57 @@ func (m *Manager) ProfileHandler(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, user, http.StatusOK)
 }
 
+// ChangePasswordHandler allows a logged-in user to change their password.
+// POST /api/user/change-password
+func (m *Manager) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	user, ok := GetUserFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var req struct {
+		CurrentPassword string `json:"current_password"`
+		NewPassword     string `json:"new_password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSONError(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.CurrentPassword == "" || req.NewPassword == "" {
+		writeJSONError(w, "Current password and new password are required", http.StatusBadRequest)
+		return
+	}
+
+	if len(req.NewPassword) < 8 {
+		writeJSONError(w, "New password must be at least 8 characters", http.StatusBadRequest)
+		return
+	}
+
+	// Verify current password
+	if !VerifyPassword(user.PasswordHash, req.CurrentPassword) {
+		writeJSONError(w, "Current password is incorrect", http.StatusUnauthorized)
+		return
+	}
+
+	// Update password
+	if err := UpdateUserPassword(r.Context(), m.DB, m.DBDriver, user.ID, req.NewPassword); err != nil {
+		writeJSONError(w, "Failed to update password", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, map[string]interface{}{
+		"success": true,
+		"message": "Password changed successfully",
+	}, http.StatusOK)
+}
+
 // Helper functions
 
 func writeJSON(w http.ResponseWriter, data interface{}, status int) {
