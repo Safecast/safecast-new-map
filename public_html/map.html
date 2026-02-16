@@ -3654,7 +3654,7 @@ var liveHistoryCache = new Map();
  */
 function loadSpeedFilterState() {
   // We derive defaults from the realtime flag so the UI matches backend capabilities.
-  const base = { plane: false, car: true, ped: true };
+  const base = { plane: false, car: true, ped: true, spectrum: true };
   if (window.safecastRealtimeEnabled) {
     base.live = true;
   }
@@ -3665,6 +3665,8 @@ function loadSpeedFilterState() {
     if (!window.safecastRealtimeEnabled) {
       delete merged.live;
     }
+    // Ensure spectrum key exists for older saved states
+    if (merged.spectrum === undefined) merged.spectrum = true;
     return merged;
   } catch (e) {
     return base;
@@ -4259,6 +4261,8 @@ document.addEventListener('DOMContentLoaded', function () {
           row('sfCar',   '🚗', state.car,   'speed-filter-icon--mono'),
           row('sfPed',   '🚶', state.ped,   'speed-filter-icon--mono')
         );
+        pieces.push('<div class="leaflet-control-layers-separator"></div>');
+        pieces.push(row('sfSpectrum', '📊', state.spectrum, ''));
         div.innerHTML = pieces.join('');
 
         // We collect all checkboxes so keyboard focus and pointer use can share a single tooltip instance.
@@ -4280,6 +4284,7 @@ document.addEventListener('DOMContentLoaded', function () {
             lines.push(translate('speed_filter_tooltip_plane'));
             lines.push(translate('speed_filter_tooltip_car'));
             lines.push(translate('speed_filter_tooltip_ped'));
+            lines.push('📊 Gamma spectrum measurements');
             const listHtml = lines.map(function (line) {
               return '<li>' + line + '</li>';
             }).join('');
@@ -4315,9 +4320,10 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
               delete state.live;
             }
-            state.plane = div.querySelector('#sfPlane').checked;
-            state.car   = div.querySelector('#sfCar').checked;
-            state.ped   = div.querySelector('#sfPed').checked;
+            state.plane    = div.querySelector('#sfPlane').checked;
+            state.car      = div.querySelector('#sfCar').checked;
+            state.ped      = div.querySelector('#sfPed').checked;
+            state.spectrum = div.querySelector('#sfSpectrum').checked;
             saveSpeedFilterState(state);   // remember choice
 
             // Sync show=rt with filter state:
@@ -4737,6 +4743,9 @@ function createDateRangeSlider(){
       ? ` (<a href="#" class="risk-link">${translate(doseCategory(marker.doseRate))}</a>)`
       : '';
 
+    const dateText = marker.date ? new Date(marker.date * 1000).toLocaleString(undefined, { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+    const dateHtml = dateText ? `<div><strong>Date:</strong> ${dateText}</div>` : '';
+
     return `
       <div class="custom-tooltip">
         <div><strong>${translate('radiation_dose')}:</strong><br>
@@ -4744,6 +4753,8 @@ function createDateRangeSlider(){
           ${statusHtml}
         </div>
         <div><strong>${translate('speed')}:</strong> ${speedText}</div>
+        ${dateHtml}
+        ${getTrackInfoHtml(marker.trackID) ? '<div style="color: var(--text-muted, #999); font-size: 0.9em;">' + getTrackInfoHtml(marker.trackID) + '</div>' : ''}
         <div style="margin-top:4px">
           <!-- clicking the link switches to track mode -->
           <a href="#" class="track-link" data-track="${marker.trackID}" style="font-weight:bold;">
@@ -4762,6 +4773,24 @@ function getPopupContent(marker) {
 // Tooltip uses the same builder for hover previews.
 function getTooltipContent(marker) {
   return buildMarkerContent(marker);
+}
+
+// Track upload info cache (uploader name, detector)
+const trackInfoCache = new Map();
+function getTrackInfoHtml(trackID) {
+  const info = trackInfoCache.get(trackID);
+  if (!info) return '';
+  const parts = [];
+  if (info.username) parts.push('By: ' + info.username);
+  if (info.detector) parts.push(info.detector);
+  return parts.length ? parts.join(' \u2022 ') : '';
+}
+function prefetchTrackInfo(trackID) {
+  if (!trackID || trackInfoCache.has(trackID)) return;
+  fetch('/api/track-info/' + trackID)
+    .then(r => r.json())
+    .then(data => { trackInfoCache.set(trackID, data); })
+    .catch(() => {});
 }
 
 
@@ -5359,7 +5388,7 @@ function createMarkerFromData(m, zoom) {
 
     // At low zoom: minimal interaction for performance
     // At high zoom: full tooltip support
-    if (zoom <= 7) {
+    if (zoom <= 4) {
       // Simplified: click to view track only
       marker.on('click', function() {
         if (isPickingLocation && pickLocationHandler) {
@@ -5373,13 +5402,18 @@ function createMarkerFromData(m, zoom) {
     } else {
       // Full interaction: tooltip on hover, click to view track
       marker.on('mouseover', function() {
+        prefetchTrackInfo(m.trackID);
+        const content = getTooltipContent(m);
         if (!this._tooltip) {
-          this.bindTooltip(getTooltipContent(m), {
+          this.bindTooltip(content, {
             direction:'top',
             className:'custom-tooltip',
             offset:[0,-8],
             interactive:true
           });
+          this.openTooltip();
+        } else {
+          this.setTooltipContent(content);
         }
       });
 
@@ -5416,6 +5450,9 @@ function renderCachedMarker(m, tracks, minTs, maxTs, savedRange, zoom) {
   // In single-track view, show all markers regardless of date filter
   if (!isTrackView && savedRange && (m.date < savedRange[0] || m.date > savedRange[1])) return;
   if (!shouldDisplayBySpeed(m.speed)) return;
+
+  // Filter spectrum markers when the spectrum toggle is off
+  if (m.hasSpectrum && !loadSpeedFilterState().spectrum) return;
 
   // OPTIMIZED: Use unified marker creation function
   const marker = createMarkerFromData(m, zoom);
@@ -5540,6 +5577,9 @@ function setupMarkerStream(es, tracks, minTs, maxTs, savedRange, tileIndex, cach
     // In single-track view, show all markers regardless of date filter
     if (!isTrackView && savedRange && (m.date < savedRange[0] || m.date > savedRange[1])) return;
     if (!shouldDisplayBySpeed(m.speed)) return;
+
+    // Filter spectrum markers when the spectrum toggle is off
+    if (m.hasSpectrum && !loadSpeedFilterState().spectrum) return;
 
     // PERFORMANCE: Measure marker creation
     const createStart = performance.now();
