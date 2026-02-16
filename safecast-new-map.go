@@ -5180,6 +5180,54 @@ func spectrumDownloadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// trackInfoHandler returns lightweight upload metadata for a track.
+// GET /api/track-info/{trackID}
+func trackInfoHandler(w http.ResponseWriter, r *http.Request) {
+	if db == nil || db.DB == nil {
+		http.Error(w, "Database not available", http.StatusServiceUnavailable)
+		return
+	}
+	trackID := strings.TrimPrefix(r.URL.Path, "/api/track-info/")
+	if trackID == "" {
+		http.Error(w, "Missing track ID", http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+	var username, detector string
+	var recordingDate int64
+
+	var query string
+	switch *dbType {
+	case "pgx", "duckdb":
+		query = `SELECT COALESCE(username, ''), COALESCE(detector, ''),
+		         COALESCE(EXTRACT(EPOCH FROM recording_date)::BIGINT, 0)
+		         FROM uploads WHERE track_id = $1 LIMIT 1`
+	default:
+		query = `SELECT COALESCE(username, ''), COALESCE(detector, ''),
+		         COALESCE(recording_date, 0)
+		         FROM uploads WHERE track_id = ? LIMIT 1`
+	}
+
+	err := db.DB.QueryRowContext(ctx, query, trackID).Scan(&username, &detector, &recordingDate)
+	if err != nil {
+		// No upload record found — return empty info rather than error
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+		w.Write([]byte(`{"trackID":"` + trackID + `"}`))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "public, max-age=3600")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"trackID":       trackID,
+		"username":      username,
+		"detector":      detector,
+		"recordingDate": recordingDate,
+	})
+}
+
 // markersWithSpectraHandler returns markers that have associated spectral data.
 // GET /api/markers/spectra?minLat=...&maxLat=...&minLon=...&maxLon=...
 func markersWithSpectraHandler(w http.ResponseWriter, r *http.Request) {
@@ -9563,6 +9611,7 @@ func main() {
 	http.HandleFunc("/api/spectrum/", spectrumHandler)                                 // GET /api/spectrum/{markerID} and /api/spectrum/{markerID}/download
 	http.HandleFunc("/api/markers/spectra", markersWithSpectraHandler)                 // GET /api/markers/spectra
 	http.HandleFunc("/api/tracks/bounds", apiTracksBoundsHandler)                      // GET /api/tracks/bounds?trackIDs=...
+	http.HandleFunc("/api/track-info/", trackInfoHandler)                              // GET /api/track-info/{trackID}
 	http.HandleFunc("/api/update-coordinates", updateCoordinatesHandler)               // POST /api/update-coordinates
 	// Admin endpoints - wrap with OptionalAuth to allow session-based admin auth
 	if authManager != nil {
