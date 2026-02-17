@@ -8913,6 +8913,7 @@ function selectHomeSearchResult(result, query) {
 
           const xhr = new XMLHttpRequest();
           xhr.open('POST', '/upload', true);
+          xhr.withCredentials = true; // Ensure session cookies are sent
 
           let eventSource = null;
           let trackID = null;
@@ -9033,8 +9034,18 @@ function selectHomeSearchResult(result, query) {
                 serverProcessing.style.color = 'red';
               }
             } else {
-              serverProcessing.innerText = translate('error_during_upload');
-              serverProcessing.style.color = 'red';
+              // Check if authentication is required
+              if (xhr.status === 401 || xhr.status === 403) {
+                serverProcessing.innerHTML = '🔒 Please <a href="/login" style="color: #2196F3; text-decoration: underline;">log in</a> or <a href="/register" style="color: #2196F3; text-decoration: underline;">register</a> to upload files';
+                serverProcessing.style.color = '#ff9800';
+                serverProcessing.style.fontSize = '16px';
+                serverProcessing.style.fontWeight = 'bold';
+                serverProcessing.style.padding = '10px';
+                serverProcessing.style.marginTop = '10px';
+              } else {
+                serverProcessing.innerText = translate('error_during_upload');
+                serverProcessing.style.color = 'red';
+              }
             }
           };
 

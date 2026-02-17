@@ -22,4 +22,5 @@
   -default-lon=141.01244 \
   -default-zoom=7 \
   -default-layer="Google Satellite" \
-  -allow-registration
+  -allow-registration \
+  -require-auth

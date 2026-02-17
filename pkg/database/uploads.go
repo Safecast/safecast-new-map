@@ -143,6 +143,7 @@ func (db *Database) GetUploadsPaginated(ctx context.Context, limit int, offset i
 	}
 
 	// Build the base query - read detector directly from uploads table
+	// LEFT JOIN with users to get internal user info
 	baseSelect := `
 		SELECT u.id, u.filename, u.file_type, u.track_id, u.file_size, u.upload_ip,`
 
@@ -151,15 +152,19 @@ func (db *Database) GetUploadsPaginated(ctx context.Context, limit int, offset i
 		       EXTRACT(EPOCH FROM u.created_at)::BIGINT,
 		       COALESCE(EXTRACT(EPOCH FROM u.recording_date)::BIGINT, 0) as recording_date,
 		       u.source, u.source_id, u.source_url, u.user_id, u.username,
-		       COALESCE(u.detector, '') as detector
-		FROM uploads u`
+		       COALESCE(u.detector, '') as detector, u.internal_user_id,
+		       usr.username as internal_username, usr.email as internal_email
+		FROM uploads u
+		LEFT JOIN users usr ON u.internal_user_id = usr.id::text`
 	} else {
 		baseSelect += `
 		       u.created_at,
 		       COALESCE(u.recording_date, 0) as recording_date,
 		       u.source, u.source_id, u.source_url, u.user_id, u.username,
-		       COALESCE(u.detector, '') as detector
-		FROM uploads u`
+		       COALESCE(u.detector, '') as detector, u.internal_user_id,
+		       usr.username as internal_username, usr.email as internal_email
+		FROM uploads u
+		LEFT JOIN users usr ON u.internal_user_id = CAST(usr.id AS TEXT)`
 	}
 
 	// Add WHERE clause if we have conditions
@@ -211,11 +216,12 @@ func (db *Database) GetUploadsPaginated(ctx context.Context, limit int, offset i
 	var uploads []Upload
 	for rows.Next() {
 		var u Upload
-		var source, sourceID, sourceURL, userID, username, detector *string
+		var source, sourceID, sourceURL, userID, username, detector, internalUserID, internalUsername, internalEmail *string
 		err := rows.Scan(
 			&u.ID, &u.Filename, &u.FileType, &u.TrackID,
 			&u.FileSize, &u.UploadIP, &u.CreatedAt, &u.RecordingDate,
-			&source, &sourceID, &sourceURL, &userID, &username, &detector,
+			&source, &sourceID, &sourceURL, &userID, &username, &detector, &internalUserID,
+			&internalUsername, &internalEmail,
 		)
 		if err != nil {
 			continue
@@ -237,6 +243,13 @@ func (db *Database) GetUploadsPaginated(ctx context.Context, limit int, offset i
 		}
 		if username != nil {
 			u.Username = *username
+		}
+		if internalUserID != nil {
+			u.InternalUserID = *internalUserID
+		}
+		// If we have an internal user, prefer their username over the external one
+		if internalUsername != nil && *internalUsername != "" {
+			u.Username = *internalUsername
 		}
 		uploads = append(uploads, u)
 	}

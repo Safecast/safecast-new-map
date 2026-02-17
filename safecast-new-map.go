@@ -4625,8 +4625,11 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 				InternalUserID: internalUserID, // Internal user ID from authenticated session
 				Source:         "user-upload",
 			}
+			logT(trackID, "Upload", "inserting upload record: user_id=%s, filename=%s", internalUserID, fd.filename)
 			if _, uploadErr := db.InsertUpload(context.Background(), upload); uploadErr != nil {
 				logT(trackID, "Upload", "warning: failed to track upload: %v", uploadErr)
+			} else {
+				logT(trackID, "Upload", "✓ upload record inserted successfully")
 			}
 
 			// Update bounds
@@ -5388,7 +5391,16 @@ func formatUploadRow(upload database.Upload, password string) string {
 
 	// Format user display (username + ID)
 	userDisplay := "-"
-	if upload.UserID != "" {
+	if upload.InternalUserID != "" {
+		// Internal user (authenticated upload)
+		userText := upload.Username
+		if userText == "" {
+			userText = upload.InternalUserID
+		}
+		userDisplay = fmt.Sprintf(`<a href="/api/admin/uploads?password=%s&user_id=%s">%s</a>`,
+			password, upload.InternalUserID, userText)
+	} else if upload.UserID != "" {
+		// External user (Safecast API import)
 		userText := upload.UserID
 		if upload.Username != "" {
 			userText = fmt.Sprintf("%s (%s)", upload.Username, upload.UserID)
