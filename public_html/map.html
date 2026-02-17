@@ -5449,10 +5449,15 @@ function renderCachedMarker(m, tracks, minTs, maxTs, savedRange, zoom) {
 
   // In single-track view, show all markers regardless of date filter
   if (!isTrackView && savedRange && (m.date < savedRange[0] || m.date > savedRange[1])) return;
-  if (!shouldDisplayBySpeed(m.speed)) return;
 
-  // Filter spectrum markers when the spectrum toggle is off
-  if (m.hasSpectrum && !loadSpeedFilterState().spectrum) return;
+  // Show spectrum markers independently from speed filter if spectrum toggle is on
+  if (m.hasSpectrum) {
+    if (!loadSpeedFilterState().spectrum) return;
+    // Skip speed filter for spectrum markers when spectrum toggle is on
+  } else {
+    // Apply speed filter for non-spectrum markers
+    if (!shouldDisplayBySpeed(m.speed)) return;
+  }
 
   // OPTIMIZED: Use unified marker creation function
   const marker = createMarkerFromData(m, zoom);
@@ -5576,10 +5581,15 @@ function setupMarkerStream(es, tracks, minTs, maxTs, savedRange, tileIndex, cach
     }
     // In single-track view, show all markers regardless of date filter
     if (!isTrackView && savedRange && (m.date < savedRange[0] || m.date > savedRange[1])) return;
-    if (!shouldDisplayBySpeed(m.speed)) return;
 
-    // Filter spectrum markers when the spectrum toggle is off
-    if (m.hasSpectrum && !loadSpeedFilterState().spectrum) return;
+    // Show spectrum markers independently from speed filter if spectrum toggle is on
+    if (m.hasSpectrum) {
+      if (!loadSpeedFilterState().spectrum) return;
+      // Skip speed filter for spectrum markers when spectrum toggle is on
+    } else {
+      // Apply speed filter for non-spectrum markers
+      if (!shouldDisplayBySpeed(m.speed)) return;
+    }
 
     // PERFORMANCE: Measure marker creation
     const createStart = performance.now();

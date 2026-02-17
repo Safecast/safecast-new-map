@@ -866,7 +866,7 @@
       return;
     }
     const trackIDs = Array.from(selectedTracks).join(',');
-    window.location.href = '/?tracks=' + encodeURIComponent(trackIDs);
+    window.location.href = '/tracks/' + encodeURIComponent(trackIDs);
   }
 
   function copyApiKey() {
