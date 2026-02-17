@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 )
@@ -111,8 +112,8 @@ func (m *Manager) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	if m.EmailSender != nil {
 		verificationURL := fmt.Sprintf("%s/api/auth/verify-email?token=%s", m.BaseURL, token)
 		if err := m.EmailSender.SendWelcomeEmail(req.Email, req.Username, verificationURL); err != nil {
-			// Log error but don't fail registration
-			// User can request a new verification email later
+			log.Printf("ERROR: Failed to send welcome email to %s: %v", req.Email, err)
+			// Don't fail registration - user can request a new verification email later
 		}
 	}
 
@@ -290,7 +291,7 @@ func (m *Manager) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) 
 	if m.EmailSender != nil {
 		resetURL := fmt.Sprintf("%s/reset-password?token=%s", m.BaseURL, token)
 		if err := m.EmailSender.SendPasswordResetEmail(req.Email, resetURL); err != nil {
-			// Log error but don't reveal to user
+			log.Printf("ERROR: Failed to send password reset email to %s: %v", req.Email, err)
 		}
 	}
 
