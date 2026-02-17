@@ -4467,14 +4467,15 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Extract authenticated user if present
-	var userID, username string
+	var internalUserID string
 	if user, ok := auth.GetUserFromContext(r.Context()); ok {
-		userID = fmt.Sprintf("%d", user.ID)
-		username = user.Username
-		if username == "" {
-			username = user.Email
+		internalUserID = fmt.Sprintf("%d", user.ID)
+		displayName := user.Username
+		if displayName == "" {
+			displayName = user.Email
 		}
-		logT(trackID, "Upload", "authenticated user: %s (ID: %s)", username, userID)
+		logT(trackID, "Upload", "authenticated user: %s (ID: %s, Email: %s, API Key: %s)",
+			displayName, internalUserID, user.Email, user.APIKey)
 	}
 
 	// Initialize progress tracker
@@ -4613,17 +4614,16 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			_ = db.DB.QueryRowContext(context.Background(), detectorQuery, trackID).Scan(&detector)
 
 			upload := database.Upload{
-				Filename:      fd.filename,
-				FileType:      fd.ext,
-				TrackID:       trackID,
-				FileSize:      fd.size,
-				UploadIP:      clientIP,
-				RecordingDate: recordingDate,
-				CreatedAt:     0,
-				Detector:      detector,
-				UserID:        userID,
-				Username:      username,
-				Source:        "user-upload",
+				Filename:       fd.filename,
+				FileType:       fd.ext,
+				TrackID:        trackID,
+				FileSize:       fd.size,
+				UploadIP:       clientIP,
+				RecordingDate:  recordingDate,
+				CreatedAt:      0,
+				Detector:       detector,
+				InternalUserID: internalUserID, // Internal user ID from authenticated session
+				Source:         "user-upload",
 			}
 			if _, uploadErr := db.InsertUpload(context.Background(), upload); uploadErr != nil {
 				logT(trackID, "Upload", "warning: failed to track upload: %v", uploadErr)
@@ -9453,8 +9453,13 @@ func main() {
 
 			limit := 100
 			if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
-				if parsed, err := strconv.Atoi(limitStr); err == nil && parsed > 0 && parsed <= 1000 {
-					limit = parsed
+				if parsed, err := strconv.Atoi(limitStr); err == nil && parsed > 0 {
+					// Cap at 10000 to allow users to load all their uploads
+					if parsed > 10000 {
+						limit = 10000
+					} else {
+						limit = parsed
+					}
 				}
 			}
 			offset := 0
@@ -9464,29 +9469,18 @@ func main() {
 				}
 			}
 
-			// Query uploads matching this user's external_id (maps to user_id in uploads table)
-			userID := user.ExternalID
-			if userID == "" {
-				// No external_id linked — user has no uploads to show
-				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(map[string]interface{}{
-					"uploads": []interface{}{},
-					"total":   0,
-					"limit":   limit,
-					"offset":  offset,
-				})
-				return
-			}
+			// Query uploads for this authenticated user (using internal_user_id)
+			internalUserID := fmt.Sprintf("%d", user.ID)
 
 			ctx := r.Context()
-			uploads, err := db.GetUploadsPaginated(ctx, limit, offset, userID, "")
+			uploads, err := db.GetUploadsPaginated(ctx, limit, offset, internalUserID, "")
 			if err != nil {
 				log.Printf("Error fetching user uploads: %v", err)
 				http.Error(w, "Failed to fetch uploads", http.StatusInternalServerError)
 				return
 			}
 
-			totalCount, _ := db.CountUploads(ctx, userID, "")
+			totalCount, _ := db.CountUploads(ctx, internalUserID, "")
 
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(map[string]interface{}{

@@ -3,6 +3,6 @@
     "After modifying any HTML files (in public_html/) or Go files (.go), always rebuild and restart the server:",
     "1. Kill any running server: pkill -f safecast-new-map || true",
     "2. Rebuild: go build -o safecast-new-map .",
-    "3. Restart the server:  ./safecast-new-map   -safecast-realtime   -admin-password "test123"   -safecast-fetcher   -smtp-host "smtp.gmail.com"   -smtp-port 587   -smtp-username "oudendijk.biz@gmail.com"   -smtp-password "xxxxxxx"   -smtp-from "oudendijk.biz@gmail.com"   -session-secret "YOUR_SESSION_SECRET"   -base-url "http://localhost:8765""
+    "3. Restart the server: ./safecast-new-map -safecast-realtime -admin-password \"test123\" -safecast-fetcher -smtp-host \"smtp.gmail.com\" -smtp-port 587 -smtp-username \"oudendijk.biz@gmail.com\" -smtp-password \"xxxxxxx\" -smtp-from \"oudendijk.biz@gmail.com\" -session-secret \"YOUR_SESSION_SECRET\" -base-url \"http://localhost:8765\""
   ]
 }
