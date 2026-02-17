@@ -8375,12 +8375,10 @@ func streamMarkersHandler(w http.ResponseWriter, r *http.Request) {
 		errCh   <-chan error
 	)
 	rtOnly := showFilter == "rt"
-	if rtOnly {
-		// Return empty channel - no historical data needed
-		emptyCh := make(chan database.Marker)
-		close(emptyCh)
-		baseSrc = emptyCh
-		errCh = nil
+	if rtOnly && trackID == "" && trackIDsParam == "" {
+		// In RT-only mode for global view, still load historical markers
+		// They will be filtered client-side, but spectrum markers should be available
+		baseSrc, errCh = db.StreamMarkersByZoomAndBounds(ctx, rawZoom, minLat, minLon, maxLat, maxLon, *dbType)
 	} else if trackID != "" {
 		baseSrc, errCh = db.StreamMarkersByTrackIDZoomAndBounds(ctx, trackID, rawZoom, minLat, minLon, maxLat, maxLon, *dbType)
 	} else if trackIDsParam != "" {

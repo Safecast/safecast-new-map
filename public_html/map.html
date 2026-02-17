@@ -8259,8 +8259,9 @@ function loadMapFromUrl() {
   /* sensor filter from URL (e.g., show=rt for realtime only) */
   const showParam = params.get('show');
   if (showParam === 'rt' && window.safecastRealtimeEnabled) {
-    // Override filter state to show only RT sensors
-    saveSpeedFilterState({ live: true, plane: false, car: false, ped: false });
+    // Override filter state to show only RT sensors, but preserve spectrum setting
+    const currentState = loadSpeedFilterState();
+    saveSpeedFilterState({ live: true, plane: false, car: false, ped: false, spectrum: currentState.spectrum });
   }
 
   /* read remaining params */
