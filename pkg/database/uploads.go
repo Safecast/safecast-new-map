@@ -122,9 +122,9 @@ func (db *Database) GetUploadsPaginated(ctx context.Context, limit int, offset i
 	if userID != "" {
 		paramCount++
 		if db.Driver == "pgx" || db.Driver == "duckdb" {
-			whereConditions = append(whereConditions, fmt.Sprintf("u.user_id = $%d", paramCount))
+			whereConditions = append(whereConditions, fmt.Sprintf("u.internal_user_id = $%d", paramCount))
 		} else {
-			whereConditions = append(whereConditions, "u.user_id = ?")
+			whereConditions = append(whereConditions, "u.internal_user_id = ?")
 		}
 	}
 
@@ -445,9 +445,9 @@ func (db *Database) CountUploads(ctx context.Context, userID string, search stri
 	if userID != "" {
 		paramCount++
 		if db.Driver == "pgx" || db.Driver == "duckdb" {
-			whereConditions = append(whereConditions, fmt.Sprintf("user_id = $%d", paramCount))
+			whereConditions = append(whereConditions, fmt.Sprintf("internal_user_id = $%d", paramCount))
 		} else {
-			whereConditions = append(whereConditions, "user_id = ?")
+			whereConditions = append(whereConditions, "internal_user_id = ?")
 		}
 		args = append(args, userID)
 	}
