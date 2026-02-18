@@ -9585,6 +9585,8 @@ func main() {
 				// Check if it's a reset password action
 				if strings.HasSuffix(r.URL.Path, "/reset-password") {
 					authManager.AdminResetUserPasswordHandler(w, r)
+				} else if strings.HasSuffix(r.URL.Path, "/regenerate-api-key") {
+					authManager.AdminRegenerateAPIKeyHandler(w, r)
 				} else {
 					http.Error(w, "Not found", http.StatusNotFound)
 				}

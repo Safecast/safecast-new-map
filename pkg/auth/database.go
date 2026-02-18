@@ -927,3 +927,42 @@ func CountUsers(ctx context.Context, db *sql.DB, dbDriver string, search string)
 
 	return count, nil
 }
+
+// RegenerateAPIKey generates a new API key for a user and updates it in the database.
+// Returns the new API key string.
+func RegenerateAPIKey(ctx context.Context, db *sql.DB, dbDriver string, userID int64) (string, error) {
+	// Generate new API key
+	newAPIKey, err := GenerateAPIKey()
+	if err != nil {
+		return "", fmt.Errorf("failed to generate new API key: %w", err)
+	}
+
+	// Update user's API key in database
+	now := time.Now().Unix()
+	var query string
+
+	switch dbDriver {
+	case "pgx", "duckdb":
+		query = `
+			UPDATE users
+			SET api_key = $1, updated_at = to_timestamp($2)
+			WHERE id = $3
+		`
+		_, err = db.ExecContext(ctx, query, newAPIKey, now, userID)
+	case "sqlite", "chai":
+		query = `
+			UPDATE users
+			SET api_key = ?, updated_at = ?
+			WHERE id = ?
+		`
+		_, err = db.ExecContext(ctx, query, newAPIKey, now, userID)
+	default:
+		return "", fmt.Errorf("unsupported database driver: %s", dbDriver)
+	}
+
+	if err != nil {
+		return "", fmt.Errorf("failed to update API key in database: %w", err)
+	}
+
+	return newAPIKey, nil
+}

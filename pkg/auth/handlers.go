@@ -108,12 +108,27 @@ func (m *Manager) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Send verification email
+	// Get the newly created user to retrieve the API key
+	newUser, err := GetUserByID(r.Context(), m.DB, m.DBDriver, userID)
+	if err != nil {
+		log.Printf("WARNING: Failed to retrieve newly created user for API key: %v", err)
+	}
+
+	// Send verification email with API key
 	if m.EmailSender != nil {
 		verificationURL := fmt.Sprintf("%s/api/auth/verify-email?token=%s", m.BaseURL, token)
-		if err := m.EmailSender.SendWelcomeEmail(req.Email, req.Username, verificationURL); err != nil {
-			log.Printf("ERROR: Failed to send welcome email to %s: %v", req.Email, err)
-			// Don't fail registration - user can request a new verification email later
+
+		// Include API key in the welcome email if user was retrieved successfully
+		if newUser != nil && newUser.APIKey != "" {
+			if err := m.EmailSender.SendWelcomeEmailWithAPIKey(req.Email, req.Username, verificationURL, newUser.APIKey); err != nil {
+				log.Printf("ERROR: Failed to send welcome email with API key to %s: %v", req.Email, err)
+				// Don't fail registration - user can request a new verification email later
+			}
+		} else {
+			// Fallback to regular welcome email without API key
+			if err := m.EmailSender.SendWelcomeEmail(req.Email, req.Username, verificationURL); err != nil {
+				log.Printf("ERROR: Failed to send welcome email to %s: %v", req.Email, err)
+			}
 		}
 	}
 
@@ -126,6 +141,7 @@ func (m *Manager) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 // LoginHandler handles user login requests.
 // POST /api/auth/login
+// Accepts either password or API key for authentication
 func (m *Manager) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -135,6 +151,7 @@ func (m *Manager) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
+		APIKey   string `json:"api_key"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -144,20 +161,44 @@ func (m *Manager) LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	req.Email = NormalizeEmail(req.Email)
 
-	// Get user from database
-	user, err := GetUserByEmail(r.Context(), m.DB, m.DBDriver, req.Email)
-	if err != nil {
-		if err == sql.ErrNoRows {
+	var user *User
+	var err error
+
+	// If API key is provided, authenticate with API key
+	if req.APIKey != "" {
+		user, err = GetUserByAPIKey(r.Context(), m.DB, m.DBDriver, req.APIKey)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				writeJSONError(w, "Invalid API key", http.StatusUnauthorized)
+				return
+			}
+			writeJSONError(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		// Verify the email matches the API key's user
+		if user.Email != req.Email {
+			writeJSONError(w, "Invalid email or API key", http.StatusUnauthorized)
+			return
+		}
+	} else if req.Password != "" {
+		// Otherwise, authenticate with password
+		user, err = GetUserByEmail(r.Context(), m.DB, m.DBDriver, req.Email)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				writeJSONError(w, "Invalid email or password", http.StatusUnauthorized)
+				return
+			}
+			writeJSONError(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+
+		// Verify password
+		if !VerifyPassword(user.PasswordHash, req.Password) {
 			writeJSONError(w, "Invalid email or password", http.StatusUnauthorized)
 			return
 		}
-		writeJSONError(w, "Database error", http.StatusInternalServerError)
-		return
-	}
-
-	// Verify password
-	if !VerifyPassword(user.PasswordHash, req.Password) {
-		writeJSONError(w, "Invalid email or password", http.StatusUnauthorized)
+	} else {
+		writeJSONError(w, "Either password or API key is required", http.StatusBadRequest)
 		return
 	}
 

@@ -26,9 +26,11 @@ type Manager struct {
 // This allows for dependency injection and easier testing.
 type EmailSender interface {
 	SendWelcomeEmail(to, username, verificationURL string) error
+	SendWelcomeEmailWithAPIKey(to, username, verificationURL, apiKey string) error
 	SendPasswordSetupEmail(to, username, setupURL string) error
 	SendPasswordResetEmail(to, resetURL string) error
 	SendPasswordChangedEmail(to string) error
+	SendAPIKeyRegeneratedEmail(to, username, newAPIKey string) error
 }
 
 // WithAuthContext adds a user to the request context.
