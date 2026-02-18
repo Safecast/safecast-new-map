@@ -160,50 +160,62 @@ func (m *Manager) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req.Email = NormalizeEmail(req.Email)
+	clientIP := getClientIP(r)
 
 	var user *User
 	var err error
+	var authMethod string
 
 	// If API key is provided, authenticate with API key
 	if req.APIKey != "" {
+		authMethod = "api_key"
 		user, err = GetUserByAPIKey(r.Context(), m.DB, m.DBDriver, req.APIKey)
 		if err != nil {
 			if err == sql.ErrNoRows {
+				log.Printf("AUTH: Failed login attempt - email=%s method=api_key reason=invalid_key ip=%s", req.Email, clientIP)
 				writeJSONError(w, "Invalid API key", http.StatusUnauthorized)
 				return
 			}
+			log.Printf("AUTH: Failed login attempt - email=%s method=api_key reason=database_error ip=%s error=%v", req.Email, clientIP, err)
 			writeJSONError(w, "Database error", http.StatusInternalServerError)
 			return
 		}
 		// Verify the email matches the API key's user
 		if user.Email != req.Email {
+			log.Printf("AUTH: Failed login attempt - email=%s method=api_key reason=email_mismatch ip=%s", req.Email, clientIP)
 			writeJSONError(w, "Invalid email or API key", http.StatusUnauthorized)
 			return
 		}
 	} else if req.Password != "" {
+		authMethod = "password"
 		// Otherwise, authenticate with password
 		user, err = GetUserByEmail(r.Context(), m.DB, m.DBDriver, req.Email)
 		if err != nil {
 			if err == sql.ErrNoRows {
+				log.Printf("AUTH: Failed login attempt - email=%s method=password reason=user_not_found ip=%s", req.Email, clientIP)
 				writeJSONError(w, "Invalid email or password", http.StatusUnauthorized)
 				return
 			}
+			log.Printf("AUTH: Failed login attempt - email=%s method=password reason=database_error ip=%s error=%v", req.Email, clientIP, err)
 			writeJSONError(w, "Database error", http.StatusInternalServerError)
 			return
 		}
 
 		// Verify password
 		if !VerifyPassword(user.PasswordHash, req.Password) {
+			log.Printf("AUTH: Failed login attempt - email=%s method=password reason=invalid_password ip=%s", req.Email, clientIP)
 			writeJSONError(w, "Invalid email or password", http.StatusUnauthorized)
 			return
 		}
 	} else {
+		log.Printf("AUTH: Failed login attempt - email=%s method=none reason=no_credentials ip=%s", req.Email, clientIP)
 		writeJSONError(w, "Either password or API key is required", http.StatusBadRequest)
 		return
 	}
 
 	// Check if user is active
 	if !user.IsActive {
+		log.Printf("AUTH: Failed login attempt - email=%s user_id=%d method=%s reason=account_disabled ip=%s", user.Email, user.ID, authMethod, clientIP)
 		writeJSONError(w, "Account is disabled", http.StatusForbidden)
 		return
 	}
