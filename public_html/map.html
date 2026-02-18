@@ -2151,9 +2151,24 @@ body, html {
       </div>
       <div style="margin-bottom: 20px;">
         <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">Password:</label>
-        <input type="password" id="loginPassword" placeholder="Password" required
+        <input type="password" id="loginPassword" placeholder="Password"
                style="width: 100%; padding: 12px; border: var(--legend-border); border-radius: 6px; background: var(--control-bg); color: var(--modal-text); font-size: var(--font-size-base); box-sizing: border-box;">
       </div>
+
+      <!-- OR Divider -->
+      <div style="display: flex; align-items: center; margin: 20px 0;">
+        <div style="flex: 1; height: 1px; background: var(--legend-border);"></div>
+        <span style="padding: 0 12px; color: var(--modal-text); font-size: var(--font-size-sm); font-weight: 600;">OR</span>
+        <div style="flex: 1; height: 1px; background: var(--legend-border);"></div>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">API Key:</label>
+        <input type="text" id="loginAPIKey" placeholder="Your API key"
+               style="width: 100%; padding: 12px; border: var(--legend-border); border-radius: 6px; background: var(--control-bg); color: var(--modal-text); font-size: var(--font-size-base); box-sizing: border-box; font-family: monospace;">
+        <p style="margin: 4px 0 0 0; font-size: var(--font-size-sm); color: var(--modal-text); opacity: 0.7;">You can log in with either your password or API key</p>
+      </div>
+
       <button type="submit" style="width: 100%; padding: 14px; background: #4CAF50; border: none; border-radius: 6px; cursor: pointer; color: white; font-weight: 600; font-size: 16px; margin-bottom: 12px;">
         Login
       </button>
@@ -2317,12 +2332,21 @@ body, html {
       }
 
       // Login function
-      async function login(email, password) {
+      async function login(email, password, apiKey) {
         try {
+          // Build request body - include either password or API key (or both, but backend will prioritize API key)
+          const body = { email };
+          if (apiKey && apiKey.trim()) {
+            body.api_key = apiKey.trim();
+          }
+          if (password && password.trim()) {
+            body.password = password;
+          }
+
           const response = await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify(body)
           });
 
           const errorEl = document.getElementById('loginError');
@@ -2331,6 +2355,9 @@ body, html {
             await checkAuthStatus();
             closeLoginModal();
             if (errorEl) errorEl.style.display = 'none';
+            // Clear form fields
+            document.getElementById('loginPassword').value = '';
+            document.getElementById('loginAPIKey').value = '';
           } else {
             const error = await response.json();
             if (errorEl) {
@@ -2504,7 +2531,8 @@ body, html {
             e.preventDefault();
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
-            login(email, password);
+            const apiKey = document.getElementById('loginAPIKey').value;
+            login(email, password, apiKey);
           });
         }
 
