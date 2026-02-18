@@ -81,11 +81,15 @@ func (m *Manager) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		IsActive:      true,
 	}
 
+	clientIP := getClientIP(r)
 	userID, err := CreateUser(r.Context(), m.DB, m.DBDriver, user, req.Password)
 	if err != nil {
+		log.Printf("AUTH: Failed registration - email=%s username=%s reason=create_failed ip=%s error=%v", req.Email, req.Username, clientIP, err)
 		writeJSONError(w, "Failed to create user", http.StatusInternalServerError)
 		return
 	}
+
+	log.Printf("AUTH: New user registered - user_id=%d email=%s username=%s ip=%s", userID, req.Email, req.Username, clientIP)
 
 	// Create email verification token
 	token, err := GenerateToken()
@@ -248,6 +252,10 @@ func (m *Manager) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	// Update last login timestamp
 	_ = UpdateUserLastLogin(r.Context(), m.DB, m.DBDriver, user.ID)
 
+	// Log successful login
+	log.Printf("AUTH: Successful login - user_id=%d email=%s method=%s ip=%s user_agent=%s",
+		user.ID, user.Email, authMethod, clientIP, r.UserAgent())
+
 	// Set session cookie
 	m.setSessionCookie(w, sessionID, expiresAt)
 
@@ -268,11 +276,29 @@ func (m *Manager) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get session ID from cookie
+	clientIP := getClientIP(r)
+	var userEmail string
+	var userID int64
+
+	// Get session ID from cookie and try to get user info for logging
 	cookie, err := r.Cookie(m.SessionCookieName)
 	if err == nil && cookie.Value != "" {
+		// Try to get session info for logging before deleting
+		if session, err := GetSession(r.Context(), m.DB, m.DBDriver, cookie.Value); err == nil {
+			if user, err := GetUserByID(r.Context(), m.DB, m.DBDriver, session.UserID); err == nil {
+				userEmail = user.Email
+				userID = user.ID
+			}
+		}
 		// Delete session from database
 		_ = DeleteSession(r.Context(), m.DB, m.DBDriver, cookie.Value)
+	}
+
+	// Log logout
+	if userEmail != "" {
+		log.Printf("AUTH: User logout - user_id=%d email=%s ip=%s", userID, userEmail, clientIP)
+	} else {
+		log.Printf("AUTH: Logout attempt (no active session) - ip=%s", clientIP)
 	}
 
 	// Clear session cookie
@@ -460,6 +486,13 @@ func (m *Manager) VerifyEmailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get user info for logging
+	user, err := GetUserByID(r.Context(), m.DB, m.DBDriver, token.UserID)
+	if err != nil {
+		writeJSONError(w, "Failed to fetch user", http.StatusInternalServerError)
+		return
+	}
+
 	// Verify user email
 	if err := VerifyUserEmail(r.Context(), m.DB, m.DBDriver, token.UserID); err != nil {
 		writeJSONError(w, "Failed to verify email", http.StatusInternalServerError)
@@ -468,6 +501,8 @@ func (m *Manager) VerifyEmailHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Mark token as used
 	_ = MarkEmailVerificationTokenUsed(r.Context(), m.DB, m.DBDriver, token.ID)
+
+	log.Printf("AUTH: Email verified - user_id=%d email=%s ip=%s", user.ID, user.Email, getClientIP(r))
 
 	// Redirect to map page with success message
 	http.Redirect(w, r, "/?emailVerified=true", http.StatusSeeOther)
@@ -537,6 +572,8 @@ func (m *Manager) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) 
 		writeJSONError(w, "Failed to update password", http.StatusInternalServerError)
 		return
 	}
+
+	log.Printf("AUTH: Password changed - user_id=%d email=%s ip=%s", user.ID, user.Email, getClientIP(r))
 
 	writeJSON(w, map[string]interface{}{
 		"success": true,
