@@ -304,11 +304,7 @@
   <script>
     const urlParams = new URLSearchParams(window.location.search);
     const adminPassword = urlParams.get('password');
-
-    if (!adminPassword) {
-      alert('Missing password parameter');
-      window.location.href = '/';
-    }
+    let isAuthenticated = false;
 
     // Pagination state
     let currentPage = 1;
@@ -317,8 +313,37 @@
     let currentSearch = '';
     let allUsers = []; // Users on current page
 
-    // Load users on page load
-    window.addEventListener('DOMContentLoaded', function() {
+    // Helper function to add password parameter if needed
+    function addPasswordParam(url) {
+      if (adminPassword) {
+        const separator = url.includes('?') ? '&' : '?';
+        return url + separator + 'password=' + encodeURIComponent(adminPassword);
+      }
+      return url;
+    }
+
+    // Check authentication on page load
+    window.addEventListener('DOMContentLoaded', async function() {
+      // Check if user is authenticated via session
+      try {
+        const response = await fetch('/api/user/profile');
+        if (response.ok) {
+          const user = await response.json();
+          if (user.is_admin) {
+            isAuthenticated = true;
+          }
+        }
+      } catch (e) {
+        // Session auth failed, check if password provided
+      }
+
+      // If not authenticated via session and no password, redirect
+      if (!isAuthenticated && !adminPassword) {
+        alert('Access denied. Admin privileges required.');
+        window.location.href = '/';
+        return;
+      }
+
       syncPageSizeSelects();
       loadUsers();
     });
@@ -337,7 +362,10 @@
       const offset = (currentPage - 1) * pageSize;
 
       try {
-        let url = `/api/admin/users?password=${encodeURIComponent(adminPassword)}&limit=${pageSize}&offset=${offset}`;
+        let url = `/api/admin/users?limit=${pageSize}&offset=${offset}`;
+        if (adminPassword) {
+          url += `&password=${encodeURIComponent(adminPassword)}`;
+        }
         if (currentSearch) {
           url += `&search=${encodeURIComponent(currentSearch)}`;
         }
@@ -638,7 +666,7 @@
       let errors = [];
       for (const id of ids) {
         try {
-          const response = await fetch(`/api/admin/users/${id}?password=${encodeURIComponent(adminPassword)}`, {
+          const response = await fetch(addPasswordParam(`/api/admin/users/${id}`), {
             method: 'DELETE'
           });
           if (!response.ok) {
@@ -660,7 +688,7 @@
       if (!confirm(`Are you sure you want to ${action} this user?`)) return;
 
       try {
-        const response = await fetch(`/api/admin/users/${userId}?password=${encodeURIComponent(adminPassword)}`, {
+        const response = await fetch(addPasswordParam(`/api/admin/users/${userId}`), {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ is_admin: makeAdmin })
@@ -730,7 +758,7 @@
         if (userId) {
           // Edit user
           if (!userData.password) delete userData.password;
-          response = await fetch(`/api/admin/users/${userId}?password=${encodeURIComponent(adminPassword)}`, {
+          response = await fetch(addPasswordParam(`/api/admin/users/${userId}`), {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(userData)
@@ -741,7 +769,7 @@
             alert('Password is required for new users');
             return;
           }
-          response = await fetch(`/api/admin/users/create?password=${encodeURIComponent(adminPassword)}`, {
+          response = await fetch(addPasswordParam(`/api/admin/users/create`), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(userData)
@@ -767,7 +795,7 @@
       if (!confirm('Send password reset email to this user?')) return;
 
       try {
-        const response = await fetch(`/api/admin/users/${userId}/reset-password?password=${encodeURIComponent(adminPassword)}`, {
+        const response = await fetch(addPasswordParam(`/api/admin/users/${userId}/reset-password`), {
           method: 'POST'
         });
 
@@ -785,7 +813,7 @@
     function deleteUser(userId) {
       if (!confirm('Delete this user? This cannot be undone.')) return;
 
-      fetch(`/api/admin/users/${userId}?password=${encodeURIComponent(adminPassword)}`, {
+      fetch(addPasswordParam(`/api/admin/users/${userId}`), {
         method: 'DELETE'
       })
       .then(response => {
