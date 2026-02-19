@@ -9557,6 +9557,15 @@ func main() {
 			w.Write(data)
 		}))
 
+		// Serve admin uploads page (wrapper for /api/admin/uploads)
+		http.HandleFunc("/admin/uploads", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminAccess(w, r) {
+				return
+			}
+			// Forward to the API endpoint which handles the uploads listing
+			adminUploadsHandler(w, r)
+		}))
+
 		// Admin API routes
 		http.HandleFunc("/api/admin/users", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
 			if !checkAdminAccess(w, r) {
