@@ -8931,14 +8931,11 @@ function selectHomeSearchResult(result, query) {
         fileProgressContainer.innerHTML = '';
         fileOverlay.style.display  = 'flex';
 
-        /* counter and URL of last track */
-        let completedUploads = 0;
-        const totalFiles     = files.length;
         let lastTrackURL     = null;
 
-        /* Create an XHR for each file but redirect only once */
+        /* Create progress UI for each file */
+        const fileProgressElements = [];
         [...files].forEach(file => {
-          /* --- visual progress elements --- */
           const fileBlock        = document.createElement('div');
           fileBlock.className    = 'file-progress';
           const fileName         = document.createElement('div');
@@ -8954,151 +8951,177 @@ function selectHomeSearchResult(result, query) {
           serverProcessing.innerText = translate('waiting_for_server');
           fileBlock.append(fileName, progressBar, serverProcessing);
           fileProgressContainer.appendChild(fileBlock);
-          /* ------------------------------------------------- */
 
-          const xhr = new XMLHttpRequest();
-          xhr.open('POST', '/upload', true);
-          xhr.withCredentials = true; // Ensure session cookies are sent
+          fileProgressElements.push({
+            progressBarInner,
+            serverProcessing,
+            fileName: file.name
+          });
+        });
 
-          let eventSource = null;
-          let trackID = null;
-          let sseStarted = false;
+        /* Send all files in a single batch request */
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/upload', true);
+        xhr.withCredentials = true;
 
-          /* file upload progress (uploading to server) */
-          xhr.upload.onprogress = e => {
-            if (e.lengthComputable) {
-              const percent = (e.loaded / e.total) * 100;
-              progressBarInner.style.width = percent + '%';
-              
-              // When upload completes (100%), show processing state
+        let eventSource = null;
+        let trackID = null;
+
+        /* Upload progress (all files combined) */
+        xhr.upload.onprogress = e => {
+          if (e.lengthComputable) {
+            const percent = (e.loaded / e.total) * 100;
+            // Update all progress bars equally during upload
+            fileProgressElements.forEach(elem => {
+              elem.progressBarInner.style.width = percent + '%';
               if (percent >= 100) {
-                progressBarInner.classList.add('processing');
-                serverProcessing.innerText = translate('processing_on_server') + ' ...';
-                serverProcessing.style.color = '#ff9800';
+                elem.progressBarInner.classList.add('processing');
+                elem.serverProcessing.innerText = translate('processing_on_server') + ' ...';
+                elem.serverProcessing.style.color = '#ff9800';
               }
-            }
-          };
+            });
+          }
+        };
 
-          /* handle server response - now returns immediately with trackID */
-          xhr.onload = () => {
-            if (xhr.status === 200) {
-              const response = JSON.parse(xhr.responseText);
-              
-              // Server returns trackID immediately, processing happens in background
-              if (response.status === 'processing' && response.trackID) {
-                trackID = response.trackID;
-                sseStarted = true;
-                serverProcessing.innerText = translate('processing_on_server') + ' 0%';
-                
-                // Start SSE connection for real-time progress
-                eventSource = new EventSource('/upload/progress?trackid=' + trackID);
-                eventSource.onmessage = (event) => {
-                  try {
-                    const data = JSON.parse(event.data);
-                    const pct = Math.round(data.percent);
-                    serverProcessing.innerText = translate('processing_on_server') + ' ' + pct + '%';
-                    
-                    // Check if processing is complete
-                    if (data.complete) {
-                      eventSource.close();
-                      progressBarInner.classList.remove('processing');
-                      
+        /* Handle server response */
+        xhr.onload = () => {
+          if (xhr.status === 200) {
+            const response = JSON.parse(xhr.responseText);
+
+            if (response.status === 'processing' && response.trackID) {
+              trackID = response.trackID;
+
+              // Update all files to show processing state
+              fileProgressElements.forEach(elem => {
+                elem.serverProcessing.innerText = translate('processing_on_server') + ' 0%';
+              });
+
+              // Start SSE connection for real-time progress
+              eventSource = new EventSource('/upload/progress?trackid=' + trackID);
+              eventSource.onmessage = (event) => {
+                try {
+                  const data = JSON.parse(event.data);
+                  const pct = Math.round(data.percent);
+
+                  // Update all progress indicators
+                  fileProgressElements.forEach(elem => {
+                    elem.serverProcessing.innerText = translate('processing_on_server') + ' ' + pct + '%';
+                  });
+
+                  if (data.complete) {
+                    eventSource.close();
+
+                    fileProgressElements.forEach(elem => {
+                      elem.progressBarInner.classList.remove('processing');
+
                       if (data.error) {
-                        serverProcessing.innerText = '✘ Error: ' + data.error;
-                        serverProcessing.style.color = 'red';
+                        elem.serverProcessing.innerText = '✘ Error: ' + data.error;
+                        elem.serverProcessing.style.color = 'red';
                       } else if (data.needsCoordinates && data.trackID) {
-                        // Spectrum file needs location
-                        serverProcessing.innerText = '⚠ Needs location';
-                        serverProcessing.style.color = 'orange';
-                        pendingCoordinateUpdate = { 
-                          trackID: data.trackID, 
-                          fileName: data.fileName || file.name, 
-                          trackURL: data.redirectURL 
+                        elem.serverProcessing.innerText = '⚠ Needs location';
+                        elem.serverProcessing.style.color = 'orange';
+                        pendingCoordinateUpdate = {
+                          trackID: data.trackID,
+                          fileName: elem.fileName,
+                          trackURL: data.redirectURL
                         };
                       } else {
-                        serverProcessing.innerText = translate('processing_on_server') + ' 100%';
-                        serverProcessing.style.color = '#4caf50';
-                        
+                        elem.serverProcessing.innerText = translate('processing_on_server') + ' 100%';
+                        elem.serverProcessing.style.color = '#4caf50';
+
                         if (data.redirectURL) {
                           lastTrackURL = data.redirectURL;
                         }
                       }
-                      
-                      // Trigger completion handler
-                      completedUploads++;
-                      if (completedUploads === totalFiles) {
-                        setTimeout(() => {
-                          fileOverlay.style.display = 'none';
-                          if (pendingCoordinateUpdate) {
-                            showCoordinateDialog(pendingCoordinateUpdate.trackID, pendingCoordinateUpdate.fileName, pendingCoordinateUpdate.trackURL);
-                          } else if (lastTrackURL) {
-                            window.location.href = lastTrackURL;
-                          } else {
-                            updateMarkers();
-                          }
-                        }, 700);
+                    });
+
+                    // All files processed, redirect or update
+                    setTimeout(() => {
+                      fileOverlay.style.display = 'none';
+                      if (pendingCoordinateUpdate) {
+                        showCoordinateDialog(pendingCoordinateUpdate.trackID, pendingCoordinateUpdate.fileName, pendingCoordinateUpdate.trackURL);
+                      } else if (lastTrackURL) {
+                        window.location.href = lastTrackURL;
+                      } else {
+                        updateMarkers();
                       }
-                    }
-                  } catch(e) {
-                    console.error('Progress parse error:', e);
+                    }, 700);
                   }
-                };
-                eventSource.onerror = () => {
-                  if (eventSource) eventSource.close();
-                  serverProcessing.innerText = '✘ Connection lost';
-                  serverProcessing.style.color = 'red';
-                };
-              } else if (response.status === 'success') {
-                // Legacy sync response (shouldn't happen now, but keep for compatibility)
-                lastTrackURL = response.trackURL;
-                progressBarInner.classList.remove('processing');
-                serverProcessing.innerText = translate('processing_on_server') + ' 100%';
-                serverProcessing.style.color = '#4caf50';
+                } catch(e) {
+                  console.error('Progress parse error:', e);
+                }
+              };
 
-                if (response.needsCoordinates && response.trackID) {
-                  serverProcessing.innerText = '⚠ Needs location';
-                  serverProcessing.style.color = 'orange';
-                  pendingCoordinateUpdate = { trackID: response.trackID, fileName: file.name, trackURL: response.trackURL };
-                }
-                
-                completedUploads++;
-                if (completedUploads === totalFiles) {
-                  setTimeout(() => {
-                    fileOverlay.style.display = 'none';
-                    if (pendingCoordinateUpdate) {
-                      showCoordinateDialog(pendingCoordinateUpdate.trackID, pendingCoordinateUpdate.fileName, pendingCoordinateUpdate.trackURL);
-                    } else if (lastTrackURL) {
-                      window.location.href = lastTrackURL;
-                    } else {
-                      updateMarkers();
-                    }
-                  }, 700);
-                }
-              } else {
-                serverProcessing.innerText = translate('error_processing_files');
-                serverProcessing.style.color = 'red';
+              eventSource.onerror = () => {
+                if (eventSource) eventSource.close();
+                fileProgressElements.forEach(elem => {
+                  elem.serverProcessing.innerText = '✘ Connection lost';
+                  elem.serverProcessing.style.color = 'red';
+                });
+              };
+            } else if (response.status === 'success') {
+              // Legacy sync response
+              lastTrackURL = response.trackURL;
+
+              fileProgressElements.forEach(elem => {
+                elem.progressBarInner.classList.remove('processing');
+                elem.serverProcessing.innerText = translate('processing_on_server') + ' 100%';
+                elem.serverProcessing.style.color = '#4caf50';
+              });
+
+              if (response.needsCoordinates && response.trackID) {
+                fileProgressElements.forEach(elem => {
+                  elem.serverProcessing.innerText = '⚠ Needs location';
+                  elem.serverProcessing.style.color = 'orange';
+                });
+                pendingCoordinateUpdate = {
+                  trackID: response.trackID,
+                  fileName: fileProgressElements[0].fileName,
+                  trackURL: response.trackURL
+                };
               }
+
+              setTimeout(() => {
+                fileOverlay.style.display = 'none';
+                if (pendingCoordinateUpdate) {
+                  showCoordinateDialog(pendingCoordinateUpdate.trackID, pendingCoordinateUpdate.fileName, pendingCoordinateUpdate.trackURL);
+                } else if (lastTrackURL) {
+                  window.location.href = lastTrackURL;
+                } else {
+                  updateMarkers();
+                }
+              }, 700);
             } else {
-              // Check if authentication is required
-              if (xhr.status === 401 || xhr.status === 403) {
-                serverProcessing.innerHTML = '🔒 Please <a href="/login" style="color: #2196F3; text-decoration: underline;">log in</a> or <a href="/register" style="color: #2196F3; text-decoration: underline;">register</a> to upload files';
-                serverProcessing.style.color = '#ff9800';
-                serverProcessing.style.fontSize = '16px';
-                serverProcessing.style.fontWeight = 'bold';
-                serverProcessing.style.padding = '10px';
-                serverProcessing.style.marginTop = '10px';
-              } else {
-                serverProcessing.innerText = translate('error_during_upload');
-                serverProcessing.style.color = 'red';
-              }
+              fileProgressElements.forEach(elem => {
+                elem.serverProcessing.innerText = translate('error_processing_files');
+                elem.serverProcessing.style.color = 'red';
+              });
             }
-          };
+          } else {
+            // Handle errors
+            fileProgressElements.forEach(elem => {
+              if (xhr.status === 401 || xhr.status === 403) {
+                elem.serverProcessing.innerHTML = '🔒 Please <a href="/login" style="color: #2196F3; text-decoration: underline;">log in</a> or <a href="/register" style="color: #2196F3; text-decoration: underline;">register</a> to upload files';
+                elem.serverProcessing.style.color = '#ff9800';
+                elem.serverProcessing.style.fontSize = '16px';
+                elem.serverProcessing.style.fontWeight = 'bold';
+                elem.serverProcessing.style.padding = '10px';
+                elem.serverProcessing.style.marginTop = '10px';
+              } else {
+                elem.serverProcessing.innerText = translate('error_during_upload');
+                elem.serverProcessing.style.color = 'red';
+              }
+            });
+          }
+        };
 
-          /* send file */
-            const formData = new FormData();
+        /* Create FormData with all files */
+        const formData = new FormData();
+        [...files].forEach(file => {
           formData.append('files[]', file);
-          xhr.send(formData);
         });
+
+        xhr.send(formData);
       }
     </script>
 
