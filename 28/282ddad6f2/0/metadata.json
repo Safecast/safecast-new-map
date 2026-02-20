@@ -1,0 +1,40 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "28282ddad6f2",
+  "session_id": "8610e9fd-f237-4d68-8794-31293b927da0",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-20T12:58:58.937110396Z",
+  "branch": "main",
+  "checkpoints_count": 6,
+  "files_touched": [
+    "HYBRID_CODE_CHANGES.md",
+    "PERFORMANCE_ANALYSIS.md",
+    "SOLUTION_SUMMARY.md",
+    "ZOOM_LEVEL_CODE_CHANGES.md",
+    "migrations/add_zoom_geom_composite_index.sql",
+    "migrations/compute_zoom_levels.sql",
+    "migrations/populate_all_zoom_levels.sql",
+    "migrations/populate_zoom_levels_batch.sql",
+    "migrations/populate_zoom_levels_simple.sql",
+    "migrations/test_zoom_computation.sql",
+    "pkg/database/database.go",
+    "safecast-new-map.go"
+  ],
+  "agent": "Claude Code",
+  "token_usage": {
+    "input_tokens": 1938,
+    "cache_creation_tokens": 320579,
+    "cache_read_tokens": 16744980,
+    "output_tokens": 438,
+    "api_call_count": 218
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-20T12:58:58.331885287Z",
+    "agent_lines": 0,
+    "human_added": 0,
+    "human_modified": 594,
+    "human_removed": 773,
+    "total_committed": 466,
+    "agent_percentage": 0
+  }
+}

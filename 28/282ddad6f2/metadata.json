@@ -1,0 +1,37 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "28282ddad6f2",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 6,
+  "files_touched": [
+    "HYBRID_CODE_CHANGES.md",
+    "PERFORMANCE_ANALYSIS.md",
+    "SOLUTION_SUMMARY.md",
+    "ZOOM_LEVEL_CODE_CHANGES.md",
+    "migrations/add_zoom_geom_composite_index.sql",
+    "migrations/compute_zoom_levels.sql",
+    "migrations/populate_all_zoom_levels.sql",
+    "migrations/populate_zoom_levels_batch.sql",
+    "migrations/populate_zoom_levels_simple.sql",
+    "migrations/test_zoom_computation.sql",
+    "pkg/database/database.go",
+    "safecast-new-map.go"
+  ],
+  "sessions": [
+    {
+      "metadata": "/28/282ddad6f2/0/metadata.json",
+      "transcript": "/28/282ddad6f2/0/full.jsonl",
+      "context": "/28/282ddad6f2/0/context.md",
+      "content_hash": "/28/282ddad6f2/0/content_hash.txt",
+      "prompt": "/28/282ddad6f2/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 1938,
+    "cache_creation_tokens": 320579,
+    "cache_read_tokens": 16744980,
+    "output_tokens": 438,
+    "api_call_count": 218
+  }
+}
