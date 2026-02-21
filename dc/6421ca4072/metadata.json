@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "dc6421ca4072",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "docs/cloudfront-fix-upload-403.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/dc/6421ca4072/0/metadata.json",
+      "transcript": "/dc/6421ca4072/0/full.jsonl",
+      "context": "/dc/6421ca4072/0/context.md",
+      "content_hash": "/dc/6421ca4072/0/content_hash.txt",
+      "prompt": "/dc/6421ca4072/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 39,
+    "cache_creation_tokens": 8183,
+    "cache_read_tokens": 476504,
+    "output_tokens": 10,
+    "api_call_count": 5
+  }
+}
