@@ -5471,6 +5471,11 @@ func checkAdminAuth(w http.ResponseWriter, r *http.Request) (bool, string) {
 // GET /api/admin/uploads?password=xxx&limit=100
 // adminUploadsHandler lists all file uploads with metadata and search functionality
 func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
+	// Prevent CloudFront from caching this dynamic admin page
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+
 	authorized, password := checkAdminAuth(w, r)
 	if !authorized {
 		return
@@ -6675,6 +6680,11 @@ func adminImportFromSafecastHandler(w http.ResponseWriter, r *http.Request) {
 // adminTracksHandler lists all tracks in the system with statistics.
 // GET /api/admin/tracks?password=xxx&limit=1000
 func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
+	// Prevent CloudFront from caching this dynamic admin page
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+
 	authorized, password := checkAdminAuth(w, r)
 	if !authorized {
 		return
@@ -9567,6 +9577,11 @@ func main() {
 
 		// Serve admin users page
 		http.HandleFunc("/admin/users", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			// Prevent CloudFront from caching this dynamic admin page
+			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
+			w.Header().Set("Pragma", "no-cache")
+			w.Header().Set("Expires", "0")
+
 			if !checkAdminAccess(w, r) {
 				return
 			}
