@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "7f184da1ba98",
+  "session_id": "faf8d6a2-6deb-494a-911e-8cbb11fca70a",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-21T01:29:05.422221148Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".github/workflows/deploy.yml"
+  ],
+  "agent": "Claude Code",
+  "transcript_identifier_at_start": "5dd084b8-0fe0-4736-9a0d-0e402906246c",
+  "checkpoint_transcript_start": 284,
+  "transcript_lines_at_start": 284,
+  "token_usage": {
+    "input_tokens": 178,
+    "cache_creation_tokens": 13277,
+    "cache_read_tokens": 1559749,
+    "output_tokens": 43,
+    "api_call_count": 21
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-21T01:29:05.08057659Z",
+    "agent_lines": 8,
+    "human_added": 88,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 96,
+    "agent_percentage": 8.333333333333332
+  }
+}
