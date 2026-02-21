@@ -29,23 +29,23 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H simplemap.safecast.org >> ~/.ssh/known_hosts
+          ssh-keyscan -H 65.108.24.131 >> ~/.ssh/known_hosts
 
       - name: Stop service
         run: |
-          ssh -i ~/.ssh/deploy_key root@simplemap.safecast.org "systemctl stop safecast-new-map"
+          ssh -i ~/.ssh/deploy_key root@65.108.24.131 "systemctl stop safecast-new-map"
 
       - name: Deploy binary
         run: |
-          rsync -avP -e "ssh -i ~/.ssh/deploy_key" ./safecast-new-map root@simplemap.safecast.org:/usr/local/bin/
+          rsync -avP -e "ssh -i ~/.ssh/deploy_key" ./safecast-new-map root@65.108.24.131:/usr/local/bin/
 
       - name: Start service
         run: |
-          ssh -i ~/.ssh/deploy_key root@simplemap.safecast.org "systemctl start safecast-new-map"
+          ssh -i ~/.ssh/deploy_key root@65.108.24.131 "systemctl start safecast-new-map"
 
       - name: Verify deployment
         run: |
-          ssh -i ~/.ssh/deploy_key root@simplemap.safecast.org "systemctl status safecast-new-map"
+          ssh -i ~/.ssh/deploy_key root@65.108.24.131 "systemctl status safecast-new-map"
 
       - name: Cleanup
         if: always()
