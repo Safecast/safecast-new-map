@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "a1b5190c1c6d",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "docs/cloudfront-fix-waf-403.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/a1/b5190c1c6d/0/metadata.json",
+      "transcript": "/a1/b5190c1c6d/0/full.jsonl",
+      "context": "/a1/b5190c1c6d/0/context.md",
+      "content_hash": "/a1/b5190c1c6d/0/content_hash.txt",
+      "prompt": "/a1/b5190c1c6d/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 2365,
+    "cache_creation_tokens": 632930,
+    "cache_read_tokens": 22831937,
+    "output_tokens": 643,
+    "api_call_count": 291
+  }
+}
