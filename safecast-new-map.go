@@ -4807,6 +4807,11 @@ func debugEnabledForRequest(r *http.Request) bool {
 }
 
 func mapHandler(w http.ResponseWriter, r *http.Request) {
+	// Prevent CloudFront from caching pages that show different content based on login status
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+
 	lang := getPreferredLanguage(r)
 
 	// Готовим шаблон
@@ -4893,6 +4898,11 @@ func mapHandler(w http.ResponseWriter, r *http.Request) {
 // homeHandler serves the home page with location search interface.
 // The home page shows an empty map with a centered modal prompting for location entry.
 func homeHandler(w http.ResponseWriter, r *http.Request) {
+	// Prevent CloudFront from caching pages that show different content based on login status
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+
 	lang := getPreferredLanguage(r)
 
 	// Prepare template
@@ -9535,6 +9545,11 @@ func main() {
 
 		// Serve profile page
 		http.HandleFunc("/profile", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			// Prevent CloudFront from caching user-specific pages
+			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
+			w.Header().Set("Pragma", "no-cache")
+			w.Header().Set("Expires", "0")
+
 			data, err := content.ReadFile("public_html/profile.html")
 			if err != nil {
 				http.Error(w, "Profile page not found", http.StatusNotFound)
