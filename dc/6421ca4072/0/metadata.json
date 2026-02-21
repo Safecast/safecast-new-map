@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "dc6421ca4072",
+  "session_id": "faf8d6a2-6deb-494a-911e-8cbb11fca70a",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-21T03:12:09.290898223Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "docs/cloudfront-fix-upload-403.md"
+  ],
+  "agent": "Claude Code",
+  "transcript_identifier_at_start": "99493654-3d18-4401-ac88-c86e1a71f2ac",
+  "checkpoint_transcript_start": 1497,
+  "transcript_lines_at_start": 1497,
+  "token_usage": {
+    "input_tokens": 39,
+    "cache_creation_tokens": 8183,
+    "cache_read_tokens": 476504,
+    "output_tokens": 10,
+    "api_call_count": 5
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-21T03:12:08.269179171Z",
+    "agent_lines": 89,
+    "human_added": 93,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 182,
+    "agent_percentage": 48.9010989010989
+  }
+}
