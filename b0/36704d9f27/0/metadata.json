@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "b036704d9f27",
+  "session_id": "8bf95c26-d9d3-4f78-990c-9784125b69b8",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-21T01:11:42.160694466Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "docs/cloudflare-cname-setup.md",
+    "docs/cloudfront-setup.md"
+  ],
+  "agent": "Claude Code",
+  "transcript_identifier_at_start": "42324c46-0c14-439f-a87d-99d59c047ea6",
+  "token_usage": {
+    "input_tokens": 650,
+    "cache_creation_tokens": 162776,
+    "cache_read_tokens": 4987754,
+    "output_tokens": 164,
+    "api_call_count": 72
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-21T01:11:25.04437178Z",
+    "agent_lines": 183,
+    "human_added": 87,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 270,
+    "agent_percentage": 67.77777777777779
+  }
+}
