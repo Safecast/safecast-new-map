@@ -5469,6 +5469,7 @@ func checkAdminAuth(w http.ResponseWriter, r *http.Request) (bool, string) {
 
 // adminUploadsHandler lists all file uploads with metadata.
 // GET /api/admin/uploads?password=xxx&limit=100
+// adminUploadsHandler lists all file uploads with metadata and search functionality
 func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 	authorized, password := checkAdminAuth(w, r)
 	if !authorized {
