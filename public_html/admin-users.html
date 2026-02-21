@@ -172,7 +172,7 @@
       <div id="paginationTop" class="pagination-controls" style="display: none;"></div>
       <div style="display: flex; align-items: center;">
         <label for="searchInput"><strong>Search:</strong></label>
-        <input type="text" id="searchInput" placeholder="Search email, username, ID..." style="margin-left: 5px; padding: 6px 10px; border-radius: var(--btn-border-radius); border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); width: 250px;" onkeyup="handleSearchKeyup(event)">
+        <input type="text" id="searchInput" placeholder="Search email, username, ID..." autocomplete="off" style="margin-left: 5px; padding: 6px 10px; border-radius: var(--btn-border-radius); border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); width: 250px;" onkeyup="handleSearchKeyup(event)">
         <button class="search-btn" onclick="doSearch()">Search</button>
         <button class="clear-search-btn" onclick="clearSearch()" id="clearSearchBtn" style="display: none;">Clear</button>
       </div>
