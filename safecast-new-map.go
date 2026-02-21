@@ -9489,6 +9489,11 @@ func main() {
 		http.HandleFunc("/api/user/profile", authManager.RequireAuth(authManager.ProfileHandler))
 		http.HandleFunc("/api/user/change-password", authManager.RequireAuth(authManager.ChangePasswordHandler))
 		http.HandleFunc("/api/user/uploads", authManager.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+			// Prevent CloudFront from caching user-specific data
+			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
+			w.Header().Set("Pragma", "no-cache")
+			w.Header().Set("Expires", "0")
+
 			if r.Method != http.MethodGet {
 				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 				return
