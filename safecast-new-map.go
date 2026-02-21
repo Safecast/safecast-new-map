@@ -4418,6 +4418,11 @@ func newBytesFile(data []byte) *bytesFile {
 }
 
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
+	// Prevent CloudFront from caching upload responses (user-specific, dynamic)
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+
 	if err := r.ParseMultipartForm(100 << 20); err != nil {
 		http.Error(w, "multipart parse error", http.StatusBadRequest)
 		return
