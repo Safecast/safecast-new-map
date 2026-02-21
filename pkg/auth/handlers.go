@@ -511,6 +511,11 @@ func (m *Manager) VerifyEmailHandler(w http.ResponseWriter, r *http.Request) {
 // ProfileHandler returns the current user's profile.
 // GET /api/user/profile
 func (m *Manager) ProfileHandler(w http.ResponseWriter, r *http.Request) {
+	// Prevent CloudFront from caching user-specific data
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
