@@ -1,0 +1,166 @@
+Can you check why the global search on the track upload page does not work?
+
+---
+
+Can you check why Github actioon failed to deploy?
+
+---
+
+Can you do that for me?
+
+---
+
+can we deploy one more time to test?
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+Aha.. now the old deploy did work!!
+
+---
+
+<task-notification>
+<task-id>b20ef7f</task-id>
+<output-file>/tmp/claude-1000/-home-rob-Documents-Safecast-safecast-new-map/tasks/b20ef7f.output</output-file>
+<status>completed</status>
+<summary>Background command "Check if public key is authorized on server" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /tmp/claude-1000/-home-rob-Documents-Safecast-safecast-new-map/tasks/b20ef7f.output
+
+---
+
+After deployemnt the search locally works fine but on the proction not. Could tha be Cloudfront caching?
+
+---
+
+Can you create an empty commit to check if all works?
+
+---
+
+When I visit simplmap.safecast.org  and login, still the global search does not work.?
+
+---
+
+Now I can not clear the search and on admin  user page the search does not work yet?
+
+---
+
+[Request interrupted by user]
+
+---
+
+That is on the producion server..
+
+---
+
+Cleared the cache, tried incognito window, but same results. ?
+
+---
+
+That is not true.. OI can not clear the results and old entry into the search filed come back all the time. Seems the form data iis cached?
+
+---
+
+Did I hard refresh, but the clear button still does not work on production. Locally all work fine..
+
+---
+
+FYI..
+
+CloudFront generally does not cache data submitted through form
+POST requests, as its primary function is to cache GET and HEAD requests to improve performance. However, improper configuration, particularly regarding query strings, can lead to unintended caching behavior where form data appears "cached" or user inputs are ignored. 
+Here is a breakdown of how CloudFront interacts with form data:
+
+    POST Requests (Standard Forms): By default, CloudFront does not cache responses to POST requests, which are typical for submitting form data (e.g., login, contact forms). These requests are passed through to the origin server to ensure dynamic processing.
+    GET Requests (Search Forms/Parameters): If a form uses the GET method, it sends data via query strings in the URL (e.g., ?search=term). If CloudFront is not configured to include query strings in the cache key, it will cache the initial page request and return that same cached page for all subsequent searches, ignoring the new query parameters.
+    Preventing Issues: To ensure that forms with GET requests display unique data, you must configure CloudFront cache policies to include the specific query string parameters in the cache key.
+    Unintended Caching: In rare cases, if a server specifically opts in to caching POST requests with headers, it could be cached, but this is not standard. 
+
+How to Properly Handle Forms with CloudFront:
+To prevent form submission issues, ensure your cache behavior is set to:
+
+    Forward necessary Query Strings: Include them in the cache key.
+    Use Cache-Control Headers: Set no-cache, no-store, or private on your origin server for pages that should never be cached.
+    Disable Caching for Specific Paths: Configure a cache behavior that uses a policy to not cache requests, such as /contact-form. 
+
+    Building caching keys in CloudFront - Substrakt
+    You do not include query strings in your caching policy. The search page will be cached when the user initially lands on it, witho...
+    Substrakt
+    How CloudFront processes HTTP 4xx and 5xx status codes from ...
+    CloudFront always caches responses to GET and HEAD requests. You can also configure CloudFront to cache responses to OPTIONS reque...
+    Amazon AWS Documentation
+    Prevent Amazon CloudFront from caching certain files - AWS re:Post
+    May 21, 2025 — Configuration on the origin On your custom origin web server application, add Cache-Control no-cache, no-store, or private directi...
+    AWS re:Post
+
+Show all
+
+---
+
+Continue fixng the issues with search
+
+---
+
+[Request interrupted by user]
+
+---
+
+Seems you are starting for cratch for this chat? Please check before chat we had a fe wminutes ago.
+
+---
+
+The last chat ended with :
+Prompt is too long
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+Can you first read this:
+
+https://entire.io/Safecast/safecast-new-map/checkpoints/main/37a02146df35
+
+---
+
+Please read this /home/rob/Downloads/fix_ Add comment to adminUploadsHandler and force redeploy · Entire.pdf
+
+---
+
+The search in the admin panle does not work on production server. Locally all works fine. This happened after we added CloudFront. Yesterday.
+
+---
+
+That is fixed now..
+
+---
+
+Another issue with caching it seems.. Locally I can upload mulitple log fines, but on the production sever not. See screenshot ( I am logged in).
+
+---
+
+[Request interrupted by user]
+
+---
+
+I checked a bit more, if I log out and then referech the page, the screen and the login seems not to be cleared. And It looks like I am still looged in.
+
+---
+
+Still isues..when Looged in, I can not upload multiple files..single files work fine..
+
+---
+
+No error about the login/cache etc.
+
+---
+
+[Request interrupted by user]
+
+---
+
+One still works fine. Here screnshot from network for the multiple files upload.
