@@ -5447,9 +5447,9 @@ func formatUploadRow(upload database.Upload, password string) string {
 func checkAdminAuth(w http.ResponseWriter, r *http.Request) (bool, string) {
 	// First check if user is authenticated via session and is admin
 	if user, ok := auth.GetUserFromContext(r.Context()); ok && user.IsAdmin {
-		// For backwards compatibility, return a dummy password value for templates
-		// This allows existing links in the HTML to still work
-		return true, "session"
+		// For backwards compatibility, return an empty password value for templates
+		// When using session auth, we don't need password in URLs
+		return true, ""
 	}
 
 	// Fall back to URL password authentication
@@ -5714,9 +5714,16 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		</span>`
 
 	if userID != "" {
-		clearFilterURL := "/api/admin/uploads?password=" + password
+		params := []string{}
+		if password != "" {
+			params = append(params, "password="+password)
+		}
 		if search != "" {
-			clearFilterURL += "&search=" + url.QueryEscape(search)
+			params = append(params, "search="+url.QueryEscape(search))
+		}
+		clearFilterURL := "/api/admin/uploads"
+		if len(params) > 0 {
+			clearFilterURL += "?" + strings.Join(params, "&")
 		}
 		html += ` | <strong>Filtered by User ID:</strong> ` + userID + ` <a href="` + clearFilterURL + `">[Clear Filter]</a>`
 	}
@@ -5730,14 +5737,19 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Helper function to build query parameters
 	buildURL := func(pageNum int) string {
-		urlStr := "?password=" + password + "&page=" + strconv.Itoa(pageNum) + "&limit=" + strconv.Itoa(limit)
+		params := []string{}
+		if password != "" {
+			params = append(params, "password="+password)
+		}
+		params = append(params, "page="+strconv.Itoa(pageNum))
+		params = append(params, "limit="+strconv.Itoa(limit))
 		if userID != "" {
-			urlStr += "&user_id=" + userID
+			params = append(params, "user_id="+userID)
 		}
 		if search != "" {
-			urlStr += "&search=" + url.QueryEscape(search)
+			params = append(params, "search="+url.QueryEscape(search))
 		}
-		return urlStr
+		return "?" + strings.Join(params, "&")
 	}
 
 	// Previous button
@@ -6997,7 +7009,11 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 		html += ` | <strong>Search:</strong> "` + search + `"`
 	}
 	if detectorFilter != "" {
-		html += ` | <strong>Detector:</strong> "` + detectorFilter + `" <a href="/api/admin/tracks?password=` + password + `" style="color: var(--link-color);">(clear)</a>`
+		clearURL := "/api/admin/tracks"
+		if password != "" {
+			clearURL += "?password=" + password
+		}
+		html += ` | <strong>Detector:</strong> "` + detectorFilter + `" <a href="` + clearURL + `" style="color: var(--link-color);">(clear)</a>`
 	}
 
 	// Add pagination controls inline in the summary
@@ -7005,14 +7021,19 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Helper function to build query parameters
 	buildURL := func(pageNum int) string {
-		urlStr := "?password=" + password + "&page=" + strconv.Itoa(pageNum) + "&limit=" + strconv.Itoa(limit)
+		params := []string{}
+		if password != "" {
+			params = append(params, "password="+password)
+		}
+		params = append(params, "page="+strconv.Itoa(pageNum))
+		params = append(params, "limit="+strconv.Itoa(limit))
 		if search != "" {
-			urlStr += "&search=" + url.QueryEscape(search)
+			params = append(params, "search="+url.QueryEscape(search))
 		}
 		if detectorFilter != "" {
-			urlStr += "&detector=" + url.QueryEscape(detectorFilter)
+			params = append(params, "detector="+url.QueryEscape(detectorFilter))
 		}
-		return urlStr
+		return "?" + strings.Join(params, "&")
 	}
 
 	// Previous button
