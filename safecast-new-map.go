@@ -5704,7 +5704,7 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		</span>
 		<span style="margin-left: 20px;">
 			<label for="searchInput"><strong>Search:</strong></label>
-			<input type="text" id="searchInput" value="` + search + `" placeholder="Search all fields..." style="margin-left: 5px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); width: 200px;" onkeypress="if(event.key === 'Enter') performSearch()">
+			<input type="text" id="searchInput" value="` + search + `" placeholder="Search all fields..." autocomplete="off" style="margin-left: 5px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); width: 200px;" onkeypress="if(event.key === 'Enter') performSearch()">
 			<button onclick="performSearch()" style="margin-left: 5px; padding: 4px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--link-color); color: white; cursor: pointer;">🔍</button>
 			` + func() string {
 		if search != "" {
@@ -6996,7 +6996,7 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 		</span>
 		<span style="margin-left: 20px;">
 			<label for="searchInput"><strong>Search:</strong></label>
-			<input type="text" id="searchInput" value="` + search + `" placeholder="Search all fields..." style="margin-left: 5px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); width: 200px;" onkeypress="if(event.key === 'Enter') performSearch()">
+			<input type="text" id="searchInput" value="` + search + `" placeholder="Search all fields..." autocomplete="off" style="margin-left: 5px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); width: 200px;" onkeypress="if(event.key === 'Enter') performSearch()">
 			<button onclick="performSearch()" style="margin-left: 5px; padding: 4px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--link-color); color: white; cursor: pointer;">🔍</button>
 			` + func() string {
 		if search != "" {
