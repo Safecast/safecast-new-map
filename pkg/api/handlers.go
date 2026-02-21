@@ -179,7 +179,7 @@ func (h *Handler) handleShorten(w http.ResponseWriter, r *http.Request) {
 	}
 
 	scheme := requestScheme(r)
-	host := strings.TrimSpace(r.Host)
+	host := requestHost(r)
 	if host == "" {
 		http.Error(w, "missing host", http.StatusBadRequest)
 		return
@@ -1252,6 +1252,21 @@ func requestScheme(r *http.Request) string {
 		return "https"
 	}
 	return "http"
+}
+
+// requestHost extracts the host from r.Host or X-Forwarded-Host header.
+// CloudFront's AllViewerExceptHostHeader policy strips the Host header,
+// so we need to check X-Forwarded-Host as a fallback.
+func requestHost(r *http.Request) string {
+	// First try r.Host (direct access or proxies that preserve it)
+	if host := strings.TrimSpace(r.Host); host != "" {
+		return host
+	}
+	// Fallback to X-Forwarded-Host (CloudFront, load balancers)
+	if forwarded := strings.TrimSpace(r.Header.Get("X-Forwarded-Host")); forwarded != "" {
+		return forwarded
+	}
+	return ""
 }
 
 func parseIntDefault(v string, def int) int {
