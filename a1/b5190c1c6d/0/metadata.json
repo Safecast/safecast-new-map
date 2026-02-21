@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "a1b5190c1c6d",
+  "session_id": "faf8d6a2-6deb-494a-911e-8cbb11fca70a",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-21T11:52:45.263187166Z",
+  "branch": "main",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "docs/cloudfront-fix-waf-403.md"
+  ],
+  "agent": "Claude Code",
+  "transcript_identifier_at_start": "09a9c5e0-d699-412a-ba21-264b7766b082",
+  "token_usage": {
+    "input_tokens": 2365,
+    "cache_creation_tokens": 632930,
+    "cache_read_tokens": 22831937,
+    "output_tokens": 643,
+    "api_call_count": 291
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-21T11:52:44.000030181Z",
+    "agent_lines": 165,
+    "human_added": 189,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 354,
+    "agent_percentage": 46.61016949152542
+  }
+}
