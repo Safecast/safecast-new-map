@@ -86,6 +86,8 @@ Deploy with HTTPS using Let's Encrypt:
 
 Requires ports 80 and 443 open for certificate validation.
 
+**Note for CloudFront/CDN deployments:** If your domain uses CloudFront or another CDN for web traffic, SSH/rsync deployment must use the server's IP address directly, not the domain name. See [CloudFront Setup Guide](docs/cloudfront-setup.md) for details.
+
 ### Option 4: Docker
 
 ```bash
@@ -472,6 +474,15 @@ go test ./...
 # See scripts/crosscompile/crosscompile.go
 go run scripts/crosscompile/crosscompile.go
 ```
+
+### Production Deployment
+
+For deploying to production servers with CloudFront/CDN setup, see:
+- [Deployment Guide](docs/DEPLOYMENT.md) - Complete deployment procedures and troubleshooting
+- [GitHub Actions Guide](GITHUB_ACTIONS_GUIDE.md) - Automated CI/CD setup
+- [CloudFront Setup](docs/cloudfront-setup.md) - CDN configuration details
+
+**Important:** When using CloudFront, SSH and rsync must use the server's IP address directly, not the domain name.
 
 ---
 

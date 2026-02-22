@@ -139,6 +139,39 @@ Or via AWS Console:
 4. Object paths: `/*`
 5. Create
 
+## Important: SSH/Rsync After CloudFront Setup
+
+**⚠️ CRITICAL:** Once you point your domain to CloudFront, SSH and rsync will **NOT work** with the domain name.
+
+### Why?
+- CloudFront only handles HTTP/HTTPS traffic (ports 80/443)
+- SSH operates on port 22, which CloudFront doesn't accept or forward
+- When you SSH to the domain name, it tries to connect to CloudFront's IPs, not your server
+
+### Solution: Always Use IP Address for Deployment
+
+**✅ Correct - Use IP address:**
+```bash
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131
+rsync -avP -e "ssh -i ~/.ssh/safecast-deploy" ./safecast-new-map root@65.108.24.131:/usr/local/bin/
+```
+
+**❌ Wrong - Domain won't work:**
+```bash
+ssh -i ~/.ssh/safecast-deploy root@simplemap.safecast.org  # Will fail!
+rsync -avP -e "ssh -i ~/.ssh/safecast-deploy" ./safecast-new-map root@simplemap.safecast.org:/usr/local/bin/  # Will fail!
+```
+
+### Traffic Flow After CloudFront Setup
+
+```
+Web Traffic (HTTP/HTTPS):
+User → simplemap.safecast.org (DNS) → CloudFront → Origin (65.108.24.131)
+
+Deployment (SSH/Rsync):
+Developer → 65.108.24.131 (Direct IP) → Server
+```
+
 ## Expected Benefits
 
 - **Reduced latency from Japan:** CloudFront has edge locations in Tokyo, Osaka
