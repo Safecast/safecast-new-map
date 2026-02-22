@@ -1,0 +1,5 @@
+On the simplemap admin/users and uploads I noticed a swagger favicon, can you remove replace that with the safecast favicon?
+
+---
+
+Works nice.!!
