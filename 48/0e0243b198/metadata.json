@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "480e0243b198",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "GITHUB_ACTIONS_GUIDE.md",
+    "README.md",
+    "docs/DEPLOYMENT.md",
+    "docs/cloudfront-setup.md",
+    "docs/ssh-subdomain-setup.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/48/0e0243b198/0/metadata.json",
+      "transcript": "/48/0e0243b198/0/full.jsonl",
+      "context": "/48/0e0243b198/0/context.md",
+      "content_hash": "/48/0e0243b198/0/content_hash.txt",
+      "prompt": "/48/0e0243b198/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 338,
+    "cache_creation_tokens": 81091,
+    "cache_read_tokens": 2737900,
+    "output_tokens": 80,
+    "api_call_count": 41
+  }
+}
