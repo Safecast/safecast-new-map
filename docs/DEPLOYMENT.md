@@ -1,0 +1,276 @@
+# Production Deployment Guide
+
+This guide covers deploying to the production server at simplemap.safecast.org.
+
+## Infrastructure Overview
+
+**Domain:** simplemap.safecast.org
+**Server IP:** 65.108.24.131
+**CDN:** AWS CloudFront (Distribution ID: E12FYIQ8RRXOJ1)
+
+### Traffic Flow
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                   Web Traffic (Ports 80/443)            │
+└─────────────────────────────────────────────────────────┘
+  User Browser
+       ↓
+  simplemap.safecast.org (DNS → CloudFront)
+       ↓
+  CloudFront Edge Locations (Global CDN)
+       ↓
+  Origin Server: 65.108.24.131
+
+
+┌─────────────────────────────────────────────────────────┐
+│              Deployment Traffic (Port 22)               │
+└─────────────────────────────────────────────────────────┘
+  Developer Machine
+       ↓
+  SSH/Rsync to 65.108.24.131 (Direct IP)
+       ↓
+  Server: 65.108.24.131
+```
+
+## ⚠️ Critical: SSH Must Use IP Address
+
+**CloudFront only handles HTTP/HTTPS traffic.** SSH connections MUST go directly to the server IP.
+
+**✅ Correct:**
+```bash
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131
+```
+
+**❌ Wrong (will fail):**
+```bash
+ssh -i ~/.ssh/safecast-deploy root@simplemap.safecast.org  # CloudFront can't handle SSH!
+```
+
+## Manual Deployment
+
+### Prerequisites
+
+1. **SSH Key:** `~/.ssh/safecast-deploy` (private key)
+2. **Binary built:** `go build -o safecast-new-map .`
+3. **Server access:** Ability to SSH to 65.108.24.131
+
+### Deployment Steps (Always Use This Order)
+
+**Step 1: Stop the service**
+```bash
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl stop safecast-new-map"
+```
+
+**Step 2: Sync the binary**
+```bash
+rsync -avP -e "ssh -i ~/.ssh/safecast-deploy" ./safecast-new-map root@65.108.24.131:/usr/local/bin/
+```
+
+**Step 3: Start the service**
+```bash
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl start safecast-new-map"
+```
+
+**Step 4: Verify deployment**
+```bash
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl status safecast-new-map"
+```
+
+**Step 5: Invalidate CloudFront cache (optional)**
+```bash
+aws cloudfront create-invalidation --distribution-id E12FYIQ8RRXOJ1 --paths "/*"
+```
+
+### Why This Order Matters
+
+1. **Stop first:** Prevents file conflicts when replacing the binary
+2. **Sync binary:** Upload new version while service is stopped
+3. **Start service:** New version loads cleanly
+4. **Verify:** Ensure service started successfully
+
+## Automated Deployment (GitHub Actions)
+
+**Current workflow:** `.github/workflows/deploy.yml`
+
+### How It Works
+
+1. **Trigger:** Automatic on push to `main` branch, or manual via workflow_dispatch
+2. **Build:** Compiles Go binary on GitHub runners
+3. **Deploy:** Uses SSH with stored private key to deploy to 65.108.24.131
+4. **Invalidate:** Clears CloudFront cache to serve new version
+
+### Required GitHub Secrets
+
+| Secret | Value | Purpose |
+|--------|-------|---------|
+| `DEPLOY_SSH_KEY` | Content of `~/.ssh/safecast-deploy` | SSH authentication |
+| `AWS_ACCESS_KEY_ID` | AWS access key | CloudFront invalidation |
+| `AWS_SECRET_ACCESS_KEY` | AWS secret key | CloudFront invalidation |
+
+### Workflow Steps
+
+```yaml
+1. Checkout code
+2. Set up Go 1.23
+3. Build binary
+4. Setup SSH (using 65.108.24.131 IP)
+5. Stop service
+6. Deploy binary via rsync
+7. Start service
+8. Verify deployment
+9. Invalidate CloudFront cache
+10. Cleanup SSH keys
+```
+
+**Note:** The workflow correctly uses the IP address (65.108.24.131) for all SSH operations.
+
+## CloudFront Considerations
+
+### Cache Invalidation
+
+After deploying new code, CloudFront may serve cached versions of static files. Create an invalidation to force cache refresh:
+
+```bash
+# Invalidate all cached content
+aws cloudfront create-invalidation --distribution-id E12FYIQ8RRXOJ1 --paths "/*"
+
+# Invalidate specific paths
+aws cloudfront create-invalidation --distribution-id E12FYIQ8RRXOJ1 --paths "/index.html" "/static/*"
+```
+
+**Cost:** First 1,000 invalidation paths per month are free, then $0.005 per path.
+
+### Cache Behavior
+
+Current configuration:
+- **API endpoints:** No caching (Cache-Control headers prevent it)
+- **Static files:** Cached at edge locations
+- **Uploads:** Not cached (Cache-Control: private)
+- **Admin pages:** Not cached (Cache-Control: no-store)
+
+### WAF Configuration
+
+AWS WAF protects against:
+- SQL injection
+- Cross-site scripting (XSS)
+- ~~Large request bodies~~ (Changed to "Count" mode for file uploads)
+
+**Important:** `SizeRestrictions_BODY` rule is in "Count" mode to allow large file uploads. See [docs/cloudfront-fix-waf-403.md](cloudfront-fix-waf-403.md) for details.
+
+## Server Configuration
+
+### Service Details
+
+**Service name:** `safecast-new-map`
+**Binary location:** `/usr/local/bin/safecast-new-map`
+**Service file:** `/etc/systemd/system/safecast-new-map.service`
+
+### Useful Commands
+
+```bash
+# View service status
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl status safecast-new-map"
+
+# View logs
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "journalctl -u safecast-new-map -f"
+
+# Restart service
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl restart safecast-new-map"
+
+# Check disk space
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "df -h"
+
+# Check memory usage
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "free -h"
+```
+
+## Troubleshooting
+
+### SSH Connection Fails
+
+**Symptom:** `ssh: connect to host simplemap.safecast.org port 22: Connection refused`
+
+**Cause:** Trying to SSH to the domain name instead of IP address.
+
+**Solution:** Use IP address: `65.108.24.131`
+
+### Deployment Succeeds But Changes Not Visible
+
+**Cause:** CloudFront is serving cached content.
+
+**Solution:** Invalidate CloudFront cache (see above).
+
+### Upload 403 Errors After Deployment
+
+**Cause:** WAF blocking large uploads or missing cache headers.
+
+**Solution:**
+1. Verify WAF rules are in "Count" mode (see [cloudfront-fix-waf-403.md](cloudfront-fix-waf-403.md))
+2. Check Cache-Control headers in code (safecast-new-map.go)
+
+### Service Won't Start
+
+```bash
+# Check service status
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl status safecast-new-map"
+
+# View recent logs
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "journalctl -u safecast-new-map -n 50"
+
+# Check if port is already in use
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "netstat -tulpn | grep 8765"
+```
+
+## Rollback Procedure
+
+If deployment fails:
+
+```bash
+# Stop broken version
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl stop safecast-new-map"
+
+# Restore previous binary (if backed up)
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "cp /usr/local/bin/safecast-new-map.old /usr/local/bin/safecast-new-map"
+
+# Start service
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl start safecast-new-map"
+```
+
+## Security Notes
+
+### SSH Key Management
+
+- **Private key:** Keep `~/.ssh/safecast-deploy` secure and never commit to git
+- **GitHub Secret:** Stored encrypted in GitHub, only accessible to workflows
+- **Server:** Public key in `/root/.ssh/authorized_keys` on 65.108.24.131
+
+### CloudFront Security
+
+- **HTTPS only:** HTTP requests redirected to HTTPS
+- **WAF enabled:** Protects against common web attacks
+- **DDoS protection:** AWS Shield Standard included with CloudFront
+- **Origin protection:** Origin server (65.108.24.131) can be firewalled to only accept CloudFront IPs
+
+## Related Documentation
+
+- [CloudFront Setup Guide](cloudfront-setup.md) - Initial CloudFront configuration
+- [Upload 403 Fix](cloudfront-fix-upload-403.md) - Cookie forwarding configuration
+- [WAF 403 Fix](cloudfront-fix-waf-403.md) - Large file upload configuration
+- [GitHub Actions Guide](../GITHUB_ACTIONS_GUIDE.md) - Workflow details
+- [Memory (Project Notes)](~/.claude/projects/-home-rob-Documents-Safecast-safecast-new-map/memory/MEMORY.md)
+
+## Quick Reference
+
+**Server IP:** 65.108.24.131
+**SSH Key:** `~/.ssh/safecast-deploy`
+**CloudFront Distribution ID:** E12FYIQ8RRXOJ1
+**Service Name:** `safecast-new-map`
+**Binary Path:** `/usr/local/bin/safecast-new-map`
+
+**One-Line Deploy:**
+```bash
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl stop safecast-new-map" && \
+rsync -avP -e "ssh -i ~/.ssh/safecast-deploy" ./safecast-new-map root@65.108.24.131:/usr/local/bin/ && \
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl start safecast-new-map && systemctl status safecast-new-map"
+```
