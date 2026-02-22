@@ -1,5 +1,11 @@
 # Plan: Integrating Claude AI Chat into Safecast Map
 
+**Status:** 🗄️ ARCHIVED - Not implemented
+**Date Archived:** 2026-02-22
+**Alternative Approach:** Instead of embedding chat in the map, the [Safecast MCP server](https://github.com/Safecast/safecast-map-MCP) was created as a standalone service that can be integrated with Claude.ai's built-in MCP integration system. See [README.md](../../README.md) for current architecture.
+
+---
+
 This plan outlines the steps to integrate the Claude AI chat interface directly into the `safecast-new-map` application. This integration allows users to ask questions about radiation data while viewing the map, leveraging the underlying Safecast MCP tools.
 
 ## high-level Architecture

@@ -1,5 +1,13 @@
 # MCP Server Plan for Safecast Map
 
+**Status:** ✅ IMPLEMENTED
+**Date Archived:** 2026-02-22
+**Implementation:** [safecast-map-MCP repository](https://github.com/Safecast/safecast-map-MCP)
+**Live Endpoint:** https://simplemap.safecast.org/mcp-http
+**Documentation:** See the [safecast-map-MCP README](https://github.com/Safecast/safecast-map-MCP#readme)
+
+---
+
 ## Overview
 
 An MCP (Model Context Protocol) server that allows AI assistants (Claude, etc.) to query the Safecast radiation map data through structured tools. Users chatting with an AI can ask questions like "What's the radiation level near Fukushima?" and the AI will call MCP tools to get real answers from the database.
