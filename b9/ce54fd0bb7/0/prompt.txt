@@ -1,0 +1,25 @@
+After we added CloudFront, the mcp server does not work anymore . Can you finf out why?
+
+---
+
+[Request interrupted by user]
+
+---
+
+The mcp server on vps01.safecast.org works fine. But the mcp serve on https://ssh.simplemap.safecast.org/mcp-http does not.
+
+---
+
+After making the chnages it seems the data is not being sreved on the map. We have to create a ways to sever the data from port 8765 to the https . I think we hvae to modify nginx?On the map now the data is displayed.
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+Data is back on the map..
+
+---
+
+eems to connect correctly now.
