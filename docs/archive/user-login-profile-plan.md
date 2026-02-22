@@ -1,5 +1,19 @@
 # Plan: Enable All Users to Login, See Tracks & API Keys
 
+**Status:** ✅ IMPLEMENTED
+**Date Archived:** 2026-02-22
+**Implemented Features:**
+- User registration and email verification
+- Login/logout flows
+- Password reset via email
+- User profile pages with upload history
+- API key display and management
+- Authentication logging
+
+See [README.md](../../README.md#user-authentication--api-keys) for current documentation.
+
+---
+
 ## Context
 There are ~8,400 CSV-migrated users who all have `requires_password_setup: true` and no passwords. They need a way to set passwords and, once logged in, see their tracks and API keys. Most of the auth infrastructure already exists — we mainly need a **user profile page** and a way for migrated users to set their passwords.
 
