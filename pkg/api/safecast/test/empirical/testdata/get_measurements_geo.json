@@ -1,0 +1,35 @@
+{
+  "recorded_at": "2026-02-18T06:51:49Z",
+  "request": {
+    "method": "GET",
+    "url": "https://api.safecast.org/measurements.json?distance=50000\u0026latitude=35.6762\u0026longitude=139.6503\u0026per_page=2",
+    "headers": {
+      "Accept": "application/json"
+    }
+  },
+  "response": {
+    "status_code": 200,
+    "headers": {
+      "Access-Control-Allow-Headers": "*, X-Requested-With",
+      "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+      "Access-Control-Allow-Origin": "safecast.org",
+      "Access-Control-Max-Age": "100000",
+      "Cache-Control": "max-age=0, private, must-revalidate",
+      "Content-Length": "649",
+      "Content-Type": "application/json; charset=utf-8",
+      "Date": "Wed, 18 Feb 2026 06:51:49 GMT",
+      "Etag": "W/\"8cf5b0aea9559f7126d6e28d9bed870d\"",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+      "Server": "nginx",
+      "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+      "X-Content-Type-Options": "nosniff",
+      "X-Download-Options": "noopen",
+      "X-Frame-Options": "SAMEORIGIN",
+      "X-Permitted-Cross-Domain-Policies": "none",
+      "X-Request-Id": "08693ff7-3bfe-4ac7-b0b5-080d3d427379",
+      "X-Runtime": "0.013711",
+      "X-Xss-Protection": "1; mode=block"
+    },
+    "body": "[\n  {\n    \"captured_at\": \"2020-01-11T09:54:42.000Z\",\n    \"channel_id\": null,\n    \"device_id\": 100149,\n    \"devicetype_id\": null,\n    \"height\": 100,\n    \"id\": 155510235,\n    \"latitude\": 35.6617,\n    \"location_name\": null,\n    \"longitude\": 139.742,\n    \"measurement_import_id\": null,\n    \"original_id\": 155510235,\n    \"sensor_id\": null,\n    \"station_id\": null,\n    \"unit\": \"celcius\",\n    \"user_id\": 759,\n    \"value\": 26\n  },\n  {\n    \"captured_at\": \"2020-01-12T20:03:43.000Z\",\n    \"channel_id\": null,\n    \"device_id\": 100142,\n    \"devicetype_id\": \"Pointcast V1\",\n    \"height\": 100,\n    \"id\": 155570059,\n    \"latitude\": 35.6617,\n    \"location_name\": null,\n    \"longitude\": 139.742,\n    \"measurement_import_id\": null,\n    \"original_id\": 155570059,\n    \"sensor_id\": null,\n    \"station_id\": null,\n    \"unit\": \"cpm\",\n    \"user_id\": 759,\n    \"value\": 11\n  }\n]"
+  }
+}

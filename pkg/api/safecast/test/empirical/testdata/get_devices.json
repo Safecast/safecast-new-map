@@ -1,0 +1,35 @@
+{
+  "recorded_at": "2026-02-18T06:51:52Z",
+  "request": {
+    "method": "GET",
+    "url": "https://api.safecast.org/devices.json",
+    "headers": {
+      "Accept": "application/json"
+    }
+  },
+  "response": {
+    "status_code": 200,
+    "headers": {
+      "Access-Control-Allow-Headers": "*, X-Requested-With",
+      "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+      "Access-Control-Allow-Origin": "safecast.org",
+      "Access-Control-Max-Age": "100000",
+      "Cache-Control": "max-age=0, private, must-revalidate",
+      "Content-Length": "1976",
+      "Content-Type": "application/json; charset=utf-8",
+      "Date": "Wed, 18 Feb 2026 06:51:52 GMT",
+      "Etag": "W/\"ba7638613f7ba3ba6277d08a6e8d3fcd\"",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+      "Server": "nginx",
+      "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+      "X-Content-Type-Options": "nosniff",
+      "X-Download-Options": "noopen",
+      "X-Frame-Options": "SAMEORIGIN",
+      "X-Permitted-Cross-Domain-Policies": "none",
+      "X-Request-Id": "54fcfc0b-7ccf-44fd-8745-edfcf92ed932",
+      "X-Runtime": "0.007540",
+      "X-Xss-Protection": "1; mode=block"
+    },
+    "body": "[\n  {\n    \"id\": 276,\n    \"manufacturer\": \"Bosean\",\n    \"model\": \"FS5000\",\n    \"sensor\": \"J321\"\n  },\n  {\n    \"id\": 200,\n    \"manufacturer\": \"Safecast\",\n    \"model\": \"BGeigie nano\",\n    \"sensor\": \"Lnd 7317\"\n  },\n  {\n    \"id\": 250,\n    \"manufacturer\": \"SwitchDoc Labs\",\n    \"model\": \"WS Solar Geiger Counter\",\n    \"sensor\": \"M4011\"\n  },\n  {\n    \"id\": 267,\n    \"manufacturer\": \"SAFECAST\",\n    \"model\": \"BGNanoBT-20620\",\n    \"sensor\": \"Geiger-Müller\"\n  },\n  {\n    \"id\": 266,\n    \"manufacturer\": \"oop\",\n    \"model\": \"test\",\n    \"sensor\": \"test\"\n  },\n  {\n    \"id\": 203,\n    \"manufacturer\": \"set \\u0026 save\",\n    \"model\": \"set\",\n    \"sensor\": \"usb\"\n  },\n  {\n    \"id\": 213,\n    \"manufacturer\": \"testy\",\n    \"model\": \"test\",\n    \"sensor\": \"test\"\n  },\n  {\n    \"id\": 214,\n    \"manufacturer\": \"ICOHUP\",\n    \"model\": \"RIUM for everyone\",\n    \"sensor\": \"CsI:Tl crystal\"\n  },\n  {\n    \"id\": 210,\n    \"manufacturer\": \"GQ\",\n    \"model\": \"GMC-300\",\n    \"sensor\": \"M4011\"\n  },\n  {\n    \"id\": 257,\n    \"manufacturer\": \"Radiascan\",\n    \"model\": \"Radiacode 101\",\n    \"sensor\": \"CsI (Tl) crystal\"\n  },\n  {\n    \"id\": 260,\n    \"manufacturer\": \"SAFECAST\",\n    \"model\": \"bGeigie nano #20620\",\n    \"sensor\": \"LND7317\"\n  },\n  {\n    \"id\": 211,\n    \"manufacturer\": \"4N-GALAXY\",\n    \"model\": \"r42\",\n    \"sensor\": \"SBM-20\"\n  },\n  {\n    \"id\": 202,\n    \"manufacturer\": \"save\",\n    \"model\": \"save\",\n    \"sensor\": \"save 5 mV*\"\n  },\n  {\n    \"id\": 212,\n    \"manufacturer\": \"Technonia\",\n    \"model\": \"Smart Geiger Pro\",\n    \"sensor\": \"SGP-001\"\n  },\n  {\n    \"id\": 217,\n    \"manufacturer\": \"S.E. International\",\n    \"model\": \"Ranger USB\",\n    \"sensor\": \"Ludlum pancake\"\n  },\n  {\n    \"id\": 115,\n    \"manufacturer\": \"Safecast\",\n    \"model\": \"bGeigie Nano 2148\",\n    \"sensor\": \"LND7317\"\n  },\n  {\n    \"id\": 8,\n    \"manufacturer\": \"Wright_Simons\",\n    \"model\": \"01\",\n    \"sensor\": \"MQ-6\"\n  },\n  {\n    \"id\": 13,\n    \"manufacturer\": \"Aware Electronics\",\n    \"model\": \"RM-60 Pro\",\n    \"sensor\": \"LND 712\"\n  },\n  {\n    \"id\": 14,\n    \"manufacturer\": \"123\",\n    \"model\": \"123\",\n    \"sensor\": \"213\"\n  },\n  {\n    \"id\": 220,\n    \"manufacturer\": \"PhC\",\n    \"model\": \"bGeigerNalo\",\n    \"sensor\": \"LD7317\"\n  },\n  {\n    \"id\": 24,\n    \"manufacturer\": \"Eigyo-shientai　（Fukushima)\",\n    \"model\": \"Geiger　Fukushima\",\n    \"sensor\": \"STS-5\"\n  },\n  {\n    \"id\": 171,\n    \"manufacturer\": \"SafeCast\",\n    \"model\": \"bGeigie ThinkerSpatz\",\n    \"sensor\": \"RD3024\"\n  },\n  {\n    \"id\": 221,\n    \"manufacturer\": \"GMC\",\n    \"model\": \"500+\",\n    \"sensor\": \"M4011\"\n  },\n  {\n    \"id\": 9,\n    \"manufacturer\": \"Ekotest\",\n    \"model\": \"TERRA-P\",\n    \"sensor\": \"Single Geiger-Muller tube (Beta and Gamma)\"\n  },\n  {\n    \"id\": 29,\n    \"manufacturer\": \"rte\",\n    \"model\": \"rtrytr\",\n    \"sensor\": \"ytryrt\"\n  }\n]"
+  }
+}

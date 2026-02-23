@@ -1,0 +1,23 @@
+{
+  "recorded_at": "2026-02-18T06:51:50Z",
+  "request": {
+    "method": "GET",
+    "url": "https://api.safecast.org/measurements/1.json",
+    "headers": {
+      "Accept": "application/json"
+    }
+  },
+  "response": {
+    "status_code": 404,
+    "headers": {
+      "Content-Length": "34",
+      "Content-Type": "application/json; charset=utf-8",
+      "Date": "Wed, 18 Feb 2026 06:51:50 GMT",
+      "Server": "nginx",
+      "Strict-Transport-Security": "max-age=63072000; includeSubDomains",
+      "X-Request-Id": "1289c763-b343-4b82-9d0a-adb235aadc9b",
+      "X-Runtime": "0.007724"
+    },
+    "body": "{\n  \"error\": \"Not Found\",\n  \"status\": 404\n}"
+  }
+}

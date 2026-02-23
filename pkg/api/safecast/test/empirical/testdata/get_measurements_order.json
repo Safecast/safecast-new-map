@@ -1,0 +1,35 @@
+{
+  "recorded_at": "2026-02-18T06:51:50Z",
+  "request": {
+    "method": "GET",
+    "url": "https://api.safecast.org/measurements.json?order=created_at+desc\u0026per_page=1",
+    "headers": {
+      "Accept": "application/json"
+    }
+  },
+  "response": {
+    "status_code": 200,
+    "headers": {
+      "Access-Control-Allow-Headers": "*, X-Requested-With",
+      "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+      "Access-Control-Allow-Origin": "safecast.org",
+      "Access-Control-Max-Age": "100000",
+      "Cache-Control": "max-age=0, private, must-revalidate",
+      "Content-Length": "324",
+      "Content-Type": "application/json; charset=utf-8",
+      "Date": "Wed, 18 Feb 2026 06:51:50 GMT",
+      "Etag": "W/\"e9ab5a7877522321281bc26fa70cbb76\"",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+      "Server": "nginx",
+      "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+      "X-Content-Type-Options": "nosniff",
+      "X-Download-Options": "noopen",
+      "X-Frame-Options": "SAMEORIGIN",
+      "X-Permitted-Cross-Domain-Policies": "none",
+      "X-Request-Id": "a03b5199-f785-4e3c-844b-8b17a76e36e2",
+      "X-Runtime": "0.011443",
+      "X-Xss-Protection": "1; mode=block"
+    },
+    "body": "[\n  {\n    \"captured_at\": \"2022-07-23T12:58:17.000Z\",\n    \"channel_id\": null,\n    \"device_id\": null,\n    \"devicetype_id\": null,\n    \"height\": null,\n    \"id\": 205613173,\n    \"latitude\": 54.77330333333333,\n    \"location_name\": null,\n    \"longitude\": 25.18979,\n    \"measurement_import_id\": 57355,\n    \"original_id\": null,\n    \"sensor_id\": null,\n    \"station_id\": null,\n    \"unit\": \"cpm\",\n    \"user_id\": 671,\n    \"value\": 33\n  }\n]"
+  }
+}

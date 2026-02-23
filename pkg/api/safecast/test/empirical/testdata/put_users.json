@@ -1,0 +1,24 @@
+{
+  "recorded_at": "2026-02-18T06:51:53Z",
+  "request": {
+    "method": "PUT",
+    "url": "https://api.safecast.org/users",
+    "headers": {
+      "Accept": "application/json"
+    }
+  },
+  "response": {
+    "status_code": 401,
+    "headers": {
+      "Cache-Control": "no-cache",
+      "Content-Length": "61",
+      "Content-Type": "application/json; charset=utf-8",
+      "Date": "Wed, 18 Feb 2026 06:51:53 GMT",
+      "Server": "nginx",
+      "Strict-Transport-Security": "max-age=63072000; includeSubDomains",
+      "X-Request-Id": "cbd864aa-d452-4e8f-8082-71dd24c43a52",
+      "X-Runtime": "0.004104"
+    },
+    "body": "{\n  \"error\": \"You need to sign in or sign up before continuing.\"\n}"
+  }
+}

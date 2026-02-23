@@ -1,0 +1,35 @@
+{
+  "recorded_at": "2026-02-18T06:51:49Z",
+  "request": {
+    "method": "GET",
+    "url": "https://api.safecast.org/measurements.json?per_page=3",
+    "headers": {
+      "Accept": "application/json"
+    }
+  },
+  "response": {
+    "status_code": 200,
+    "headers": {
+      "Access-Control-Allow-Headers": "*, X-Requested-With",
+      "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+      "Access-Control-Allow-Origin": "safecast.org",
+      "Access-Control-Max-Age": "100000",
+      "Cache-Control": "max-age=0, private, must-revalidate",
+      "Content-Length": "971",
+      "Content-Type": "application/json; charset=utf-8",
+      "Date": "Wed, 18 Feb 2026 06:51:49 GMT",
+      "Etag": "W/\"886c1fa7350d60995bed5991cdbaa42a\"",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+      "Server": "nginx",
+      "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+      "X-Content-Type-Options": "nosniff",
+      "X-Download-Options": "noopen",
+      "X-Frame-Options": "SAMEORIGIN",
+      "X-Permitted-Cross-Domain-Policies": "none",
+      "X-Request-Id": "8b894e98-c491-4fbc-8f9c-51b63e342bdb",
+      "X-Runtime": "0.011502",
+      "X-Xss-Protection": "1; mode=block"
+    },
+    "body": "[\n  {\n    \"captured_at\": \"2022-07-23T12:58:17.000Z\",\n    \"channel_id\": null,\n    \"device_id\": null,\n    \"devicetype_id\": null,\n    \"height\": null,\n    \"id\": 205613173,\n    \"latitude\": 54.77330333333333,\n    \"location_name\": null,\n    \"longitude\": 25.18979,\n    \"measurement_import_id\": 57355,\n    \"original_id\": null,\n    \"sensor_id\": null,\n    \"station_id\": null,\n    \"unit\": \"cpm\",\n    \"user_id\": 671,\n    \"value\": 33\n  },\n  {\n    \"captured_at\": \"2022-07-23T12:58:12.000Z\",\n    \"channel_id\": null,\n    \"device_id\": null,\n    \"devicetype_id\": null,\n    \"height\": null,\n    \"id\": 205613174,\n    \"latitude\": 54.77428,\n    \"location_name\": null,\n    \"longitude\": 25.188861666666668,\n    \"measurement_import_id\": 57355,\n    \"original_id\": null,\n    \"sensor_id\": null,\n    \"station_id\": null,\n    \"unit\": \"cpm\",\n    \"user_id\": 671,\n    \"value\": 28\n  },\n  {\n    \"captured_at\": \"2022-07-23T12:58:07.000Z\",\n    \"channel_id\": null,\n    \"device_id\": null,\n    \"devicetype_id\": null,\n    \"height\": null,\n    \"id\": 205613175,\n    \"latitude\": 54.77527166666667,\n    \"location_name\": null,\n    \"longitude\": 25.18792,\n    \"measurement_import_id\": 57355,\n    \"original_id\": null,\n    \"sensor_id\": null,\n    \"station_id\": null,\n    \"unit\": \"cpm\",\n    \"user_id\": 671,\n    \"value\": 28\n  }\n]"
+  }
+}
