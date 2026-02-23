@@ -184,6 +184,12 @@ aws cloudfront get-distribution-config --id E12FYIQ8RRXOJ1 > /tmp/cf.json
   aws cloudfront create-invalidation --distribution-id E12FYIQ8RRXOJ1 --paths "/*"
   ```
 
+- **Swagger Documentation:** The MCP server's Swagger docs at `/docs/` are configured with:
+  - Host: `simplemap.safecast.org`
+  - Base Path: `/api/mcp`
+
+  If these values need updating, edit `go/cmd/mcp-server/rest.go` annotations, regenerate with `swag init -g rest.go`, rebuild the binary, and invalidate CloudFront cache for `/docs/*`
+
 ## Related Documentation
 
 - [CloudFront Setup Guide](cloudfront-setup.md)
