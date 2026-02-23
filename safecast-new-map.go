@@ -23,6 +23,7 @@ import (
 	"encoding/xml"
 
 	"github.com/vmihailenco/msgpack/v5"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"errors"
 	"flag"
 	"fmt"
@@ -126,6 +127,11 @@ var baseURL = flag.String("base-url", "http://localhost:8765", "Base URL for the
 // synchronization, following "Clear is better than clever" by leaning on Go's
 // built-in map semantics.
 var debugIPAllowlist map[string]struct{}
+
+// tileCache stores precomputed clustered markers to avoid expensive on-the-fly clustering
+// for frequently requested map tiles. The cache uses a simple LRU strategy to limit memory usage.
+var tileCache *lru.Cache[string, []database.Marker]
+var tileCacheMu sync.RWMutex // Protects access to the tileCache
 
 // usageSection groups CLI flags so operators can scan help output quickly. This keeps
 // the help text approachable without duplicating flag registration everywhere.
@@ -381,6 +387,11 @@ func init() {
 	// working even when auxiliary files are skipped; relying on init avoids extra
 	// coordination primitives and mirrors Go's preference for simplicity.
 	drivers.Ready()
+	
+	// Initialize the tile cache to store precomputed clustered markers
+	// Using a cache size of 1000 entries which should be sufficient for most use cases
+	tileCache, _ = lru.New[string, []database.Marker](1000)
+	
 	// CLI usage grouping is also configured once during init so every entry point
 	// inherits the readable help layout without repeating boilerplate.
 	configureCLIUsage()
@@ -4292,6 +4303,13 @@ func processAndStoreMarkersWithContext(
 		uploadProgress.Unlock()
 	}()
 
+	// Invalidate cache entries that might be affected by the new markers
+	// Since we don't know exactly which tiles are affected, we clear the entire cache
+	// In a production system, we might want to be more selective about cache invalidation
+	tileCacheMu.Lock()
+	tileCache.Purge() // Clear all cached entries
+	tileCacheMu.Unlock()
+	
 	logT(trackID, "Store", "✔ stored (new %d markers)", len(allZoom))
 	return bbox, trackID, nil
 }
@@ -4437,6 +4455,11 @@ func newBytesFile(data []byte) *bytesFile {
 }
 
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
+	// Prevent CloudFront from caching upload responses (user-specific, dynamic)
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+
 	if err := r.ParseMultipartForm(100 << 20); err != nil {
 		http.Error(w, "multipart parse error", http.StatusBadRequest)
 		return
@@ -4486,14 +4509,15 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Extract authenticated user if present
-	var userID, username string
+	var internalUserID string
 	if user, ok := auth.GetUserFromContext(r.Context()); ok {
-		userID = fmt.Sprintf("%d", user.ID)
-		username = user.Username
-		if username == "" {
-			username = user.Email
+		internalUserID = fmt.Sprintf("%d", user.ID)
+		displayName := user.Username
+		if displayName == "" {
+			displayName = user.Email
 		}
-		logT(trackID, "Upload", "authenticated user: %s (ID: %s)", username, userID)
+		logT(trackID, "Upload", "authenticated user: %s (ID: %s, Email: %s, API Key: %s)",
+			displayName, internalUserID, user.Email, user.APIKey)
 	}
 
 	// Initialize progress tracker
@@ -4632,20 +4656,22 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			_ = db.DB.QueryRowContext(context.Background(), detectorQuery, trackID).Scan(&detector)
 
 			upload := database.Upload{
-				Filename:      fd.filename,
-				FileType:      fd.ext,
-				TrackID:       trackID,
-				FileSize:      fd.size,
-				UploadIP:      clientIP,
-				RecordingDate: recordingDate,
-				CreatedAt:     0,
-				Detector:      detector,
-				UserID:        userID,
-				Username:      username,
-				Source:        "user-upload",
+				Filename:       fd.filename,
+				FileType:       fd.ext,
+				TrackID:        trackID,
+				FileSize:       fd.size,
+				UploadIP:       clientIP,
+				RecordingDate:  recordingDate,
+				CreatedAt:      0,
+				Detector:       detector,
+				InternalUserID: internalUserID, // Internal user ID from authenticated session
+				Source:         "user-upload",
 			}
+			logT(trackID, "Upload", "inserting upload record: user_id=%s, filename=%s", internalUserID, fd.filename)
 			if _, uploadErr := db.InsertUpload(context.Background(), upload); uploadErr != nil {
 				logT(trackID, "Upload", "warning: failed to track upload: %v", uploadErr)
+			} else {
+				logT(trackID, "Upload", "✓ upload record inserted successfully")
 			}
 
 			// Update bounds
@@ -4823,6 +4849,11 @@ func debugEnabledForRequest(r *http.Request) bool {
 }
 
 func mapHandler(w http.ResponseWriter, r *http.Request) {
+	// Prevent CloudFront from caching pages that show different content based on login status
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+
 	lang := getPreferredLanguage(r)
 
 	// Готовим шаблон
@@ -4909,6 +4940,11 @@ func mapHandler(w http.ResponseWriter, r *http.Request) {
 // homeHandler serves the home page with location search interface.
 // The home page shows an empty map with a centered modal prompting for location entry.
 func homeHandler(w http.ResponseWriter, r *http.Request) {
+	// Prevent CloudFront from caching pages that show different content based on login status
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+
 	lang := getPreferredLanguage(r)
 
 	// Prepare template
@@ -5199,6 +5235,54 @@ func spectrumDownloadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// trackInfoHandler returns lightweight upload metadata for a track.
+// GET /api/track-info/{trackID}
+func trackInfoHandler(w http.ResponseWriter, r *http.Request) {
+	if db == nil || db.DB == nil {
+		http.Error(w, "Database not available", http.StatusServiceUnavailable)
+		return
+	}
+	trackID := strings.TrimPrefix(r.URL.Path, "/api/track-info/")
+	if trackID == "" {
+		http.Error(w, "Missing track ID", http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+	var username, detector string
+	var recordingDate int64
+
+	var query string
+	switch *dbType {
+	case "pgx", "duckdb":
+		query = `SELECT COALESCE(username, ''), COALESCE(detector, ''),
+		         COALESCE(EXTRACT(EPOCH FROM recording_date)::BIGINT, 0)
+		         FROM uploads WHERE track_id = $1 LIMIT 1`
+	default:
+		query = `SELECT COALESCE(username, ''), COALESCE(detector, ''),
+		         COALESCE(recording_date, 0)
+		         FROM uploads WHERE track_id = ? LIMIT 1`
+	}
+
+	err := db.DB.QueryRowContext(ctx, query, trackID).Scan(&username, &detector, &recordingDate)
+	if err != nil {
+		// No upload record found — return empty info rather than error
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+		w.Write([]byte(`{"trackID":"` + trackID + `"}`))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "public, max-age=3600")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"trackID":       trackID,
+		"username":      username,
+		"detector":      detector,
+		"recordingDate": recordingDate,
+	})
+}
+
 // markersWithSpectraHandler returns markers that have associated spectral data.
 // GET /api/markers/spectra?minLat=...&maxLat=...&minLon=...&maxLon=...
 func markersWithSpectraHandler(w http.ResponseWriter, r *http.Request) {
@@ -5359,7 +5443,16 @@ func formatUploadRow(upload database.Upload, password string) string {
 
 	// Format user display (username + ID)
 	userDisplay := "-"
-	if upload.UserID != "" {
+	if upload.InternalUserID != "" {
+		// Internal user (authenticated upload)
+		userText := upload.Username
+		if userText == "" {
+			userText = upload.InternalUserID
+		}
+		userDisplay = fmt.Sprintf(`<a href="/api/admin/uploads?password=%s&user_id=%s">%s</a>`,
+			password, upload.InternalUserID, userText)
+	} else if upload.UserID != "" {
+		// External user (Safecast API import)
 		userText := upload.UserID
 		if upload.Username != "" {
 			userText = fmt.Sprintf("%s (%s)", upload.Username, upload.UserID)
@@ -5406,9 +5499,9 @@ func formatUploadRow(upload database.Upload, password string) string {
 func checkAdminAuth(w http.ResponseWriter, r *http.Request) (bool, string) {
 	// First check if user is authenticated via session and is admin
 	if user, ok := auth.GetUserFromContext(r.Context()); ok && user.IsAdmin {
-		// For backwards compatibility, return a dummy password value for templates
-		// This allows existing links in the HTML to still work
-		return true, "session"
+		// For backwards compatibility, return an empty password value for templates
+		// When using session auth, we don't need password in URLs
+		return true, ""
 	}
 
 	// Fall back to URL password authentication
@@ -5428,7 +5521,13 @@ func checkAdminAuth(w http.ResponseWriter, r *http.Request) (bool, string) {
 
 // adminUploadsHandler lists all file uploads with metadata.
 // GET /api/admin/uploads?password=xxx&limit=100
+// adminUploadsHandler lists all file uploads with metadata and search functionality
 func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
+	// Prevent CloudFront from caching this dynamic admin page
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+
 	authorized, password := checkAdminAuth(w, r)
 	if !authorized {
 		return
@@ -5496,6 +5595,13 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 <html>
 <head>
 	<title>Admin - File Uploads</title>
+
+	<!-- favicon -->
+	<link rel="apple-touch-icon" sizes="180x180" href="/static/images/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/static/images/favicon-16x16.png">
+	<link rel="manifest" href="/static/images/site.webmanifest">
+
 	<style>
 		:root {
 			--bg-primary: #f5f5f5;
@@ -5662,7 +5768,7 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		</span>
 		<span style="margin-left: 20px;">
 			<label for="searchInput"><strong>Search:</strong></label>
-			<input type="text" id="searchInput" value="` + search + `" placeholder="Search all fields..." style="margin-left: 5px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); width: 200px;" onkeypress="if(event.key === 'Enter') performSearch()">
+			<input type="text" id="searchInput" value="` + search + `" placeholder="Search all fields..." autocomplete="off" style="margin-left: 5px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); width: 200px;" onkeypress="if(event.key === 'Enter') performSearch()">
 			<button onclick="performSearch()" style="margin-left: 5px; padding: 4px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--link-color); color: white; cursor: pointer;">🔍</button>
 			` + func() string {
 		if search != "" {
@@ -5673,9 +5779,16 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		</span>`
 
 	if userID != "" {
-		clearFilterURL := "/api/admin/uploads?password=" + password
+		params := []string{}
+		if password != "" {
+			params = append(params, "password="+password)
+		}
 		if search != "" {
-			clearFilterURL += "&search=" + url.QueryEscape(search)
+			params = append(params, "search="+url.QueryEscape(search))
+		}
+		clearFilterURL := "/api/admin/uploads"
+		if len(params) > 0 {
+			clearFilterURL += "?" + strings.Join(params, "&")
 		}
 		html += ` | <strong>Filtered by User ID:</strong> ` + userID + ` <a href="` + clearFilterURL + `">[Clear Filter]</a>`
 	}
@@ -5689,14 +5802,19 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Helper function to build query parameters
 	buildURL := func(pageNum int) string {
-		urlStr := "?password=" + password + "&page=" + strconv.Itoa(pageNum) + "&limit=" + strconv.Itoa(limit)
+		params := []string{}
+		if password != "" {
+			params = append(params, "password="+password)
+		}
+		params = append(params, "page="+strconv.Itoa(pageNum))
+		params = append(params, "limit="+strconv.Itoa(limit))
 		if userID != "" {
-			urlStr += "&user_id=" + userID
+			params = append(params, "user_id="+userID)
 		}
 		if search != "" {
-			urlStr += "&search=" + url.QueryEscape(search)
+			params = append(params, "search="+url.QueryEscape(search))
 		}
-		return urlStr
+		return "?" + strings.Join(params, "&")
 	}
 
 	// Previous button
@@ -6621,6 +6739,11 @@ func adminImportFromSafecastHandler(w http.ResponseWriter, r *http.Request) {
 // adminTracksHandler lists all tracks in the system with statistics.
 // GET /api/admin/tracks?password=xxx&limit=1000
 func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
+	// Prevent CloudFront from caching this dynamic admin page
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+
 	authorized, password := checkAdminAuth(w, r)
 	if !authorized {
 		return
@@ -6782,6 +6905,13 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 <html>
 <head>
 	<title>Admin - All Tracks</title>
+
+	<!-- favicon -->
+	<link rel="apple-touch-icon" sizes="180x180" href="/static/images/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/static/images/favicon-16x16.png">
+	<link rel="manifest" href="/static/images/site.webmanifest">
+
 	<style>
 		:root {
 			--bg-primary: #f5f5f5;
@@ -6942,7 +7072,7 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 		</span>
 		<span style="margin-left: 20px;">
 			<label for="searchInput"><strong>Search:</strong></label>
-			<input type="text" id="searchInput" value="` + search + `" placeholder="Search all fields..." style="margin-left: 5px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); width: 200px;" onkeypress="if(event.key === 'Enter') performSearch()">
+			<input type="text" id="searchInput" value="` + search + `" placeholder="Search all fields..." autocomplete="off" style="margin-left: 5px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); width: 200px;" onkeypress="if(event.key === 'Enter') performSearch()">
 			<button onclick="performSearch()" style="margin-left: 5px; padding: 4px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--link-color); color: white; cursor: pointer;">🔍</button>
 			` + func() string {
 		if search != "" {
@@ -6956,7 +7086,11 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 		html += ` | <strong>Search:</strong> "` + search + `"`
 	}
 	if detectorFilter != "" {
-		html += ` | <strong>Detector:</strong> "` + detectorFilter + `" <a href="/api/admin/tracks?password=` + password + `" style="color: var(--link-color);">(clear)</a>`
+		clearURL := "/api/admin/tracks"
+		if password != "" {
+			clearURL += "?password=" + password
+		}
+		html += ` | <strong>Detector:</strong> "` + detectorFilter + `" <a href="` + clearURL + `" style="color: var(--link-color);">(clear)</a>`
 	}
 
 	// Add pagination controls inline in the summary
@@ -6964,14 +7098,19 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Helper function to build query parameters
 	buildURL := func(pageNum int) string {
-		urlStr := "?password=" + password + "&page=" + strconv.Itoa(pageNum) + "&limit=" + strconv.Itoa(limit)
+		params := []string{}
+		if password != "" {
+			params = append(params, "password="+password)
+		}
+		params = append(params, "page="+strconv.Itoa(pageNum))
+		params = append(params, "limit="+strconv.Itoa(limit))
 		if search != "" {
-			urlStr += "&search=" + url.QueryEscape(search)
+			params = append(params, "search="+url.QueryEscape(search))
 		}
 		if detectorFilter != "" {
-			urlStr += "&detector=" + url.QueryEscape(detectorFilter)
+			params = append(params, "detector="+url.QueryEscape(detectorFilter))
 		}
-		return urlStr
+		return "?" + strings.Join(params, "&")
 	}
 
 	// Previous button
@@ -7480,6 +7619,58 @@ func adminBackfillCountriesHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// adminCacheHandler provides administrative access to cache management functions
+func adminCacheHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Check for admin access: session-based or password-based
+	isSessionAdmin := false
+	if user, ok := auth.GetUserFromContext(r.Context()); ok && user.IsAdmin {
+		isSessionAdmin = true
+	}
+	if !isSessionAdmin {
+		if *adminPassword == "" {
+			http.Error(w, "Admin endpoints are disabled - please login as admin", http.StatusForbidden)
+			return
+		}
+		password := r.URL.Query().Get("password")
+		if password != *adminPassword {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+	}
+
+	action := r.URL.Query().Get("action")
+	switch action {
+	case "clear":
+		tileCacheMu.Lock()
+		tileCache.Purge()
+		tileCacheMu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":  "success",
+			"message": "Cache cleared successfully",
+		})
+	case "stats":
+		tileCacheMu.RLock()
+		size := tileCache.Len()
+		capacity := 1000 // Our cache capacity
+		tileCacheMu.RUnlock()
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":   "success",
+			"size":     size,
+			"capacity": capacity,
+		})
+	default:
+		http.Error(w, "Invalid action. Use ?action=clear or ?action=stats", http.StatusBadRequest)
+		return
+	}
+}
+
 func backfillCountries() {
 	const batchSize = 50000
 	const updateChunk = 10000 // max IDs per UPDATE statement
@@ -7908,6 +8099,20 @@ func qrPngHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// generateTileCacheKey creates a unique key for caching clustered markers based on request parameters
+// The key includes zoom level, bounding box, track ID, speed filters, and date filters
+func generateTileCacheKey(zoom int, minLat, minLon, maxLat, maxLon float64, trackID, trackIDsParam string, speedRanges []database.SpeedRange, dateFrom, dateTo int64) string {
+	// Create a string representation of speed ranges
+	speedStr := ""
+	for _, sr := range speedRanges {
+		speedStr += fmt.Sprintf("%.2f-%.2f,", sr.Min, sr.Max)
+	}
+	
+	// Format the key with all relevant parameters
+	return fmt.Sprintf("tile:%d:%.6f:%.6f:%.6f:%.6f:%s:%s:%s:%d:%d", 
+		zoom, minLat, minLon, maxLat, maxLon, trackID, trackIDsParam, speedStr, dateFrom, dateTo)
+}
+
 // getMarkersHandler — берёт маркеры в заданном окне и фильтрах
 // +НОВОЕ: dateFrom/dateTo (UNIX-seconds) диапазон времени.
 func getMarkersHandler(w http.ResponseWriter, r *http.Request) {
@@ -7994,20 +8199,56 @@ func getMarkersHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Apply on-the-fly clustering based on requested zoom level
-	markers = clusterMarkersForZoom(markers, zoom)
-
-	if *safecastRealtimeEnabled {
-		// We only touch realtime tables when the operator explicitly enables the feature.
-		if rt, err := db.GetLatestRealtimeByBounds(ctx, minLat, minLon, maxLat, maxLon, *dbType); err == nil {
-			for i := range rt {
-				// Sanitise detector names on the fly so legacy rows without
-				// the new resolver still produce friendly popups.
-				rt[i].Tube = safecastrealtime.DetectorLabel(rt[i].Tube, rt[i].Transport, rt[i].DeviceName)
+	// Generate cache key based on request parameters
+	cacheKey := generateTileCacheKey(zoom, minLat, minLon, maxLat, maxLon, trackID, trackIDsParam, sr, dateFrom, dateTo)
+	
+	// Check if clustered markers are already in cache
+	tileCacheMu.RLock()
+	cachedMarkers, found := tileCache.Get(cacheKey)
+	tileCacheMu.RUnlock()
+	
+	if found {
+		// Use cached markers if available
+		markers = cachedMarkers
+		
+		// Add realtime markers if enabled (these shouldn't be cached as they change frequently)
+		if *safecastRealtimeEnabled {
+			// We only touch realtime tables when the operator explicitly enables the feature.
+			if rt, err := db.GetLatestRealtimeByBounds(ctx, minLat, minLon, maxLat, maxLon, *dbType); err == nil {
+				for i := range rt {
+					// Sanitise detector names on the fly so legacy rows without
+					// the new resolver still produce friendly popups.
+					rt[i].Tube = safecastrealtime.DetectorLabel(rt[i].Tube, rt[i].Transport, rt[i].DeviceName)
+				}
+				markers = append(markers, rt...)
+			} else {
+				log.Printf("realtime query: %v", err)
 			}
-			markers = append(markers, rt...)
-		} else {
-			log.Printf("realtime query: %v", err)
+		}
+	} else {
+		// Apply on-the-fly clustering based on requested zoom level (this is the expensive operation)
+		markers = clusterMarkersForZoom(markers, zoom)
+		
+		// Add to cache for future requests (but don't cache if there are too many markers to avoid memory issues)
+		if len(markers) < 10000 { // arbitrary limit to prevent cache bloat
+			tileCacheMu.Lock()
+			tileCache.Add(cacheKey, markers)
+			tileCacheMu.Unlock()
+		}
+		
+		// Add realtime markers if enabled
+		if *safecastRealtimeEnabled {
+			// We only touch realtime tables when the operator explicitly enables the feature.
+			if rt, err := db.GetLatestRealtimeByBounds(ctx, minLat, minLon, maxLat, maxLon, *dbType); err == nil {
+				for i := range rt {
+					// Sanitise detector names on the fly so legacy rows without
+					// the new resolver still produce friendly popups.
+					rt[i].Tube = safecastrealtime.DetectorLabel(rt[i].Tube, rt[i].Transport, rt[i].DeviceName)
+				}
+				markers = append(markers, rt...)
+			} else {
+				log.Printf("realtime query: %v", err)
+			}
 		}
 	}
 
@@ -8244,12 +8485,10 @@ func streamMarkersHandler(w http.ResponseWriter, r *http.Request) {
 		errCh   <-chan error
 	)
 	rtOnly := showFilter == "rt"
-	if rtOnly {
-		// Return empty channel - no historical data needed
-		emptyCh := make(chan database.Marker)
-		close(emptyCh)
-		baseSrc = emptyCh
-		errCh = nil
+	if rtOnly && trackID == "" && trackIDsParam == "" {
+		// In RT-only mode for global view, still load historical markers
+		// They will be filtered client-side, but spectrum markers should be available
+		baseSrc, errCh = db.StreamMarkersByZoomAndBounds(ctx, rawZoom, minLat, minLon, maxLat, maxLon, *dbType)
 	} else if trackID != "" {
 		baseSrc, errCh = db.StreamMarkersByTrackIDZoomAndBounds(ctx, trackID, rawZoom, minLat, minLon, maxLat, maxLon, *dbType)
 	} else if trackIDsParam != "" {
@@ -9279,8 +9518,16 @@ func main() {
 		log.Fatalf("static fs: %v", err)
 	}
 
+	// Serve static files from embedded filesystem - this must come BEFORE the catch-all route
+	// to avoid the map handler catching static file requests
 	http.Handle("/static/", http.StripPrefix("/static/",
 		http.FileServer(http.FS(staticFS))))
+	
+	// Serve JS files from the physical directory as a workaround
+	// This ensures the marker-worker.js file is accessible to the browser
+	// Access files from public_html root and let StripPrefix handle the path
+	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("public_html/"))))
+	
 	http.HandleFunc("/home", homeHandler)
 	http.HandleFunc("/", mapHandler)
 	// Serve license documents straight from the embedded filesystem so UI
@@ -9296,6 +9543,82 @@ func main() {
 		http.HandleFunc("/api/auth/reset-password", authManager.ResetPasswordHandler)
 		http.HandleFunc("/api/auth/verify-email", authManager.VerifyEmailHandler)
 		http.HandleFunc("/api/user/profile", authManager.RequireAuth(authManager.ProfileHandler))
+		http.HandleFunc("/api/user/change-password", authManager.RequireAuth(authManager.ChangePasswordHandler))
+		http.HandleFunc("/api/user/uploads", authManager.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+			// Prevent CloudFront from caching user-specific data
+			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
+			w.Header().Set("Pragma", "no-cache")
+			w.Header().Set("Expires", "0")
+
+			if r.Method != http.MethodGet {
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			user, ok := auth.GetUserFromContext(r.Context())
+			if !ok {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+			if db == nil || db.DB == nil {
+				http.Error(w, "Database not available", http.StatusServiceUnavailable)
+				return
+			}
+
+			limit := 100
+			if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+				if parsed, err := strconv.Atoi(limitStr); err == nil && parsed > 0 {
+					// Cap at 10000 to allow users to load all their uploads
+					if parsed > 10000 {
+						limit = 10000
+					} else {
+						limit = parsed
+					}
+				}
+			}
+			offset := 0
+			if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
+				if parsed, err := strconv.Atoi(offsetStr); err == nil && parsed >= 0 {
+					offset = parsed
+				}
+			}
+
+			// Query uploads for this authenticated user (using internal_user_id)
+			internalUserID := fmt.Sprintf("%d", user.ID)
+
+			ctx := r.Context()
+			uploads, err := db.GetUploadsPaginated(ctx, limit, offset, internalUserID, "")
+			if err != nil {
+				log.Printf("Error fetching user uploads: %v", err)
+				http.Error(w, "Failed to fetch uploads", http.StatusInternalServerError)
+				return
+			}
+
+			totalCount, _ := db.CountUploads(ctx, internalUserID, "")
+
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"uploads": uploads,
+				"total":   totalCount,
+				"limit":   limit,
+				"offset":  offset,
+			})
+		}))
+
+		// Serve profile page
+		http.HandleFunc("/profile", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			// Prevent CloudFront from caching user-specific pages
+			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
+			w.Header().Set("Pragma", "no-cache")
+			w.Header().Set("Expires", "0")
+
+			data, err := content.ReadFile("public_html/profile.html")
+			if err != nil {
+				http.Error(w, "Profile page not found", http.StatusNotFound)
+				return
+			}
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Write(data)
+		}))
 
 		// Serve reset-password page
 		http.HandleFunc("/reset-password", func(w http.ResponseWriter, r *http.Request) {
@@ -9330,6 +9653,11 @@ func main() {
 
 		// Serve admin users page
 		http.HandleFunc("/admin/users", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			// Prevent CloudFront from caching this dynamic admin page
+			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
+			w.Header().Set("Pragma", "no-cache")
+			w.Header().Set("Expires", "0")
+
 			if !checkAdminAccess(w, r) {
 				return
 			}
@@ -9340,6 +9668,15 @@ func main() {
 			}
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.Write(data)
+		}))
+
+		// Serve admin uploads page (wrapper for /api/admin/uploads)
+		http.HandleFunc("/admin/uploads", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminAccess(w, r) {
+				return
+			}
+			// Forward to the API endpoint which handles the uploads listing
+			adminUploadsHandler(w, r)
 		}))
 
 		// Admin API routes
@@ -9370,6 +9707,8 @@ func main() {
 				// Check if it's a reset password action
 				if strings.HasSuffix(r.URL.Path, "/reset-password") {
 					authManager.AdminResetUserPasswordHandler(w, r)
+				} else if strings.HasSuffix(r.URL.Path, "/regenerate-api-key") {
+					authManager.AdminRegenerateAPIKeyHandler(w, r)
 				} else {
 					http.Error(w, "Not found", http.StatusNotFound)
 				}
@@ -9400,6 +9739,7 @@ func main() {
 	http.HandleFunc("/api/spectrum/", spectrumHandler)                                 // GET /api/spectrum/{markerID} and /api/spectrum/{markerID}/download
 	http.HandleFunc("/api/markers/spectra", markersWithSpectraHandler)                 // GET /api/markers/spectra
 	http.HandleFunc("/api/tracks/bounds", apiTracksBoundsHandler)                      // GET /api/tracks/bounds?trackIDs=...
+	http.HandleFunc("/api/track-info/", trackInfoHandler)                              // GET /api/track-info/{trackID}
 	http.HandleFunc("/api/update-coordinates", updateCoordinatesHandler)               // POST /api/update-coordinates
 	// Admin endpoints - wrap with OptionalAuth to allow session-based admin auth
 	if authManager != nil {
@@ -9410,6 +9750,7 @@ func main() {
 		http.HandleFunc("/api/admin/delete", authManager.OptionalAuth(adminDeleteTrackHandler))
 		http.HandleFunc("/api/admin/delete-multiple", authManager.OptionalAuth(adminDeleteMultipleTracksHandler))
 		http.HandleFunc("/api/admin/import-from-safecast", authManager.OptionalAuth(adminImportFromSafecastHandler))
+		http.HandleFunc("/api/admin/cache", authManager.OptionalAuth(adminCacheHandler))
 	} else {
 		http.HandleFunc("/api/admin/uploads", adminUploadsHandler)
 		http.HandleFunc("/api/admin/tracks", adminTracksHandler)
@@ -9418,6 +9759,7 @@ func main() {
 		http.HandleFunc("/api/admin/delete", adminDeleteTrackHandler)
 		http.HandleFunc("/api/admin/delete-multiple", adminDeleteMultipleTracksHandler)
 		http.HandleFunc("/api/admin/import-from-safecast", adminImportFromSafecastHandler)
+		http.HandleFunc("/api/admin/cache", adminCacheHandler)
 	}
 
 	// API endpoints ship JSON/archives. Keeping registration close to other

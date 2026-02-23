@@ -43,7 +43,9 @@ Natural background radiation is typically low and safe. This map helps identify 
 
 **Advanced Capabilities**
 - Gamma spectrum analysis (.spe, .n42 formats)
+- User authentication with API key support
 - Admin panel for content moderation
+- Comprehensive authentication logging
 - Short link generation for sharing
 - Multi-language interface
 - Auto-update system
@@ -83,6 +85,8 @@ Deploy with HTTPS using Let's Encrypt:
 ```
 
 Requires ports 80 and 443 open for certificate validation.
+
+**Note for CloudFront/CDN deployments:** If your domain uses CloudFront or another CDN for web traffic, SSH/rsync deployment must use the server's IP address directly, not the domain name. See [CloudFront Setup Guide](docs/cloudfront-setup.md) for details.
 
 ### Option 4: Docker
 
@@ -142,6 +146,15 @@ sudo dnf install postgis34_16
 | `-default-zoom` | 11 | Initial map zoom level |
 | `-default-layer` | OpenStreetMap | Base map layer |
 | `-admin-password` | - | Enable admin panel (track management) |
+| `-allow-registration` | false | Enable user registration |
+| `-require-auth` | false | Require authentication for uploads |
+| `-smtp-host` | - | SMTP server for email (e.g., smtp.gmail.com) |
+| `-smtp-port` | 587 | SMTP server port |
+| `-smtp-username` | - | SMTP authentication username |
+| `-smtp-password` | - | SMTP authentication password |
+| `-smtp-from` | - | Email "From" address |
+| `-session-secret` | - | Secret key for session encryption |
+| `-base-url` | - | Base URL for email links (e.g., https://example.com) |
 | `-safecast-realtime` | false | Poll live Safecast device data |
 | `-safecast-fetcher` | false | Auto-sync approved bGeigie imports |
 | `-json-archive-frequency` | weekly | Archive generation: daily, weekly, monthly, yearly |
@@ -234,6 +247,151 @@ Enable the admin panel with:
 - Delete inappropriate content
 - Monitor system statistics
 - Manage user contributions
+
+---
+
+## User Authentication & API Keys
+
+### User Registration & Login
+
+Enable user registration and authentication with email support:
+
+```bash
+./safecast-new-map \
+  -allow-registration \
+  -smtp-host smtp.gmail.com \
+  -smtp-port 587 \
+  -smtp-username your-email@gmail.com \
+  -smtp-password your-app-password \
+  -smtp-from your-email@gmail.com \
+  -session-secret "your-random-secret-key" \
+  -base-url "https://your-domain.com"
+```
+
+**Features:**
+- Email-based user registration with verification
+- Session-based authentication (30-day sessions)
+- Password reset via email
+- User profile pages with upload history
+- Upload tracking per user
+
+### API Key Authentication
+
+Every registered user receives a unique API key that can be used for:
+- **Web login** - Alternative to password authentication
+- **Programmatic uploads** - Automated data submission
+- **API access** - Protected endpoint authentication
+
+**Two ways to authenticate:**
+
+1. **Password Login** (traditional):
+   ```json
+   POST /api/auth/login
+   {
+     "email": "user@example.com",
+     "password": "your-password"
+   }
+   ```
+
+2. **API Key Login** (new):
+   ```json
+   POST /api/auth/login
+   {
+     "email": "user@example.com",
+     "api_key": "your-20-char-api-key"
+   }
+   ```
+
+**Using API Keys with HTTP requests:**
+   ```bash
+   # Header method (recommended)
+   curl -H "X-API-Key: your-api-key" https://your-domain.com/api/protected-endpoint
+
+   # Query parameter method
+   curl "https://your-domain.com/api/protected-endpoint?api_key=your-api-key"
+   ```
+
+### Finding Your API Key
+
+1. Log in to your account
+2. Click your username → "Profile"
+3. Your API key is displayed in the "API Key" section
+4. Click "Copy" to copy it to clipboard
+
+**Security Note:** Treat your API key like a password. Don't share it or commit it to version control.
+
+### Admin: API Key Management
+
+Admins can regenerate API keys for any user:
+
+```bash
+# Regenerate API key for user ID 42
+curl -X POST "https://your-domain.com/api/admin/users/42/regenerate-api-key?password=admin-password"
+```
+
+**Response:**
+```json
+{
+  "message": "API key regenerated successfully",
+  "api_key": "new-20-char-key",
+  "user_id": 42
+}
+```
+
+The user will receive an email with their new API key. The old key becomes invalid immediately.
+
+### Authentication Logging
+
+All authentication events are logged for security monitoring:
+
+**Logged Events:**
+- ✅ Successful logins (with method: password or api_key)
+- ✅ Failed login attempts (with detailed failure reasons)
+- ✅ User registrations
+- ✅ Email verifications
+- ✅ Password changes
+- ✅ User logouts
+- ✅ API key regenerations
+
+**Log Format:**
+```
+AUTH: Successful login - user_id=42 email=user@example.com method=password ip=192.168.1.100 user_agent=Mozilla/5.0...
+AUTH: Failed login attempt - email=user@example.com method=password reason=invalid_password ip=192.168.1.100
+AUTH: New user registered - user_id=43 email=new@example.com username=john_doe ip=192.168.1.100
+```
+
+**Filtering logs:**
+```bash
+# View all authentication events
+grep "AUTH:" /var/log/safecast.log
+
+# View failed login attempts
+grep "AUTH: Failed login" /var/log/safecast.log
+
+# Monitor for brute force attacks
+grep "AUTH: Failed login.*ip=192.168.1.100" /var/log/safecast.log | wc -l
+```
+
+### Database Migrations
+
+Add user authentication to existing databases:
+
+**PostgreSQL:**
+```bash
+psql -h 127.0.0.1 -U postgres -d safecast -f migrations/create_users_table.sql
+psql -h 127.0.0.1 -U postgres -d safecast -f migrations/link_historical_uploads_to_users.sql
+```
+
+**Key columns in users table:**
+- `id` - Unique user identifier
+- `email` - User email (unique)
+- `password_hash` - Bcrypt hashed password
+- `api_key` - 20-character unique API key
+- `username` - Display name
+- `email_verified` - Email verification status
+- `is_active` - Account status
+- `is_admin` - Admin privileges
+- `created_at`, `updated_at`, `last_login_at` - Timestamps
 
 ---
 
@@ -548,6 +706,14 @@ If port 8765 is already in use:
 ```bash
 ./safecast-new-map -port 8080
 ```
+### Production Deployment
+
+For deploying to production servers with CloudFront/CDN setup, see:
+- [Deployment Guide](docs/DEPLOYMENT.md) - Complete deployment procedures and troubleshooting
+- [GitHub Actions Guide](GITHUB_ACTIONS_GUIDE.md) - Automated CI/CD setup
+- [CloudFront Setup](docs/cloudfront-setup.md) - CDN configuration details
+
+**Important:** When using CloudFront, SSH and rsync must use the server's IP address directly, not the domain name.
 
 ---
 

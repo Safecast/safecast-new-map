@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -25,9 +26,11 @@ type Manager struct {
 // This allows for dependency injection and easier testing.
 type EmailSender interface {
 	SendWelcomeEmail(to, username, verificationURL string) error
+	SendWelcomeEmailWithAPIKey(to, username, verificationURL, apiKey string) error
 	SendPasswordSetupEmail(to, username, setupURL string) error
 	SendPasswordResetEmail(to, resetURL string) error
 	SendPasswordChangedEmail(to string) error
+	SendAPIKeyRegeneratedEmail(to, username, newAPIKey string) error
 }
 
 // WithAuthContext adds a user to the request context.
@@ -256,20 +259,22 @@ func (m *Manager) RequireAuthOrAPIKey(next http.HandlerFunc) http.HandlerFunc {
 
 // setSessionCookie sets the session cookie in the response.
 func (m *Manager) setSessionCookie(w http.ResponseWriter, sessionID string, expiresAt int64) {
+	secure := !strings.HasPrefix(m.BaseURL, "http://")
 	cookie := &http.Cookie{
 		Name:     m.SessionCookieName,
 		Value:    sessionID,
 		Path:     "/",
 		Expires:  time.Unix(expiresAt, 0),
-		HttpOnly: true, // Prevent JavaScript access (XSS protection)
-		Secure:   true, // Only send over HTTPS (should be true in production)
-		SameSite: http.SameSiteLaxMode, // CSRF protection
+		HttpOnly: true,                    // Prevent JavaScript access (XSS protection)
+		Secure:   secure,                  // Only send over HTTPS in production
+		SameSite: http.SameSiteLaxMode,    // CSRF protection
 	}
 	http.SetCookie(w, cookie)
 }
 
 // clearSessionCookie clears the session cookie in the response.
 func (m *Manager) clearSessionCookie(w http.ResponseWriter) {
+	secure := !strings.HasPrefix(m.BaseURL, "http://")
 	cookie := &http.Cookie{
 		Name:     m.SessionCookieName,
 		Value:    "",
@@ -277,7 +282,7 @@ func (m *Manager) clearSessionCookie(w http.ResponseWriter) {
 		Expires:  time.Unix(0, 0),
 		MaxAge:   -1,
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   secure,
 		SameSite: http.SameSiteLaxMode,
 	}
 	http.SetCookie(w, cookie)

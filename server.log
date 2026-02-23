@@ -1,60 +1,223 @@
-2026/01/14 22:06:05 PostgreSQL connection pool tuned: MaxOpenConns=64 (4×16 CPU cores), idle_timeout=2m, lifetime=5m
-2026/01/14 22:06:05 Using database driver: pgx with DSN: postgres://postgres:@127.0.0.1:5432/safecast?sslmode=prefer
-2026/01/14 22:06:05 Authentication system enabled
-2026/01/14 22:06:05 realtime poller start: url=https://tt.safecast.org/devices interval=5m0s
-2026/01/14 22:06:05 [safecast-fetcher] start: interval=5m0s batch=10 start_date= backfill=false newest_first=false
-2026/01/14 22:06:05 safecast API fetcher enabled: interval=5m0s batch=10 start_date= backfill=false newest_first=false
-2026/01/14 22:06:05 json archive disabled: set -json-archive-path to enable tarball generation
-2026/01/14 22:06:05 ⏳ background index build scheduled (engine=pgx). Listeners are up; pages may be slower until indexes are ready.
-2026/01/14 22:06:05 ⏳ background index build scheduled (engine=pgx). Listeners are up; pages may be slower until indexes are ready.
-2026/01/14 22:06:05 HTTP server ➜ http://localhost:8765
-2026/01/14 22:06:05 [safecast-fetcher] poll: checking for imports after ID 70103
-2026/01/14 22:06:05 [safecast-fetcher] page 1: fetched 25 imports (IDs 70103-70055)
-2026/01/14 22:06:05 [safecast-fetcher] page 1: found 0 new imports
-2026/01/14 22:06:06 [safecast-fetcher] page 2: fetched 25 imports (IDs 70054-70006)
-2026/01/14 22:06:06 [safecast-fetcher] page 2: found 0 new imports
-2026/01/14 22:06:06 [safecast-fetcher] page 3: fetched 25 imports (IDs 70003-69956)
-2026/01/14 22:06:06 [safecast-fetcher] page 3: found 0 new imports
-2026/01/14 22:06:06 [safecast-fetcher] page 4: fetched 25 imports (IDs 69955-69873)
-2026/01/14 22:06:06 [safecast-fetcher] page 4: found 0 new imports
-2026/01/14 22:06:06 [safecast-fetcher] page 5: fetched 25 imports (IDs 69872-69841)
-2026/01/14 22:06:06 [safecast-fetcher] page 5: found 0 new imports
-2026/01/14 22:06:06 [safecast-fetcher] normal mode: stopped after 5 pages
-2026/01/14 22:06:06 [safecast-fetcher] poll: found 0 new approved imports
-2026/01/14 22:06:10 realtime fetch: devices 1502
-2026/01/14 22:06:10 realtime sample: id=geigiecast:61099 name="" lat=22.318070 lon=114.157710 val=53.000000 unit=lnd_7318u
-2026/01/14 22:06:11 realtime poll: devices 113 stored 358 next=5m0s
-2026/01/14 22:06:11 realtime summary: ??:1 avg=0.09 Canada (CA):3 avg=0.08 Georgia (GE):1 avg=0.09 Germany (DE):1 avg=0.13 Japan (JP):26 avg=0.22 Switzerland (CH):1 avg=0.12 Taiwan (TW):2 avg=0.13 Ukraine (UA):56 avg=0.15 United States of America (US):22 avg=0.10 added=113 removed=0
-2026/01/14 22:06:24 ✅ track registry ready for fast pagination
-2026/01/14 22:06:24 ▶️  start index idx_markers_zoom_bounds
-2026/01/14 22:06:24 ✅ index idx_markers_zoom_bounds ready in 99ms
-2026/01/14 22:06:24 ▶️  start index idx_markers_trackid_zoom_bounds
-2026/01/14 22:06:24 ✅ index idx_markers_trackid_zoom_bounds ready in 1ms
-2026/01/14 22:06:24 ▶️  start index idx_markers_zoom_bounds_speed
-2026/01/14 22:06:24 ✅ index idx_markers_zoom_bounds_speed ready in 1ms
-2026/01/14 22:06:24 ▶️  start index idx_markers_identity_probe
-2026/01/14 22:06:24 ✅ index idx_markers_identity_probe ready in 1ms
-2026/01/14 22:06:24 ▶️  start index idx_markers_trackid
-2026/01/14 22:06:24 ✅ index idx_markers_trackid ready in 1ms
-2026/01/14 22:06:24 ▶️  start index idx_markers_date_trackid
-2026/01/14 22:06:24 ✅ index idx_markers_date_trackid ready in 1ms
-2026/01/14 22:06:24 ▶️  start index idx_markers_date_trackid_id
-2026/01/14 22:06:24 ✅ index idx_markers_date_trackid_id ready in 1ms
-2026/01/14 22:06:24 ▶️  start index idx_markers_trackid_date
-2026/01/14 22:06:24 ✅ index idx_markers_trackid_date ready in 1ms
-2026/01/14 22:06:24 ▶️  start index idx_markers_trackid_id
-2026/01/14 22:06:24 ✅ index idx_markers_trackid_id ready in 1ms
-2026/01/14 22:06:24 ▶️  start index idx_markers_date
-2026/01/14 22:06:24 ✅ index idx_markers_date ready in 1ms
-2026/01/14 22:06:24 ▶️  start index idx_markers_zoom_date
-2026/01/14 22:06:24 ✅ index idx_markers_zoom_date ready in 0s
-2026/01/14 22:06:24 ▶️  start index idx_markers_speed
-2026/01/14 22:06:24 ✅ index idx_markers_speed ready in 1ms
-2026/01/14 22:06:24 ▶️  start index idx_tracks_trackid
-2026/01/14 22:06:24 ✅ index idx_tracks_trackid ready in 0s
-2026/01/14 22:06:24 ▶️  start index idx_realtime_device_fetched
-2026/01/14 22:06:24 ✅ index idx_realtime_device_fetched ready in 1ms
-2026/01/14 22:06:24 ▶️  start index idx_realtime_device_fetched_desc
-2026/01/14 22:06:24 ✅ index idx_realtime_device_fetched_desc ready in 1ms
-2026/01/14 22:06:24 ▶️  start index idx_realtime_bounds
-2026/01/14 22:06:24 ✅ index idx_realtime_bounds ready in 1ms
+2026/02/16 11:50:39 PostgreSQL connection pool tuned: MaxOpenConns=64 (4×16 CPU cores), idle_timeout=2m, lifetime=5m
+2026/02/16 11:50:39 Using database driver: pgx with DSN: postgres://postgres:Vuuransenansenansenansen@127.0.0.1:5432/safecast?sslmode=disable
+2026/02/16 11:50:40 Authentication system enabled
+2026/02/16 11:50:40 realtime poller start: url=https://tt.safecast.org/devices interval=5m0s
+2026/02/16 11:50:40 [safecast-fetcher] start: interval=5m0s batch=10 start_date= backfill=false newest_first=false
+2026/02/16 11:50:40 safecast API fetcher enabled: interval=5m0s batch=10 start_date= backfill=false newest_first=false
+2026/02/16 11:50:40 json archive disabled: set -json-archive-path to enable tarball generation
+2026/02/16 11:50:40 ⏳ background index build scheduled (engine=pgx). Listeners are up; pages may be slower until indexes are ready.
+2026/02/16 11:50:40 HTTP server ➜ http://localhost:8765
+2026/02/16 11:50:40 ⏳ background index build scheduled (engine=pgx). Listeners are up; pages may be slower until indexes are ready.
+2026/02/16 11:50:40 [safecast-fetcher] poll: checking for imports after ID 70367
+2026/02/16 11:50:40 [safecast-fetcher] page 1: fetched 25 imports (IDs 70367-70337)
+2026/02/16 11:50:40 [safecast-fetcher] page 1: found 0 new imports
+2026/02/16 11:50:40 [safecast-fetcher] page 2: fetched 25 imports (IDs 70335-70311)
+2026/02/16 11:50:40 [safecast-fetcher] page 2: found 0 new imports
+2026/02/16 11:50:41 [safecast-fetcher] page 3: fetched 25 imports (IDs 70310-70238)
+2026/02/16 11:50:41 [safecast-fetcher] page 3: found 0 new imports
+2026/02/16 11:50:41 [safecast-fetcher] page 4: fetched 25 imports (IDs 70229-70184)
+2026/02/16 11:50:41 [safecast-fetcher] page 4: found 0 new imports
+2026/02/16 11:50:41 [safecast-fetcher] page 5: fetched 25 imports (IDs 70183-70158)
+2026/02/16 11:50:41 [safecast-fetcher] page 5: found 0 new imports
+2026/02/16 11:50:41 [safecast-fetcher] normal mode: stopped after 5 pages
+2026/02/16 11:50:41 [safecast-fetcher] poll: found 0 new approved imports
+2026/02/16 11:50:44 realtime fetch: devices 1551
+2026/02/16 11:50:44 realtime sample: id=geigiecast:61099 name="" lat=22.318070 lon=114.157710 val=53.000000 unit=lnd_7318u
+2026/02/16 11:50:45 realtime poll: devices 119 stored 360 next=5m0s
+2026/02/16 11:50:45 realtime summary: ??:1 avg=0.10 Canada (CA):3 avg=0.06 Georgia (GE):1 avg=0.09 Germany (DE):1 avg=0.10 Japan (JP):29 avg=0.21 Peru (PE):1 avg=0.12 Switzerland (CH):1 avg=0.12 Taiwan (TW):2 avg=0.14 Ukraine (UA):60 avg=0.16 United States of America (US):20 avg=0.09 added=119 removed=0
+2026/02/16 11:51:06 ✅ track registry ready for fast pagination
+2026/02/16 11:51:06 ▶️  start index idx_markers_zoom_bounds
+2026/02/16 11:51:06 ✅ index idx_markers_zoom_bounds ready in 0s
+2026/02/16 11:51:06 ▶️  start index idx_markers_trackid_zoom_bounds
+2026/02/16 11:51:06 ✅ index idx_markers_trackid_zoom_bounds ready in 0s
+2026/02/16 11:51:06 ▶️  start index idx_markers_zoom_bounds_speed
+2026/02/16 11:51:06 ✅ index idx_markers_zoom_bounds_speed ready in 0s
+2026/02/16 11:51:06 ▶️  start index idx_markers_identity_probe
+2026/02/16 11:51:06 ✅ index idx_markers_identity_probe ready in 0s
+2026/02/16 11:51:06 ▶️  start index idx_markers_trackid
+2026/02/16 11:51:06 ✅ index idx_markers_trackid ready in 0s
+2026/02/16 11:51:06 ▶️  start index idx_markers_date_trackid
+2026/02/16 11:51:06 ✅ index idx_markers_date_trackid ready in 0s
+2026/02/16 11:51:06 ▶️  start index idx_markers_date_trackid_id
+2026/02/16 11:51:06 ✅ index idx_markers_date_trackid_id ready in 0s
+2026/02/16 11:51:06 ▶️  start index idx_markers_trackid_date
+2026/02/16 11:51:06 ✅ index idx_markers_trackid_date ready in 0s
+2026/02/16 11:51:06 ▶️  start index idx_markers_trackid_id
+2026/02/16 11:51:06 ✅ index idx_markers_trackid_id ready in 0s
+2026/02/16 11:51:06 ▶️  start index idx_markers_date
+2026/02/16 11:51:06 ✅ index idx_markers_date ready in 0s
+2026/02/16 11:51:06 ▶️  start index idx_markers_zoom_date
+2026/02/16 11:51:06 ✅ index idx_markers_zoom_date ready in 0s
+2026/02/16 11:51:06 ▶️  start index idx_markers_speed
+2026/02/16 11:51:06 ✅ index idx_markers_speed ready in 0s
+2026/02/16 11:51:06 ▶️  start index idx_tracks_trackid
+2026/02/16 11:51:06 ✅ index idx_tracks_trackid ready in 0s
+2026/02/16 11:51:06 ▶️  start index idx_realtime_device_fetched
+2026/02/16 11:51:06 ✅ index idx_realtime_device_fetched ready in 0s
+2026/02/16 11:51:06 ▶️  start index idx_realtime_device_fetched_desc
+2026/02/16 11:51:06 ✅ index idx_realtime_device_fetched_desc ready in 0s
+2026/02/16 11:51:06 ▶️  start index idx_realtime_bounds
+2026/02/16 11:51:06 ✅ index idx_realtime_bounds ready in 0s
+2026/02/16 11:55:40 [safecast-fetcher] poll: checking for imports after ID 70367
+2026/02/16 11:55:40 [safecast-fetcher] page 1: fetched 25 imports (IDs 70367-70337)
+2026/02/16 11:55:40 [safecast-fetcher] page 1: found 0 new imports
+2026/02/16 11:55:41 [safecast-fetcher] page 2: fetched 25 imports (IDs 70335-70311)
+2026/02/16 11:55:41 [safecast-fetcher] page 2: found 0 new imports
+2026/02/16 11:55:41 [safecast-fetcher] page 3: fetched 25 imports (IDs 70310-70238)
+2026/02/16 11:55:41 [safecast-fetcher] page 3: found 0 new imports
+2026/02/16 11:55:41 [safecast-fetcher] page 4: fetched 25 imports (IDs 70229-70184)
+2026/02/16 11:55:41 [safecast-fetcher] page 4: found 0 new imports
+2026/02/16 11:55:41 [safecast-fetcher] page 5: fetched 25 imports (IDs 70183-70158)
+2026/02/16 11:55:41 [safecast-fetcher] page 5: found 0 new imports
+2026/02/16 11:55:41 [safecast-fetcher] normal mode: stopped after 5 pages
+2026/02/16 11:55:41 [safecast-fetcher] poll: found 0 new approved imports
+2026/02/16 11:55:44 realtime fetch: devices 1551
+2026/02/16 11:55:44 realtime sample: id=geigiecast:61099 name="" lat=22.318070 lon=114.157710 val=53.000000 unit=lnd_7318u
+2026/02/16 11:55:44 realtime poll: devices 119 stored 360 next=5m0s
+2026/02/16 11:55:44 realtime summary: ??:1 avg=0.10 Canada (CA):3 avg=0.07 Georgia (GE):1 avg=0.09 Germany (DE):1 avg=0.10 Japan (JP):29 avg=0.21 Peru (PE):1 avg=0.12 Switzerland (CH):1 avg=0.12 Taiwan (TW):2 avg=0.14 Ukraine (UA):60 avg=0.16 United States of America (US):20 avg=0.09 added=0 removed=0
+2026/02/16 12:00:40 [safecast-fetcher] poll: checking for imports after ID 70367
+2026/02/16 12:00:40 [safecast-fetcher] page 1: fetched 25 imports (IDs 70367-70337)
+2026/02/16 12:00:40 [safecast-fetcher] page 1: found 0 new imports
+2026/02/16 12:00:40 [safecast-fetcher] page 2: fetched 25 imports (IDs 70335-70311)
+2026/02/16 12:00:40 [safecast-fetcher] page 2: found 0 new imports
+2026/02/16 12:00:41 [safecast-fetcher] page 3: fetched 25 imports (IDs 70310-70238)
+2026/02/16 12:00:41 [safecast-fetcher] page 3: found 0 new imports
+2026/02/16 12:00:41 [safecast-fetcher] page 4: fetched 25 imports (IDs 70229-70184)
+2026/02/16 12:00:41 [safecast-fetcher] page 4: found 0 new imports
+2026/02/16 12:00:41 [safecast-fetcher] page 5: fetched 25 imports (IDs 70183-70158)
+2026/02/16 12:00:41 [safecast-fetcher] page 5: found 0 new imports
+2026/02/16 12:00:41 [safecast-fetcher] normal mode: stopped after 5 pages
+2026/02/16 12:00:41 [safecast-fetcher] poll: found 0 new approved imports
+2026/02/16 12:00:45 realtime fetch: devices 1551
+2026/02/16 12:00:45 realtime sample: id=geigiecast:61099 name="" lat=22.318070 lon=114.157710 val=53.000000 unit=lnd_7318u
+2026/02/16 12:00:45 realtime poll: devices 119 stored 360 next=5m0s
+2026/02/16 12:00:45 realtime summary: ??:1 avg=0.10 Canada (CA):3 avg=0.07 Georgia (GE):1 avg=0.09 Germany (DE):1 avg=0.11 Japan (JP):29 avg=0.21 Peru (PE):1 avg=0.12 Switzerland (CH):1 avg=0.12 Taiwan (TW):2 avg=0.14 Ukraine (UA):60 avg=0.15 United States of America (US):20 avg=0.09 added=0 removed=0
+2026/02/16 12:05:40 [safecast-fetcher] poll: checking for imports after ID 70367
+2026/02/16 12:05:40 [safecast-fetcher] page 1: fetched 25 imports (IDs 70367-70337)
+2026/02/16 12:05:40 [safecast-fetcher] page 1: found 0 new imports
+2026/02/16 12:05:41 [safecast-fetcher] page 2: fetched 25 imports (IDs 70335-70311)
+2026/02/16 12:05:41 [safecast-fetcher] page 2: found 0 new imports
+2026/02/16 12:05:41 [safecast-fetcher] page 3: fetched 25 imports (IDs 70310-70238)
+2026/02/16 12:05:41 [safecast-fetcher] page 3: found 0 new imports
+2026/02/16 12:05:41 [safecast-fetcher] page 4: fetched 25 imports (IDs 70229-70184)
+2026/02/16 12:05:41 [safecast-fetcher] page 4: found 0 new imports
+2026/02/16 12:05:41 [safecast-fetcher] page 5: fetched 25 imports (IDs 70183-70158)
+2026/02/16 12:05:41 [safecast-fetcher] page 5: found 0 new imports
+2026/02/16 12:05:41 [safecast-fetcher] normal mode: stopped after 5 pages
+2026/02/16 12:05:41 [safecast-fetcher] poll: found 0 new approved imports
+2026/02/16 12:05:44 realtime fetch: devices 1551
+2026/02/16 12:05:44 realtime sample: id=geigiecast:61099 name="" lat=22.318070 lon=114.157710 val=53.000000 unit=lnd_7318u
+2026/02/16 12:05:44 realtime poll: devices 119 stored 360 next=5m0s
+2026/02/16 12:05:44 realtime summary: ??:1 avg=0.10 Canada (CA):3 avg=0.07 Georgia (GE):1 avg=0.09 Germany (DE):1 avg=0.12 Japan (JP):29 avg=0.21 Peru (PE):1 avg=0.12 Switzerland (CH):1 avg=0.12 Taiwan (TW):2 avg=0.14 Ukraine (UA):60 avg=0.15 United States of America (US):20 avg=0.09 added=0 removed=0
+2026/02/16 12:06:54 realtime markers: 0 lat[37.447307,37.458423] lon[140.994737,141.014071]
+2026/02/16 12:06:54 realtime markers: 1 lat[37.447307,37.458423] lon[141.014071,141.033404]
+2026/02/16 12:06:54 realtime markers: 0 lat[37.436192,37.447307] lon[140.994737,141.014071]
+2026/02/16 12:06:54 realtime markers: 0 lat[37.436192,37.447307] lon[141.014071,141.033404]
+2026/02/16 12:07:11 realtime markers: 0 lat[37.447307,37.458423] lon[140.994737,141.014071]
+2026/02/16 12:07:11 realtime markers: 0 lat[37.436192,37.447307] lon[140.994737,141.014071]
+2026/02/16 12:07:11 realtime markers: 1 lat[37.447307,37.458423] lon[141.014071,141.033404]
+2026/02/16 12:07:11 realtime markers: 0 lat[37.436192,37.447307] lon[141.014071,141.033404]
+2026/02/16 12:10:40 [safecast-fetcher] poll: checking for imports after ID 70367
+2026/02/16 12:10:40 [safecast-fetcher] page 1: fetched 25 imports (IDs 70367-70337)
+2026/02/16 12:10:40 [safecast-fetcher] page 1: found 0 new imports
+2026/02/16 12:10:41 [safecast-fetcher] page 2: fetched 25 imports (IDs 70335-70311)
+2026/02/16 12:10:41 [safecast-fetcher] page 2: found 0 new imports
+2026/02/16 12:10:41 [safecast-fetcher] page 3: fetched 25 imports (IDs 70310-70238)
+2026/02/16 12:10:41 [safecast-fetcher] page 3: found 0 new imports
+2026/02/16 12:10:41 [safecast-fetcher] page 4: fetched 25 imports (IDs 70229-70184)
+2026/02/16 12:10:41 [safecast-fetcher] page 4: found 0 new imports
+2026/02/16 12:10:41 [safecast-fetcher] page 5: fetched 25 imports (IDs 70183-70158)
+2026/02/16 12:10:41 [safecast-fetcher] page 5: found 0 new imports
+2026/02/16 12:10:41 [safecast-fetcher] normal mode: stopped after 5 pages
+2026/02/16 12:10:41 [safecast-fetcher] poll: found 0 new approved imports
+2026/02/16 12:10:45 realtime fetch: devices 1551
+2026/02/16 12:10:45 realtime sample: id=geigiecast:61099 name="" lat=22.318070 lon=114.157710 val=53.000000 unit=lnd_7318u
+2026/02/16 12:10:46 realtime poll: devices 119 stored 360 next=5m0s
+2026/02/16 12:10:46 realtime summary: ??:1 avg=0.10 Canada (CA):3 avg=0.06 Georgia (GE):1 avg=0.09 Germany (DE):1 avg=0.12 Japan (JP):29 avg=0.21 Peru (PE):1 avg=0.12 Switzerland (CH):1 avg=0.12 Taiwan (TW):2 avg=0.14 Ukraine (UA):60 avg=0.15 United States of America (US):20 avg=0.09 added=0 removed=0
+2026/02/16 12:13:39 realtime markers: 0 lat[37.446823,37.449602] lon[141.012102,141.016935]
+2026/02/16 12:13:39 realtime markers: 0 lat[37.449602,37.452380] lon[141.012102,141.016935]
+2026/02/16 12:13:39 realtime markers: 0 lat[37.446823,37.449602] lon[141.016935,141.021768]
+2026/02/16 12:13:39 realtime markers: 0 lat[37.449602,37.452380] lon[141.016935,141.021768]
+2026/02/16 12:13:46 realtime markers: 0 lat[37.447495,37.458610] lon[141.013534,141.032867]
+2026/02/16 12:13:46 realtime markers: 0 lat[37.447495,37.458610] lon[140.994201,141.013534]
+2026/02/16 12:13:46 realtime markers: 0 lat[37.436379,37.447495] lon[141.013534,141.032867]
+2026/02/16 12:13:46 realtime markers: 0 lat[37.436379,37.447495] lon[140.994201,141.013534]
+2026/02/16 12:13:48 realtime markers: 0 lat[37.395460,37.439927] lon[140.923090,141.000423]
+2026/02/16 12:13:48 realtime markers: 1 lat[37.439927,37.484394] lon[140.923090,141.000423]
+2026/02/16 12:13:48 realtime markers: 2 lat[37.439927,37.484394] lon[141.000423,141.077757]
+2026/02/16 12:13:48 realtime markers: 2 lat[37.395460,37.439927] lon[141.000423,141.077757]
+2026/02/16 12:13:54 realtime markers: 0 lat[37.445382,37.456498] lon[140.972743,140.992076]
+2026/02/16 12:13:54 realtime markers: 0 lat[37.434266,37.445382] lon[140.953410,140.972743]
+2026/02/16 12:13:54 realtime markers: 0 lat[37.434266,37.445382] lon[140.972743,140.992076]
+2026/02/16 12:13:54 realtime markers: 0 lat[37.445382,37.456498] lon[140.953410,140.972743]
+2026/02/16 12:13:55 realtime markers: 0 lat[37.444233,37.447012] lon[140.960925,140.965759]
+2026/02/16 12:13:55 realtime markers: 0 lat[37.444233,37.447012] lon[140.965759,140.970592]
+2026/02/16 12:13:55 realtime markers: 0 lat[37.447012,37.449791] lon[140.965759,140.970592]
+2026/02/16 12:13:55 realtime markers: 0 lat[37.447012,37.449791] lon[140.960925,140.965759]
+2026/02/16 12:14:18 realtime markers: 0 lat[37.445689,37.456805] lon[140.952873,140.972207]
+2026/02/16 12:14:18 realtime markers: 0 lat[37.434573,37.445689] lon[140.972207,140.991540]
+2026/02/16 12:14:18 realtime markers: 0 lat[37.434573,37.445689] lon[140.952873,140.972207]
+2026/02/16 12:14:18 realtime markers: 0 lat[37.445689,37.456805] lon[140.972207,140.991540]
+2026/02/16 12:14:18 realtime markers: 0 lat[37.445916,37.468148] lon[140.940127,140.978794]
+2026/02/16 12:14:18 realtime markers: 0 lat[37.445916,37.468148] lon[140.978794,141.017461]
+2026/02/16 12:14:18 realtime markers: 0 lat[37.423685,37.445916] lon[140.940127,140.978794]
+2026/02/16 12:14:18 realtime markers: 1 lat[37.423685,37.445916] lon[140.978794,141.017461]
+2026/02/16 12:14:43 realtime markers: 0 lat[37.445916,37.468148] lon[140.940127,140.978794]
+2026/02/16 12:14:43 realtime markers: 0 lat[37.445916,37.468148] lon[140.978794,141.017461]
+2026/02/16 12:14:43 realtime markers: 0 lat[37.423685,37.445916] lon[140.940127,140.978794]
+2026/02/16 12:14:43 realtime markers: 1 lat[37.423685,37.445916] lon[140.978794,141.017461]
+2026/02/16 12:14:48 realtime markers: 0 lat[37.394778,37.439245] lon[140.900860,140.978193]
+2026/02/16 12:14:48 realtime markers: 1 lat[37.439245,37.483713] lon[140.900860,140.978193]
+2026/02/16 12:14:48 realtime markers: 2 lat[37.394778,37.439245] lon[140.978193,141.055527]
+2026/02/16 12:14:48 realtime markers: 2 lat[37.439245,37.483713] lon[140.978193,141.055527]
+2026/02/16 12:15:40 [safecast-fetcher] poll: checking for imports after ID 70367
+2026/02/16 12:15:40 [safecast-fetcher] page 1: fetched 25 imports (IDs 70367-70337)
+2026/02/16 12:15:40 [safecast-fetcher] page 1: found 0 new imports
+2026/02/16 12:15:40 [safecast-fetcher] page 2: fetched 25 imports (IDs 70335-70311)
+2026/02/16 12:15:40 [safecast-fetcher] page 2: found 0 new imports
+2026/02/16 12:15:41 [safecast-fetcher] page 3: fetched 25 imports (IDs 70310-70238)
+2026/02/16 12:15:41 [safecast-fetcher] page 3: found 0 new imports
+2026/02/16 12:15:41 [safecast-fetcher] page 4: fetched 25 imports (IDs 70229-70184)
+2026/02/16 12:15:41 [safecast-fetcher] page 4: found 0 new imports
+2026/02/16 12:15:41 [safecast-fetcher] page 5: fetched 25 imports (IDs 70183-70158)
+2026/02/16 12:15:41 [safecast-fetcher] page 5: found 0 new imports
+2026/02/16 12:15:41 [safecast-fetcher] normal mode: stopped after 5 pages
+2026/02/16 12:15:41 [safecast-fetcher] poll: found 0 new approved imports
+2026/02/16 12:15:44 realtime fetch: devices 1551
+2026/02/16 12:15:44 realtime sample: id=geigiecast:61099 name="" lat=22.318070 lon=114.157710 val=53.000000 unit=lnd_7318u
+2026/02/16 12:15:44 realtime poll: devices 119 stored 360 next=5m0s
+2026/02/16 12:15:44 realtime summary: ??:1 avg=0.10 Canada (CA):3 avg=0.08 Georgia (GE):1 avg=0.09 Germany (DE):1 avg=0.10 Japan (JP):29 avg=0.21 Peru (PE):1 avg=0.13 Switzerland (CH):1 avg=0.12 Taiwan (TW):2 avg=0.14 Ukraine (UA):60 avg=0.15 United States of America (US):20 avg=0.09 added=0 removed=0
+2026/02/16 12:20:40 [safecast-fetcher] poll: checking for imports after ID 70367
+2026/02/16 12:20:40 [safecast-fetcher] page 1: fetched 25 imports (IDs 70367-70337)
+2026/02/16 12:20:40 [safecast-fetcher] page 1: found 0 new imports
+2026/02/16 12:20:40 [safecast-fetcher] page 2: fetched 25 imports (IDs 70335-70311)
+2026/02/16 12:20:40 [safecast-fetcher] page 2: found 0 new imports
+2026/02/16 12:20:41 [safecast-fetcher] page 3: fetched 25 imports (IDs 70310-70238)
+2026/02/16 12:20:41 [safecast-fetcher] page 3: found 0 new imports
+2026/02/16 12:20:41 [safecast-fetcher] page 4: fetched 25 imports (IDs 70229-70184)
+2026/02/16 12:20:41 [safecast-fetcher] page 4: found 0 new imports
+2026/02/16 12:20:41 [safecast-fetcher] page 5: fetched 25 imports (IDs 70183-70158)
+2026/02/16 12:20:41 [safecast-fetcher] page 5: found 0 new imports
+2026/02/16 12:20:41 [safecast-fetcher] normal mode: stopped after 5 pages
+2026/02/16 12:20:41 [safecast-fetcher] poll: found 0 new approved imports
+2026/02/16 12:20:43 realtime fetch: devices 1551
+2026/02/16 12:20:43 realtime sample: id=geigiecast:61099 name="" lat=22.318070 lon=114.157710 val=53.000000 unit=lnd_7318u
+2026/02/16 12:20:43 realtime poll: devices 119 stored 360 next=5m0s
+2026/02/16 12:20:43 realtime summary: ??:1 avg=0.10 Canada (CA):3 avg=0.07 Georgia (GE):1 avg=0.09 Germany (DE):1 avg=0.10 Japan (JP):29 avg=0.21 Peru (PE):1 avg=0.13 Switzerland (CH):1 avg=0.12 Taiwan (TW):2 avg=0.12 Ukraine (UA):60 avg=0.15 United States of America (US):20 avg=0.09 added=0 removed=0
+2026/02/16 12:25:40 [safecast-fetcher] poll: checking for imports after ID 70367
+2026/02/16 12:25:40 [safecast-fetcher] page 1: fetched 25 imports (IDs 70367-70337)
+2026/02/16 12:25:40 [safecast-fetcher] page 1: found 0 new imports
+2026/02/16 12:25:40 [safecast-fetcher] page 2: fetched 25 imports (IDs 70335-70311)
+2026/02/16 12:25:40 [safecast-fetcher] page 2: found 0 new imports
+2026/02/16 12:25:41 [safecast-fetcher] page 3: fetched 25 imports (IDs 70310-70238)
+2026/02/16 12:25:41 [safecast-fetcher] page 3: found 0 new imports
+2026/02/16 12:25:41 [safecast-fetcher] page 4: fetched 25 imports (IDs 70229-70184)
+2026/02/16 12:25:41 [safecast-fetcher] page 4: found 0 new imports
+2026/02/16 12:25:41 [safecast-fetcher] page 5: fetched 25 imports (IDs 70183-70158)
+2026/02/16 12:25:41 [safecast-fetcher] page 5: found 0 new imports
+2026/02/16 12:25:41 [safecast-fetcher] normal mode: stopped after 5 pages
+2026/02/16 12:25:41 [safecast-fetcher] poll: found 0 new approved imports
+2026/02/16 12:25:45 realtime fetch: devices 1551
+2026/02/16 12:25:45 realtime sample: id=geigiecast:61099 name="" lat=22.318070 lon=114.157710 val=53.000000 unit=lnd_7318u
+2026/02/16 12:25:45 realtime poll: devices 119 stored 360 next=5m0s
+2026/02/16 12:25:45 realtime summary: ??:1 avg=0.10 Canada (CA):3 avg=0.08 Georgia (GE):1 avg=0.09 Germany (DE):1 avg=0.10 Japan (JP):29 avg=0.21 Peru (PE):1 avg=0.13 Switzerland (CH):1 avg=0.12 Taiwan (TW):2 avg=0.13 Ukraine (UA):60 avg=0.15 United States of America (US):20 avg=0.09 added=0 removed=0

@@ -10,12 +10,13 @@ This guide explains how to set up GitHub Actions for automatically building and 
    - SSH access to your VPS.
    - Generate an SSH key pair if needed: `ssh-keygen -t rsa -b 4096`.
    - Add the public key to your VPS's `~/.ssh/authorized_keys`.
+   - **Important:** Use the server's IP address for SSH, not the domain name (especially if using CloudFront/CDN).
 
 3. **GitHub Secrets**:
    - In your GitHub repo: Settings → Secrets and variables → Actions → Add secrets:
      - `SSH_PRIVATE_KEY`: Paste your entire private SSH key (including `-----BEGIN OPENSSH PRIVATE KEY-----`).
-     - `VPS_HOST`: VPS IP address or hostname (e.g., `192.168.1.100`).
-     - `VPS_USER`: SSH username (e.g., `ubuntu`).
+     - `VPS_HOST`: VPS IP address (e.g., `65.108.24.131`). **Use IP, not domain name** if your domain uses CloudFront/CDN.
+     - `VPS_USER`: SSH username (e.g., `root` or `ubuntu`).
      - `VPS_PORT`: SSH port (default: `22`).
      - Optional: `VPS_PASSWORD` if using password auth (less secure than keys).
 
