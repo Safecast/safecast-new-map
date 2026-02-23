@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -363,6 +364,62 @@ func (m *Manager) AdminResetUserPasswordHandler(w http.ResponseWriter, r *http.R
 	writeJSON(w, map[string]string{
 		"message": "Password reset email sent successfully",
 		"token":   token, // Include token for admin to share manually if needed
+	}, http.StatusOK)
+}
+
+// AdminRegenerateAPIKeyHandler regenerates an API key for a user (admin only).
+// POST /api/admin/users/{id}/regenerate-api-key
+// Note: Authentication is handled by the route handler via password parameter check.
+func (m *Manager) AdminRegenerateAPIKeyHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get user ID from URL path
+	pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	if len(pathParts) < 4 {
+		writeJSON(w, map[string]string{"error": "User ID required"}, http.StatusBadRequest)
+		return
+	}
+	userIDStr := pathParts[3]
+	targetUserID, err := strconv.ParseInt(userIDStr, 10, 64)
+	if err != nil {
+		writeJSON(w, map[string]string{"error": "Invalid user ID"}, http.StatusBadRequest)
+		return
+	}
+
+	// Get target user
+	targetUser, err := GetUserByID(r.Context(), m.DB, m.DBDriver, targetUserID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			writeJSON(w, map[string]string{"error": "User not found"}, http.StatusNotFound)
+		} else {
+			writeJSON(w, map[string]string{"error": "Failed to fetch user"}, http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Regenerate API key
+	newAPIKey, err := RegenerateAPIKey(r.Context(), m.DB, m.DBDriver, targetUserID)
+	if err != nil {
+		log.Printf("ERROR: Failed to regenerate API key for user %d: %v", targetUserID, err)
+		writeJSON(w, map[string]string{"error": "Failed to regenerate API key"}, http.StatusInternalServerError)
+		return
+	}
+
+	// Send email notification if email sender is configured
+	if m.EmailSender != nil {
+		if err := m.EmailSender.SendAPIKeyRegeneratedEmail(targetUser.Email, targetUser.Username, newAPIKey); err != nil {
+			log.Printf("WARNING: Failed to send API key regeneration email to %s: %v", targetUser.Email, err)
+			// Don't fail the request - API key was successfully regenerated
+		}
+	}
+
+	writeJSON(w, map[string]interface{}{
+		"message": "API key regenerated successfully",
+		"api_key": newAPIKey,
+		"user_id": targetUserID,
 	}, http.StatusOK)
 }
 

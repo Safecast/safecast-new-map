@@ -2151,9 +2151,24 @@ body, html {
       </div>
       <div style="margin-bottom: 20px;">
         <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">Password:</label>
-        <input type="password" id="loginPassword" placeholder="Password" required
+        <input type="password" id="loginPassword" placeholder="Password"
                style="width: 100%; padding: 12px; border: var(--legend-border); border-radius: 6px; background: var(--control-bg); color: var(--modal-text); font-size: var(--font-size-base); box-sizing: border-box;">
       </div>
+
+      <!-- OR Divider -->
+      <div style="display: flex; align-items: center; margin: 20px 0;">
+        <div style="flex: 1; height: 1px; background: var(--legend-border);"></div>
+        <span style="padding: 0 12px; color: var(--modal-text); font-size: var(--font-size-sm); font-weight: 600;">OR</span>
+        <div style="flex: 1; height: 1px; background: var(--legend-border);"></div>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">API Key:</label>
+        <input type="text" id="loginAPIKey" placeholder="Your API key"
+               style="width: 100%; padding: 12px; border: var(--legend-border); border-radius: 6px; background: var(--control-bg); color: var(--modal-text); font-size: var(--font-size-base); box-sizing: border-box; font-family: monospace;">
+        <p style="margin: 4px 0 0 0; font-size: var(--font-size-sm); color: var(--modal-text); opacity: 0.7;">You can log in with either your password or API key</p>
+      </div>
+
       <button type="submit" style="width: 100%; padding: 14px; background: #4CAF50; border: none; border-radius: 6px; cursor: pointer; color: white; font-weight: 600; font-size: 16px; margin-bottom: 12px;">
         Login
       </button>
@@ -2161,6 +2176,7 @@ body, html {
     </form>
     <div style="margin-top: 20px; text-align: center; color: var(--modal-text); font-size: var(--font-size-sm);">
       <p style="margin: 8px 0;"><a href="#" onclick="showForgotPassword(); return false;" style="color: var(--isotope-highlight); text-decoration: none;">Forgot password?</a></p>
+      <p style="margin: 8px 0;"><a href="#" onclick="showForgotPassword(); return false;" style="color: var(--isotope-highlight); text-decoration: none; font-weight: 600;">First time? Set up your password</a></p>
       <p style="margin: 8px 0;">Don't have an account? <a href="#" onclick="showRegister(); return false;" style="color: var(--isotope-highlight); text-decoration: none;">Register</a></p>
     </div>
     <button type="button" onclick="closeLoginModal()" style="margin-top: 16px; width: 100%; padding: 10px; background: transparent; border: var(--legend-border); border-radius: 6px; cursor: pointer; color: var(--modal-text);">
@@ -2236,10 +2252,19 @@ body, html {
 </div>
 
 <!-- User Menu (shown when logged in) -->
-<div id="userMenu" style="display: none; position: fixed; top: 16px; right: 20px; z-index: 1000; background: var(--modal-bg); padding: 8px 12px; border-radius: var(--btn-border-radius, 8px); box-shadow: 0 1px 5px rgba(0,0,0,0.65); border: var(--legend-border);">
-  <div style="display: flex; align-items: center; gap: 10px;">
-    <span id="userMenuName" style="color: var(--modal-text); font-weight: 600; font-size: 14px;"></span>
-    <button onclick="logout()" style="padding: 6px 12px; background: #f44336; border: none; border-radius: var(--btn-border-radius, 8px); cursor: pointer; color: white; font-size: 12px;">
+<div id="userMenu" style="display: none; position: fixed; top: 10px; right: 20px; z-index: 1001; background: var(--modal-bg); padding: 6px 10px; border-radius: var(--btn-border-radius, 8px); box-shadow: 0 1px 5px rgba(0,0,0,0.65); border: var(--legend-border);">
+  <div style="display: flex; align-items: center; gap: 8px;">
+    <span id="userMenuName" style="color: var(--modal-text); font-weight: 600; font-size: 12px;"></span>
+    <a href="/profile" style="padding: 4px 10px; background: #4CAF50; border: none; border-radius: var(--btn-border-radius, 8px); color: white; font-size: 11px; text-decoration: none;">
+      Profile
+    </a>
+    <a id="adminUsersBtn" href="/admin/users" style="display: none; padding: 4px 10px; background: #2196F3; border: none; border-radius: var(--btn-border-radius, 8px); color: white; font-size: 11px; text-decoration: none;">
+      Admin Users
+    </a>
+    <a id="adminTracksBtn" href="/admin/uploads" style="display: none; padding: 4px 10px; background: #FF9800; border: none; border-radius: var(--btn-border-radius, 8px); color: white; font-size: 11px; text-decoration: none;">
+      Admin Uploads
+    </a>
+    <button onclick="logout()" style="padding: 4px 10px; background: #f44336; border: none; border-radius: var(--btn-border-radius, 8px); cursor: pointer; color: white; font-size: 11px;">
       Logout
     </button>
   </div>
@@ -2294,6 +2319,8 @@ body, html {
         const loginBtn = document.getElementById('loginButton');
         const userMenu = document.getElementById('userMenu');
         const userMenuName = document.getElementById('userMenuName');
+        const adminUsersBtn = document.getElementById('adminUsersBtn');
+        const adminTracksBtn = document.getElementById('adminTracksBtn');
 
         if (loginBtn) loginBtn.style.display = 'none';
         if (userMenu) {
@@ -2301,6 +2328,15 @@ body, html {
           if (userMenuName && currentUser) {
             userMenuName.textContent = currentUser.username || currentUser.email;
           }
+        }
+
+        // Show admin buttons only for admin users
+        if (currentUser && currentUser.is_admin) {
+          if (adminUsersBtn) adminUsersBtn.style.display = 'inline-block';
+          if (adminTracksBtn) adminTracksBtn.style.display = 'inline-block';
+        } else {
+          if (adminUsersBtn) adminUsersBtn.style.display = 'none';
+          if (adminTracksBtn) adminTracksBtn.style.display = 'none';
         }
       }
 
@@ -2313,12 +2349,21 @@ body, html {
       }
 
       // Login function
-      async function login(email, password) {
+      async function login(email, password, apiKey) {
         try {
+          // Build request body - include either password or API key (or both, but backend will prioritize API key)
+          const body = { email };
+          if (apiKey && apiKey.trim()) {
+            body.api_key = apiKey.trim();
+          }
+          if (password && password.trim()) {
+            body.password = password;
+          }
+
           const response = await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify(body)
           });
 
           const errorEl = document.getElementById('loginError');
@@ -2327,6 +2372,9 @@ body, html {
             await checkAuthStatus();
             closeLoginModal();
             if (errorEl) errorEl.style.display = 'none';
+            // Clear form fields
+            document.getElementById('loginPassword').value = '';
+            document.getElementById('loginAPIKey').value = '';
           } else {
             const error = await response.json();
             if (errorEl) {
@@ -2500,7 +2548,8 @@ body, html {
             e.preventDefault();
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
-            login(email, password);
+            const apiKey = document.getElementById('loginAPIKey').value;
+            login(email, password, apiKey);
           });
         }
 
@@ -3594,8 +3643,10 @@ function getViewportKey() {
 
 function getFilterStateKey() {
   // Create a string that uniquely identifies the current filter state
-  const state = loadSpeedFilterState();
-  return JSON.stringify(state);
+  return JSON.stringify({
+    speed: loadSpeedFilterState(),
+    dateRange: loadDateRangeState()
+  });
 }
 const shortLinkBox = document.getElementById('shortLinkButton');
 let shortLinkTimer = null;
@@ -3648,7 +3699,7 @@ var liveHistoryCache = new Map();
  */
 function loadSpeedFilterState() {
   // We derive defaults from the realtime flag so the UI matches backend capabilities.
-  const base = { plane: false, car: true, ped: true };
+  const base = { plane: false, car: true, ped: true, spectrum: true };
   if (window.safecastRealtimeEnabled) {
     base.live = true;
   }
@@ -3659,6 +3710,8 @@ function loadSpeedFilterState() {
     if (!window.safecastRealtimeEnabled) {
       delete merged.live;
     }
+    // Ensure spectrum key exists for older saved states
+    if (merged.spectrum === undefined) merged.spectrum = true;
     return merged;
   } catch (e) {
     return base;
@@ -4253,6 +4306,8 @@ document.addEventListener('DOMContentLoaded', function () {
           row('sfCar',   '🚗', state.car,   'speed-filter-icon--mono'),
           row('sfPed',   '🚶', state.ped,   'speed-filter-icon--mono')
         );
+        pieces.push('<div class="leaflet-control-layers-separator"></div>');
+        pieces.push(row('sfSpectrum', '📊', state.spectrum, ''));
         div.innerHTML = pieces.join('');
 
         // We collect all checkboxes so keyboard focus and pointer use can share a single tooltip instance.
@@ -4274,6 +4329,7 @@ document.addEventListener('DOMContentLoaded', function () {
             lines.push(translate('speed_filter_tooltip_plane'));
             lines.push(translate('speed_filter_tooltip_car'));
             lines.push(translate('speed_filter_tooltip_ped'));
+            lines.push('📊 Gamma spectrum measurements');
             const listHtml = lines.map(function (line) {
               return '<li>' + line + '</li>';
             }).join('');
@@ -4309,9 +4365,10 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
               delete state.live;
             }
-            state.plane = div.querySelector('#sfPlane').checked;
-            state.car   = div.querySelector('#sfCar').checked;
-            state.ped   = div.querySelector('#sfPed').checked;
+            state.plane    = div.querySelector('#sfPlane').checked;
+            state.car      = div.querySelector('#sfCar').checked;
+            state.ped      = div.querySelector('#sfPed').checked;
+            state.spectrum = div.querySelector('#sfSpectrum').checked;
             saveSpeedFilterState(state);   // remember choice
 
             // Sync show=rt with filter state:
@@ -4731,6 +4788,9 @@ function createDateRangeSlider(){
       ? ` (<a href="#" class="risk-link">${translate(doseCategory(marker.doseRate))}</a>)`
       : '';
 
+    const dateText = marker.date ? new Date(marker.date * 1000).toLocaleString(undefined, { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+    const dateHtml = dateText ? `<div><strong>Date:</strong> ${dateText}</div>` : '';
+
     return `
       <div class="custom-tooltip">
         <div><strong>${translate('radiation_dose')}:</strong><br>
@@ -4738,6 +4798,8 @@ function createDateRangeSlider(){
           ${statusHtml}
         </div>
         <div><strong>${translate('speed')}:</strong> ${speedText}</div>
+        ${dateHtml}
+        ${getTrackInfoHtml(marker.trackID) ? '<div style="color: var(--text-muted, #999); font-size: 0.9em;">' + getTrackInfoHtml(marker.trackID) + '</div>' : ''}
         <div style="margin-top:4px">
           <!-- clicking the link switches to track mode -->
           <a href="#" class="track-link" data-track="${marker.trackID}" style="font-weight:bold;">
@@ -4756,6 +4818,24 @@ function getPopupContent(marker) {
 // Tooltip uses the same builder for hover previews.
 function getTooltipContent(marker) {
   return buildMarkerContent(marker);
+}
+
+// Track upload info cache (uploader name, detector)
+const trackInfoCache = new Map();
+function getTrackInfoHtml(trackID) {
+  const info = trackInfoCache.get(trackID);
+  if (!info) return '';
+  const parts = [];
+  if (info.username) parts.push('By: ' + info.username);
+  if (info.detector) parts.push(info.detector);
+  return parts.length ? parts.join(' \u2022 ') : '';
+}
+function prefetchTrackInfo(trackID) {
+  if (!trackID || trackInfoCache.has(trackID)) return;
+  fetch('/api/track-info/' + trackID)
+    .then(r => r.json())
+    .then(data => { trackInfoCache.set(trackID, data); })
+    .catch(() => {});
 }
 
 
@@ -5353,7 +5433,7 @@ function createMarkerFromData(m, zoom) {
 
     // At low zoom: minimal interaction for performance
     // At high zoom: full tooltip support
-    if (zoom <= 7) {
+    if (zoom <= 4) {
       // Simplified: click to view track only
       marker.on('click', function() {
         if (isPickingLocation && pickLocationHandler) {
@@ -5367,13 +5447,18 @@ function createMarkerFromData(m, zoom) {
     } else {
       // Full interaction: tooltip on hover, click to view track
       marker.on('mouseover', function() {
+        prefetchTrackInfo(m.trackID);
+        const content = getTooltipContent(m);
         if (!this._tooltip) {
-          this.bindTooltip(getTooltipContent(m), {
+          this.bindTooltip(content, {
             direction:'top',
             className:'custom-tooltip',
             offset:[0,-8],
             interactive:true
           });
+          this.openTooltip();
+        } else {
+          this.setTooltipContent(content);
         }
       });
 
@@ -5409,7 +5494,15 @@ function renderCachedMarker(m, tracks, minTs, maxTs, savedRange, zoom) {
 
   // In single-track view, show all markers regardless of date filter
   if (!isTrackView && savedRange && (m.date < savedRange[0] || m.date > savedRange[1])) return;
-  if (!shouldDisplayBySpeed(m.speed)) return;
+
+  // Show spectrum markers independently from speed filter if spectrum toggle is on
+  if (m.hasSpectrum) {
+    if (!loadSpeedFilterState().spectrum) return;
+    // Skip speed filter for spectrum markers when spectrum toggle is on
+  } else {
+    // Apply speed filter for non-spectrum markers
+    if (!shouldDisplayBySpeed(m.speed)) return;
+  }
 
   // OPTIMIZED: Use unified marker creation function
   const marker = createMarkerFromData(m, zoom);
@@ -5533,7 +5626,15 @@ function setupMarkerStream(es, tracks, minTs, maxTs, savedRange, tileIndex, cach
     }
     // In single-track view, show all markers regardless of date filter
     if (!isTrackView && savedRange && (m.date < savedRange[0] || m.date > savedRange[1])) return;
-    if (!shouldDisplayBySpeed(m.speed)) return;
+
+    // Show spectrum markers independently from speed filter if spectrum toggle is on
+    if (m.hasSpectrum) {
+      if (!loadSpeedFilterState().spectrum) return;
+      // Skip speed filter for spectrum markers when spectrum toggle is on
+    } else {
+      // Apply speed filter for non-spectrum markers
+      if (!shouldDisplayBySpeed(m.speed)) return;
+    }
 
     // PERFORMANCE: Measure marker creation
     const createStart = performance.now();
@@ -8203,8 +8304,9 @@ function loadMapFromUrl() {
   /* sensor filter from URL (e.g., show=rt for realtime only) */
   const showParam = params.get('show');
   if (showParam === 'rt' && window.safecastRealtimeEnabled) {
-    // Override filter state to show only RT sensors
-    saveSpeedFilterState({ live: true, plane: false, car: false, ped: false });
+    // Override filter state to show only RT sensors, but preserve spectrum setting
+    const currentState = loadSpeedFilterState();
+    saveSpeedFilterState({ live: true, plane: false, car: false, ped: false, spectrum: currentState.spectrum });
   }
 
   /* read remaining params */
@@ -8829,14 +8931,11 @@ function selectHomeSearchResult(result, query) {
         fileProgressContainer.innerHTML = '';
         fileOverlay.style.display  = 'flex';
 
-        /* counter and URL of last track */
-        let completedUploads = 0;
-        const totalFiles     = files.length;
         let lastTrackURL     = null;
 
-        /* Create an XHR for each file but redirect only once */
+        /* Create progress UI for each file */
+        const fileProgressElements = [];
         [...files].forEach(file => {
-          /* --- visual progress elements --- */
           const fileBlock        = document.createElement('div');
           fileBlock.className    = 'file-progress';
           const fileName         = document.createElement('div');
@@ -8852,140 +8951,177 @@ function selectHomeSearchResult(result, query) {
           serverProcessing.innerText = translate('waiting_for_server');
           fileBlock.append(fileName, progressBar, serverProcessing);
           fileProgressContainer.appendChild(fileBlock);
-          /* ------------------------------------------------- */
 
-          const xhr = new XMLHttpRequest();
-          xhr.open('POST', '/upload', true);
+          fileProgressElements.push({
+            progressBarInner,
+            serverProcessing,
+            fileName: file.name
+          });
+        });
 
-          let eventSource = null;
-          let trackID = null;
-          let sseStarted = false;
+        /* Send all files in a single batch request */
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/upload', true);
+        xhr.withCredentials = true;
 
-          /* file upload progress (uploading to server) */
-          xhr.upload.onprogress = e => {
-            if (e.lengthComputable) {
-              const percent = (e.loaded / e.total) * 100;
-              progressBarInner.style.width = percent + '%';
-              
-              // When upload completes (100%), show processing state
+        let eventSource = null;
+        let trackID = null;
+
+        /* Upload progress (all files combined) */
+        xhr.upload.onprogress = e => {
+          if (e.lengthComputable) {
+            const percent = (e.loaded / e.total) * 100;
+            // Update all progress bars equally during upload
+            fileProgressElements.forEach(elem => {
+              elem.progressBarInner.style.width = percent + '%';
               if (percent >= 100) {
-                progressBarInner.classList.add('processing');
-                serverProcessing.innerText = translate('processing_on_server') + ' ...';
-                serverProcessing.style.color = '#ff9800';
+                elem.progressBarInner.classList.add('processing');
+                elem.serverProcessing.innerText = translate('processing_on_server') + ' ...';
+                elem.serverProcessing.style.color = '#ff9800';
               }
-            }
-          };
+            });
+          }
+        };
 
-          /* handle server response - now returns immediately with trackID */
-          xhr.onload = () => {
-            if (xhr.status === 200) {
-              const response = JSON.parse(xhr.responseText);
-              
-              // Server returns trackID immediately, processing happens in background
-              if (response.status === 'processing' && response.trackID) {
-                trackID = response.trackID;
-                sseStarted = true;
-                serverProcessing.innerText = translate('processing_on_server') + ' 0%';
-                
-                // Start SSE connection for real-time progress
-                eventSource = new EventSource('/upload/progress?trackid=' + trackID);
-                eventSource.onmessage = (event) => {
-                  try {
-                    const data = JSON.parse(event.data);
-                    const pct = Math.round(data.percent);
-                    serverProcessing.innerText = translate('processing_on_server') + ' ' + pct + '%';
-                    
-                    // Check if processing is complete
-                    if (data.complete) {
-                      eventSource.close();
-                      progressBarInner.classList.remove('processing');
-                      
+        /* Handle server response */
+        xhr.onload = () => {
+          if (xhr.status === 200) {
+            const response = JSON.parse(xhr.responseText);
+
+            if (response.status === 'processing' && response.trackID) {
+              trackID = response.trackID;
+
+              // Update all files to show processing state
+              fileProgressElements.forEach(elem => {
+                elem.serverProcessing.innerText = translate('processing_on_server') + ' 0%';
+              });
+
+              // Start SSE connection for real-time progress
+              eventSource = new EventSource('/upload/progress?trackid=' + trackID);
+              eventSource.onmessage = (event) => {
+                try {
+                  const data = JSON.parse(event.data);
+                  const pct = Math.round(data.percent);
+
+                  // Update all progress indicators
+                  fileProgressElements.forEach(elem => {
+                    elem.serverProcessing.innerText = translate('processing_on_server') + ' ' + pct + '%';
+                  });
+
+                  if (data.complete) {
+                    eventSource.close();
+
+                    fileProgressElements.forEach(elem => {
+                      elem.progressBarInner.classList.remove('processing');
+
                       if (data.error) {
-                        serverProcessing.innerText = '✘ Error: ' + data.error;
-                        serverProcessing.style.color = 'red';
+                        elem.serverProcessing.innerText = '✘ Error: ' + data.error;
+                        elem.serverProcessing.style.color = 'red';
                       } else if (data.needsCoordinates && data.trackID) {
-                        // Spectrum file needs location
-                        serverProcessing.innerText = '⚠ Needs location';
-                        serverProcessing.style.color = 'orange';
-                        pendingCoordinateUpdate = { 
-                          trackID: data.trackID, 
-                          fileName: data.fileName || file.name, 
-                          trackURL: data.redirectURL 
+                        elem.serverProcessing.innerText = '⚠ Needs location';
+                        elem.serverProcessing.style.color = 'orange';
+                        pendingCoordinateUpdate = {
+                          trackID: data.trackID,
+                          fileName: elem.fileName,
+                          trackURL: data.redirectURL
                         };
                       } else {
-                        serverProcessing.innerText = translate('processing_on_server') + ' 100%';
-                        serverProcessing.style.color = '#4caf50';
-                        
+                        elem.serverProcessing.innerText = translate('processing_on_server') + ' 100%';
+                        elem.serverProcessing.style.color = '#4caf50';
+
                         if (data.redirectURL) {
                           lastTrackURL = data.redirectURL;
                         }
                       }
-                      
-                      // Trigger completion handler
-                      completedUploads++;
-                      if (completedUploads === totalFiles) {
-                        setTimeout(() => {
-                          fileOverlay.style.display = 'none';
-                          if (pendingCoordinateUpdate) {
-                            showCoordinateDialog(pendingCoordinateUpdate.trackID, pendingCoordinateUpdate.fileName, pendingCoordinateUpdate.trackURL);
-                          } else if (lastTrackURL) {
-                            window.location.href = lastTrackURL;
-                          } else {
-                            updateMarkers();
-                          }
-                        }, 700);
+                    });
+
+                    // All files processed, redirect or update
+                    setTimeout(() => {
+                      fileOverlay.style.display = 'none';
+                      if (pendingCoordinateUpdate) {
+                        showCoordinateDialog(pendingCoordinateUpdate.trackID, pendingCoordinateUpdate.fileName, pendingCoordinateUpdate.trackURL);
+                      } else if (lastTrackURL) {
+                        window.location.href = lastTrackURL;
+                      } else {
+                        updateMarkers();
                       }
-                    }
-                  } catch(e) {
-                    console.error('Progress parse error:', e);
+                    }, 700);
                   }
-                };
-                eventSource.onerror = () => {
-                  if (eventSource) eventSource.close();
-                  serverProcessing.innerText = '✘ Connection lost';
-                  serverProcessing.style.color = 'red';
-                };
-              } else if (response.status === 'success') {
-                // Legacy sync response (shouldn't happen now, but keep for compatibility)
-                lastTrackURL = response.trackURL;
-                progressBarInner.classList.remove('processing');
-                serverProcessing.innerText = translate('processing_on_server') + ' 100%';
-                serverProcessing.style.color = '#4caf50';
+                } catch(e) {
+                  console.error('Progress parse error:', e);
+                }
+              };
 
-                if (response.needsCoordinates && response.trackID) {
-                  serverProcessing.innerText = '⚠ Needs location';
-                  serverProcessing.style.color = 'orange';
-                  pendingCoordinateUpdate = { trackID: response.trackID, fileName: file.name, trackURL: response.trackURL };
-                }
-                
-                completedUploads++;
-                if (completedUploads === totalFiles) {
-                  setTimeout(() => {
-                    fileOverlay.style.display = 'none';
-                    if (pendingCoordinateUpdate) {
-                      showCoordinateDialog(pendingCoordinateUpdate.trackID, pendingCoordinateUpdate.fileName, pendingCoordinateUpdate.trackURL);
-                    } else if (lastTrackURL) {
-                      window.location.href = lastTrackURL;
-                    } else {
-                      updateMarkers();
-                    }
-                  }, 700);
-                }
-              } else {
-                serverProcessing.innerText = translate('error_processing_files');
-                serverProcessing.style.color = 'red';
+              eventSource.onerror = () => {
+                if (eventSource) eventSource.close();
+                fileProgressElements.forEach(elem => {
+                  elem.serverProcessing.innerText = '✘ Connection lost';
+                  elem.serverProcessing.style.color = 'red';
+                });
+              };
+            } else if (response.status === 'success') {
+              // Legacy sync response
+              lastTrackURL = response.trackURL;
+
+              fileProgressElements.forEach(elem => {
+                elem.progressBarInner.classList.remove('processing');
+                elem.serverProcessing.innerText = translate('processing_on_server') + ' 100%';
+                elem.serverProcessing.style.color = '#4caf50';
+              });
+
+              if (response.needsCoordinates && response.trackID) {
+                fileProgressElements.forEach(elem => {
+                  elem.serverProcessing.innerText = '⚠ Needs location';
+                  elem.serverProcessing.style.color = 'orange';
+                });
+                pendingCoordinateUpdate = {
+                  trackID: response.trackID,
+                  fileName: fileProgressElements[0].fileName,
+                  trackURL: response.trackURL
+                };
               }
-            } else {
-              serverProcessing.innerText = translate('error_during_upload');
-              serverProcessing.style.color = 'red';
-            }
-          };
 
-          /* send file */
-            const formData = new FormData();
+              setTimeout(() => {
+                fileOverlay.style.display = 'none';
+                if (pendingCoordinateUpdate) {
+                  showCoordinateDialog(pendingCoordinateUpdate.trackID, pendingCoordinateUpdate.fileName, pendingCoordinateUpdate.trackURL);
+                } else if (lastTrackURL) {
+                  window.location.href = lastTrackURL;
+                } else {
+                  updateMarkers();
+                }
+              }, 700);
+            } else {
+              fileProgressElements.forEach(elem => {
+                elem.serverProcessing.innerText = translate('error_processing_files');
+                elem.serverProcessing.style.color = 'red';
+              });
+            }
+          } else {
+            // Handle errors
+            fileProgressElements.forEach(elem => {
+              if (xhr.status === 401 || xhr.status === 403) {
+                elem.serverProcessing.innerHTML = '🔒 Please <a href="/login" style="color: #2196F3; text-decoration: underline;">log in</a> or <a href="/register" style="color: #2196F3; text-decoration: underline;">register</a> to upload files';
+                elem.serverProcessing.style.color = '#ff9800';
+                elem.serverProcessing.style.fontSize = '16px';
+                elem.serverProcessing.style.fontWeight = 'bold';
+                elem.serverProcessing.style.padding = '10px';
+                elem.serverProcessing.style.marginTop = '10px';
+              } else {
+                elem.serverProcessing.innerText = translate('error_during_upload');
+                elem.serverProcessing.style.color = 'red';
+              }
+            });
+          }
+        };
+
+        /* Create FormData with all files */
+        const formData = new FormData();
+        [...files].forEach(file => {
           formData.append('files[]', file);
-          xhr.send(formData);
         });
+
+        xhr.send(formData);
       }
     </script>
 
