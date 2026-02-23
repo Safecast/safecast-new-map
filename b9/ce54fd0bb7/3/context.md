@@ -1,0 +1,22 @@
+# Session Context
+
+## User Prompts
+
+### Prompt 1
+
+I noticed on the swaggo doc page that the excuting command does not work after we put  Cloudflront in place to have higher speed of the map. Can you check what need to be modified on CloudFront to allow the swaggo api setup to works as before? The page is at https://simplemap.safecast.org/docs/index.html
+
+### Prompt 2
+
+[Request interrupted by user for tool use]
+
+### Prompt 3
+
+<task-notification>
+<task-id>b48977b</task-id>
+<output-file>/tmp/claude-1000/-home-rob-Documents-Safecast-safecast-new-map/tasks/b48977b.output</output-file>
+<status>completed</status>
+<summary>Background command "Sync MCP binary to production" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /tmp/claude-1000/-home-rob-Documents-Safecast-safecast-new-map/tasks/b48977b.output
+
