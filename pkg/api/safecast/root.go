@@ -6,6 +6,17 @@ import (
 	"strings"
 )
 
+// adapterRoot returns the API root descriptor.
+//
+//	@Summary		API root
+//	@Description	Returns the Safecast API root with name, URI, and subresource links. Also at / and /api/v2.
+//	@Tags			API v1
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	RootRails	"Root descriptor with subresource_uris"
+//	@Failure		406	"Accept must be application/json"
+//	@Failure		405	"Method not allowed"
+//	@Router			/api/v1 [get]
 func (h *Handler) adapterRoot(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/api/v1" && r.URL.Path != "/api/v1/" {
 		return
@@ -31,8 +42,8 @@ func writeRootJSON(w http.ResponseWriter, baseURL string) {
 	}
 	base = strings.TrimSuffix(base, "/")
 	out := RootRails{
-		Name:           "Safecast API",
-		URI:            base + "/",
+		Name: "Safecast API",
+		URI:  base + "/",
 		SubresourceURIs: []string{
 			base + "/users.json",
 			base + "/measurements.json",
