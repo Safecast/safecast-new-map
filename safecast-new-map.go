@@ -55,6 +55,7 @@ import (
 
 	"safecast-new-map/pkg/api"
 	"safecast-new-map/pkg/api/safecast"
+	safecastdocs "safecast-new-map/pkg/api/safecast/docs"
 	"safecast-new-map/pkg/auth"
 	"safecast-new-map/pkg/countryresolver"
 	"safecast-new-map/pkg/database"
@@ -434,6 +435,40 @@ func apiDocsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	page = strings.ReplaceAll(page, "__ARCHIVE_FREQUENCY__", freq)
 
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = w.Write([]byte(page))
+}
+
+// safecastSwaggerSpecHandler serves the Safecast API OpenAPI spec (swagger.json).
+func safecastSwaggerSpecHandler(w http.ResponseWriter, r *http.Request) {
+	spec := safecastdocs.SwaggerInfo.ReadDoc()
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write([]byte(spec))
+}
+
+// safecastSwaggerDocsHandler serves the standalone Safecast API Swagger UI page.
+func safecastSwaggerDocsHandler(w http.ResponseWriter, r *http.Request) {
+	b, err := content.ReadFile("public_html/safecast-api-docs.html")
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	scheme := "http"
+	if proto := strings.TrimSpace(r.Header.Get("X-Forwarded-Proto")); proto != "" {
+		scheme = strings.ToLower(proto)
+	} else if r.TLS != nil {
+		scheme = "https"
+	}
+	host := strings.TrimSpace(r.Host)
+	if host == "" {
+		if strings.TrimSpace(*domain) != "" {
+			host = strings.TrimSpace(*domain)
+		} else {
+			host = fmt.Sprintf("localhost:%d", *port)
+		}
+	}
+	specURL := fmt.Sprintf("%s://%s/api/safecast/swagger.json", scheme, host)
+	page := strings.ReplaceAll(string(b), "__SWAGGER_SPEC_URL__", specURL)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, _ = w.Write([]byte(page))
 }
@@ -1183,6 +1218,7 @@ func serveWithDomain(domain string, handler http.Handler) {
 	}
 
 	log.Printf("HTTPS server for %s ➜ :443 (TLS ≥1.0, ALPN h2/http1.1/1.0)", domain)
+	log.Printf("  API docs (Safecast) ➜ https://%s/api/safecast/docs  (spec: /api/safecast/swagger.json)", domain)
 	if err := (&http.Server{
 		Addr:              ":443",
 		Handler:           handler,
@@ -9391,6 +9427,8 @@ func main() {
 	apiHandler.Register(http.DefaultServeMux)
 
 	// Safecast API (api.safecast.org replacement) — adapter + v2 share same core
+	http.HandleFunc("/api/safecast/swagger.json", safecastSwaggerSpecHandler)
+	http.HandleFunc("/api/safecast/docs", safecastSwaggerDocsHandler)
 	safecastHandler := safecast.NewHandler(db, dbCfg.DBType, authManager, *baseURL, log.Printf)
 	safecastHandler.Register(http.DefaultServeMux)
 
@@ -9421,6 +9459,7 @@ func main() {
 		addr := fmt.Sprintf(":%d", *port)
 		go func() {
 			log.Printf("HTTP server ➜ http://localhost:%d", *port)
+			log.Printf("  API docs (Safecast) ➜ http://localhost:%d/api/safecast/docs  (spec: /api/safecast/swagger.json)", *port)
 			if err := http.ListenAndServe(addr, rootHandler); err != nil {
 				selfupgradeHandleServerError(err, log.Printf)
 			}
