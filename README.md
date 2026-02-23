@@ -295,26 +295,258 @@ Automatically import approved bGeigie measurements:
 
 ## Development
 
-### Build from Source
+### Prerequisites
+
+**macOS Requirements:**
+- macOS 14+ (Sonoma or later)
+- [Homebrew](https://brew.sh/) (required for macOS setup)
+- Xcode Command Line Tools (required for CGO builds with DuckDB)
+
+**Go Version:**
+- Go 1.24+ (installed via Homebrew)
+
+**Optional Dependencies:**
+- PostgreSQL with PostGIS (for production-like testing)
+- Docker (for containerized development)
+
+### Quick Start for Development
+
+**Step 1: Clone the Repository**
 
 ```bash
 git clone https://github.com/Safecast/safecast-new-map.git
 cd safecast-new-map
+```
+
+**Step 2: Install Go via Homebrew**
+
+```bash
+# Install Go (Homebrew must be installed first - see https://brew.sh/)
+brew install go
+
+# Verify installation
+go version  # Should show go 1.24 or later
+```
+
+**Step 3: Install Dependencies**
+
+```bash
+# Download Go module dependencies
+go mod download
+
+# For DuckDB builds: Install Xcode Command Line Tools if not already installed
+xcode-select --install
+```
+
+**Step 4: Build the Application**
+
+Choose one of the following build options:
+
+**Portable Build (no CGO)** - Works on all platforms, no DuckDB support:
+```bash
 go build -o safecast-new-map
+```
+
+**DuckDB Build** - Requires CGO, supports DuckDB backend (native on macOS arm64/amd64):
+```bash
+CGO_ENABLED=1 go build -tags duckdb -o safecast-new-map
+```
+
+**Step 5: Run the Application**
+
+```bash
+# Default PostgreSQL database (requires PostgreSQL setup)
+# Defaults to: postgres://postgres@127.0.0.1:5432/safecast?sslmode=prefer
+./safecast-new-map
+
+# Or use SQLite for simple single-user setup (no PostgreSQL needed)
+./safecast-new-map -db-type sqlite
+
+# Or use DuckDB for local development
+./safecast-new-map -db-type duckdb -db-path ./data
+
+# Or configure PostgreSQL with custom connection string
+./safecast-new-map -db-type pgx -db-conn "postgres://user:pass@localhost/safecast"
+```
+
+**Step 6: Run Tests**
+
+```bash
+# Run all tests
+go test ./...
+
+# Run tests with verbose output
+go test -v ./...
+
+# Run tests for a specific package
+go test ./pkg/database/...
+```
+
+### macOS Setup
+
+**Homebrew Prerequisite**
+
+Homebrew is required for macOS development. If not installed, follow the [official Homebrew installation guide](https://brew.sh/).
+
+**Architecture Support**
+
+- **Apple Silicon (M1/M2/M3)**: Native arm64 builds work perfectly with Homebrew-installed Go
+- **Intel Macs**: amd64 builds supported with Homebrew-installed Go
+
+**CGO Requirements**
+
+For DuckDB builds, Xcode Command Line Tools must be installed:
+
+```bash
+xcode-select --install
+```
+
+Verify installation:
+```bash
+xcode-select -p  # Should show path to Command Line Tools
+```
+
+### Build Options
+
+**Portable Build (No CGO)**
+
+This build works on all platforms but does not include DuckDB support:
+
+```bash
+go build -o safecast-new-map
+```
+
+**DuckDB Build (With CGO)**
+
+This build includes DuckDB support and requires CGO. Works natively on macOS (both arm64 and amd64):
+
+```bash
+CGO_ENABLED=1 go build -tags duckdb -o safecast-new-map
+```
+
+**Development Build with Debugging**
+
+```bash
+go build -gcflags="all=-N -l" -o safecast-new-map
+```
+
+### Database Configuration for Development
+
+**PostgreSQL (Default)**
+
+The application defaults to PostgreSQL (`pgx`). Default connection settings:
+- Host: `127.0.0.1`
+- Port: `5432`
+- User: `postgres` (or set via `DB_USER` env var)
+- Database: `safecast` (or set via `DB_NAME` env var)
+- SSL Mode: `prefer` (or set via `DB_SSLMODE` env var)
+
+Install PostgreSQL and PostGIS:
+
+```bash
+brew install postgresql@16 postgis
+```
+
+Create database and enable PostGIS:
+
+```bash
+# Start PostgreSQL
+brew services start postgresql@16
+
+# Create database
+createdb safecast
+
+# Enable PostGIS extension
+psql safecast -c "CREATE EXTENSION postgis;"
+```
+
+Run with default PostgreSQL settings:
+
+```bash
 ./safecast-new-map
 ```
 
-### Run Tests
+Or with custom connection string:
 
 ```bash
-go test ./...
+./safecast-new-map -db-type pgx -db-conn "postgres://$(whoami)@localhost/safecast"
 ```
 
-### Cross-Compile
+**SQLite (Simple Single-User)**
+
+No PostgreSQL setup required - works out of the box:
+
+```bash
+./safecast-new-map -db-type sqlite
+```
+
+**DuckDB (Local File)**
+
+Fast local storage for development:
+
+```bash
+# Build with DuckDB support first
+CGO_ENABLED=1 go build -tags duckdb -o safecast-new-map
+
+# Run with DuckDB
+./safecast-new-map -db-type duckdb -db-path ./data
+```
+
+### Cross-Compilation
+
+For cross-compiling to other platforms:
 
 ```bash
 # See scripts/crosscompile/crosscompile.go
 go run scripts/crosscompile/crosscompile.go
+```
+
+### Troubleshooting
+
+**CGO Build Failures**
+
+If CGO build fails, verify Xcode Command Line Tools are installed:
+
+```bash
+xcode-select -p
+```
+
+If not installed:
+```bash
+xcode-select --install
+```
+
+**DuckDB Build Issues**
+
+Ensure CGO is enabled:
+```bash
+CGO_ENABLED=1 go build -tags duckdb -o safecast-new-map
+```
+
+**Go Installation Verification**
+
+Verify Go is installed correctly and points to Homebrew installation:
+
+```bash
+go version    # Should show go1.24 or later
+which go      # Should point to Homebrew installation (e.g., /opt/homebrew/bin/go or /usr/local/bin/go)
+```
+
+**Module Download Issues**
+
+If `go mod download` fails, try:
+
+```bash
+go mod tidy
+go mod download
+```
+
+**Port Conflicts**
+
+If port 8765 is already in use:
+
+```bash
+./safecast-new-map -port 8080
 ```
 
 ---
