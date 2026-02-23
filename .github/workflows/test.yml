@@ -2,9 +2,10 @@ name: Test Workflow
 
 on:
   push:
-    branches:
-      - feature/canvas-rendering  # Changed to your current branch
-  workflow_dispatch:  # Manual trigger
+    branches: [main, feature/*]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
   test-job:
@@ -14,8 +15,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Hello World
-        run: echo "Hello, GitHub Actions! This is a test workflow."
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
 
-      - name: List files
-        run: ls -la
+      - name: Swagger docs (swag)
+        run: |
+          go install github.com/swaggo/swag/cmd/swag@latest
+          $(go env GOPATH)/bin/swag fmt -g pkg/api/safecast/doc.go -d pkg/api/safecast
+          cd pkg/api/safecast && $(go env GOPATH)/bin/swag init -g doc.go -d . -o docs
+          cd ../..
+          git diff --exit-code pkg/api/safecast/docs
+
+      - name: Run tests
+        run: go test ./pkg/...
