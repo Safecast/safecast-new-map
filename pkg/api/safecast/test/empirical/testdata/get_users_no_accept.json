@@ -1,0 +1,1 @@
+{"recorded_at":"2026-02-18T06:51:51Z","request":{"method":"GET","url":"https://api.safecast.org/users"},"response":{"status_code":200,"headers":{"Content-Type":"text/html; charset=utf-8"},"body":"<!DOCTYPE html><html><head><title>Users</title></head><body>placeholder</body></html>"}}

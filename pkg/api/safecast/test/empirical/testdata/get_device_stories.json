@@ -1,0 +1,23 @@
+{
+  "recorded_at": "2026-02-18T06:51:53Z",
+  "request": {
+    "method": "GET",
+    "url": "https://api.safecast.org/device_stories",
+    "headers": {
+      "Accept": "application/json"
+    }
+  },
+  "response": {
+    "status_code": 406,
+    "headers": {
+      "Content-Length": "39",
+      "Content-Type": "application/json; charset=utf-8",
+      "Date": "Wed, 18 Feb 2026 06:51:53 GMT",
+      "Server": "nginx",
+      "Strict-Transport-Security": "max-age=63072000; includeSubDomains",
+      "X-Request-Id": "70b1000c-9356-4969-99f9-c167fe0a6770",
+      "X-Runtime": "0.006135"
+    },
+    "body": "{\n  \"error\": \"Not Acceptable\",\n  \"status\": 406\n}"
+  }
+}

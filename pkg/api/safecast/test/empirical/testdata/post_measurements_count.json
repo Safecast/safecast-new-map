@@ -1,0 +1,23 @@
+{
+  "recorded_at": "2026-02-18T06:51:53Z",
+  "request": {
+    "method": "POST",
+    "url": "https://api.safecast.org/count",
+    "headers": {
+      "Accept": "application/json"
+    }
+  },
+  "response": {
+    "status_code": 404,
+    "headers": {
+      "Content-Length": "34",
+      "Content-Type": "application/json; charset=utf-8",
+      "Date": "Wed, 18 Feb 2026 06:51:53 GMT",
+      "Server": "nginx",
+      "Strict-Transport-Security": "max-age=63072000; includeSubDomains",
+      "X-Request-Id": "bf5a02f2-0bf6-4f14-9d5a-05cca6d0de1a",
+      "X-Runtime": "0.003370"
+    },
+    "body": "{\n  \"error\": \"Not Found\",\n  \"status\": 404\n}"
+  }
+}

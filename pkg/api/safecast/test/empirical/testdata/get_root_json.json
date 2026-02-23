@@ -1,0 +1,36 @@
+{
+  "recorded_at": "2026-02-18T06:51:49Z",
+  "request": {
+    "method": "GET",
+    "url": "https://api.safecast.org/",
+    "headers": {
+      "Accept": "application/json"
+    }
+  },
+  "response": {
+    "status_code": 200,
+    "headers": {
+      "Access-Control-Allow-Headers": "*, X-Requested-With",
+      "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+      "Access-Control-Allow-Origin": "safecast.org",
+      "Access-Control-Max-Age": "100000",
+      "Cache-Control": "max-age=0, private, must-revalidate",
+      "Content-Length": "177",
+      "Content-Type": "application/json; charset=utf-8",
+      "Date": "Wed, 18 Feb 2026 06:51:49 GMT",
+      "Etag": "W/\"88c76968d49d540fd7522c81b5c97df5\"",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+      "Server": "nginx",
+      "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+      "Vary": "Accept",
+      "X-Content-Type-Options": "nosniff",
+      "X-Download-Options": "noopen",
+      "X-Frame-Options": "SAMEORIGIN",
+      "X-Permitted-Cross-Domain-Policies": "none",
+      "X-Request-Id": "1aa6841c-33d4-4382-bfae-39e05a4ceab5",
+      "X-Runtime": "0.004964",
+      "X-Xss-Protection": "1; mode=block"
+    },
+    "body": "{\n  \"name\": \"Safecast API\",\n  \"subresource_uris\": [\n    \"/false/users.json\",\n    \"/false/measurements.json\",\n    \"/false/bgeigie_imports.json\",\n    \"/false/devices.json\"\n  ],\n  \"uri\": \"https://api.safecast.org/\"\n}"
+  }
+}
