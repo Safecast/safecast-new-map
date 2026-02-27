@@ -3,7 +3,7 @@
   "checkpoint_id": "b9ce54fd0bb7",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 6,
+  "checkpoints_count": 8,
   "files_touched": [
     "IMPLEMENTATION_PLAN.md",
     "docs/CLOUDFRONT_MCP_TROUBLESHOOTING.md",
@@ -12,6 +12,7 @@
     "docs/user-login-profile-plan.md",
     "pkg/database/uploads.go",
     "public_html/admin-users.html",
+    "public_html/map.html",
     "safecast-new-map.go"
   ],
   "sessions": [
@@ -42,13 +43,20 @@
       "context": "/b9/ce54fd0bb7/3/context.md",
       "content_hash": "/b9/ce54fd0bb7/3/content_hash.txt",
       "prompt": "/b9/ce54fd0bb7/3/prompt.txt"
+    },
+    {
+      "metadata": "/b9/ce54fd0bb7/4/metadata.json",
+      "transcript": "/b9/ce54fd0bb7/4/full.jsonl",
+      "context": "/b9/ce54fd0bb7/4/context.md",
+      "content_hash": "/b9/ce54fd0bb7/4/content_hash.txt",
+      "prompt": "/b9/ce54fd0bb7/4/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 5098,
-    "cache_creation_tokens": 219913,
-    "cache_read_tokens": 8022019,
-    "output_tokens": 288,
-    "api_call_count": 137
+    "input_tokens": 5278,
+    "cache_creation_tokens": 246539,
+    "cache_read_tokens": 8701120,
+    "output_tokens": 357,
+    "api_call_count": 159
   }
 }
