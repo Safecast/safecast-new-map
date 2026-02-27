@@ -1235,13 +1235,13 @@ body, html {
 
         /* Recent markers (5 min - 1 hour): slightly dimmed */
         .live-marker[data-age="recent"] {
-          opacity: 0.85;
+          opacity: 1.0;
           animation: none;
         }
 
         /* Stale markers (1-24 hours): faded, slow pulse */
         .live-marker[data-age="stale"] {
-          opacity: 0.5;
+          opacity: 1.0;
           animation: pulse-stale 5s ease-in-out infinite;
           filter: grayscale(30%);
         }
@@ -1252,8 +1252,8 @@ body, html {
         }
 
         @keyframes pulse-stale {
-          0%, 100% { opacity: 0.5; }
-          50% { opacity: 0.7; }
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.05); }
         }
 
 
@@ -3149,9 +3149,9 @@ function buildRealtimeIcon(marker, zoomLevel, nowSec) {
 
   const active = ageSec <= LIVE_ACTIVE_WINDOW;
   const baseColor = getGradientColor(marker.doseRate);
-  const fill = active ? baseColor : colorWithAlpha(baseColor, 0.5);
+  const fill = baseColor; // Always use full opacity for background
   const border = active ? '#ffffff' : '#888888';
-  const textColor = isDarkColor(active ? baseColor : fill) ? '#ffffff' : '#000000';
+  const textColor = isDarkColor(baseColor) ? '#ffffff' : '#000000';
 
   const radius = getRadius(marker.doseRate, zoomLevel) * 3;
   const size = radius * 4.16;  // 75% of original size
