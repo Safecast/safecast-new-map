@@ -39,13 +39,13 @@ func (s *Server) trackInfo(w http.ResponseWriter, r *http.Request) {
 		query = `SELECT COALESCE(username, ''), COALESCE(detector, ''),
 		         COALESCE(recording_date, 0)
 		         FROM uploads WHERE track_id = ? LIMIT 1`
+	}
+	err := s.DB.DB.QueryRowContext(ctx, query, trackID).Scan(&username, &detector, &recordingDate)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "public, max-age=3600")
 		json.NewEncoder(w).Encode(map[string]interface{}{"trackID": trackID})
 		return
-	}
-	}
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "public, max-age=3600")
