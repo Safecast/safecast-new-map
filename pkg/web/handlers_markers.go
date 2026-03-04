@@ -33,10 +33,14 @@ func (s *Server) markersWithSpectra(w http.ResponseWriter, r *http.Request) {
 	minLon, _ := strconv.ParseFloat(q.Get("minLon"), 64)
 	maxLat, _ := strconv.ParseFloat(q.Get("maxLat"), 64)
 	maxLon, _ := strconv.ParseFloat(q.Get("maxLon"), 64)
-	if minLat == 0 && maxLat == 0 && minLon == 0 && maxLon == 0 {
-		minLat, maxLat = -90, 90
-		minLon, maxLon = -180, 180
-	}
+_, hasMinLat := q["minLat"]
+_, hasMaxLat := q["maxLat"]
+_, hasMinLon := q["minLon"]
+_, hasMaxLon := q["maxLon"]
+if !hasMinLat && !hasMaxLat && !hasMinLon && !hasMaxLon {
+	minLat, maxLat = -90, 90
+	minLon, maxLon = -180, 180
+}
 	bounds := database.Bounds{
 		MinLat: minLat,
 		MaxLat: maxLat,
