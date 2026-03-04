@@ -2,7 +2,19 @@
 
 ## Overview
 
-The MCP server and map server both run behind CloudFront, with nginx routing requests to the correct backend based on the URL path.
+All three services (map server, MCP server, web-chat assistant) live in the **same repository** (`safecast-new-map`) and are built and deployed together via a single GitHub Actions workflow. They run behind CloudFront, with nginx routing requests to the correct backend based on the URL path.
+
+## Repository Structure
+
+```
+safecast-new-map/
+├── safecast-new-map.go   # Map server (port 8765)
+├── cmd/
+│   ├── mcp-server/       # MCP + REST API server (port 3333)
+│   └── web-chat/         # Claude AI chat UI (port 3334)
+└── .github/workflows/
+    └── deploy.yml        # Builds and deploys all 3 binaries
+```
 
 ## Architecture
 
@@ -14,12 +26,27 @@ CloudFront (simplemap.safecast.org)
 origin-simplemap.safecast.org
     ↓
 Nginx (routes by path)
-    ├─ /mcp-http → MCP Server (port 3333)
-    ├─ /mcp      → MCP Server (port 3333)
-    ├─ /docs/    → MCP Server (port 3333)
-    ├─ /api/mcp/ → MCP Server (port 3333)
-    └─ /         → Map Server (port 8765)
+    ├─ /mcp-http         → MCP Server (port 3333)
+    ├─ /mcp              → MCP Server (port 3333)
+    ├─ /docs/            → MCP Server (port 3333) — Swagger UI
+    ├─ /assistant/       → Web-chat (port 3334)
+    ├─ /api/radiation    → MCP Server (port 3333)
+    ├─ /api/area         → MCP Server (port 3333)
+    ├─ /api/sensors      → MCP Server (port 3333)
+    ├─ /api/sensor/      → MCP Server (port 3333)
+    ├─ /api/device/      → MCP Server (port 3333)
+    ├─ /api/spectra      → MCP Server (port 3333)
+    ├─ /api/stats        → MCP Server (port 3333)
+    ├─ /api/extreme      → MCP Server (port 3333)
+    ├─ /api/info/        → MCP Server (port 3333)
+    ├─ /api/gpt/         → MCP Server (port 3333)
+    ├─ /api/track/       → MCP Server (port 3333)
+    └─ /                 → Map Server (port 8765) — everything else
+                           including /api/auth/, /api/user/,
+                           /api/admin/, /api/spectrum/, /api/markers/
 ```
+
+> **Important:** The nginx config uses specific location blocks for MCP endpoints rather than a broad `/api/` rule. This ensures that map-server API paths (`/api/auth/`, `/api/spectrum/`, etc.) are not accidentally routed to the MCP server.
 
 ## Key Configuration
 
@@ -41,49 +68,49 @@ certbot certonly --nginx \
 
 ### 2. Nginx Configuration
 
-**Server names:** `/etc/nginx/sites-enabled/simplemap.safecast.org`
+**File:** `/etc/nginx/sites-available/origin-simplemap.safecast.org`
+
+This is the config that CloudFront hits (via `origin-simplemap.safecast.org`). It uses **specific** location blocks for each MCP endpoint — a broad `/api/` rule would break map-server routes like `/api/auth/` and `/api/spectrum/`.
+
 ```nginx
 server {
-    server_name simplemap.safecast.org origin-simplemap.safecast.org;
+    listen 443 ssl http2;
+    server_name origin-simplemap.safecast.org;
 
-    # MCP Server endpoints
-    location /mcp-http {
-        proxy_pass http://localhost:3333;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
+    # MCP protocol transports
+    location /mcp-http { proxy_pass http://localhost:3333; ... }
+    location /mcp      { proxy_pass http://localhost:3333; proxy_http_version 1.1; ... }
 
-    location /mcp {
-        proxy_pass http://localhost:3333;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        # ... other headers
-    }
+    # Swagger UI
+    location /docs/ { proxy_pass http://localhost:3333/docs/; ... }
 
-    location /docs/ {
-        proxy_pass http://localhost:3333/docs/;
-        # ... headers
-    }
+    # Web-chat assistant
+    location /assistant/ { proxy_pass http://localhost:3334/; ... }
 
-    location /api/mcp/ {
-        proxy_pass http://localhost:3333/api/;
-        # ... headers
-    }
+    # Map server auth/user/admin (must come before catch-all)
+    location /api/auth/  { proxy_pass http://localhost:8765; ... }
+    location /api/user/  { proxy_pass http://localhost:8765; ... }
+    location /api/admin/ { proxy_pass http://localhost:8765; client_max_body_size 100M; ... }
 
-    # Map server (catch-all)
+    # MCP REST API — specific endpoints only
+    location = /api/radiation { proxy_pass http://localhost:3333/api/radiation; ... }
+    location = /api/area      { proxy_pass http://localhost:3333/api/area; ... }
+    location = /api/sensors   { proxy_pass http://localhost:3333/api/sensors; ... }
+    location /api/sensor/     { proxy_pass http://localhost:3333/api/sensor/; ... }
+    location /api/device/     { proxy_pass http://localhost:3333/api/device/; ... }
+    location = /api/spectra   { proxy_pass http://localhost:3333/api/spectra; ... }
+    location = /api/stats     { proxy_pass http://localhost:3333/api/stats; ... }
+    location = /api/extreme   { proxy_pass http://localhost:3333/api/extreme; ... }
+    location /api/info/       { proxy_pass http://localhost:3333/api/info/; ... }
+    location /api/gpt/        { proxy_pass http://localhost:3333/api/gpt/; ... }
+    location /api/track/      { proxy_pass http://localhost:3333/api/track/; ... }
+
+    # Map server — everything else (including /api/spectrum/, /api/markers/, etc.)
     location / {
         proxy_pass http://localhost:8765;
-        # ... headers
+        client_max_body_size 100M;
+        ...
     }
-
-    listen [::]:443 ssl ipv6only=on;
-    listen 443 ssl;
-    ssl_certificate /etc/letsencrypt/live/simplemap.safecast.org/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/simplemap.safecast.org/privkey.pem;
 }
 ```
 
@@ -186,12 +213,14 @@ aws cloudfront get-distribution-config --id E12FYIQ8RRXOJ1 > /tmp/cf.json
 
 - **Swagger Documentation:** The MCP server's Swagger docs at `/docs/` are configured with:
   - Host: `simplemap.safecast.org`
-  - Base Path: `/api/mcp`
+  - Base Path: `/api`
 
-  If these values need updating, edit `go/cmd/mcp-server/rest.go` annotations, regenerate with `swag init -g rest.go`, rebuild the binary, and invalidate CloudFront cache for `/docs/*`
+  If these values need updating, edit `cmd/mcp-server/rest.go` annotations, regenerate with `swag init -g rest.go` from inside `cmd/mcp-server/`, rebuild, and invalidate CloudFront cache for `/docs/*`.
+
+- **Nginx routing pitfall:** Do NOT use a broad `location /api/` rule pointing to port 3333. This breaks map-server routes (`/api/auth/`, `/api/spectrum/`, etc.). Always use specific `location = /api/endpoint` or `location /api/prefix/` rules for MCP endpoints.
 
 ## Related Documentation
 
 - [CloudFront Setup Guide](cloudfront-setup.md)
 - [SSH Subdomain Setup](ssh-subdomain-setup.md)
-- [MCP Server README](../../safecast-map-MCP/README.md)
+- [Deployment Guide](DEPLOYMENT.md)
