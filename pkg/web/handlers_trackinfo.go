@@ -1,3 +1,7 @@
+// handlers_trackinfo.go — track metadata
+//
+// Returns lightweight metadata about a track (username, detector, recording
+// date). Used by the map UI to show who recorded the data and when.
 package web
 
 import (
@@ -6,7 +10,12 @@ import (
 	"strings"
 )
 
-// trackInfo returns lightweight upload metadata for a track. GET /api/track-info/{trackID}
+// trackInfo returns upload metadata for a track: username, detector, recordingDate.
+//
+// Route: GET /api/track-info/{trackID}
+//
+// If the track is not found, returns minimal JSON with just the trackID.
+// Responses are cached for 1 hour (Cache-Control).
 func (s *Server) trackInfo(w http.ResponseWriter, r *http.Request) {
 	if s.DB == nil || s.DB.DB == nil {
 		http.Error(w, "Database not available", http.StatusServiceUnavailable)

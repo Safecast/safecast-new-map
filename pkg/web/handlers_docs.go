@@ -1,3 +1,8 @@
+// handlers_docs.go — documentation and license pages
+//
+// Serves human-readable docs (API usage) and license text (MIT, CC0).
+// The API docs page is built from a template; placeholders like __BASE_URL__
+// are replaced with the actual server URL so examples work out of the box.
 package web
 
 import (
@@ -10,7 +15,9 @@ import (
 	"time"
 )
 
-// apiDocs serves a static HTML page with API usage instructions.
+// apiDocs serves an HTML page that explains how to use the API. It reads
+// public_html/api-usage.html, replaces placeholders (base URL, API root,
+// archive settings), and returns the result. Used for /api/docs.
 func (s *Server) apiDocs(w http.ResponseWriter, r *http.Request) {
 	b, err := fs.ReadFile(s.Content, "public_html/api-usage.html")
 	if err != nil {
@@ -59,7 +66,8 @@ func (s *Server) apiDocs(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(page))
 }
 
-// license serves embedded license documents (MIT, CC0).
+// license serves plain-text license files. GET /licenses/mit or /licenses/cc0
+// returns the corresponding embedded LICENSE or LICENSE.CC0 file.
 func (s *Server) license(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		w.Header().Set("Allow", "GET, HEAD")

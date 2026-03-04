@@ -1,3 +1,7 @@
+// handlers_markers.go — markers and spectra
+//
+// Handles marker-related API: listing markers that have gamma spectra, and
+// updating coordinates for markers that were uploaded without GPS.
 package web
 
 import (
@@ -10,8 +14,13 @@ import (
 	"safecast-new-map/pkg/database"
 )
 
-// markersWithSpectra returns markers that have associated spectral data.
-// GET /api/markers/spectra?minLat=...&maxLat=...&minLon=...&maxLon=...
+// markersWithSpectra returns markers that have associated spectral data,
+// optionally filtered by a geographic bounding box.
+//
+// Route: GET /api/markers/spectra?minLat=...&maxLat=...&minLon=...&maxLon=...
+//
+// Query params (all optional): minLat, maxLat, minLon, maxLon. If omitted,
+// the whole world (-90..90, -180..180) is used.
 func (s *Server) markersWithSpectra(w http.ResponseWriter, r *http.Request) {
 	if s.DB == nil || s.DB.DB == nil {
 		http.Error(w, "Database not available", http.StatusServiceUnavailable)
@@ -44,8 +53,12 @@ func (s *Server) markersWithSpectra(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(markers)
 }
 
-// updateCoordinates updates marker coordinates for spectrum files uploaded without GPS.
-// POST /api/update-coordinates Body: {"trackID": "...", "lat": 34.488, "lon": 136.166}
+// updateCoordinates sets lat/lon for all markers in a track. Used when spectra
+// were uploaded without GPS; an admin can later set the correct location.
+//
+// Route: POST /api/update-coordinates
+//
+// Body: JSON with trackID (required), lat (-90..90), lon (-180..180).
 func (s *Server) updateCoordinates(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
