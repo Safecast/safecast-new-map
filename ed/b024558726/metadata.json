@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "edb024558726",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "test/smoke_test.sh"
+  ],
+  "sessions": [
+    {
+      "metadata": "/ed/b024558726/0/metadata.json",
+      "transcript": "/ed/b024558726/0/full.jsonl",
+      "context": "/ed/b024558726/0/context.md",
+      "content_hash": "/ed/b024558726/0/content_hash.txt",
+      "prompt": "/ed/b024558726/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 23,
+    "cache_creation_tokens": 112615,
+    "cache_read_tokens": 2146641,
+    "output_tokens": 3552,
+    "api_call_count": 19
+  }
+}
