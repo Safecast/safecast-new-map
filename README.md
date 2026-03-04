@@ -254,6 +254,8 @@ See [SPECTRAL_MIGRATION_GUIDE.md](SPECTRAL_MIGRATION_GUIDE.md) for details.
 - Visualization on map markers
 - API access for external analysis
 
+**Architecture diagram:** [docs/spectral-data-flow.mmd](docs/spectral-data-flow.mmd) — full pipeline from upload → parsers → DB storage → REST API → browser chart construction.
+
 ---
 
 ## Administration
@@ -502,6 +504,8 @@ For deploying to production servers with CloudFront/CDN setup, see:
 - [Deployment Guide](docs/DEPLOYMENT.md) - Complete deployment procedures and troubleshooting
 - [GitHub Actions Guide](GITHUB_ACTIONS_GUIDE.md) - Automated CI/CD setup
 - [CloudFront Setup](docs/cloudfront-setup.md) - CDN configuration details
+- [Architecture Diagram](docs/Mermaid%20Chart%20-%20Create%20complex,%20visual%20diagrams%20with%20text.-2026-02-28-043816.mmd) - System overview (Mermaid)
+- [Spectral Data Flow](docs/spectral-data-flow.mmd) - Spectral upload/parse/store/render pipeline (Mermaid)
 
 **Important:** When using CloudFront, SSH and rsync must use the server's IP address directly, not the domain name.
 
