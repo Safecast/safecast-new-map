@@ -1,6 +1,20 @@
 // Package web provides HTTP handlers for the Safecast map application.
+//
 // Handlers are organized on a Server that holds shared dependencies (database,
 // content, config) so main can wire routes without globals.
+//
+// Route overview (see each handlers_*.go file for details):
+//
+//   - /api/docs          — API usage documentation (HTML)
+//   - /licenses/{mit,cc0} — License text
+//   - /api/geoip         — Client lat/lon by IP (when AutoLocateDefault)
+//   - /s/{code}          — Short URL redirect
+//   - /api/spectrum/{id} — Gamma spectrum JSON or download (json/csv/n42/spe)
+//   - /api/track-info/{id} — Track metadata (username, detector, date)
+//   - /api/markers/spectra — Markers with spectra in a bounding box
+//   - /api/update-coordinates — POST to set lat/lon for a track
+//   - /api/tracks/bounds — Combined bounds for multiple tracks
+//   - /qrpng             — QR code PNG for a URL
 package web
 
 import (

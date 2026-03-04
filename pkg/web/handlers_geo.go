@@ -1,3 +1,8 @@
+// handlers_geo.go — geolocation by IP
+//
+// Looks up the client's approximate location (lat/lon) from their IP address
+// via ipapi.co. Only active when AutoLocateDefault is enabled; otherwise
+// returns 204 No Content. Used to center the map on the user's location.
 package web
 
 import (
@@ -12,7 +17,8 @@ import (
 	"time"
 )
 
-// requestClientIP returns the best-effort client IP (X-Forwarded-For or RemoteAddr).
+// requestClientIP returns the client's IP, preferring X-Forwarded-For (when
+// behind a proxy) and falling back to RemoteAddr.
 func requestClientIP(r *http.Request) string {
 	forwarded := strings.TrimSpace(r.Header.Get("X-Forwarded-For"))
 	if forwarded != "" {
@@ -31,7 +37,7 @@ func requestClientIP(r *http.Request) string {
 	return ""
 }
 
-// geoIPLookup returns approximate lat/lon for an IP via ipapi.co.
+// geoIPLookup calls ipapi.co to get approximate latitude/longitude for an IP.
 func geoIPLookup(ctx context.Context, ip string) (float64, float64, error) {
 	if strings.TrimSpace(ip) == "" {
 		return 0, 0, fmt.Errorf("missing ip")
@@ -59,7 +65,9 @@ func geoIPLookup(ctx context.Context, ip string) (float64, float64, error) {
 	return payload.Latitude, payload.Longitude, nil
 }
 
-// geoIP returns JSON with lat/lon for the client IP when AutoLocateDefault is on.
+// geoIP returns JSON {"lat": ..., "lon": ...} for the requesting client's IP.
+// Route: GET /api/geoip. Only runs when Config.AutoLocateDefault is true;
+// otherwise returns 204 No Content. Uses gzip when the client accepts it.
 func (s *Server) geoIP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		w.Header().Set("Allow", "GET, HEAD")

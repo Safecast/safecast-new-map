@@ -1,3 +1,8 @@
+// handlers_spectrum.go — gamma spectrum data
+//
+// Serves gamma spectrum data for markers: JSON metadata, or downloads in
+// JSON, CSV, N42, or SPE format. Spectra are radiation measurements from
+// detectors at specific map locations.
 package web
 
 import (
@@ -10,7 +15,10 @@ import (
 	"time"
 )
 
-// spectrum serves GET /api/spectrum/{markerID} and delegates download to spectrumDownload.
+// spectrum returns spectrum JSON for a marker. If the path contains "/download",
+// it delegates to spectrumDownload instead.
+//
+// Route: GET /api/spectrum/{markerID}
 func (s *Server) spectrum(w http.ResponseWriter, r *http.Request) {
 	if strings.Contains(r.URL.Path, "/download") {
 		s.spectrumDownload(w, r)
@@ -46,7 +54,12 @@ func (s *Server) spectrum(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(spectrum)
 }
 
-// spectrumDownload serves GET /api/spectrum/{markerID}/download?format=n42|json|csv
+// spectrumDownload returns the spectrum as a downloadable file.
+//
+// Route: GET /api/spectrum/{markerID}/download?format=json|csv|n42|spe
+//
+// format: json (default), csv, n42, or spe. N42 and SPE return raw source
+// data when available; otherwise 404.
 func (s *Server) spectrumDownload(w http.ResponseWriter, r *http.Request) {
 	if s.DB == nil || s.DB.DB == nil {
 		http.Error(w, "Database not available", http.StatusServiceUnavailable)

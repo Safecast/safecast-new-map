@@ -1,3 +1,8 @@
+// handlers_bounds.go — map bounds for tracks
+//
+// Handles requests for geographic bounding boxes (min/max lat/lon) of one or
+// more tracks. The map UI uses this to zoom to the right area when displaying
+// multiple tracks.
 package web
 
 import (
@@ -8,8 +13,15 @@ import (
 	"strings"
 )
 
-// apiTracksBounds returns combined bounds for multiple tracks.
-// GET /api/tracks/bounds?trackIDs=track1,track2,track3
+// apiTracksBounds returns the combined geographic bounds (min/max lat/lon) for
+// one or more tracks. The map uses this to fit all requested tracks in view.
+//
+// Route: GET /api/tracks/bounds?trackIDs=track1,track2,track3
+//
+// Query params:
+//   - trackIDs: comma-separated list of track IDs (required)
+//
+// Response: JSON with status, bounds (minLat, minLon, maxLat, maxLon), and trackIDs.
 func (s *Server) apiTracksBounds(w http.ResponseWriter, r *http.Request) {
 	trackIDsParam := r.URL.Query().Get("trackIDs")
 	if trackIDsParam == "" {

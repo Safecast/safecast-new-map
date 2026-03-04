@@ -1,3 +1,8 @@
+// handlers_qr.go — QR code generation
+//
+// Generates a PNG QR code that encodes a URL. Used for sharing map links
+// (e.g. "scan to open this view on your phone"). The QR includes a Safecast
+// logo in the center.
 package web
 
 import (
@@ -7,7 +12,9 @@ import (
 	"safecast-new-map/pkg/qrlogoext"
 )
 
-// qrPng generates a QR code image for the given URL (query u or referer).
+// qrPng generates a QR code PNG image and writes it to the response.
+// The URL to encode comes from: query param "u", else the Referer header,
+// else the current page URL. If the URL is longer than 4096 chars it is truncated.
 func (s *Server) qrPng(w http.ResponseWriter, r *http.Request) {
 	u := r.URL.Query().Get("u")
 	if u == "" {
