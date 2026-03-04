@@ -60,6 +60,14 @@ func newTestServer(t *testing.T) *Server {
 	}, nil)
 }
 
+// newTestServerWithAdmin builds a test Server with AdminPassword set.
+func newTestServerWithAdmin(t *testing.T, adminPassword string) *Server {
+	t.Helper()
+	srv := newTestServer(t)
+	srv.Config.AdminPassword = adminPassword
+	return srv
+}
+
 // seedTestDB inserts mock data for handler tests.
 func seedTestDB(t *testing.T, db *database.Database) {
 	t.Helper()
@@ -288,6 +296,55 @@ func TestUpdateCoordinates(t *testing.T) {
 		}
 		if _, ok := out["markersUpdated"]; !ok {
 			t.Error("response missing markersUpdated")
+		}
+	})
+
+	// Auth tests: when AdminPassword is set
+	t.Run("AdminPassword set, no auth returns 401", func(t *testing.T) {
+		srvAuth := newTestServerWithAdmin(t, "secret123")
+		body := `{"trackID":"` + testTrackID + `","lat":35.7,"lon":139.8}`
+		req := httptest.NewRequest(http.MethodPost, "/api/update-coordinates", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		srvAuth.updateCoordinates(rec, req)
+		if rec.Code != http.StatusUnauthorized {
+			t.Errorf("got status %d, want 401", rec.Code)
+		}
+		if rec.Header().Get("WWW-Authenticate") == "" {
+			t.Error("expected WWW-Authenticate header")
+		}
+	})
+
+	t.Run("AdminPassword set, wrong auth returns 401", func(t *testing.T) {
+		srvAuth := newTestServerWithAdmin(t, "secret123")
+		body := `{"trackID":"` + testTrackID + `","lat":35.7,"lon":139.8}`
+		req := httptest.NewRequest(http.MethodPost, "/api/update-coordinates", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.SetBasicAuth("admin", "wrong")
+		rec := httptest.NewRecorder()
+		srvAuth.updateCoordinates(rec, req)
+		if rec.Code != http.StatusUnauthorized {
+			t.Errorf("got status %d, want 401", rec.Code)
+		}
+	})
+
+	t.Run("AdminPassword set, valid auth returns success", func(t *testing.T) {
+		srvAuth := newTestServerWithAdmin(t, "secret123")
+		body := `{"trackID":"` + testTrackID + `","lat":35.7,"lon":139.8}`
+		req := httptest.NewRequest(http.MethodPost, "/api/update-coordinates", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.SetBasicAuth("admin", "secret123")
+		rec := httptest.NewRecorder()
+		srvAuth.updateCoordinates(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Errorf("got status %d, want 200", rec.Code)
+		}
+		var out map[string]interface{}
+		if err := json.NewDecoder(rec.Body).Decode(&out); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		if out["status"] != "success" {
+			t.Errorf("status = %v, want success", out["status"])
 		}
 	})
 }
