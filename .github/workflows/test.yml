@@ -1,21 +1,26 @@
-name: Test Workflow
+name: Test
 
 on:
   push:
-    branches:
-      - feature/canvas-rendering  # Changed to your current branch
-  workflow_dispatch:  # Manual trigger
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
-  test-job:
+  test:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Hello World
-        run: echo "Hello, GitHub Actions! This is a test workflow."
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache: true
+          cache-dependency-path: go.sum
 
-      - name: List files
-        run: ls -la
+      - name: Run tests
+        run: go test ./pkg/...
