@@ -89,24 +89,18 @@ func (s *Server) Register(mux *http.ServeMux) {
 }
 
 // gzipWrap wraps a handler to apply gzip compression when client supports it.
-type gzipResponseWriter struct {
-    http.ResponseWriter
-    Writer  io.Writer
-    written bool
-    gz      *gzip.Writer
-}
-
-func (g *gzipResponseWriter) Write(b []byte) (int, error) {
-    g.written = true
-    return g.Writer.Write(b)
-}
-
-// In gzipWrap, only close gz if data was written:
-defer func() {
-    if gw.written {
-        gz.Close()
-    }
-}()
+func (s *Server) gzipWrap(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			next(w, r)
+			return
+		}
+		w.Header().Set("Content-Encoding", "gzip")
+		gz := gzip.NewWriter(w)
+		defer gz.Close()
+		grw := &gzipResponseWriter{ResponseWriter: w, Writer: gz}
+		next(grw, r)
+	}
 }
 
 type gzipResponseWriter struct {
