@@ -29,7 +29,6 @@ import (
 	"fmt"
 	"html"
 	"html/template"
-	"image/color"
 	"io"
 	"io/fs"
 	"io/ioutil"
@@ -63,11 +62,11 @@ import (
 	"safecast-new-map/pkg/jsonarchive"
 	"safecast-new-map/pkg/logger"
 	"safecast-new-map/pkg/mapimport"
-	"safecast-new-map/pkg/qrlogoext"
 	safecastfetcher "safecast-new-map/pkg/safecast-fetcher"
 	safecastrealtime "safecast-new-map/pkg/safecast-realtime"
 	"safecast-new-map/pkg/selfupgrade"
 	"safecast-new-map/pkg/spectrum"
+	"safecast-new-map/pkg/web"
 )
 
 // content bundles the UI and the license texts so single-file binaries still
@@ -393,59 +392,6 @@ func init() {
 	// CLI usage grouping is also configured once during init so every entry point
 	// inherits the readable help layout without repeating boilerplate.
 	configureCLIUsage()
-}
-
-// =====================
-// WEB — API docs page
-// =====================
-func apiDocsHandler(w http.ResponseWriter, r *http.Request) {
-	// Serve a static, embedded HTML with API usage instructions.
-	// Keep it simple and cacheable by default; clients can refresh as needed.
-	b, err := content.ReadFile("public_html/api-usage.html")
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
-
-	scheme := "http"
-	if proto := strings.TrimSpace(r.Header.Get("X-Forwarded-Proto")); proto != "" {
-		scheme = strings.ToLower(proto)
-	} else if r.TLS != nil {
-		scheme = "https"
-	}
-
-	host := strings.TrimSpace(r.Host)
-	if host == "" {
-		if strings.TrimSpace(*domain) != "" {
-			host = strings.TrimSpace(*domain)
-		} else {
-			host = fmt.Sprintf("localhost:%d", *port)
-		}
-	}
-
-	baseURL := fmt.Sprintf("%s://%s", scheme, host)
-	apiRoot := strings.TrimRight(baseURL, "/") + "/api"
-
-	page := string(b)
-	page = strings.ReplaceAll(page, "__BASE_URL__", baseURL)
-	page = strings.ReplaceAll(page, "__API_ROOT__", apiRoot)
-	page = strings.ReplaceAll(page, "__DISPLAY_HOST__", host)
-	page = strings.ReplaceAll(page, "__ARCHIVE_ENABLED__", strconv.FormatBool(apiDocsArchiveEnabled))
-
-	route := strings.TrimSpace(apiDocsArchiveRoute)
-	if route == "" {
-		route = "/api/json/weekly.tgz"
-	}
-	page = strings.ReplaceAll(page, "__ARCHIVE_ROUTE__", route)
-
-	freq := strings.TrimSpace(apiDocsArchiveFrequency)
-	if freq == "" {
-		freq = "weekly"
-	}
-	page = strings.ReplaceAll(page, "__ARCHIVE_FREQUENCY__", freq)
-
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_, _ = w.Write([]byte(page))
 }
 
 // resolveArchivePath decides where the JSON archive tgz should live.
@@ -3738,21 +3684,6 @@ func importStillRunning(done <-chan struct{}) bool {
 // the Go Proverb "Don't communicate by sharing memory; share memory by
 // communicating" by letting the channel-owned pipeline enforce ordering while
 // we merely bound total wait time.
-func withMinimumDeadline(ctx context.Context, min time.Duration) (context.Context, context.CancelFunc) {
-	deadline, ok := ctx.Deadline()
-	if ok {
-		if time.Until(deadline) >= min {
-			// Caller already supplied a generous deadline; keep it.
-			return ctx, func() {}
-		}
-		// Extend only if the existing deadline is shorter than we need while
-		// preserving values stored on the incoming context.
-		return context.WithTimeout(context.WithoutCancel(ctx), min)
-	}
-	// No deadline: give the pipeline room to queue the work.
-	return context.WithTimeout(ctx, min)
-}
-
 func importShield(done <-chan struct{}, dbType string, logf func(string, ...any)) func(http.Handler) http.Handler {
 	if !isSingleUserDriver(dbType) || done == nil {
 		return nil
@@ -3776,7 +3707,7 @@ func importShield(done <-chan struct{}, dbType string, logf func(string, ...any)
 			// Give uploads and map queries a healthy window to reach the worker
 			// goroutine instead of cancelling after one second when a TGZ import is
 			// active. We still cap the wait to avoid hiding client disconnects.
-			ctx, cancel := withMinimumDeadline(r.Context(), 2*time.Minute)
+			ctx, cancel := web.WithMinimumDeadline(r.Context(), 2*time.Minute)
 			defer cancel()
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
@@ -4761,41 +4692,6 @@ func requestClientIP(r *http.Request) string {
 	return ""
 }
 
-// geoIPLookup asks an external service for approximate coordinates of the
-// caller. A short timeout keeps page loads responsive, following the Go
-// proverb that "a little copying is better than a little dependency" by using
-// the standard library instead of bundling heavy GeoIP datasets.
-func geoIPLookup(ctx context.Context, ip string) (float64, float64, error) {
-	if strings.TrimSpace(ip) == "" {
-		return 0, 0, errors.New("missing ip")
-	}
-
-	endpoint := fmt.Sprintf("https://ipapi.co/%s/json/", url.PathEscape(ip))
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
-	if err != nil {
-		return 0, 0, err
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return 0, 0, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return 0, 0, fmt.Errorf("geoip status %d", resp.StatusCode)
-	}
-
-	var payload struct {
-		Latitude  float64 `json:"latitude"`
-		Longitude float64 `json:"longitude"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		return 0, 0, err
-	}
-	return payload.Latitude, payload.Longitude, nil
-}
-
 // debugEnabledForRequest checks whether the caller IP is in the allowlist.
 // Keeping the lookup in one spot makes it simple to extend later with CIDR
 // matching or runtime toggles without touching handlers.
@@ -4949,422 +4845,9 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// geoIPHandler returns a lightweight latitude/longitude pair derived from the
-// remote address. We keep it optional behind a flag so operators can disable
-// automatic centring if local policy demands manual map starts instead.
-func geoIPHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet && r.Method != http.MethodHead {
-		w.Header().Set("Allow", "GET, HEAD")
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	if !*autoLocateDefault {
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-
-	ip := requestClientIP(r)
-	if ip == "" {
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
-	defer cancel()
-
-	lat, lon, err := geoIPLookup(ctx, ip)
-	if err != nil {
-		log.Printf("geoip lookup failed for %s: %v", ip, err)
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	if err := json.NewEncoder(w).Encode(map[string]float64{"lat": lat, "lon": lon}); err != nil {
-		log.Printf("geoip response encode failed: %v", err)
-	}
-}
-
-// licenseHandler serves the embedded license documents so operators can ship a
-// single binary and still expose the legal texts offline. Keeping the handler
-// tiny follows "The bigger the interface, the weaker the abstraction" while
-// letting the UI lazily fetch the raw files on demand.
-func licenseHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet && r.Method != http.MethodHead {
-		w.Header().Set("Allow", "GET, HEAD")
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	rawPath := strings.TrimPrefix(r.URL.Path, "/licenses/")
-	if rawPath == r.URL.Path {
-		http.NotFound(w, r)
-		return
-	}
-	code := strings.ToLower(strings.Trim(rawPath, "/"))
-
-	var file string
-	switch code {
-	case "mit":
-		file = "LICENSE"
-	case "cc0":
-		file = "LICENSE.CC0"
-	default:
-		http.NotFound(w, r)
-		return
-	}
-
-	data, err := content.ReadFile(file)
-	if err != nil {
-		log.Printf("license handler: %s read error: %v", file, err)
-		http.Error(w, "unable to load license", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	http.ServeContent(w, r, file, time.Time{}, bytes.NewReader(data))
-}
-
-// shortRedirectHandler resolves a short code and redirects visitors to the
-// stored long URL. We lean on context timeouts instead of bespoke timers,
-// echoing "The bigger the interface, the weaker the abstraction" by keeping
-// the signature small.
-func shortRedirectHandler(w http.ResponseWriter, r *http.Request) {
-	code := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/s/"))
-	if code == "" {
-		http.NotFound(w, r)
-		return
-	}
-	if db == nil || db.DB == nil {
-		http.NotFound(w, r)
-		return
-	}
-
-	// Give short redirects room to wait behind archive work while still
-	// respecting caller cancellations. Two seconds was too short once TGZ
-	// imports filled the serialized queue, so we stretch the deadline to a
-	// friendly window instead of forcing retries.
-	ctx, cancel := withMinimumDeadline(r.Context(), 30*time.Second)
-	defer cancel()
-
-	target, err := db.ResolveShortLink(ctx, code)
-	if err != nil {
-		log.Printf("short link lookup for %q failed: %v", code, err)
-		http.Error(w, "short link lookup failed", http.StatusInternalServerError)
-		return
-	}
-	if strings.TrimSpace(target) == "" {
-		http.NotFound(w, r)
-		return
-	}
-
-	http.Redirect(w, r, target, http.StatusFound)
-}
-
 // =====================
-// API  — Spectrum Data
+// API  — Spectrum Data (handlers moved to pkg/web)
 // =====================
-
-// spectrumHandler returns spectrum data for a specific marker.
-// GET /api/spectrum/{markerID}
-// GET /api/spectrum/{markerID}/download?format=...
-func spectrumHandler(w http.ResponseWriter, r *http.Request) {
-	// Route to download handler if path contains "download"
-	if strings.Contains(r.URL.Path, "/download") {
-		spectrumDownloadHandler(w, r)
-		return
-	}
-
-	if db == nil || db.DB == nil {
-		http.Error(w, "Database not available", http.StatusServiceUnavailable)
-		return
-	}
-
-	// Extract marker ID from URL path: /api/spectrum/{markerID}
-	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-	if len(parts) < 3 {
-		http.Error(w, "Marker ID not provided", http.StatusBadRequest)
-		return
-	}
-
-	markerID, err := strconv.ParseInt(parts[2], 10, 64)
-	if err != nil {
-		http.Error(w, "Invalid marker ID", http.StatusBadRequest)
-		return
-	}
-
-	ctx, cancel := withMinimumDeadline(r.Context(), 30*time.Second)
-	defer cancel()
-
-	spectrum, err := db.GetSpectrum(ctx, markerID)
-	if err != nil {
-		log.Printf("Error fetching spectrum for marker %d: %v", markerID, err)
-		http.Error(w, "Error fetching spectrum", http.StatusInternalServerError)
-		return
-	}
-
-	if spectrum == nil {
-		http.Error(w, "No spectrum found for this marker", http.StatusNotFound)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(spectrum)
-}
-
-// spectrumDownloadHandler downloads a spectrum file in requested format.
-// GET /api/spectrum/{markerID}/download?format=n42|json|csv
-func spectrumDownloadHandler(w http.ResponseWriter, r *http.Request) {
-	if db == nil || db.DB == nil {
-		http.Error(w, "Database not available", http.StatusServiceUnavailable)
-		return
-	}
-
-	// Extract marker ID from URL path: /api/spectrum/{markerID}/download
-	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-	if len(parts) < 3 {
-		http.Error(w, "Marker ID not provided", http.StatusBadRequest)
-		return
-	}
-
-	markerID, err := strconv.ParseInt(parts[2], 10, 64)
-	if err != nil {
-		http.Error(w, "Invalid marker ID", http.StatusBadRequest)
-		return
-	}
-
-	format := r.URL.Query().Get("format")
-	if format == "" {
-		format = "json" // Default format
-	}
-
-	ctx, cancel := withMinimumDeadline(r.Context(), 30*time.Second)
-	defer cancel()
-
-	spectrum, err := db.GetSpectrum(ctx, markerID)
-	if err != nil {
-		log.Printf("Error fetching spectrum for marker %d: %v", markerID, err)
-		http.Error(w, "Error fetching spectrum", http.StatusInternalServerError)
-		return
-	}
-
-	if spectrum == nil {
-		http.Error(w, "No spectrum found for this marker", http.StatusNotFound)
-		return
-	}
-
-	switch strings.ToLower(format) {
-	case "json":
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=spectrum_%d.json", markerID))
-		json.NewEncoder(w).Encode(spectrum)
-
-	case "csv":
-		w.Header().Set("Content-Type", "text/csv")
-		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=spectrum_%d.csv", markerID))
-		// Write CSV: energy, counts
-		fmt.Fprintf(w, "Channel,Energy_keV,Counts\n")
-		for i, count := range spectrum.Channels {
-			energy := 0.0
-			if spectrum.Calibration != nil {
-				ch := float64(i)
-				energy = spectrum.Calibration.A + spectrum.Calibration.B*ch + spectrum.Calibration.C*ch*ch
-			}
-			fmt.Fprintf(w, "%d,%.2f,%d\n", i, energy, count)
-		}
-
-	case "n42":
-		if len(spectrum.RawData) > 0 && spectrum.SourceFormat == "n42" {
-			// Return original N42 file if available
-			w.Header().Set("Content-Type", "application/xml")
-			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=spectrum_%d.n42", markerID))
-			w.Write(spectrum.RawData)
-		} else {
-			http.Error(w, "N42 format not available for this spectrum", http.StatusNotFound)
-		}
-
-	case "spe":
-		if len(spectrum.RawData) > 0 && spectrum.SourceFormat == "spe" {
-			// Return original SPE file if available
-			w.Header().Set("Content-Type", "text/plain")
-			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=spectrum_%d.spe", markerID))
-			w.Write(spectrum.RawData)
-		} else {
-			http.Error(w, "SPE format not available for this spectrum", http.StatusNotFound)
-		}
-
-	default:
-		http.Error(w, fmt.Sprintf("Unsupported format: %s", format), http.StatusBadRequest)
-	}
-}
-
-// trackInfoHandler returns lightweight upload metadata for a track.
-// GET /api/track-info/{trackID}
-func trackInfoHandler(w http.ResponseWriter, r *http.Request) {
-	if db == nil || db.DB == nil {
-		http.Error(w, "Database not available", http.StatusServiceUnavailable)
-		return
-	}
-	trackID := strings.TrimPrefix(r.URL.Path, "/api/track-info/")
-	if trackID == "" {
-		http.Error(w, "Missing track ID", http.StatusBadRequest)
-		return
-	}
-
-	ctx := r.Context()
-	var username, detector string
-	var recordingDate int64
-
-	var query string
-	switch *dbType {
-	case "pgx", "duckdb":
-		query = `SELECT COALESCE(username, ''), COALESCE(detector, ''),
-		         COALESCE(EXTRACT(EPOCH FROM recording_date)::BIGINT, 0)
-		         FROM uploads WHERE track_id = $1 LIMIT 1`
-	default:
-		query = `SELECT COALESCE(username, ''), COALESCE(detector, ''),
-		         COALESCE(recording_date, 0)
-		         FROM uploads WHERE track_id = ? LIMIT 1`
-	}
-
-	err := db.DB.QueryRowContext(ctx, query, trackID).Scan(&username, &detector, &recordingDate)
-	if err != nil {
-		// No upload record found — return empty info rather than error
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Cache-Control", "public, max-age=3600")
-		w.Write([]byte(`{"trackID":"` + trackID + `"}`))
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "public, max-age=3600")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"trackID":       trackID,
-		"username":      username,
-		"detector":      detector,
-		"recordingDate": recordingDate,
-	})
-}
-
-// markersWithSpectraHandler returns markers that have associated spectral data.
-// GET /api/markers/spectra?minLat=...&maxLat=...&minLon=...&maxLon=...
-func markersWithSpectraHandler(w http.ResponseWriter, r *http.Request) {
-	if db == nil || db.DB == nil {
-		http.Error(w, "Database not available", http.StatusServiceUnavailable)
-		return
-	}
-
-	ctx, cancel := withMinimumDeadline(r.Context(), 30*time.Second)
-	defer cancel()
-
-	q := r.URL.Query()
-	minLat, _ := strconv.ParseFloat(q.Get("minLat"), 64)
-	minLon, _ := strconv.ParseFloat(q.Get("minLon"), 64)
-	maxLat, _ := strconv.ParseFloat(q.Get("maxLat"), 64)
-	maxLon, _ := strconv.ParseFloat(q.Get("maxLon"), 64)
-
-	// Validate bounds
-	if minLat == 0 && maxLat == 0 && minLon == 0 && maxLon == 0 {
-		// Default to world bounds
-		minLat, maxLat = -90, 90
-		minLon, maxLon = -180, 180
-	}
-
-	bounds := database.Bounds{
-		MinLat: minLat,
-		MaxLat: maxLat,
-		MinLon: minLon,
-		MaxLon: maxLon,
-	}
-
-	markers, err := db.GetMarkersWithSpectra(ctx, bounds)
-	if err != nil {
-		log.Printf("Error fetching markers with spectra: %v", err)
-		http.Error(w, "Error fetching markers", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(markers)
-}
-
-// updateCoordinatesHandler updates marker coordinates for spectrum files uploaded without GPS.
-// POST /api/update-coordinates
-// Body: {"trackID": "...", "lat": 34.488, "lon": 136.166}
-func updateCoordinatesHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	if db == nil || db.DB == nil {
-		http.Error(w, "Database not available", http.StatusServiceUnavailable)
-		return
-	}
-
-	// Parse request body
-	var req struct {
-		TrackID string  `json:"trackID"`
-		Lat     float64 `json:"lat"`
-		Lon     float64 `json:"lon"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	// Validate inputs
-	if req.TrackID == "" {
-		http.Error(w, "trackID is required", http.StatusBadRequest)
-		return
-	}
-
-	if req.Lat < -90 || req.Lat > 90 {
-		http.Error(w, "Invalid latitude", http.StatusBadRequest)
-		return
-	}
-
-	if req.Lon < -180 || req.Lon > 180 {
-		http.Error(w, "Invalid longitude", http.StatusBadRequest)
-		return
-	}
-
-	ctx := r.Context()
-
-	// Update all markers with this trackID across all zoom levels
-	query := "UPDATE markers SET lat = ?, lon = ? WHERE trackID = ?"
-	args := []interface{}{req.Lat, req.Lon, req.TrackID}
-
-	if *dbType == "pgx" || *dbType == "duckdb" {
-		query = "UPDATE markers SET lat = $1, lon = $2 WHERE trackID = $3"
-	}
-
-	result, err := db.DB.ExecContext(ctx, query, args...)
-	if err != nil {
-		log.Printf("Error updating coordinates for track %s: %v", req.TrackID, err)
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status": "error",
-			"error":  "Failed to update coordinates",
-		})
-		return
-	}
-
-	rowsAffected, _ := result.RowsAffected()
-
-	log.Printf("Updated coordinates for track %s: %d markers updated to (%.6f, %.6f)",
-		req.TrackID, rowsAffected, req.Lat, req.Lon)
-
-	// Return success
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":         "success",
-		"markersUpdated": rowsAffected,
-		"lat":            req.Lat,
-		"lon":            req.Lon,
-	})
-}
 
 // =====================
 // ADMIN API
@@ -7926,141 +7409,7 @@ func tracksHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Multi-track page rendered for: %s", trackIDsParam)
 }
 
-// apiTracksBoundsHandler returns combined bounds for multiple tracks
-// GET /api/tracks/bounds?trackIDs=track1,track2,track3
-func apiTracksBoundsHandler(w http.ResponseWriter, r *http.Request) {
-	trackIDsParam := r.URL.Query().Get("trackIDs")
-	if trackIDsParam == "" {
-		http.Error(w, "trackIDs parameter required", http.StatusBadRequest)
-		return
-	}
-
-	trackIDs := strings.Split(trackIDsParam, ",")
-	if len(trackIDs) == 0 {
-		http.Error(w, "No track IDs provided", http.StatusBadRequest)
-		return
-	}
-
-	ctx := r.Context()
-
-	// Calculate combined bounds
-	var minLat, minLon, maxLat, maxLon float64
-	first := true
-
-	for _, trackID := range trackIDs {
-		trackID = strings.TrimSpace(trackID)
-		if trackID == "" {
-			continue
-		}
-
-		// Query bounds for this track
-		var tMinLat, tMinLon, tMaxLat, tMaxLon sql.NullFloat64
-
-		var query string
-		if *dbType == "pgx" {
-			query = `SELECT MIN(lat) as min_lat, MIN(lon) as min_lon, MAX(lat) as max_lat, MAX(lon) as max_lon 
-			         FROM markers WHERE trackID = $1`
-		} else {
-			query = `SELECT MIN(lat) as min_lat, MIN(lon) as min_lon, MAX(lat) as max_lat, MAX(lon) as max_lon 
-			         FROM markers WHERE trackID = ?`
-		}
-
-		err := db.DB.QueryRowContext(ctx, query, trackID).Scan(&tMinLat, &tMinLon, &tMaxLat, &tMaxLon)
-		if err != nil {
-			log.Printf("Error querying bounds for track %s: %v", trackID, err)
-			continue
-		}
-
-		// Skip if track has no markers
-		if !tMinLat.Valid || !tMinLon.Valid || !tMaxLat.Valid || !tMaxLon.Valid {
-			continue
-		}
-
-		// Update combined bounds
-		if first {
-			minLat = tMinLat.Float64
-			minLon = tMinLon.Float64
-			maxLat = tMaxLat.Float64
-			maxLon = tMaxLon.Float64
-			first = false
-		} else {
-			if tMinLat.Float64 < minLat {
-				minLat = tMinLat.Float64
-			}
-			if tMinLon.Float64 < minLon {
-				minLon = tMinLon.Float64
-			}
-			if tMaxLat.Float64 > maxLat {
-				maxLat = tMaxLat.Float64
-			}
-			if tMaxLon.Float64 > maxLon {
-				maxLon = tMaxLon.Float64
-			}
-		}
-	}
-
-	if first {
-		// No valid tracks found
-		http.Error(w, "No valid tracks found", http.StatusNotFound)
-		return
-	}
-
-	// Return bounds as JSON
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status": "success",
-		"bounds": map[string]float64{
-			"minLat": minLat,
-			"minLon": minLon,
-			"maxLat": maxLat,
-			"maxLon": maxLon,
-		},
-		"trackIDs": trackIDs,
-	})
-}
-
-// qrPngHandler generates a QR code image for a given URL.
-func qrPngHandler(w http.ResponseWriter, r *http.Request) {
-	u := r.URL.Query().Get("u")
-	if u == "" {
-		if ref := r.Referer(); ref != "" {
-			u = ref
-		} else {
-			scheme := "http"
-			if r.TLS != nil {
-				scheme = "https"
-			}
-			u = scheme + "://" + r.Host + r.URL.RequestURI()
-		}
-	}
-	if len(u) > 4096 {
-		u = u[:4096]
-	}
-
-	w.Header().Set("Content-Type", "image/png")
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Content-Disposition", "inline; filename=\"qr.png\"")
-
-	// (А) если логотип лежит в файле:
-	// logoBytes, _ := os.ReadFile("static/radiation.png")
-
-	// (Б) или без файла — пусть пакет нарисует знак сам:
-	var logoBytes []byte
-
-	opts := qrlogoext.Options{
-		TargetPx:    1500,
-		Fg:          color.RGBA{0, 0, 0, 255},       // чёрные модули
-		Bg:          color.RGBA{255, 255, 255, 255}, // БЕЛЫЙ фон
-		Logo:        color.RGBA{233, 192, 35, 255},  // ЖЕЛТЫЙ знак радиации
-		LogoBoxFrac: 0.32,                           // большой центральный квадрат
-		LogoPadding: 16,                             // отступ для картинки (если PNG вставляешь)
-	}
-
-	if err := qrlogoext.EncodePNG(w, []byte(u), logoBytes, opts); err != nil {
-		http.Error(w, "QR encode: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
+// apiTracksBoundsHandler, qrPngHandler moved to pkg/web
 
 // generateTileCacheKey creates a unique key for caching clustered markers based on request parameters
 // The key includes zoom level, bounding box, track ID, speed filters, and date filters
@@ -9114,77 +8463,7 @@ func realtimeHistoryHandler(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(resp)
 }
 
-// =====================
-// GZIP COMPRESSION
-// =====================
-
-// gzipResponseWriter wraps http.ResponseWriter to automatically gzip responses
-// when client supports it. Expected compression ratio: 3-5x (500 kB → 100-150 kB)
-type gzipResponseWriter struct {
-	http.ResponseWriter
-	gzipWriter *gzip.Writer
-	written    bool
-}
-
-// WriteHeader delegates to underlying writer (called by handler)
-func (g *gzipResponseWriter) WriteHeader(statusCode int) {
-	if !g.written {
-		g.ResponseWriter.WriteHeader(statusCode)
-		g.written = true
-	}
-}
-
-// Write intercepts writes to compress them with gzip
-func (g *gzipResponseWriter) Write(b []byte) (int, error) {
-	if !g.written {
-		g.WriteHeader(http.StatusOK)
-	}
-	return g.gzipWriter.Write(b)
-}
-
-// Flush flushes both the gzip writer and response writer if possible
-func (g *gzipResponseWriter) Flush() error {
-	if err := g.gzipWriter.Flush(); err != nil {
-		return err
-	}
-	if f, ok := g.ResponseWriter.(http.Flusher); ok {
-		f.Flush()
-	}
-	return nil
-}
-
-// gzipHandler wraps a handler to apply gzip compression to responses
-// only when the client sends Accept-Encoding: gzip
-func gzipHandler(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// Check if client accepts gzip encoding
-		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-			next(w, r)
-			return
-		}
-
-		// Set gzip header BEFORE creating wrapper (before any writes)
-		w.Header().Set("Content-Encoding", "gzip")
-		w.Header().Add("Vary", "Accept-Encoding")
-
-		// Create gzip writer
-		gzipWriter := gzip.NewWriter(w)
-		defer gzipWriter.Close()
-
-		// Wrap response writer
-		wrappedWriter := &gzipResponseWriter{
-			ResponseWriter: w,
-			gzipWriter:     gzipWriter,
-			written:        false,
-		}
-
-		// Call original handler
-		next(wrappedWriter, r)
-
-		// Ensure gzip writer is flushed
-		_ = gzipWriter.Flush()
-	}
-}
+// Gzip compression for API responses is in pkg/web (Server.gzipWrap).
 
 // =====================
 // MAIN
@@ -9475,6 +8754,27 @@ func main() {
 	apiDocsArchiveRoute = route
 	apiDocsArchiveFrequency = archiveFrequency.HumanInterval()
 
+	// Web server: handlers moved to pkg/web to keep main focused on wiring.
+	webConfig := web.Config{
+		Domain:                 *domain,
+		Port:                   *port,
+		DefaultLat:             *defaultLat,
+		DefaultLon:             *defaultLon,
+		DefaultZoom:            *defaultZoom,
+		DefaultLayer:           *defaultLayer,
+		AutoLocateDefault:      *autoLocateDefault,
+		SupportEmail:           *supportEmail,
+		CompileVersion:         CompileVersion,
+		DBType:                 *dbType,
+		AdminPassword:          *adminPassword,
+		APIDocsArchiveEnabled:  apiDocsArchiveEnabled,
+		APIDocsArchiveRoute:    apiDocsArchiveRoute,
+		APIDocsArchiveFrequency: apiDocsArchiveFrequency,
+		DebugIPAllowlist:       debugIPAllowlist,
+	}
+	webServer := web.NewServer(db, content, webConfig, log.Printf)
+	webServer.Register(http.DefaultServeMux)
+
 	// 4. Маршруты и статика
 	staticFS, err := fs.Sub(content, "public_html")
 	if err != nil {
@@ -9493,9 +8793,6 @@ func main() {
 	
 	http.HandleFunc("/home", homeHandler)
 	http.HandleFunc("/", mapHandler)
-	// Serve license documents straight from the embedded filesystem so UI
-	// modals can reuse the same source without relying on external storage.
-	http.HandleFunc("/licenses/", licenseHandler)
 
 	// Register authentication routes if auth system is enabled
 	if authManager != nil {
@@ -9695,15 +8992,7 @@ func main() {
 	http.HandleFunc("/realtime_history", realtimeHistoryHandler)
 	http.HandleFunc("/trackid/", trackHandler)
 	http.HandleFunc("/tracks/", tracksHandler)
-	http.HandleFunc("/qrpng", qrPngHandler)
-	http.HandleFunc("/api/geoip", gzipHandler(geoIPHandler))
-	http.HandleFunc("/s/", shortRedirectHandler)
-	http.HandleFunc("/api/docs", apiDocsHandler)
-	http.HandleFunc("/api/spectrum/", spectrumHandler)                                 // GET /api/spectrum/{markerID} and /api/spectrum/{markerID}/download
-	http.HandleFunc("/api/markers/spectra", markersWithSpectraHandler)                 // GET /api/markers/spectra
-	http.HandleFunc("/api/tracks/bounds", apiTracksBoundsHandler)                      // GET /api/tracks/bounds?trackIDs=...
-	http.HandleFunc("/api/track-info/", trackInfoHandler)                              // GET /api/track-info/{trackID}
-	http.HandleFunc("/api/update-coordinates", updateCoordinatesHandler)               // POST /api/update-coordinates
+	// api/docs, licenses/, api/geoip, s/, api/spectrum/, api/markers/spectra, api/tracks/bounds, api/track-info/, api/update-coordinates, qrpng — registered via webServer.Register above
 	// Admin endpoints - wrap with OptionalAuth to allow session-based admin auth
 	if authManager != nil {
 		http.HandleFunc("/api/admin/uploads", authManager.OptionalAuth(adminUploadsHandler))
