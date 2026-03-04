@@ -143,19 +143,20 @@ section "Auth - register"
 CODE=$(curl -s -o /tmp/smoke_body -w "%{http_code}" "$BASE/api/auth/register")
 check "GET /api/auth/register -> 405" 405 "$CODE"
 
-# Use a unique email to avoid conflicts on repeated runs
+# Use a unique email and randomly generated password to avoid conflicts on repeated runs
 TS=$(date +%s)
 REG_EMAIL="smoketest_${TS}@example.com"
+REG_PW="$(openssl rand -base64 16 | tr -dc 'A-Za-z0-9' | head -c 16)Aa1!"
 CODE=$(curl -s -o /tmp/smoke_body -w "%{http_code}" \
   -X POST -H "Content-Type: application/json" \
-  -d "{\"email\":\"$REG_EMAIL\",\"username\":\"smoketest_$TS\",\"password\":\"SmokePw123!\"}" \
+  -d "{\"email\":\"$REG_EMAIL\",\"username\":\"smoketest_$TS\",\"password\":\"$REG_PW\"}" \
   "$BASE/api/auth/register")
 check "POST /api/auth/register (new user)" 201 "$CODE"
 
 # Duplicate registration
 CODE=$(curl -s -o /tmp/smoke_body -w "%{http_code}" \
   -X POST -H "Content-Type: application/json" \
-  -d "{\"email\":\"$REG_EMAIL\",\"username\":\"smoketest2_$TS\",\"password\":\"SmokePw123!\"}" \
+  -d "{\"email\":\"$REG_EMAIL\",\"username\":\"smoketest2_$TS\",\"password\":\"$REG_PW\"}" \
   "$BASE/api/auth/register")
 check "POST /api/auth/register (duplicate email) -> 409" 409 "$CODE"
 
@@ -166,7 +167,7 @@ check "GET /api/auth/login -> 405" 405 "$CODE"
 # Login and capture cookie
 LOGIN_RESP=$(curl -s -c /tmp/smoke_cookies -o /tmp/smoke_body -w "%{http_code}" \
   -X POST -H "Content-Type: application/json" \
-  -d "{\"email\":\"$REG_EMAIL\",\"password\":\"SmokePw123!\"}" \
+  -d "{\"email\":\"$REG_EMAIL\",\"password\":\"$REG_PW\"}" \
   "$BASE/api/auth/login")
 check "POST /api/auth/login (valid credentials)" 200 "$LOGIN_RESP"
 
