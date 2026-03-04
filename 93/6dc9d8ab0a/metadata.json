@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "936dc9d8ab0a",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 19,
+  "files_touched": [
+    "README.md",
+    "docs/DEPLOYMENT.md",
+    "safecast-mcp",
+    "safecast-new-map",
+    "safecast-web-chat"
+  ],
+  "sessions": [
+    {
+      "metadata": "/93/6dc9d8ab0a/0/metadata.json",
+      "transcript": "/93/6dc9d8ab0a/0/full.jsonl",
+      "context": "/93/6dc9d8ab0a/0/context.md",
+      "content_hash": "/93/6dc9d8ab0a/0/content_hash.txt",
+      "prompt": "/93/6dc9d8ab0a/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 3041,
+    "cache_creation_tokens": 272880,
+    "cache_read_tokens": 14669276,
+    "output_tokens": 55788,
+    "api_call_count": 172
+  }
+}
