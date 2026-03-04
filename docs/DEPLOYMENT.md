@@ -273,6 +273,27 @@ ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl start safecast-new-m
 - **DDoS protection:** AWS Shield Standard included with CloudFront
 - **Origin protection:** Origin server (65.108.24.131) can be firewalled to only accept CloudFront IPs
 
+### PostgreSQL Security
+
+PostgreSQL (port 5432) **must never be exposed to the internet.**
+
+**Configuration** — `/etc/postgresql/16/main/postgresql.conf`:
+```
+listen_addresses = 'localhost'
+```
+
+**Firewall rules** (persisted via `iptables-persistent`):
+```bash
+# Allow postgres only on loopback
+iptables -A INPUT -i lo -p tcp --dport 5432 -j ACCEPT
+# Drop all external access
+iptables -A INPUT -p tcp --dport 5432 -j DROP
+```
+
+Rules are saved in `/etc/iptables/rules.v4` and restored automatically on reboot.
+
+> **Background:** In March 2026 the BSI (via Hetzner abuse) flagged port 5432 as publicly accessible. The root cause was `listen_addresses` including the public IP. Both the config and firewall were fixed and the rules persisted.
+
 ## Related Documentation
 
 - [CloudFront Setup Guide](cloudfront-setup.md) - Initial CloudFront configuration
