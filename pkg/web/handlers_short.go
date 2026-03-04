@@ -35,5 +35,9 @@ func (s *Server) shortRedirect(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	if !strings.HasPrefix(target, "http://") && !strings.HasPrefix(target, "https://") {
+		http.Error(w, "invalid redirect target", http.StatusBadGateway)
+		return
+	}
 	http.Redirect(w, r, target, http.StatusFound)
 }
