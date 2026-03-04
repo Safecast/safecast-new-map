@@ -198,6 +198,27 @@ Import from local file:
 - **Statistics:** `/api/stats`
 - **Countries:** `/api/countries`
 
+### MCP Server & AI Integration
+
+This repo also includes an MCP (Model Context Protocol) server and a Claude-powered web chat interface, built and deployed alongside the map server from the same codebase.
+
+| Component | Source | Port | URL |
+|-----------|--------|------|-----|
+| MCP Server | `cmd/mcp-server/` | 3333 | `/mcp-http`, `/mcp/sse` |
+| REST API + Swagger | `cmd/mcp-server/` | 3333 | `/api/radiation`, `/docs/` |
+| Web Chat | `cmd/web-chat/` | 3334 | `/assistant/` |
+
+**Connect Claude to the live Safecast data:**
+```bash
+# Claude Code CLI
+claude mcp add --transport http safecast https://simplemap.safecast.org/mcp-http
+
+# Claude.ai: Settings → Integrations → Add custom integration
+# URL: https://simplemap.safecast.org/mcp-http
+```
+
+**Swagger API docs:** [simplemap.safecast.org/docs/](https://simplemap.safecast.org/docs/)
+
 ---
 
 ## Spectral Data Analysis
