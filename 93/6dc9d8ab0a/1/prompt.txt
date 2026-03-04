@@ -1,0 +1,94 @@
+We got this email over abuse, can you check and fix the issue.:
+
+abuse@hetzner.com
+	
+9:10 PM (14 minutes ago)
+	
+	
+to rob
+Dear Mr Rob Oudendijk,
+
+We have received a notification from the German Federal Office for Information Security (BSI) for (the IP address of) a server you have with us. We are automatically forwarding this notification on to you, for your information.
+
+The original report has been included below. Additional information is provided with the how-to guides referenced in the report. Please note that we do not have any further information to share.
+
+These notifications do not mean your server was involved in any abusive activity. They are simply alerting you to a potential issue on your server, that could be exploited, and that is usually fairly easy to secure.
+
+You do not need to send us, or the BSI, a response.
+
+In case of further questions, please contact certbund@bsi.bund.de and keep the ticket number of the original report [CB-Report#...] in the subject line. Do not reply to <reports@reports.cert-bund.de> as this is just the sender address for the reports and messages sent to this address will not be read.
+
+Kind regards
+
+Abuse Team
+
+Hetzner Online GmbH
+Industriestr. 25
+91710 Gunzenhausen / Germany
+Tel: +49 9831 5050
+Fax: +49 9831 5053
+www.hetzner.com
+
+Register Court: Registergericht Ansbach, HRB 6089
+CEO: Martin Hetzner, Stephan Konvickova, Günther Müller
+
+You have the option of making an appeal against a negative decision.
+To do that, please reply directly to this ticket. If this is the Abuse
+Team’s final decision, you can also make a complaint by writing to
+info@hetzner.com. The European Commission also provides a
+platform that you can use as a platform for online dispute resolution
+(ODR) at http://ec.europa.eu/consumers/odr. We are neither willing
+nor required to participate in a dispute resolution process before a
+consumer arbitration board.
+
+For the purposes of this communication, we may save some of your
+personal data. For information on our data privacy policy, please see:
+www.hetzner.com/privacy-policy-notice
+
+> Dear Sir or Madam,
+>
+> PostgreSQL is a relational database management system (DBMS) often used
+> with web applications.
+>
+> Unauthorized access to the DBMS by exploiting vulnerabilities, misconfigurations,
+> or by using compromised login credentials can result in malicious actors
+> being able to access, manipulate or delete information stored in the databases,
+> which can have far-reaching consequences.
+>
+> To protect against such kind of attacks, access to the DBMS should be limited
+> to the application server and trusted management networks or a VPN connection.
+> The DBMS should never be exposed to the Internet.
+>
+> Please find below a list of affected IP addresses on your network.
+> The timestamp (timezone UTC) indicates when an openly accessible
+> PostgreSQL server was found to be running on respective IP address.
+>
+> We would like to ask you to take appropriate steps to secure
+> affected systems or notify your customers accordingly.
+>
+> This message is digitally signed using PGP.
+> Information on the signature key is available at:
+> <https://reports.cert-bund.de/en/digital-signature>
+>
+> Please note:
+> This is an automatically generated message. Replies to the
+> sender address <reports@reports.cert-bund.de> will NOT be read
+> but silently be discarded. In case of questions, please contact
+> <certbund@bsi.bund.de> and keep the ticket number [CB-Report#...]
+> of this message in the subject line.
+>
+> Affected systems on your network:
+>
+> Format: ASN | IP | Timestamp (UTC) | Port
+>  24940 | 65.108.24.131 | 2026-03-03 13:56:05 | 5432
+>
+> Mit freundlichen Grüßen / Kind regards
+> Team CERT-Bund
+>
+> Bundesamt für Sicherheit in der Informationstechnik
+> Federal Office for Information Security (BSI)
+> CERT-Bund
+
+---
+
+Please update the documents.
