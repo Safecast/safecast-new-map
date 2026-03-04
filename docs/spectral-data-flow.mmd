@@ -1,0 +1,83 @@
+---
+config:
+  layout: elk
+  theme: neutral
+  look: neo
+---
+flowchart TB
+
+  subgraph Upload["📤 Upload — /api/upload (Map Server port 8765)"]
+    UFile["User submits file\n(.n42 / .spe / .rctrk / .rcxml)"]
+    ExtDetect["Extension detection\nroutes to spectrum pipeline"]
+  end
+
+  subgraph Parse["🔬 Spectrum Parsers — pkg/spectrum/"]
+    N42["n42.go — ParseN42()\nANSI N42.42 XML\n→ InstrumentData / Measurement\n→ channels, energy cal, timestamp"]
+    SPE["spe.go — ParseSPE()\nIAEA SPE text format\n→ $DATA $MCA_CAL $DATE_MEA\n→ channels, calibration coefficients"]
+    RCTRK["rctrk.go — ParseRCTRK()\nRadiaCode JSON (.rctrk)\n→ spectra[] + markers[]\n→ lat/lon embedded per reading"]
+    RCXML["rcxml detection\nRadiaCode XML variant\n→ same output as N42"]
+  end
+
+  subgraph Extract["📦 Extracted Data — pkg/database/models.go"]
+    SpecObj["Spectrum struct\n• Channels []int (1024 values)\n• ChannelCount int\n• LiveTimeSec / RealTimeSec\n• DeviceModel string\n• Calibration {a, b, c} keV coefficients\n• SourceFormat (n42/spe/rctrk)\n• RawData []byte (original file)\n• Filename string"]
+    MarkerObj["Marker struct\n• Lat / Lon\n• DoseRate µSv/h\n• Timestamp\n• CapturedAt"]
+  end
+
+  subgraph Store["🗄️ PostgreSQL Storage"]
+    MarkersTable["markers table\n(id, lat, lon, dose_rate,\ncaptured_at, has_spectrum=true)"]
+    SpectraTable["spectra table\n(id, marker_id FK,\nchannels TEXT (JSON array),\ncalibration TEXT (JSON {a,b,c}),\nlive_time_sec, real_time_sec,\ndevice_model, source_format,\nfilename, raw_data BYTEA,\ncreated_at)"]
+    Index["idx_spectra_marker_id\nfor fast JOIN lookups"]
+  end
+
+  subgraph API["🔌 REST API — pkg/web/handlers_spectrum.go"]
+    GetSpec["GET /api/spectrum/{markerID}\n→ JSON: channels[], calibration,\n   live_time, device_model"]
+    Download["GET /api/spectrum/{markerID}/download\n?format=json|csv|n42|spe\n• json — full spectrum + cal\n• csv — channel, energy_keV, counts\n• n42/spe — original raw_data bytes"]
+  end
+
+  subgraph MCPLayer["🤖 MCP Tool — cmd/mcp-server"]
+    MCPSpec["get_spectrum tool\nCalls /api/spectrum/{markerID}\nReturns channel data + calibration\nfor AI analysis"]
+  end
+
+  subgraph UI["🖥️ Browser — public_html/map.html"]
+    ClickMarker["User clicks map marker\n(has_spectrum=true)"]
+    FetchSpec["fetch /api/spectrum/{markerID}\n→ JSON response"]
+    CalConvert["Channel → Energy conversion\nenergy = a + b·ch + c·ch²\n(EnergyCalibration coefficients)"]
+    Canvas["drawSpectrumChart()\nCanvas 2D rendering\n• X-axis: Energy (keV), 0–3000\n• Y-axis: Counts\n• Auto-scaled grid (niceTicks)\n• Interactive zoom regions"]
+    ChartJS["renderSpectrumChart()\nChart.js (log scale)\n• Drag-to-zoom + pan\n• Hover tooltips\n• Color: #FFD700"]
+    Isotopes["identifyIsotopesInSpectrum()\n• Matches known isotope peaks (keV)\n• Dashed overlay lines on chart\n• Interactive hover list"]
+    Export["Download button\nCSV / JSON / original format"]
+  end
+
+  UFile --> ExtDetect
+  ExtDetect -->|".n42"| N42
+  ExtDetect -->|".spe"| SPE
+  ExtDetect -->|".rctrk"| RCTRK
+  ExtDetect -->|".xml / .rcxml"| RCXML
+
+  N42 --> SpecObj
+  SPE --> SpecObj
+  RCTRK --> SpecObj
+  RCXML --> SpecObj
+
+  N42 --> MarkerObj
+  SPE --> MarkerObj
+  RCTRK --> MarkerObj
+  RCXML --> MarkerObj
+
+  MarkerObj -->|"INSERT markers\nhas_spectrum=true"| MarkersTable
+  SpecObj -->|"InsertSpectrum()\nJSON-serialize channels + cal"| SpectraTable
+  SpectraTable --- Index
+  MarkersTable -->|"marker_id FK"| SpectraTable
+
+  MarkersTable -->|"GetSpectrum(markerID)"| GetSpec
+  SpectraTable -->|"JOIN on marker_id"| GetSpec
+  GetSpec --> Download
+  GetSpec --> MCPSpec
+
+  ClickMarker --> FetchSpec
+  FetchSpec --> CalConvert
+  CalConvert --> Canvas
+  Canvas --> Isotopes
+  Canvas --> ChartJS
+  GetSpec --> FetchSpec
+  Download --> Export
