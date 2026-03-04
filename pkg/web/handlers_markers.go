@@ -118,7 +118,6 @@ func (s *Server) updateCoordinates(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	}
 	rowsAffected, _ := result.RowsAffected()
 	s.Logf("Updated coordinates for track %s: %d markers updated to (%.6f, %.6f)",
 		req.TrackID, rowsAffected, req.Lat, req.Lon)
