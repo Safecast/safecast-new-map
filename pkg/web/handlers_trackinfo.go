@@ -44,10 +44,9 @@ func (s *Server) trackInfo(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "public, max-age=3600")
-w.Header().Set("Content-Type", "application/json")
-w.Header().Set("Cache-Control", "public, max-age=3600")
-json.NewEncoder(w).Encode(map[string]interface{}{"trackID": trackID})
+		json.NewEncoder(w).Encode(map[string]interface{}{"trackID": trackID})
 		return
+	}
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "public, max-age=3600")
