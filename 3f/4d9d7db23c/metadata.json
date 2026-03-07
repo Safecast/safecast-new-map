@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "3f4d9d7db23c",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "docs/MODEL_ADAPTER_PLAN.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/3f/4d9d7db23c/0/metadata.json",
+      "transcript": "/3f/4d9d7db23c/0/full.jsonl",
+      "context": "/3f/4d9d7db23c/0/context.md",
+      "content_hash": "/3f/4d9d7db23c/0/content_hash.txt",
+      "prompt": "/3f/4d9d7db23c/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 4,
+    "cache_creation_tokens": 3378,
+    "cache_read_tokens": 41090,
+    "output_tokens": 336,
+    "api_call_count": 2
+  }
+}
