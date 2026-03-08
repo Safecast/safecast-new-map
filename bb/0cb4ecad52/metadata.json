@@ -1,0 +1,36 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "bb0cb4ecad52",
+  "strategy": "manual-commit",
+  "branch": "feature/model-adapter",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "cmd/mcp-server/hints/README.md",
+    "cmd/mcp-server/hints/claude.json",
+    "cmd/mcp-server/hints/default.json",
+    "cmd/mcp-server/hints/gpt.json",
+    "cmd/mcp-server/hints/kimi.json",
+    "cmd/mcp-server/hints/qwen.json",
+    "cmd/mcp-server/main.go",
+    "cmd/mcp-server/model-adapter/hints.go",
+    "cmd/mcp-server/model-adapter/model_adapter.go",
+    "cmd/mcp-server/model-adapter/model_adapter_test.go",
+    "cmd/mcp-server/model-adapter/model_detection.go"
+  ],
+  "sessions": [
+    {
+      "metadata": "/bb/0cb4ecad52/0/metadata.json",
+      "transcript": "/bb/0cb4ecad52/0/full.jsonl",
+      "context": "/bb/0cb4ecad52/0/context.md",
+      "content_hash": "/bb/0cb4ecad52/0/content_hash.txt",
+      "prompt": "/bb/0cb4ecad52/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  }
+}
