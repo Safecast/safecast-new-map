@@ -5,15 +5,43 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	"safecast-new-map/cmd/mcp-server/model-adapter"
+)
+
+var (
+	// modelAdapter handles model-specific hints and formatting
+	modelAdapter *modeladapter.Adapter
+	// hintsLoader manages JSON-based hints
+	hintsLoader *modeladapter.HintsLoader
 )
 
 func main() {
-
 	log.Println("DEBUG: safecast MCP server binary version 2026-02-18-1")
+
+	// Initialize hints loader
+	hintsDir := os.Getenv("MCP_HINTS_DIR")
+	if hintsDir == "" {
+		// Default to hints directory next to the binary
+		execPath, _ := os.Executable()
+		hintsDir = filepath.Join(filepath.Dir(execPath), "hints")
+	}
+
+	hintsLoader = modeladapter.NewHintsLoader(hintsDir)
+	if err := hintsLoader.Load(); err != nil {
+		log.Printf("Warning: failed to load hints: %v (using default hints)", err)
+	} else {
+		log.Printf("Loaded hints for models: %v", hintsLoader.GetAllModels())
+	}
+
+	// Initialize model adapter
+	modelAdapter = modeladapter.NewAdapter()
+	modelAdapter.SetHintsLoader(hintsLoader)
+
 	// Create MCP server
 	mcpServer := server.NewMCPServer(
 		"safecast-mcp",
@@ -65,9 +93,8 @@ func main() {
 	mcpServer.AddTool(topUploadersToolDef, instrument("top_uploaders", handleTopUploaders))
 	mcpServer.AddTool(searchTracksLocationToolDef, instrument("search_tracks_by_location", handleSearchTracksByLocation))
 
-	// 🚨 TRANSPORT SWITCH
+	// TRANSPORT SWITCH
 	if os.Getenv("MCP_TRANSPORT") == "stdio" {
-
 		log.Println("Starting MCP server in stdio mode (Claude Desktop)")
 
 		stdioServer := server.NewStdioServer(mcpServer)
@@ -102,8 +129,10 @@ func main() {
 	)
 
 	mux := http.NewServeMux()
-	mux.Handle("/mcp-http", httpServer)
-	mux.Handle("/mcp/", sseServer) // SSE server handles /mcp/sse and /mcp/message
+
+	// Wrap MCP handlers with model detection middleware
+	mux.Handle("/mcp-http", modeladapter.ModelDetectionMiddleware(httpServer))
+	mux.Handle("/mcp/", modeladapter.ModelDetectionMiddleware(sseServer))
 
 	rest := &RESTHandler{}
 	rest.Register(mux)
@@ -118,14 +147,14 @@ func main() {
 	log.Printf("Starting MCP server on %s", listenAddr)
 	log.Println("  SSE endpoint: /mcp/sse")
 	log.Println("  Streamable HTTP endpoint: /mcp-http")
-
+	log.Printf("  Hints directory: %s", hintsDir)
 	log.Println("  REST API: /api/...")
 	log.Println("  Swagger UI: /docs/")
 
 	if err := http.ListenAndServe(listenAddr, mux); err != nil {
 		log.Fatal(err)
 	}
-	}
+}
 
 // pingHandler is the health check tool implementation.
 func pingHandler(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -161,6 +190,11 @@ func instrument(
 
 		// Execute tool
 		res, err := h(ctx, req)
+
+		// Enrich result with model-specific formatting hints
+		if modelAdapter != nil && res != nil {
+			res = modelAdapter.EnrichResult(ctx, res)
+		}
 
 		duration := time.Since(start)
 
