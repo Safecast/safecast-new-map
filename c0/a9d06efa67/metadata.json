@@ -1,0 +1,34 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "c0a9d06efa67",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 0,
+  "files_touched": [
+    ".github/workflows/deploy.yml",
+    ".github/workflows/release.yml",
+    ".github/workflows/test.yml",
+    "bin/mcp-server",
+    "bin/web-chat",
+    "cmd/mcp-server/model-adapter/hints.go",
+    "cmd/mcp-server/model-adapter/model_adapter.go",
+    "cmd/mcp-server/model-adapter/model_detection.go",
+    "safecast-new-map"
+  ],
+  "sessions": [
+    {
+      "metadata": "/c0/a9d06efa67/0/metadata.json",
+      "transcript": "/c0/a9d06efa67/0/full.jsonl",
+      "context": "/c0/a9d06efa67/0/context.md",
+      "content_hash": "/c0/a9d06efa67/0/content_hash.txt",
+      "prompt": "/c0/a9d06efa67/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  }
+}
