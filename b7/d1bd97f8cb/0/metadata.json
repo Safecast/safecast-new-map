@@ -1,0 +1,44 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "b7d1bd97f8cb",
+  "session_id": "48a5f2be-0855-4c4d-83e1-cd38eee6cd6d",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-10T13:20:34.215049901Z",
+  "branch": "feature/model-adapter",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "bin/test-mcp-ai",
+    "tools/test-mcp-ai/test-mcp-ai.go",
+    "test_cache.sh",
+    "tools/test-mcp-ai/start-mcp.sh",
+    "tools/test-mcp-ai/test-mcp-ai",
+    "tools/test-mcp-ai/test-nvidia-models.go",
+    "test-qwen-chat.go",
+    "test-qwen-local.sh",
+    "test_backfill.sh",
+    "test_integration.sh",
+    "test_model_adapter.sh",
+    "tools/test-mcp-ai/README.md",
+    "tools/test-mcp-ai/test-nvidia-models"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "9665a7a9ea09",
+  "checkpoint_transcript_start": 11,
+  "transcript_lines_at_start": 11,
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-10T13:20:34.184034332Z",
+    "agent_lines": 720,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 720,
+    "agent_percentage": 100
+  }
+}
