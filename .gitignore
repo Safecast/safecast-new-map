@@ -22,3 +22,6 @@ API users_*.csv
 
 # Ignore Claude settings
 .claude/settings.json
+
+# Local server config (contains SMTP credentials)
+local-server-config.sh
