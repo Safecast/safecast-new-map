@@ -7,7 +7,7 @@ import (
 )
 
 // ModelDetectionMiddleware is an HTTP middleware that inspects requests and
-// determines which AI model is calling the MCP server.  The detected model is
+// determines which AI model is calling the MCP server. The detected model is
 // stored in the request context under ctxKeyModelName.
 func ModelDetectionMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -25,7 +25,6 @@ func detectModel(r *http.Request) ModelName {
 	if hdr := r.Header.Get("X-AI-Model"); hdr != "" {
 		return normalizeModelName(hdr)
 	}
-
 	ua := r.UserAgent()
 	ua = strings.ToLower(ua)
 	switch {
@@ -33,12 +32,10 @@ func detectModel(r *http.Request) ModelName {
 		return ModelClaude
 	case strings.Contains(ua, "kimi"):
 		return ModelKimi
-	case strings.Contains(ua, "qwen"): // qwen, qwen2, etc.
+	case strings.Contains(ua, "qwen"):
+		// qwen, qwen2, etc.
 		return ModelQwen
-	case strings.Contains(ua, "gpt") || strings.Contains(ua, "chatgpt"):
-		return ModelGPT
 	}
-
 	return ModelUnknown
 }
 
@@ -52,8 +49,6 @@ func normalizeModelName(raw string) ModelName {
 		return ModelKimi
 	case strings.Contains(raw, "qwen"):
 		return ModelQwen
-	case strings.Contains(raw, "gpt") || strings.Contains(raw, "chatgpt"):
-		return ModelGPT
 	}
 	return ModelUnknown
 }
