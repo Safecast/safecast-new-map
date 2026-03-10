@@ -1,8 +1,4 @@
 // Test MCP Server + AI + Hints with Real REST API
-// Usage: 
-//   1. Start MCP server: ./bin/mcp-server-test
-//   2. Run: export NVIDIA_API_KEY=nvapi-... && go run test-mcp-ai.go
-
 package main
 
 import (
@@ -24,7 +20,6 @@ var availableModels = []string{
 	"mistralai/mistral-large-2-instruct",
 }
 
-// MCP REST API tool definitions (matching your server)
 var mcpTools = []struct {
 	Name        string
 	Description string
@@ -38,10 +33,10 @@ var mcpTools = []struct {
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"lat": map[string]interface{}{"type": "number", "description": "Latitude"},
-				"lon": map[string]interface{}{"type": "number", "description": "Longitude"},
-				"radius_m": map[string]interface{}{"type": "integer", "description": "Radius in meters (25-50000)"},
-				"limit": map[string]interface{}{"type": "integer", "description": "Max results (1-10000)"},
+				"lat": map[string]interface{}{"type": "number"},
+				"lon": map[string]interface{}{"type": "number"},
+				"radius_m": map[string]interface{}{"type": "integer"},
+				"limit": map[string]interface{}{"type": "integer"},
 			},
 			"required": []string{"lat", "lon"},
 		},
@@ -50,7 +45,7 @@ var mcpTools = []struct {
 	},
 	{
 		Name:        "sensor_current",
-		Description: "Get current real-time readings from fixed sensors. CRITICAL: Always call this after query_radiation to check for real-time data.",
+		Description: "Get current real-time readings from fixed sensors. ALWAYS call this after query_radiation.",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -65,11 +60,11 @@ var mcpTools = []struct {
 	},
 	{
 		Name:        "list_spectra",
-		Description: "List available gamma spectroscopy records. Returns marker IDs for full spectrum data.",
+		Description: "List available gamma spectroscopy records.",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"limit": map[string]interface{}{"type": "integer", "description": "Max results (1-500)"},
+				"limit": map[string]interface{}{"type": "integer"},
 			},
 		},
 		Endpoint: "/api/spectra",
@@ -77,11 +72,11 @@ var mcpTools = []struct {
 	},
 	{
 		Name:        "get_spectrum",
-		Description: "Get full gamma spectrum data for a marker. Includes channel counts for isotope identification.",
+		Description: "Get full gamma spectrum data for a marker.",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"marker_id": map[string]interface{}{"type": "integer", "description": "Marker ID from list_spectra"},
+				"marker_id": map[string]interface{}{"type": "integer"},
 			},
 			"required": []string{"marker_id"},
 		},
@@ -103,16 +98,6 @@ var mcpTools = []struct {
 			"required": []string{"min_lat", "max_lat", "min_lon", "max_lon"},
 		},
 		Endpoint: "/api/area",
-		Method:   "GET",
-	},
-	{
-		Name:        "radiation_stats",
-		Description: "Get overall database statistics: total measurements, coverage, contributors.",
-		Parameters: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{},
-		},
-		Endpoint: "/api/stats",
 		Method:   "GET",
 	},
 }
@@ -166,7 +151,6 @@ type AIResponse struct {
 func main() {
 	fmt.Println("╔═══════════════════════════════════════════════════════════╗")
 	fmt.Println("║     MCP Server + AI + Hints Integration Test              ║")
-	fmt.Println("║     Tests: query_radiation, sensor_current, spectra       ║")
 	fmt.Println("╚═══════════════════════════════════════════════════════════╝")
 	fmt.Println()
 
@@ -178,12 +162,9 @@ func main() {
 	fmt.Printf("🔧 MCP Server: %s\n", mcpURL)
 	fmt.Print("📡 Testing connection... ")
 	
-	// Test with stats endpoint
-	resp, err := http.Get(mcpURL + "/api/stats")
+	resp, err := http.Get(mcpURL + "/api/sensors")
 	if err != nil {
 		fmt.Printf("❌ Failed: %v\n", err)
-		fmt.Println("\n⚠️  Start MCP server first:")
-		fmt.Println("   ./bin/mcp-server-test")
 		os.Exit(1)
 	}
 	resp.Body.Close()
@@ -193,7 +174,6 @@ func main() {
 	apiKey := os.Getenv("NVIDIA_API_KEY")
 	if apiKey == "" {
 		fmt.Println("❌ NVIDIA_API_KEY not set")
-		fmt.Println("   export NVIDIA_API_KEY=nvapi-...")
 		os.Exit(1)
 	}
 	fmt.Println("✅ NVIDIA API key found")
@@ -220,29 +200,33 @@ func main() {
 	fmt.Println()
 
 	fmt.Println("╔═══════════════════════════════════════════════════════════╗")
-	fmt.Println("║  Try these queries:                                       ║")
-	fmt.Println("║  • What's radiation near Tokyo?                           ║")
-	fmt.Println("║  • Show me gamma spectra data                             ║")
-	fmt.Println("║  • Current sensor readings in Fukushima                   ║")
-	fmt.Println("║  • Database statistics                                    ║")
+	fmt.Println("║  Try these queries (or type your own):                    ║")
+	fmt.Println("║  1. List gamma spectra                                    ║")
+	fmt.Println("║  2. Current sensors in Japan                              ║")
+	fmt.Println("║  3. Radiation near Tokyo                                  ║")
+	fmt.Println("║  4. Search area around Fukushima                          ║")
 	fmt.Println("╚═══════════════════════════════════════════════════════════╝")
 	fmt.Println()
 
 	messages := []Message{
-		{Role: "system", Content: `You are an AI assistant for Safecast radiation data. You have access to these tools:
+		{Role: "system", Content: `You are a helpful AI assistant for Safecast radiation monitoring data.
 
-- query_radiation: Historical bGeigie measurements near a location
-- sensor_current: Real-time fixed sensor readings (ALWAYS call this after query_radiation)
+AVAILABLE TOOLS:
+- query_radiation: Find radiation measurements near coordinates (historical data)
+- sensor_current: Get real-time sensor readings (ALWAYS use after query_radiation)
 - list_spectra: List gamma spectroscopy records
-- get_spectrum: Full gamma spectrum with channel data
-- search_area: Radiation in a bounding box
-- radiation_stats: Database statistics
+- get_spectrum: Get full gamma spectrum for a marker (needs marker_id from list_spectra)
+- search_area: Find radiation in a bounding box
 
-IMPORTANT:
-1. For location queries, ALWAYS call sensor_current after query_radiation
-2. For spectra questions, call list_spectra first, then get_spectrum
-3. Present data in tables with map links: [lat,lon](https://simplemap.safecast.org/?lat=X&lon=Y&zoom=10)
-4. Include units (µSv/h, CPM) and compare to background (0.05-0.20 µSv/h)`},
+IMPORTANT RULES:
+1. ALWAYS call sensor_current after query_radiation to get complete picture
+2. For spectra: first call list_spectra, then get_spectrum with a marker_id
+3. Use coordinates: Japan (35.6762, 139.6503), Fukushima (37.75, 140.5)
+
+RESPONSE FORMAT:
+- Present data in tables
+- Include units (µSv/h, CPM)
+- Add map links: [lat,lon](https://simplemap.safecast.org/?lat=X&lon=Y&zoom=10)`},
 	}
 
 	for {
@@ -256,6 +240,22 @@ IMPORTANT:
 		if strings.ToLower(prompt) == "quit" || strings.ToLower(prompt) == "exit" {
 			fmt.Println("\n👋 Goodbye!")
 			break
+		}
+		if strings.ToLower(prompt) == "1" {
+			prompt = "List available gamma spectra"
+			fmt.Println(prompt)
+		}
+		if strings.ToLower(prompt) == "2" {
+			prompt = "Show current sensor readings in Japan (lat 35-38, lon 139-142)"
+			fmt.Println(prompt)
+		}
+		if strings.ToLower(prompt) == "3" {
+			prompt = "What's the radiation level near Tokyo, Japan? (lat 35.6762, lon 139.6503)"
+			fmt.Println(prompt)
+		}
+		if strings.ToLower(prompt) == "4" {
+			prompt = "Search for radiation data around Fukushima (min_lat 37, max_lat 38, min_lon 140, max_lon 141)"
+			fmt.Println(prompt)
 		}
 
 		messages = append(messages, Message{Role: "user", Content: prompt})
@@ -272,7 +272,7 @@ IMPORTANT:
 			fmt.Printf("\n🔧 Calling %d MCP tool(s)...\n", len(toolCalls))
 
 			for _, tc := range toolCalls {
-				fmt.Printf("   → %s(...)\n", tc.Function.Name)
+				fmt.Printf("   → %s(%s)\n", tc.Function.Name, tc.Function.Arguments)
 
 				result, err := callMCPTool(mcpURL, tc.Function.Name, tc.Function.Arguments)
 				if err != nil {
@@ -280,9 +280,10 @@ IMPORTANT:
 					continue
 				}
 
+				// Show more data for small responses
 				preview := result
-				if len(preview) > 200 {
-					preview = preview[:200] + "..."
+				if len(preview) > 300 {
+					preview = preview[:300] + "..."
 				}
 				fmt.Printf("   ✅ Got: %s\n", preview)
 
@@ -336,7 +337,7 @@ func callAIWithTools(apiKey, model string, messages []Message, tools []struct {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 
-	client := &http.Client{Timeout: 60 * time.Second}
+	client := &http.Client{Timeout: 90 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", nil, err
@@ -363,7 +364,6 @@ func callMCPTool(mcpURL, toolName, argsJSON string) (string, error) {
 	var args map[string]interface{}
 	json.Unmarshal([]byte(argsJSON), &args)
 
-	// Find tool endpoint
 	var endpoint, method string
 	for _, tool := range mcpTools {
 		if tool.Name == toolName {
@@ -373,7 +373,6 @@ func callMCPTool(mcpURL, toolName, argsJSON string) (string, error) {
 		}
 	}
 
-	// Build URL with query params
 	url := endpoint
 	if method == "GET" && len(args) > 0 {
 		params := []string{}
