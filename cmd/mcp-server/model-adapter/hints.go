@@ -1,5 +1,12 @@
 package modeladapter
 
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"sync"
+)
+
 // ModelName identifies an AI model/client.
 type ModelName string
 
@@ -7,6 +14,7 @@ const (
 	ModelClaude   ModelName = "claude"
 	ModelKimi     ModelName = "kimi"
 	ModelQwen     ModelName = "qwen"
+	ModelGPT      ModelName = "gpt"
 	ModelUnknown  ModelName = "unknown"
 )
 
@@ -31,8 +39,8 @@ type ModelHintProvider interface {
 	GetDefaultExample(toolName string) string
 }
 
-// NewDefaultHintProvider returns a provider that yields generic (non-model-specific)
-hints. It can be used as a fallback when the model is unknown.
+// NewDefaultHintProvider returns a provider that yields generic (non-model-specific) hints.
+// It can be used as a fallback when the model is unknown.
 func NewDefaultHintProvider() ModelHintProvider {
 	return &defaultHintProvider{}
 }
@@ -110,5 +118,123 @@ func (q *qwenHintProvider) GetSystemPrompt() string {
 }
 
 func (q *qwenHintProvider) GetDefaultExample(toolName string) string {
+	return ""
+}
+
+// HintsLoader manages loading model-specific hints from JSON files.
+type HintsLoader struct {
+	hintsDir string
+	hints    map[string]*ModelHint // keyed by model name
+	mu       sync.RWMutex
+}
+
+// ModelHint represents the JSON structure for model hints.
+type ModelHint struct {
+	Model               string                       `json:"model"`
+	DisplayName         string                       `json:"display_name"`
+	Capabilities        []string                     `json:"capabilities"`
+	SystemPrompt        string                       `json:"system_prompt"`
+	Tools               map[string]*ToolHintJSON     `json:"tools"`
+	GlobalFormattingRules map[string]string          `json:"global_formatting_rules"`
+}
+
+// ToolHintJSON represents the JSON structure for a tool hint.
+type ToolHintJSON struct {
+	Description       string            `json:"description"`
+	Examples          []json.RawMessage `json:"examples"`
+	OutputHints       string            `json:"output_hints"`
+	FormattingRules   map[string]string `json:"formatting_rules"`
+	Warnings          []string          `json:"warnings"`
+	Metadata          map[string]string `json:"metadata"`
+}
+
+// NewHintsLoader creates a new HintsLoader for the given directory.
+func NewHintsLoader(hintsDir string) *HintsLoader {
+	return &HintsLoader{
+		hintsDir: hintsDir,
+		hints:    make(map[string]*ModelHint),
+	}
+}
+
+// Load reads all JSON hint files from the hints directory.
+func (h *HintsLoader) Load() error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	entries, err := os.ReadDir(h.hintsDir)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
+			continue
+		}
+
+		path := filepath.Join(h.hintsDir, entry.Name())
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+
+		var hint ModelHint
+		if err := json.Unmarshal(data, &hint); err != nil {
+			continue
+		}
+
+		// Map "default.json" to ModelUnknown for fallback
+		modelKey := hint.Model
+		if entry.Name() == "default.json" {
+			modelKey = "unknown"
+		}
+		h.hints[modelKey] = &hint
+	}
+
+	return nil
+}
+
+// GetHints returns the hint for a specific model (for testing).
+func (h *HintsLoader) GetHints(model ModelName) *ModelHint {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return h.hints[string(model)]
+}
+
+// GetAllModels returns a list of all loaded model names.
+func (h *HintsLoader) GetAllModels() []string {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	models := make([]string, 0, len(h.hints))
+	for model := range h.hints {
+		models = append(models, model)
+	}
+	return models
+}
+
+// GetHint returns the hint for a specific model.
+func (h *HintsLoader) GetHint(model string) *ModelHint {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return h.hints[model]
+}
+
+// GetToolHint returns the hint for a specific tool and model.
+func (h *HintsLoader) GetToolHint(model ModelName, toolName string) *ToolHintJSON {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	if hint, ok := h.hints[string(model)]; ok {
+		return hint.Tools[toolName]
+	}
+	return nil
+}
+
+// GetSystemPrompt returns the system prompt for a specific model.
+func (h *HintsLoader) GetSystemPrompt(model ModelName) string {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	if hint, ok := h.hints[string(model)]; ok {
+		return hint.SystemPrompt
+	}
 	return ""
 }
