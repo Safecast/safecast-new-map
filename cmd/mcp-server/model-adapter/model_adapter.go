@@ -9,9 +9,8 @@ import (
 // Adapter encapsulates the model hint logic and provides helpers to register
 // tools with model-specific hints and prompts.
 type Adapter struct {
-	hints           map[ModelName]ModelHintProvider
+	hints map[ModelName]ModelHintProvider
 	defaultProvider ModelHintProvider
-	hintsLoader     *HintsLoader
 }
 
 // NewAdapter constructs a new Adapter with built-in provider set.
@@ -21,38 +20,8 @@ func NewAdapter() *Adapter {
 			ModelClaude:  NewClaudeHintProvider(),
 			ModelKimi:    NewKimiHintProvider(),
 			ModelQwen:    NewQwenHintProvider(),
-			ModelGPT:     NewGPTHintProvider(),
 		},
 		defaultProvider: NewDefaultHintProvider(),
-	}
-}
-
-// SetHintsLoader sets the hints loader for JSON-based hints.
-func (a *Adapter) SetHintsLoader(loader *HintsLoader) {
-	a.hintsLoader = loader
-	
-	// Update providers with loaded hints from JSON files
-	if loader != nil {
-		for model, provider := range a.hints {
-			switch p := provider.(type) {
-			case *claudeHintProvider:
-				if hints := loader.GetHints(model); hints != nil {
-					p.hints = hints
-				}
-			case *kimiHintProvider:
-				if hints := loader.GetHints(model); hints != nil {
-					p.hints = hints
-				}
-			case *qwenHintProvider:
-				if hints := loader.GetHints(model); hints != nil {
-					p.hints = hints
-				}
-			case *gptHintProvider:
-				if hints := loader.GetHints(model); hints != nil {
-					p.hints = hints
-				}
-			}
-		}
 	}
 }
 
@@ -92,27 +61,4 @@ func (a *Adapter) EnhanceTool(ctx context.Context, tool *mcp.Tool) *mcp.Tool {
 func (a *Adapter) EnrichResult(ctx context.Context, res *mcp.CallToolResult) *mcp.CallToolResult {
 	// TODO: implement
 	return res
-}
-
-// GetSystemPrompt returns the system prompt for the detected model.
-func (a *Adapter) GetSystemPrompt(ctx context.Context) string {
-	model := ModelFromContext(ctx)
-	provider, ok := a.hints[model]
-	if !ok {
-		return ""
-	}
-	return provider.GetSystemPrompt()
-}
-
-// GetModelDisplayName returns the display name for the detected model.
-func (a *Adapter) GetModelDisplayName(ctx context.Context) string {
-	model := ModelFromContext(ctx)
-	if a.hintsLoader == nil {
-		return string(model)
-	}
-	hints := a.hintsLoader.GetHints(model)
-	if hints == nil || hints.DisplayName == "" {
-		return string(model)
-	}
-	return hints.DisplayName
 }
