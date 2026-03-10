@@ -35,6 +35,8 @@ func detectModel(r *http.Request) ModelName {
 	case strings.Contains(ua, "qwen"):
 		// qwen, qwen2, etc.
 		return ModelQwen
+	case strings.Contains(ua, "gpt") || strings.Contains(ua, "chatgpt") || strings.Contains(ua, "openai"):
+		return ModelGPT
 	}
 	return ModelUnknown
 }
@@ -49,6 +51,8 @@ func normalizeModelName(raw string) ModelName {
 		return ModelKimi
 	case strings.Contains(raw, "qwen"):
 		return ModelQwen
+	case strings.Contains(raw, "gpt") || strings.Contains(raw, "chatgpt") || strings.Contains(raw, "openai"):
+		return ModelGPT
 	}
 	return ModelUnknown
 }
