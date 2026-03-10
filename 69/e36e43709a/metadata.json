@@ -1,0 +1,40 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "69e36e43709a",
+  "strategy": "manual-commit",
+  "branch": "feature/model-adapter",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "FIX_DUPLICATE_KEY.md",
+    "bin/mcp-server",
+    "bin/web-chat",
+    "cmd/mcp-server/mcp-server",
+    "cmd/mcp-server/model-adapter/hints.go",
+    "cmd/mcp-server/model-adapter/model_adapter.go",
+    "cmd/mcp-server/model-adapter/model_detection.go",
+    "fix-pg-sequence.go",
+    "fix_markers_sequence.sql",
+    "mcp-server",
+    "safecast-mcp",
+    "test/MCP tests/Deepseek V3.1/mcp_interaction_example full_text.md",
+    "test/MCP tests/mcp_interaction_example.md",
+    "test/MCP tests/mitsue_nara_radiation_report.md",
+    "tools/fix_sequence.go"
+  ],
+  "sessions": [
+    {
+      "metadata": "/69/e36e43709a/0/metadata.json",
+      "transcript": "/69/e36e43709a/0/full.jsonl",
+      "context": "/69/e36e43709a/0/context.md",
+      "content_hash": "/69/e36e43709a/0/content_hash.txt",
+      "prompt": "/69/e36e43709a/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  }
+}
