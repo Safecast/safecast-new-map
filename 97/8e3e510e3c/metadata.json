@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "978e3e510e3c",
+  "strategy": "manual-commit",
+  "branch": "feature/model-adapter",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "bin/test-mcp-ai",
+    "bin/test-nvidia-models",
+    "cmd/web-chat/main.go.nvidia",
+    "docs/NVIDIA_QWEN_INTEGRATION.md",
+    "test-mcp-ai.go",
+    "test-nvidia-models.go",
+    "test-qwen-chat.go",
+    "test-qwen-local.sh"
+  ],
+  "sessions": [
+    {
+      "metadata": "/97/8e3e510e3c/0/metadata.json",
+      "transcript": "/97/8e3e510e3c/0/full.jsonl",
+      "context": "/97/8e3e510e3c/0/context.md",
+      "content_hash": "/97/8e3e510e3c/0/content_hash.txt",
+      "prompt": "/97/8e3e510e3c/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  }
+}
