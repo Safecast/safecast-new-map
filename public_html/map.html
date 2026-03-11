@@ -9741,5 +9741,430 @@ function selectHomeSearchResult(result, query) {
     updateLegendDisplay();
   })();
 </script>
+
+<!-- Safecast AI Assistant Widget -->
+<style>
+  #safecast-ai-toggle {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--upload-btn-bg, #4caf50);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    cursor: pointer;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, transform 0.2s;
+  }
+  #safecast-ai-toggle:hover {
+    background: var(--upload-btn-bg-hover, #388e3c);
+    transform: scale(1.05);
+  }
+  #safecast-ai-panel {
+    position: fixed;
+    top: 0;
+    right: -400px;
+    width: 380px;
+    height: 100%;
+    background: var(--modal-bg, #fff);
+    color: var(--modal-text, #333);
+    box-shadow: -4px 0 15px rgba(0,0,0,0.2);
+    z-index: 2001;
+    display: flex;
+    flex-direction: column;
+    transition: right 0.3s ease;
+    border-left: var(--modal-border, 1px solid #888);
+  }
+  #safecast-ai-panel.open {
+    right: 0;
+  }
+  .ai-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    border-bottom: var(--modal-border, 1px solid #888);
+    background: var(--control-bg, rgba(255,255,255,0.9));
+  }
+  .ai-panel-header h3 {
+    margin: 0;
+    font-size: 16px;
+  }
+  #safecast-ai-close {
+    background: none;
+    border: none;
+    color: inherit;
+    font-size: 24px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+  }
+  .ai-panel-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .ai-panel-input {
+    padding: 16px;
+    border-top: var(--modal-border, 1px solid #888);
+    background: var(--control-bg, rgba(255,255,255,0.9));
+  }
+  #ai-form {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+  }
+  #ai-msg {
+    flex: 1;
+    background: var(--modal-bg, #fff);
+    color: inherit;
+    border: var(--modal-border, 1px solid #888);
+    border-radius: 8px;
+    padding: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    resize: none;
+    max-height: 120px;
+    outline: none;
+  }
+  #ai-msg:focus {
+    border-color: var(--link-color, #007bff);
+  }
+  #ai-send {
+    background: var(--upload-btn-bg, #4caf50);
+    border: none;
+    border-radius: 8px;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: white;
+  }
+  #ai-send:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  /* Message bubbles */
+  .ai-msg-row {
+    display: flex;
+    gap: 10px;
+    max-width: 100%;
+  }
+  .ai-msg-row.user {
+    flex-direction: row-reverse;
+  }
+  .ai-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    background: var(--control-bg);
+    border: var(--modal-border);
+    overflow: hidden;
+  }
+  .ai-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+  .ai-bubble {
+    padding: 10px 14px;
+    border-radius: 12px;
+    word-break: break-word;
+    font-size: 14px;
+    line-height: 1.5;
+    background: var(--control-bg);
+    border: var(--modal-border);
+    max-width: 85%;
+  }
+  .ai-msg-row.user .ai-bubble {
+    background: rgba(76, 175, 80, 0.2);
+    border-color: var(--upload-btn-bg, #4caf50);
+  }
+  .ai-bubble a { color: var(--link-color); text-decoration: none; }
+  .ai-bubble a:hover { text-decoration: underline; }
+  .ai-bubble p { margin: 0 0 8px 0; }
+  .ai-bubble p:last-child { margin: 0; }
+  .ai-bubble ul, .ai-bubble ol { margin: 8px 0; padding-left: 20px; }
+  .ai-bubble code {
+    background: rgba(128,128,128,0.2);
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-family: monospace;
+  }
+  .ai-thinking {
+    opacity: 0.6;
+    font-style: italic;
+  }
+</style>
+
+<button id="safecast-ai-toggle" aria-label="Open AI Assistant">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+  </svg>
+</button>
+
+<div id="safecast-ai-panel">
+  <div class="ai-panel-header">
+    <h3>Safecast AI Assistant</h3>
+    <button id="safecast-ai-close" aria-label="Close AI Assistant">&times;</button>
+  </div>
+  <div class="ai-panel-messages" id="ai-messages">
+    <div class="ai-msg-row bot">
+      <div class="ai-avatar"><img src="/static/images/favicon-32x32.png" alt="AI"></div>
+      <div class="ai-bubble">I have access to live readings from Safecast sensors across Japan and worldwide. How can I help?</div>
+    </div>
+  </div>
+  <div class="ai-panel-input">
+    <form id="ai-form">
+      <textarea id="ai-msg" rows="1" placeholder="Ask about radiation..."></textarea>
+      <button type="submit" id="ai-send" title="Send">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+      </button>
+    </form>
+  </div>
+</div>
+
+<script>
+  (function() {
+    const toggleBtn = document.getElementById('safecast-ai-toggle');
+    const closeBtn = document.getElementById('safecast-ai-close');
+    const panel = document.getElementById('safecast-ai-panel');
+    const form = document.getElementById('ai-form');
+    const msgInput = document.getElementById('ai-msg');
+    const messagesEl = document.getElementById('ai-messages');
+    const sendBtn = document.getElementById('ai-send');
+
+    let chatHistory = [];
+    let busy = false;
+
+    // Toggle Chat Panel
+    toggleBtn.addEventListener('click', () => {
+      panel.classList.add('open');
+      msgInput.focus();
+    });
+    closeBtn.addEventListener('click', () => {
+      panel.classList.remove('open');
+    });
+
+    // Auto-grow textarea
+    msgInput.addEventListener('input', () => {
+      msgInput.style.height = 'auto';
+      msgInput.style.height = Math.min(msgInput.scrollHeight, 120) + 'px';
+    });
+
+    msgInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { 
+        e.preventDefault(); 
+        submitMessage(); 
+      }
+    });
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      submitMessage();
+    });
+
+    // Map Context Helper
+    function getMapContext() {
+      if (typeof map === 'undefined') return null;
+      try {
+        const center = map.getCenter();
+        const bounds = map.getBounds();
+        return {
+          center: { lat: center.lat, lon: center.lng },
+          zoom: map.getZoom(),
+          bounds: {
+            minLat: bounds.getSouth(),
+            minLon: bounds.getWest(),
+            maxLat: bounds.getNorth(),
+            maxLon: bounds.getEast()
+          }
+        };
+      } catch (e) {
+        console.error("Context error:", e);
+        return null;
+      }
+    }
+
+    // Markdown simple parser logic
+    function markdownToHTML(text) {
+      let html = text
+        .replace(/### (.+)/g, '<h3>$1</h3>')
+        .replace(/## (.+)/g, '<h2>$1</h2>')
+        .replace(/# (.+)/g, '<h1>$1</h1>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank">$1</a>')
+        .replace(/\n\n/g, '<br><br>')
+        .replace(/\n/g, '<br>');
+      return html;
+    }
+
+    function addMessageUI(role, text) {
+      const row = document.createElement('div');
+      row.className = `ai-msg-row ${role}`;
+
+      const avatar = document.createElement('div');
+      avatar.className = 'ai-avatar';
+      if (role === 'user') {
+        avatar.textContent = '👤';
+      } else {
+        avatar.innerHTML = '<img src="/static/images/favicon-32x32.png" alt="AI">';
+      }
+
+      const bubble = document.createElement('div');
+      bubble.className = 'ai-bubble';
+      
+      if (role === 'bot') {
+        bubble.innerHTML = markdownToHTML(text);
+      } else {
+        bubble.textContent = text;
+      }
+
+      row.appendChild(avatar);
+      row.appendChild(bubble);
+      messagesEl.appendChild(row);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      return bubble;
+    }
+
+    function executeMapAction(actionData) {
+      if (!actionData || typeof map === 'undefined') return;
+      
+      try {
+        if (actionData.action === 'panTo' && actionData.lat !== undefined && actionData.lon !== undefined) {
+           map.panTo([actionData.lat, actionData.lon]);
+        } else if (actionData.action === 'zoomTo' && actionData.level !== undefined) {
+           map.setZoom(actionData.level);
+        } else if (actionData.action === 'highlightLocation' && actionData.lat !== undefined && actionData.lon !== undefined) {
+           const marker = L.circleMarker([actionData.lat, actionData.lon], {
+             radius: 20,
+             color: '#FF0000',
+             fillColor: '#FF0000',
+             fillOpacity: 0.3
+           }).addTo(map);
+           
+           // Remove marker after 5 seconds
+           setTimeout(() => {
+             if (map.hasLayer(marker)) map.removeLayer(marker);
+           }, 5000);
+        }
+      } catch (e) {
+        console.error("Action execution failed:", e);
+      }
+    }
+
+    function submitMessage() {
+      const text = msgInput.value.trim();
+      if (!text || busy) return;
+      
+      busy = true;
+      sendBtn.disabled = true;
+      
+      addMessageUI('user', text);
+      const botBubble = addMessageUI('bot', '...thinking...');
+      botBubble.classList.add('ai-thinking');
+
+      msgInput.value = '';
+      msgInput.style.height = 'auto';
+
+      let accumulated = '';
+      
+      function finish(success) {
+        botBubble.classList.remove('ai-thinking');
+        busy = false;
+        sendBtn.disabled = false;
+        msgInput.focus();
+
+        if (success && accumulated) {
+          chatHistory.push(
+            { role: 'user', content: text },
+            { role: 'assistant', content: accumulated }
+          );
+          if (chatHistory.length > 10) {
+            chatHistory = chatHistory.slice(-10);
+          }
+        }
+      }
+
+      fetch('https://assistant.safecast.org/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          history: chatHistory,
+          map_context: getMapContext()
+        }),
+      }).then(response => {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        function pump() {
+          return reader.read().then(({ done, value }) => {
+            if (done) { finish(true); return; }
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop(); // keep incomplete line
+
+            for (const line of lines) {
+              if (!line.trim()) continue;
+              try {
+                const ev = JSON.parse(line);
+                if (ev.type === 'text') {
+                  if (botBubble.classList.contains('ai-thinking')) {
+                    botBubble.classList.remove('ai-thinking');
+                    accumulated = '';
+                  }
+                  accumulated += ev.text;
+                  botBubble.innerHTML = markdownToHTML(accumulated);
+                  messagesEl.scrollTop = messagesEl.scrollHeight;
+                } else if (ev.type === 'action' || ev.action) {
+                  // Some systems might just send `{"action": "zoomTo", "level": ...}`
+                  executeMapAction(ev);
+                } else if (ev.type === 'done') {
+                  finish(true);
+                } else if (ev.type === 'error') {
+                  botBubble.textContent = 'Error: ' + ev.error;
+                  botBubble.classList.remove('ai-thinking');
+                  finish(false);
+                }
+              } catch (e) {
+                // If it's pure standard json string or other issues, try catching
+              }
+            }
+            return pump();
+          });
+        }
+        return pump();
+      }).catch(err => {
+        botBubble.textContent = 'Connection error: ' + err.message;
+        botBubble.classList.remove('ai-thinking');
+        finish(false);
+      });
+    }
+  })();
+</script>
+
   </body>
 </html>
