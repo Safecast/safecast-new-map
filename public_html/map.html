@@ -9952,61 +9952,75 @@
 
     #safecast-ai-panel {
       position: fixed;
-      top: 0;
-      right: -400px;
-      width: 380px;
-      height: 100%;
+      top: 10px;
+      right: -340px;
+      width: 320px;
+      height: calc(100% - 20px);
       background: #ffffff;
       color: #333333;
-      box-shadow: -4px 0 15px rgba(0, 0, 0, 0.1);
+      box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
       z-index: 2001;
       display: flex;
       flex-direction: column;
       transition: right 0.3s ease;
-      border-left: 1px solid #e0e0e0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      border-radius: 12px;
+      border: 1px solid #e0e0e0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin-right: 10px;
     }
 
     #safecast-ai-panel.open {
       right: 0;
     }
 
+    #safecast-ai-panel.expanded {
+      width: 700px;
+      max-width: 90vw;
+    }
+
     .ai-panel-header {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       justify-content: space-between;
-      padding: 20px 20px 16px 20px;
-      border-bottom: 1px solid #e0e0e0;
-      background: #ffffff;
+      padding: 16px 20px;
+      border-bottom: 1px solid #eee;
     }
 
     .ai-panel-header-text h3 {
       margin: 0;
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 600;
       color: #222;
-      line-height: 1.2;
     }
 
     .ai-panel-header-text span {
-      font-size: 13px;
-      color: #666;
-      margin-top: 4px;
+      font-size: 11px;
+      color: #777;
       display: block;
     }
 
+    .ai-header-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    #safecast-ai-expand,
     #safecast-ai-close {
       background: none;
       border: none;
-      color: #666;
-      font-size: 24px;
+      color: #999;
+      font-size: 18px;
       cursor: pointer;
-      line-height: 1;
-      padding: 0;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s;
     }
 
+    #safecast-ai-expand:hover,
     #safecast-ai-close:hover {
-      color: #222;
+      color: #333;
     }
 
     .ai-panel-messages {
@@ -10019,65 +10033,100 @@
       background: #ffffff;
     }
 
-    .ai-panel-input {
-      padding: 16px 20px;
-      border-top: 1px solid #e0e0e0;
-      background: #ffffff;
+    #ai-panel-input-container {
+      padding: 20px;
+      padding-top: 10px;
+      background: transparent;
     }
 
     #ai-form {
+      position: relative;
+      background: #f5f5f7;
+      border-radius: 24px;
+      padding: 4px;
       display: flex;
-      gap: 10px;
       align-items: center;
+      box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.05);
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      transition: all 0.2s;
+    }
+
+    #ai-form:focus-within {
+      background: #fff;
+      box-shadow: 0 4px 20px rgba(76, 175, 80, 0.1), inset 0 1px 2px rgba(0, 0, 0, 0.02);
+      border-color: rgba(76, 175, 80, 0.3);
     }
 
     #ai-msg {
       flex: 1;
-      background: #ffffff;
-      color: #222;
-      border: 1px solid #d0d0d0;
-      border-radius: 20px;
-      padding: 10px 16px;
+      background: transparent;
+      color: #1a1a1a;
+      border: none;
+      padding: 10px 48px 10px 16px;
       font-family: inherit;
       font-size: 14px;
       resize: none;
-      height: 44px;
+      max-height: 150px;
+      min-height: 24px;
       line-height: 22px;
       outline: none;
-      transition: border-color 0.2s;
-    }
-
-    #ai-msg:focus {
-      border-color: #4caf50;
     }
 
     #ai-send {
       background: #4caf50;
       border: none;
       border-radius: 50%;
-      width: 44px;
-      height: 44px;
+      width: 36px;
+      height: 36px;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
       color: white;
-      transition: background 0.2s;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 10px rgba(76, 175, 80, 0.3);
+      margin-right: 2px;
     }
 
     #ai-send:hover:not(:disabled) {
       background: #388e3c;
+      transform: scale(1.05);
+      box-shadow: 0 6px 15px rgba(76, 175, 80, 0.4);
+    }
+
+    #ai-search-map {
+      position: absolute;
+      right: 48px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: transparent;
+      border: none;
+      color: #777;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      transition: all 0.2s;
+    }
+
+    #ai-search-map:hover {
+      background: rgba(0, 0, 0, 0.05) !important;
+      color: #4caf50;
     }
 
     #ai-send:disabled {
       opacity: 0.5;
       cursor: not-allowed;
+      filter: grayscale(1);
     }
 
     .ai-msg-row {
       display: flex;
-      gap: 12px;
+      gap: 10px;
       max-width: 100%;
     }
 
@@ -10086,20 +10135,21 @@
     }
 
     .ai-avatar {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
       flex-shrink: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 12px;
+      font-size: 14px;
       font-weight: bold;
       color: #fff;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     }
 
     .ai-msg-row.user .ai-avatar {
-      background: #4caf50;
+      background: linear-gradient(135deg, #4caf50, #2e7d32);
     }
 
     .ai-msg-row.bot {
@@ -10107,33 +10157,31 @@
     }
 
     .ai-msg-row.bot .ai-avatar {
-      background: #333;
-      font-family: serif;
-      font-size: 13px;
+      background: linear-gradient(135deg, #1a1a1a, #444);
     }
 
     .ai-bubble {
       word-break: break-word;
       font-size: 14px;
       line-height: 1.6;
-      color: #222;
+      color: #333;
       overflow-wrap: break-word;
     }
 
     .ai-msg-row.user .ai-bubble {
-      background: #e8f5e9;
-      border: 1px solid #c8e6c9;
-      padding: 10px 16px;
-      border-radius: 20px;
-      color: #1b5e20;
+      background: #4caf50;
+      padding: 12px 18px;
+      border-radius: 20px 20px 4px 20px;
+      color: #ffffff;
       max-width: 80%;
+      box-shadow: 0 4px 15px rgba(76, 175, 80, 0.2);
     }
 
     .ai-msg-row.bot .ai-bubble {
       padding: 0;
       background: transparent;
       border: none;
-      max-width: 90%;
+      max-width: 100%;
     }
 
     .ai-bubble a {
@@ -10178,6 +10226,39 @@
       opacity: 0.6;
       font-style: italic;
     }
+
+    /* Table formatting inside the chat bubble */
+    .ai-table-container {
+      width: 100%;
+      overflow-x: auto;
+      margin: 8px 0;
+      border-radius: 6px;
+      border: 1px solid #eee;
+    }
+
+    .ai-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .ai-table th,
+    .ai-table td {
+      border: 1px solid #eee;
+      padding: 6px 10px;
+      text-align: left;
+    }
+
+    .ai-table th {
+      background-color: #f9f9f9;
+      font-weight: 600;
+      color: #444;
+    }
+
+    .ai-table tr:nth-child(even) {
+      background-color: rgba(0, 0, 0, 0.02);
+    }
   </style>
 
   <button id="safecast-ai-toggle" aria-label="Open AI Assistant">
@@ -10193,16 +10274,36 @@
         <h3>Safecast AI Assistant</h3>
         <span>AI-powered map and data guide</span>
       </div>
-      <button id="safecast-ai-close" aria-label="Close AI Assistant">&times;</button>
+      <div class="ai-header-actions">
+        <button id="safecast-ai-expand" title="Expand panel" aria-label="Expand AI Assistant">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <polyline points="9 21 3 21 3 15"></polyline>
+            <line x1="21" y1="3" x2="14" y2="10"></line>
+            <line x1="3" y1="21" x2="10" y2="14"></line>
+          </svg>
+        </button>
+        <button id="safecast-ai-close" title="Close panel" aria-label="Close AI Assistant">&times;</button>
+      </div>
     </div>
     <div class="ai-panel-messages" id="ai-messages">
     </div>
-    <div class="ai-panel-input">
+    <div id="ai-panel-input-container">
       <form id="ai-form">
-        <textarea id="ai-msg" rows="1" placeholder="Ask about this location..."></textarea>
-        <button type="submit" id="ai-send" title="Send">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M2 21l21-9L2 3v7l15 2-15 2z" />
+        <textarea id="ai-msg" rows="1" placeholder="Search a place or ask AI..."></textarea>
+        <button type="button" id="ai-search-map" title="Teleport map to location" aria-label="Search map location">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+            <circle cx="12" cy="10" r="3"></circle>
+          </svg>
+        </button>
+        <button type="submit" id="ai-send" title="Send message">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
           </svg>
         </button>
       </form>
@@ -10239,9 +10340,43 @@
         }
       });
 
+      const expandBtn = document.getElementById('safecast-ai-expand');
+
       closeBtn.addEventListener('click', () => {
         panel.classList.remove('open');
+        panel.classList.remove('expanded');
         document.body.classList.remove('ai-panel-open');
+        setTimeout(() => {
+          if (typeof map !== 'undefined' && map.invalidateSize) {
+            map.invalidateSize();
+          }
+        }, 300);
+      });
+
+      expandBtn.addEventListener('click', () => {
+        panel.classList.toggle('expanded');
+        const isExpanded = panel.classList.contains('expanded');
+        expandBtn.title = isExpanded ? 'Collapse panel' : 'Expand panel';
+
+        // Update icon based on state
+        if (isExpanded) {
+          expandBtn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="4 14 10 14 10 20"></polyline>
+              <polyline points="20 10 14 10 14 4"></polyline>
+              <line x1="14" y1="10" x2="21" y2="3"></line>
+              <line x1="3" y1="21" x2="10" y2="14"></line>
+            </svg>`;
+        } else {
+          expandBtn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <polyline points="9 21 3 21 3 15"></polyline>
+              <line x1="21" y1="3" x2="14" y2="10"></line>
+              <line x1="3" y1="21" x2="10" y2="14"></line>
+            </svg>`;
+        }
+
         setTimeout(() => {
           if (typeof map !== 'undefined' && map.invalidateSize) {
             map.invalidateSize();
@@ -10264,6 +10399,23 @@
           submitMessage();
         }
       });
+
+      // Quick Map Search Button
+      const searchMapBtn = document.getElementById('ai-search-map');
+      if (searchMapBtn) {
+        searchMapBtn.addEventListener('click', () => {
+          const query = msgInput.value.trim();
+          if (query.length >= 2) {
+            // Call existing map search logic which uses Nominatim and auto-pans
+            if (typeof performSearch === 'function') {
+              performSearch(query, true);
+              msgInput.value = ''; // clear input on success
+              msgInput.style.height = '44px';
+              // Optionally collapse panel if desired, or keep open. We'll keep it open.
+            }
+          }
+        });
+      }
 
       form.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -10292,16 +10444,62 @@
       }
 
       function markdownToHTML(text) {
+        if (!text) return '';
+
         let html = text
-          .replace(/### (.+)/g, '<h3>$1</h3>')
-          .replace(/## (.+)/g, '<h2>$1</h2>')
-          .replace(/# (.+)/g, '<h1>$1</h1>')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/### (.+)/g, '<h3 style="margin: 20px 0 10px 0; font-size: 16px; font-weight: 700;">$1</h3>')
+          .replace(/## (.+)/g, '<h2 style="margin: 24px 0 12px 0; font-size: 18px; font-weight: 700;">$1</h2>')
+          .replace(/# (.+)/g, '<h1 style="margin: 28px 0 14px 0; font-size: 20px; font-weight: 700;">$1</h1>')
           .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
           .replace(/\*(.+?)\*/g, '<em>$1</em>')
-          .replace(/`([^`]+)`/g, '<code>$1</code>')
-          .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank">$1</a>')
-          .replace(/\n\n/g, '<br><br>')
-          .replace(/\n/g, '<br>');
+          .replace(/`([^`]+)`/g, '<code style="background: rgba(0,0,0,0.05); padding: 2px 5px; border-radius: 4px; font-size: 0.9em;">$1</code>')
+          .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank">$1</a>');
+
+        // Robust Markdown Table parser
+        // We match from the first pipe to the last pipe in a greedy block
+        html = html.replace(/((^|\n)\|[\s\S]*?\|($|\n(?![| \t]*\|)))/g, function (match) {
+          let rows = match.trim().split('\n').map(r => r.trim()).filter(r => r.length > 0);
+          if (rows.length < 2) return match;
+
+          let out = '<div class="ai-table-container"><table class="ai-table">';
+          let bodyRows = [];
+
+          rows.forEach((row) => {
+            if (row.match(/^\|?[\s|:-]+\|?$/)) return; // separator row
+
+            let cols = row.split('|');
+            // Remove leading/trailing empty cells if pipes were used as borders
+            if (row.startsWith('|')) cols.shift();
+            if (row.endsWith('|')) cols.pop();
+            bodyRows.push(cols.map(c => c.trim()));
+          });
+
+          bodyRows.forEach((cols, rowIndex) => {
+            out += '<tr>';
+            cols.forEach(col => {
+              if (rowIndex === 0) {
+                out += `<th>${col}</th>`;
+              } else {
+                out += `<td>${col}</td>`;
+              }
+            });
+            out += '</tr>';
+          });
+
+          out += '</table></div>';
+          return out;
+        });
+
+        // Handle line breaks ONLY if they are not inside a table-container
+        let parts = html.split(/(<div class="ai-table-container">[\s\S]*?<\/div>)/g);
+        html = parts.map(part => {
+          if (part.startsWith('<div class="ai-table-container">')) return part;
+          return part.replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
+        }).join('');
+
         return html;
       }
 
