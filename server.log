@@ -288,3 +288,20 @@
 2026/03/11 23:01:29 realtime sample: id=geigiecast:61099 name="" lat=22.318070 lon=114.157710 val=53.000000 unit=lnd_7318u
 2026/03/11 23:01:29 realtime poll: devices 125 stored 361 next=5m0s
 2026/03/11 23:01:29 realtime summary: ??:1 avg=0.09 Canada (CA):2 avg=0.08 Georgia (GE):1 avg=0.10 Germany (DE):1 avg=0.09 Italy (IT):1 avg=0.16 Japan (JP):32 avg=0.20 Peru (PE):4 avg=0.10 Switzerland (CH):1 avg=0.12 Taiwan (TW):2 avg=0.12 Ukraine (UA):62 avg=0.17 United States of America (US):18 avg=0.09 added=0 removed=0
+2026/03/11 23:06:23 [safecast-fetcher] poll: checking for imports after ID 70548
+2026/03/11 23:06:24 [safecast-fetcher] page 1: fetched 25 imports (IDs 70548-70517)
+2026/03/11 23:06:24 [safecast-fetcher] page 1: found 0 new imports
+2026/03/11 23:06:24 [safecast-fetcher] page 2: fetched 25 imports (IDs 70515-70491)
+2026/03/11 23:06:24 [safecast-fetcher] page 2: found 0 new imports
+2026/03/11 23:06:25 [safecast-fetcher] page 3: fetched 25 imports (IDs 70490-70462)
+2026/03/11 23:06:25 [safecast-fetcher] page 3: found 0 new imports
+2026/03/11 23:06:25 [safecast-fetcher] page 4: fetched 25 imports (IDs 70461-70413)
+2026/03/11 23:06:25 [safecast-fetcher] page 4: found 0 new imports
+2026/03/11 23:06:25 [safecast-fetcher] page 5: fetched 25 imports (IDs 70412-70382)
+2026/03/11 23:06:25 [safecast-fetcher] page 5: found 0 new imports
+2026/03/11 23:06:25 [safecast-fetcher] normal mode: stopped after 5 pages
+2026/03/11 23:06:25 [safecast-fetcher] poll: found 0 new approved imports
+2026/03/11 23:06:28 realtime fetch: devices 1568
+2026/03/11 23:06:28 realtime sample: id=geigiecast:61099 name="" lat=22.318070 lon=114.157710 val=53.000000 unit=lnd_7318u
+2026/03/11 23:06:28 realtime poll: devices 125 stored 361 next=5m0s
+2026/03/11 23:06:28 realtime summary: ??:1 avg=0.09 Canada (CA):2 avg=0.09 Georgia (GE):1 avg=0.10 Germany (DE):1 avg=0.10 Italy (IT):1 avg=0.16 Japan (JP):32 avg=0.19 Peru (PE):4 avg=0.10 Switzerland (CH):1 avg=0.12 Taiwan (TW):2 avg=0.12 Ukraine (UA):62 avg=0.17 United States of America (US):18 avg=0.10 added=0 removed=0
