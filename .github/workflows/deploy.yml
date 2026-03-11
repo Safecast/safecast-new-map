@@ -22,7 +22,7 @@ jobs:
 
       - name: Build binaries
         run: |
-          go build -o safecast-new-map ./safecast-new-map.go
+          go build -o safecast-new-map ./main.go
           go build -o safecast-mcp ./cmd/mcp-server/
           go build -o safecast-web-chat ./cmd/web-chat/
 
