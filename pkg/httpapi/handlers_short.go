@@ -1,8 +1,5 @@
-// handlers_short.go — short URL redirects
-//
-// Resolves short codes (e.g. /s/abc123) to full URLs stored in the database
-// and redirects the client. Used for shareable, compact links.
-package web
+// handlers_short.go — GET /s/{code} redirects to the stored URL for the short code.
+package httpapi
 
 import (
 	"net/http"
@@ -10,9 +7,7 @@ import (
 	"time"
 )
 
-// shortRedirect looks up the short code from the path (e.g. /s/xyz), fetches
-// the target URL from the database, and issues a 302 redirect. Returns 404
-// if the code is unknown or empty.
+// shortRedirect looks up the short code from the path, fetches the target URL from the DB, and issues a 302 redirect. 404 if unknown.
 func (s *Server) shortRedirect(w http.ResponseWriter, r *http.Request) {
 	code := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/s/"))
 	if code == "" {
