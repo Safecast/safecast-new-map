@@ -1,4 +1,6 @@
-package api
+// handlers_core.go implements the core API: /api overview, latest, tracks list,
+// track data by ID/index/year/month, countries, shorten, and optional archive download.
+package httpapi
 
 import (
 	"context"
@@ -21,13 +23,8 @@ import (
 	"safecast-new-map/pkg/trackjson"
 )
 
-// =======================
-// Public API entry points
-// =======================
-
-// Handler wires together the database and archive generator so HTTP routes
-// can stay small and focused on translating query parameters into the
-// asynchronous building blocks behind the scenes.
+// Handler wires together the database, optional archive generator, rate limiter,
+// and caches so core API routes can stay thin and delegate to shared building blocks.
 type Handler struct {
 	DB               *database.Database
 	DBType           string
@@ -65,7 +62,6 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/tracks/years/", h.handleTracksByYear)
 	mux.HandleFunc("/api/tracks/months/", h.handleTracksByMonth)
 	mux.HandleFunc("/api/track/", h.handleTrackData)
-	mux.HandleFunc("/api/tracks/", h.handleTrackData) // legacy alias for older clients
 	mux.HandleFunc("/api/countries", h.handleCountries)
 	mux.HandleFunc("/api/shorten", h.handleShorten)
 	if h.Archive != nil {
@@ -527,16 +523,11 @@ func (h *Handler) handleTracksList(w http.ResponseWriter, r *http.Request) {
 // handleTrackData streams markers from a single track using ID ranges.
 func (h *Handler) handleTrackData(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
-	var trimmed string
-	switch {
-	case strings.HasPrefix(path, "/api/track/"):
-		trimmed = strings.TrimPrefix(path, "/api/track/")
-	case strings.HasPrefix(path, "/api/tracks/"):
-		trimmed = strings.TrimPrefix(path, "/api/tracks/")
-	default:
+	if !strings.HasPrefix(path, "/api/track/") {
 		http.NotFound(w, r)
 		return
 	}
+	trimmed := strings.TrimPrefix(path, "/api/track/")
 	trimmed = strings.Trim(trimmed, "/")
 	if trimmed == "" {
 		http.NotFound(w, r)

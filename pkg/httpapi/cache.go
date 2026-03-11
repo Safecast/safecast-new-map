@@ -1,4 +1,5 @@
-package api
+// cache.go implements an in-memory response cache with a single goroutine and channels.
+package httpapi
 
 import (
 	"context"
@@ -12,36 +13,29 @@ var (
 	errNoLoader      = errors.New("no loader")
 )
 
-// cacheRequest models a single cache lookup or population attempt.
-// Using a struct keeps the channel signature compact so the goroutine
-// that owns the cache can reason about a single message type.
+// cacheRequest is sent to the cache goroutine for a lookup or populate.
 type cacheRequest struct {
 	ctx    context.Context
 	key    string
 	loader func(context.Context) ([]byte, error)
-	ttl    time.Duration // Optional per-request TTL so callers can shorten cache windows.
+	ttl    time.Duration
 	reply  chan cacheResponse
 }
 
-// cacheResponse carries either the cached bytes or an error back to
-// the handler goroutine.
+// cacheResponse is the reply from the cache goroutine.
 type cacheResponse struct {
 	data []byte
 	err  error
 }
 
-// cacheEntry records cached JSON along with its expiry timestamp.
-// The goroutine trims stale entries lazily when they are accessed so we
-// avoid extra timers.
+// cacheEntry stores cached bytes and expiry; the loop trims stale entries on access.
 type cacheEntry struct {
 	data    []byte
 	expires time.Time
 }
 
-// ResponseCache keeps expensive API responses in memory so identical
-// requests within the TTL avoid hitting the database. We implement it
-// with a dedicated goroutine and channels to honour the constraint of
-// coordinating state without mutexes.
+// ResponseCache caches expensive API responses in memory. All access is serialized
+// in a single goroutine so no mutexes are needed.
 type ResponseCache struct {
 	ttl      time.Duration
 	requests chan cacheRequest
@@ -49,9 +43,7 @@ type ResponseCache struct {
 	now      func() time.Time
 }
 
-// NewResponseCache starts the caching goroutine immediately. Callers
-// may pass nil to disable caching entirely. The clock is injectable for
-// tests; in production we default to time.Now.
+// NewResponseCache starts the caching goroutine. If ttl <= 0, returns nil (caching disabled).
 func NewResponseCache(ttl time.Duration) *ResponseCache {
 	if ttl <= 0 {
 		return nil
@@ -66,8 +58,7 @@ func NewResponseCache(ttl time.Duration) *ResponseCache {
 	return cache
 }
 
-// Close stops the cache goroutine. The method is safe to call multiple
-// times; subsequent calls have no effect.
+// Close stops the cache goroutine.
 func (c *ResponseCache) Close() {
 	if c == nil {
 		return
@@ -80,14 +71,12 @@ func (c *ResponseCache) Close() {
 	close(c.quit)
 }
 
-// Get returns cached bytes for the provided key or invokes loader to
-// produce them. We copy the stored slice before returning so callers
-// can safely modify the result without affecting future hits.
+// Get returns cached bytes for key or invokes loader to produce them. Uses the cache's default TTL.
 func (c *ResponseCache) Get(ctx context.Context, key string, loader func(context.Context) ([]byte, error)) ([]byte, error) {
 	return c.GetWithTTL(ctx, key, 0, loader)
 }
 
-// GetWithTTL behaves like Get but allows callers to override the cache TTL for a single lookup.
+// GetWithTTL is like Get but allows a per-request TTL override (0 means use default).
 func (c *ResponseCache) GetWithTTL(ctx context.Context, key string, ttl time.Duration, loader func(context.Context) ([]byte, error)) ([]byte, error) {
 	if c == nil {
 		return nil, errCacheDisabled
@@ -124,8 +113,7 @@ func (c *ResponseCache) GetWithTTL(ctx context.Context, key string, ttl time.Dur
 	}
 }
 
-// loop serialises all cache access inside a single goroutine so we can
-// use plain maps without additional locking constructs.
+// loop runs in a goroutine and serializes all cache access.
 func (c *ResponseCache) loop() {
 	store := make(map[string]cacheEntry)
 	for {

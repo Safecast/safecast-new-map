@@ -1,4 +1,5 @@
-package api
+// handlers_core_test.go tests the core API handlers (overview, latest, tracks, track data, countries, shorten) with a temp SQLite DB.
+package httpapi
 
 import (
 	"context"
@@ -15,11 +16,11 @@ import (
 )
 
 const (
-	testTrackID  = "test-api-track-001"
-	testMarkerID = 42
+	coreTestTrackID  = "test-api-track-001"
+	coreTestMarkerID = 42
 )
 
-// newTestHandler creates a Handler backed by a temporary SQLite database.
+// newTestHandler builds a Handler backed by a temporary SQLite database with seeded tracks/markers.
 func newTestHandler(t *testing.T) *Handler {
 	t.Helper()
 	dir := t.TempDir()
@@ -33,34 +34,31 @@ func newTestHandler(t *testing.T) *Handler {
 		t.Fatalf("InitSchema: %v", err)
 	}
 	t.Cleanup(func() { db.Close() })
-	seedTestDB(t, db)
+	seedCoreTestDB(t, db)
 	return NewHandler(db, "sqlite", nil, nil, nil, "")
 }
 
-func seedTestDB(t *testing.T, db *database.Database) {
+// seedCoreTestDB inserts one track and one marker for core API tests.
+func seedCoreTestDB(t *testing.T, db *database.Database) {
 	t.Helper()
 	ctx := context.Background()
-
-	_, err := db.DB.ExecContext(ctx, `INSERT INTO tracks (trackID) VALUES (?)`, testTrackID)
+	_, err := db.DB.ExecContext(ctx, `INSERT INTO tracks (trackID) VALUES (?)`, coreTestTrackID)
 	if err != nil {
 		t.Fatalf("seed tracks: %v", err)
 	}
 	_, err = db.DB.ExecContext(ctx,
 		`INSERT INTO markers (id, doseRate, date, lon, lat, countRate, zoom, speed, trackID)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		testMarkerID, 0.12, time.Now().Unix(), 139.7, 35.6, 8.0, 10, 0.0, testTrackID)
+		coreTestMarkerID, 0.12, time.Now().Unix(), 139.7, 35.6, 8.0, 10, 0.0, coreTestTrackID)
 	if err != nil {
 		t.Fatalf("seed markers: %v", err)
 	}
 }
 
-// --- /api overview ---
-
 func TestHandleOverview(t *testing.T) {
 	h := newTestHandler(t)
 	mux := http.NewServeMux()
 	h.Register(mux)
-
 	t.Run("GET returns JSON overview", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api", nil)
 		rec := httptest.NewRecorder()
@@ -81,13 +79,10 @@ func TestHandleOverview(t *testing.T) {
 	})
 }
 
-// --- /api/latest ---
-
 func TestHandleLatestNearby(t *testing.T) {
 	h := newTestHandler(t)
 	mux := http.NewServeMux()
 	h.Register(mux)
-
 	t.Run("missing lat/lon returns 400", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/latest", nil)
 		rec := httptest.NewRecorder()
@@ -96,7 +91,6 @@ func TestHandleLatestNearby(t *testing.T) {
 			t.Errorf("got %d, want 400", rec.Code)
 		}
 	})
-
 	t.Run("invalid lat returns 400", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/latest?lat=abc&lon=139.7", nil)
 		rec := httptest.NewRecorder()
@@ -105,7 +99,6 @@ func TestHandleLatestNearby(t *testing.T) {
 			t.Errorf("got %d, want 400", rec.Code)
 		}
 	})
-
 	t.Run("lat out of range returns 400", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/latest?lat=95&lon=0", nil)
 		rec := httptest.NewRecorder()
@@ -114,7 +107,6 @@ func TestHandleLatestNearby(t *testing.T) {
 			t.Errorf("got %d, want 400", rec.Code)
 		}
 	})
-
 	t.Run("valid request returns markers array", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/latest?lat=35.6&lon=139.7&radius_m=50000", nil)
 		rec := httptest.NewRecorder()
@@ -133,7 +125,6 @@ func TestHandleLatestNearby(t *testing.T) {
 			t.Error("response missing center")
 		}
 	})
-
 	t.Run("POST returns 405", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/api/latest", nil)
 		rec := httptest.NewRecorder()
@@ -144,13 +135,10 @@ func TestHandleLatestNearby(t *testing.T) {
 	})
 }
 
-// --- /api/tracks ---
-
 func TestHandleTracksList(t *testing.T) {
 	h := newTestHandler(t)
 	mux := http.NewServeMux()
 	h.Register(mux)
-
 	t.Run("returns track list", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/tracks", nil)
 		rec := httptest.NewRecorder()
@@ -168,23 +156,18 @@ func TestHandleTracksList(t *testing.T) {
 	})
 }
 
-// --- /api/track/{id} ---
-
 func TestHandleTrackData(t *testing.T) {
 	h := newTestHandler(t)
 	mux := http.NewServeMux()
 	h.Register(mux)
-
 	t.Run("valid track ID returns data", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/api/track/"+testTrackID+".json", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/track/"+coreTestTrackID+".json", nil)
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
-		// Track data endpoint returns 200 with JSON or marker data
 		if rec.Code != http.StatusOK {
 			t.Fatalf("got %d, want 200; body: %s", rec.Code, rec.Body.String())
 		}
 	})
-
 	t.Run("missing track ID returns 400 or 404", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/track/", nil)
 		rec := httptest.NewRecorder()
@@ -195,13 +178,10 @@ func TestHandleTrackData(t *testing.T) {
 	})
 }
 
-// --- /api/countries ---
-
 func TestHandleCountries(t *testing.T) {
 	h := newTestHandler(t)
 	mux := http.NewServeMux()
 	h.Register(mux)
-
 	t.Run("returns countries", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/countries", nil)
 		rec := httptest.NewRecorder()
@@ -219,13 +199,10 @@ func TestHandleCountries(t *testing.T) {
 	})
 }
 
-// --- /api/shorten ---
-
 func TestHandleShorten(t *testing.T) {
 	h := newTestHandler(t)
 	mux := http.NewServeMux()
 	h.Register(mux)
-
 	t.Run("GET returns 405", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/shorten", nil)
 		rec := httptest.NewRecorder()
@@ -234,7 +211,6 @@ func TestHandleShorten(t *testing.T) {
 			t.Errorf("got %d, want 405", rec.Code)
 		}
 	})
-
 	t.Run("invalid JSON returns 400", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/api/shorten", strings.NewReader("not json"))
 		req.Header.Set("Content-Type", "application/json")
@@ -244,7 +220,6 @@ func TestHandleShorten(t *testing.T) {
 			t.Errorf("got %d, want 400", rec.Code)
 		}
 	})
-
 	t.Run("missing url returns 400", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/api/shorten", strings.NewReader(`{"url":""}`))
 		req.Header.Set("Content-Type", "application/json")
@@ -254,7 +229,6 @@ func TestHandleShorten(t *testing.T) {
 			t.Errorf("got %d, want 400", rec.Code)
 		}
 	})
-
 	t.Run("preview returns short code", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/api/shorten",
 			strings.NewReader(`{"url":"https://example.com/map?lat=35.6&lon=139.7","commit":false}`))
@@ -276,7 +250,6 @@ func TestHandleShorten(t *testing.T) {
 			t.Error("response missing short")
 		}
 	})
-
 	t.Run("commit stores short link", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/api/shorten",
 			strings.NewReader(`{"url":"https://example.com/map?lat=35.6&lon=139.7","commit":true}`))
@@ -295,7 +268,6 @@ func TestHandleShorten(t *testing.T) {
 			t.Error("expected stored=true on commit")
 		}
 	})
-
 	t.Run("foreign host rejected", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/api/shorten",
 			strings.NewReader(`{"url":"https://evil.com/path","commit":false}`))
@@ -307,7 +279,6 @@ func TestHandleShorten(t *testing.T) {
 			t.Errorf("got %d, want 400", rec.Code)
 		}
 	})
-
 	t.Run("relative path accepted", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/api/shorten",
 			strings.NewReader(`{"url":"/map?lat=35.6&lon=139.7","commit":false}`))
@@ -321,13 +292,10 @@ func TestHandleShorten(t *testing.T) {
 	})
 }
 
-// --- /api/tracks/years/{year} ---
-
 func TestHandleTracksByYear(t *testing.T) {
 	h := newTestHandler(t)
 	mux := http.NewServeMux()
 	h.Register(mux)
-
 	t.Run("returns tracks for year", func(t *testing.T) {
 		year := time.Now().UTC().Format("2006")
 		req := httptest.NewRequest(http.MethodGet, "/api/tracks/years/"+year, nil)

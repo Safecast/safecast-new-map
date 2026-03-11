@@ -1,12 +1,14 @@
-package web
+// context.go provides context helpers used by handlers and main (e.g. import shield).
+package httpapi
 
 import (
 	"context"
 	"time"
 )
 
-// WithMinimumDeadline ensures ctx has at least min duration until deadline.
-// Used by handlers and by main's importShield. Exported so main can use it.
+// WithMinimumDeadline returns a context that has at least min duration until its deadline.
+// If ctx already has a deadline that is at least min away, ctx is returned unchanged with a no-op cancel.
+// Otherwise a new context is created with the minimum duration so the DB pipeline has time to run.
 func WithMinimumDeadline(ctx context.Context, min time.Duration) (context.Context, context.CancelFunc) {
 	if ctx == nil {
 		return context.WithTimeout(context.Background(), min)

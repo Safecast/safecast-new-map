@@ -1,4 +1,5 @@
-package web
+// handlers_web_test.go tests web handlers: QR, markers, update-coordinates, geoip, docs, license, bounds, short redirect, spectrum, track-info.
+package httpapi
 
 import (
 	"bytes"
@@ -17,50 +18,46 @@ import (
 )
 
 const (
-	testTrackID     = "test-track-001"
-	testMarkerID    = 1
-	testShortCode   = "abc123"
-	testShortTarget = "https://safecast.org/map?lat=35.6&lon=139.7"
+	webTestTrackID     = "test-track-001"
+	webTestMarkerID    = 1
+	webTestShortCode   = "abc123"
+	webTestShortTarget = "https://safecast.org/map?lat=35.6&lon=139.7"
 )
 
-// newTestServer builds a Server with in-memory SQLite and mock content.
+// newTestServer builds a Server with a temporary SQLite DB and embedded mock content (api-usage, licenses).
 func newTestServer(t *testing.T) *Server {
 	t.Helper()
 	// Use temp file so all connections share the same database (SQLite :memory: is per-connection)
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "test.db")
-	cfg := database.Config{
-		DBType: "sqlite",
-		DBPath: dbPath,
-		Port:   1,
-	}
-	db, err := database.NewDatabase(cfg)
+	dbCfg := database.Config{DBType: "sqlite", DBPath: dbPath, Port: 1}
+	db, err := database.NewDatabase(dbCfg)
 	if err != nil {
 		t.Fatalf("NewDatabase: %v", err)
 	}
-	if err := db.InitSchema(cfg); err != nil {
+	if err := db.InitSchema(dbCfg); err != nil {
 		t.Fatalf("InitSchema: %v", err)
 	}
 	seedTestDB(t, db)
 
 	content := fstest.MapFS{
 		"public_html/api-usage.html": {Data: []byte(`<html><body>__BASE_URL__ __API_ROOT__ __DISPLAY_HOST__ __ARCHIVE_ENABLED__ __ARCHIVE_ROUTE__ __ARCHIVE_FREQUENCY__</body></html>`), Mode: 0644},
-		"LICENSE":                     {Data: []byte("MIT License\nCopyright (c) 2015-present"), Mode: 0644},
-		"LICENSE.CC0":                 {Data: []byte("CC0 1.0 Universal"), Mode: 0644},
+		"LICENSE":                    {Data: []byte("MIT License\nCopyright (c) 2015-present"), Mode: 0644},
+		"LICENSE.CC0":                {Data: []byte("CC0 1.0 Universal"), Mode: 0644},
 	}
 
-	return NewServer(db, content, Config{
-		Domain:                "localhost:8765",
-		Port:                  8765,
-		DBType:                "sqlite",
-		AutoLocateDefault:     false,
-		APIDocsArchiveEnabled: true,
-		APIDocsArchiveRoute:   "/api/json/weekly.tgz",
+	return NewWebServer(db, content, WebConfig{
+		Domain:                  "localhost:8765",
+		Port:                    8765,
+		DBType:                  "sqlite",
+		AutoLocateDefault:       false,
+		APIDocsArchiveEnabled:   true,
+		APIDocsArchiveRoute:     "/api/json/weekly.tgz",
 		APIDocsArchiveFrequency: "weekly",
 	}, nil)
 }
 
-// newTestServerWithAdmin builds a test Server with AdminPassword set.
+// newTestServerWithAdmin returns a test Server with the given admin password (for update-coordinates auth tests).
 func newTestServerWithAdmin(t *testing.T, adminPassword string) *Server {
 	t.Helper()
 	srv := newTestServer(t)
@@ -68,20 +65,20 @@ func newTestServerWithAdmin(t *testing.T, adminPassword string) *Server {
 	return srv
 }
 
-// seedTestDB inserts mock data for handler tests.
+// seedTestDB inserts tracks, markers with spectra, short link, and uploads for web handler tests.
 func seedTestDB(t *testing.T, db *database.Database) {
 	t.Helper()
 	ctx := context.Background()
 
 	// tracks
-	_, err := db.DB.ExecContext(ctx, `INSERT INTO tracks (trackID) VALUES (?)`, testTrackID)
+	_, err := db.DB.ExecContext(ctx, `INSERT INTO tracks (trackID) VALUES (?)`, webTestTrackID)
 	if err != nil {
 		t.Fatalf("seed tracks: %v", err)
 	}
 
 	// markers with has_spectrum
 	_, err = db.DB.ExecContext(ctx, `INSERT INTO markers (id, doseRate, date, lon, lat, countRate, zoom, speed, trackID, has_spectrum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		testMarkerID, 0.15, time.Now().Unix(), 139.7, 35.6, 10.0, 10, 0.0, testTrackID, 1)
+		webTestMarkerID, 0.15, time.Now().Unix(), 139.7, 35.6, 10.0, 10, 0.0, webTestTrackID, 1)
 	if err != nil {
 		t.Fatalf("seed markers: %v", err)
 	}
@@ -90,21 +87,21 @@ func seedTestDB(t *testing.T, db *database.Database) {
 	channelsJSON := `[0,1,2,3,4,5]`
 	calibrationJSON := `{"a":0,"b":1.5,"c":0}`
 	_, err = db.DB.ExecContext(ctx, `INSERT INTO spectra (marker_id, channels, channel_count, energy_min_kev, energy_max_kev, live_time_sec, real_time_sec, device_model, calibration, source_format, filename, raw_data, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		testMarkerID, channelsJSON, 1024, 0, 3000, 60.0, 60.0, "RadiaCode-102", calibrationJSON, "rctrk", "test.rctrk", []byte{}, time.Now().Unix())
+		webTestMarkerID, channelsJSON, 1024, 0, 3000, 60.0, 60.0, "RadiaCode-102", calibrationJSON, "rctrk", "test.rctrk", []byte{}, time.Now().Unix())
 	if err != nil {
 		t.Fatalf("seed spectra: %v", err)
 	}
 
 	// short_links
 	_, err = db.DB.ExecContext(ctx, `INSERT INTO short_links (code, target, created_at) VALUES (?, ?, ?)`,
-		testShortCode, testShortTarget, time.Now().Unix())
+		webTestShortCode, webTestShortTarget, time.Now().Unix())
 	if err != nil {
 		t.Fatalf("seed short_links: %v", err)
 	}
 
 	// uploads
 	_, err = db.DB.ExecContext(ctx, `INSERT INTO uploads (filename, track_id, created_at, recording_date, username, detector) VALUES (?, ?, ?, ?, ?, ?)`,
-		"test.gpx", testTrackID, time.Now().Unix(), time.Now().Unix(), "testuser", "RadiaCode-102")
+		"test.gpx", webTestTrackID, time.Now().Unix(), time.Now().Unix(), "testuser", "RadiaCode-102")
 	if err != nil {
 		t.Fatalf("seed uploads: %v", err)
 	}
@@ -185,7 +182,7 @@ func TestQRPng(t *testing.T) {
 
 func TestMarkersWithSpectra(t *testing.T) {
 	t.Run("DB nil returns 503", func(t *testing.T) {
-		srv := NewServer(nil, nil, Config{}, nil)
+		srv := NewWebServer(nil, nil, WebConfig{}, nil)
 		req := httptest.NewRequest(http.MethodGet, "/api/markers/spectra", nil)
 		rec := httptest.NewRecorder()
 		srv.markersWithSpectra(rec, req)
@@ -223,6 +220,19 @@ func TestMarkersWithSpectra(t *testing.T) {
 			t.Fatalf("decode: %v", err)
 		}
 		_ = markers
+	})
+
+	t.Run("non-GET returns 405 with Allow", func(t *testing.T) {
+		srv := newTestServer(t)
+		req := httptest.NewRequest(http.MethodPost, "/api/markers/spectra", nil)
+		rec := httptest.NewRecorder()
+		srv.markersWithSpectra(rec, req)
+		if rec.Code != http.StatusMethodNotAllowed {
+			t.Errorf("got status %d, want 405", rec.Code)
+		}
+		if allow := rec.Header().Get("Allow"); allow != http.MethodGet {
+			t.Errorf("Allow = %q, want GET", allow)
+		}
 	})
 }
 
@@ -279,7 +289,7 @@ func TestUpdateCoordinates(t *testing.T) {
 	})
 
 	t.Run("valid POST returns success", func(t *testing.T) {
-		body := `{"trackID":"` + testTrackID + `","lat":35.7,"lon":139.8}`
+		body := `{"trackID":"` + webTestTrackID + `","lat":35.7,"lon":139.8}`
 		req := httptest.NewRequest(http.MethodPost, "/api/update-coordinates", strings.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
@@ -302,7 +312,7 @@ func TestUpdateCoordinates(t *testing.T) {
 	// Auth tests: when AdminPassword is set
 	t.Run("AdminPassword set, no auth returns 401", func(t *testing.T) {
 		srvAuth := newTestServerWithAdmin(t, "secret123")
-		body := `{"trackID":"` + testTrackID + `","lat":35.7,"lon":139.8}`
+		body := `{"trackID":"` + webTestTrackID + `","lat":35.7,"lon":139.8}`
 		req := httptest.NewRequest(http.MethodPost, "/api/update-coordinates", strings.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
@@ -317,7 +327,7 @@ func TestUpdateCoordinates(t *testing.T) {
 
 	t.Run("AdminPassword set, wrong auth returns 401", func(t *testing.T) {
 		srvAuth := newTestServerWithAdmin(t, "secret123")
-		body := `{"trackID":"` + testTrackID + `","lat":35.7,"lon":139.8}`
+		body := `{"trackID":"` + webTestTrackID + `","lat":35.7,"lon":139.8}`
 		req := httptest.NewRequest(http.MethodPost, "/api/update-coordinates", strings.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
 		req.SetBasicAuth("admin", "wrong")
@@ -330,7 +340,7 @@ func TestUpdateCoordinates(t *testing.T) {
 
 	t.Run("AdminPassword set, valid auth returns success", func(t *testing.T) {
 		srvAuth := newTestServerWithAdmin(t, "secret123")
-		body := `{"trackID":"` + testTrackID + `","lat":35.7,"lon":139.8}`
+		body := `{"trackID":"` + webTestTrackID + `","lat":35.7,"lon":139.8}`
 		req := httptest.NewRequest(http.MethodPost, "/api/update-coordinates", strings.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
 		req.SetBasicAuth("admin", "secret123")
@@ -353,7 +363,7 @@ func TestUpdateCoordinates(t *testing.T) {
 
 func TestGeoIP(t *testing.T) {
 	t.Run("AutoLocateDefault false returns 204", func(t *testing.T) {
-		srv := NewServer(nil, nil, Config{AutoLocateDefault: false}, nil)
+		srv := NewWebServer(nil, nil, WebConfig{AutoLocateDefault: false}, nil)
 		req := httptest.NewRequest(http.MethodGet, "/api/geoip", nil)
 		req.RemoteAddr = "192.168.1.1:12345"
 		rec := httptest.NewRecorder()
@@ -364,7 +374,7 @@ func TestGeoIP(t *testing.T) {
 	})
 
 	t.Run("empty IP returns 204", func(t *testing.T) {
-		srv := NewServer(nil, nil, Config{AutoLocateDefault: true}, nil)
+		srv := NewWebServer(nil, nil, WebConfig{AutoLocateDefault: true}, nil)
 		req := httptest.NewRequest(http.MethodGet, "/api/geoip", nil)
 		req.RemoteAddr = ""
 		rec := httptest.NewRecorder()
@@ -375,7 +385,7 @@ func TestGeoIP(t *testing.T) {
 	})
 
 	t.Run("POST returns 405", func(t *testing.T) {
-		srv := NewServer(nil, nil, Config{AutoLocateDefault: true}, nil)
+		srv := NewWebServer(nil, nil, WebConfig{AutoLocateDefault: true}, nil)
 		req := httptest.NewRequest(http.MethodPost, "/api/geoip", nil)
 		rec := httptest.NewRecorder()
 		srv.geoIP(rec, req)
@@ -390,10 +400,10 @@ func TestGeoIP(t *testing.T) {
 
 func TestRequestClientIP(t *testing.T) {
 	tests := []struct {
-		name     string
-		forward  string
-		remote   string
-		want     string
+		name    string
+		forward string
+		remote  string
+		want    string
 	}{
 		{"X-Forwarded-For", "10.0.0.1", "", "10.0.0.1"},
 		{"X-Forwarded-For multiple", "10.0.0.1, 192.168.1.1", "", "10.0.0.1"},
@@ -505,6 +515,18 @@ func TestLicense(t *testing.T) {
 func TestApiTracksBounds(t *testing.T) {
 	srv := newTestServer(t)
 
+	t.Run("non-GET returns 405", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/api/tracks/bounds?trackIDs="+webTestTrackID, nil)
+		rec := httptest.NewRecorder()
+		srv.apiTracksBounds(rec, req)
+		if rec.Code != http.StatusMethodNotAllowed {
+			t.Errorf("got status %d, want 405", rec.Code)
+		}
+		if allow := rec.Header().Get("Allow"); allow != http.MethodGet {
+			t.Errorf("Allow = %q, want GET", allow)
+		}
+	})
+
 	t.Run("missing trackIDs returns 400", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/tracks/bounds", nil)
 		rec := httptest.NewRecorder()
@@ -515,7 +537,7 @@ func TestApiTracksBounds(t *testing.T) {
 	})
 
 	t.Run("valid trackIDs returns bounds", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/api/tracks/bounds?trackIDs="+testTrackID, nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/tracks/bounds?trackIDs="+webTestTrackID, nil)
 		rec := httptest.NewRecorder()
 		srv.apiTracksBounds(rec, req)
 		if rec.Code != http.StatusOK {
@@ -561,7 +583,7 @@ func TestShortRedirect(t *testing.T) {
 	})
 
 	t.Run("DB nil returns 404", func(t *testing.T) {
-		srv := NewServer(nil, nil, Config{}, nil)
+		srv := NewWebServer(nil, nil, WebConfig{}, nil)
 		req := httptest.NewRequest(http.MethodGet, "/s/abc", nil)
 		rec := httptest.NewRecorder()
 		srv.shortRedirect(rec, req)
@@ -572,14 +594,14 @@ func TestShortRedirect(t *testing.T) {
 
 	t.Run("valid code redirects", func(t *testing.T) {
 		srv := newTestServer(t)
-		req := httptest.NewRequest(http.MethodGet, "/s/"+testShortCode, nil)
+		req := httptest.NewRequest(http.MethodGet, "/s/"+webTestShortCode, nil)
 		rec := httptest.NewRecorder()
 		srv.shortRedirect(rec, req)
 		if rec.Code != http.StatusFound {
 			t.Errorf("got status %d, want 302", rec.Code)
 		}
-		if loc := rec.Header().Get("Location"); loc != testShortTarget {
-			t.Errorf("Location = %q, want %q", loc, testShortTarget)
+		if loc := rec.Header().Get("Location"); loc != webTestShortTarget {
+			t.Errorf("Location = %q, want %q", loc, webTestShortTarget)
 		}
 	})
 
@@ -598,7 +620,7 @@ func TestShortRedirect(t *testing.T) {
 
 func TestSpectrum(t *testing.T) {
 	t.Run("DB nil returns 503", func(t *testing.T) {
-		srv := NewServer(nil, nil, Config{}, nil)
+		srv := NewWebServer(nil, nil, WebConfig{}, nil)
 		req := httptest.NewRequest(http.MethodGet, "/api/spectrum/1", nil)
 		rec := httptest.NewRecorder()
 		srv.spectrum(rec, req)
@@ -700,8 +722,8 @@ func TestSpectrumDownload(t *testing.T) {
 
 func TestTrackInfo(t *testing.T) {
 	t.Run("DB nil returns 503", func(t *testing.T) {
-		srv := NewServer(nil, nil, Config{}, nil)
-		req := httptest.NewRequest(http.MethodGet, "/api/track-info/"+testTrackID, nil)
+		srv := NewWebServer(nil, nil, WebConfig{}, nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/track-info/"+webTestTrackID, nil)
 		rec := httptest.NewRecorder()
 		srv.trackInfo(rec, req)
 		if rec.Code != http.StatusServiceUnavailable {
@@ -719,9 +741,22 @@ func TestTrackInfo(t *testing.T) {
 		}
 	})
 
+	t.Run("non-GET returns 405", func(t *testing.T) {
+		srv := newTestServer(t)
+		req := httptest.NewRequest(http.MethodPost, "/api/track-info/"+webTestTrackID, nil)
+		rec := httptest.NewRecorder()
+		srv.trackInfo(rec, req)
+		if rec.Code != http.StatusMethodNotAllowed {
+			t.Errorf("got status %d, want 405", rec.Code)
+		}
+		if allow := rec.Header().Get("Allow"); allow != http.MethodGet {
+			t.Errorf("Allow = %q, want GET", allow)
+		}
+	})
+
 	t.Run("valid track returns metadata", func(t *testing.T) {
 		srv := newTestServer(t)
-		req := httptest.NewRequest(http.MethodGet, "/api/track-info/"+testTrackID, nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/track-info/"+webTestTrackID, nil)
 		rec := httptest.NewRecorder()
 		srv.trackInfo(rec, req)
 		if rec.Code != http.StatusOK {
@@ -731,14 +766,17 @@ func TestTrackInfo(t *testing.T) {
 		if err := json.NewDecoder(rec.Body).Decode(&out); err != nil {
 			t.Fatalf("decode: %v", err)
 		}
-		if out["trackID"] != testTrackID {
-			t.Errorf("trackID = %v, want %s", out["trackID"], testTrackID)
+		if out["trackID"] != webTestTrackID {
+			t.Errorf("trackID = %v, want %s", out["trackID"], webTestTrackID)
 		}
 		if _, ok := out["username"]; !ok {
 			t.Error("response missing username")
 		}
 		if _, ok := out["detector"]; !ok {
 			t.Error("response missing detector")
+		}
+		if cache := rec.Header().Get("Cache-Control"); cache != "public, max-age=3600" {
+			t.Errorf("Cache-Control = %q", cache)
 		}
 	})
 
