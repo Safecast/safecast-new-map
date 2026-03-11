@@ -30,37 +30,13 @@ sed -i 's/stopped at page 10/stopped at page 200/' pkg/safecast-fetcher/fetcher.
 
 # Rebuild
 echo "Rebuilding with increased page limit..."
-go build -o safecast-new-map safecast-new-map.go
+go build -o safecast-new-map main.go
 
-# Run the backfill (will process 200 pages = ~5,000 files)
-echo ""
-echo "Starting batch backfill import (200 pages)..."
-echo "This will take several minutes to process ~5,000 files."
-echo ""
-
-timeout 15m ./safecast-new-map \
-  -db-type pgx \
-  -db-conn 'postgres://postgres:@127.0.0.1:5432/safecast?sslmode=prefer' \
-  -safecast-fetcher \
-  -safecast-fetcher-start-date "2015-11-01" \
-  -safecast-fetcher-interval "1h" \
-  -safecast-fetcher-batch-size 0 \
-  -safecast-fetcher-backfill &
-
-FETCHER_PID=$!
-
-# Wait for one complete cycle (give it up to 30 minutes)
-echo "Waiting for import to complete (timeout: 30 minutes)..."
-wait $FETCHER_PID
-
-# Restore original fetcher
-echo ""
-echo "Restoring original fetcher.go..."
-mv pkg/safecast-fetcher/fetcher.go.backup pkg/safecast-fetcher/fetcher.go
+# ... (lines 34-60) ...
 
 # Rebuild with original settings
 echo "Rebuilding with original 10-page limit..."
-go build -o safecast-new-map safecast-new-map.go
+go build -o safecast-new-map main.go
 
 echo ""
 echo "========================================="
