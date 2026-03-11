@@ -8,7 +8,7 @@ on:
 permissions:
   contents: write
 
-# ---------- PORTABLE: всё без CGO и без DuckDB ----------
+# ---------- PORTABLE: Unified server without CGO (no DuckDB analytics) ----------
 jobs:
   build_portable:
     if: contains(toJson(github.event.head_commit.message), 'stable release') || github.event_name == 'workflow_dispatch'
@@ -55,7 +55,7 @@ jobs:
         shell: pwsh
         run: go mod tidy
 
-      - name: Build (POSIX)
+      - name: Build unified server (POSIX)
         if: runner.os != 'Windows'
         shell: bash
         env:
@@ -66,12 +66,13 @@ jobs:
           export CGO_ENABLED=0
           VERSION=${{ github.run_number }}
           mkdir -p dist
-          BIN="chicha-isotope-map_${GOOS}_${GOARCH}"
+          BIN="safecast-new-map_${GOOS}_${GOARCH}"
           GOFLAGS="-trimpath -buildvcs=false" \
           go build -tags netgo,osusergo \
                    -ldflags "-s -w -X main.CompileVersion=$VERSION" \
-                   -o "dist/${BIN}"
-      - name: Build (Windows)
+                   -o "dist/${BIN}" ./cmd/unified-server
+
+      - name: Build unified server (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         env:
@@ -82,10 +83,10 @@ jobs:
           $env:CGO_ENABLED = "0"
           $version = "${{ github.run_number }}"
           New-Item -Force -ItemType Directory dist | Out-Null
-          $bin = "chicha-isotope-map_${{ matrix.goos }}_${{ matrix.goarch }}.exe"
+          $bin = "safecast-new-map_${{ matrix.goos }}_${{ matrix.goarch }}.exe"
           go build -tags "netgo,osusergo" `
                    -ldflags "-s -w -X main.CompileVersion=$version" `
-                   -o "dist/$bin"
+                   -o "dist/$bin" ./cmd/unified-server
 
       - name: Upload portable artifact
         uses: actions/upload-artifact@v4
@@ -93,7 +94,7 @@ jobs:
           name: bin-${{ matrix.goos }}-${{ matrix.goarch }}
           path: dist/
 
-# ---------- DUCKDB: Linux/amd64 (glibc 2.28) в контейнере + macOS (amd64/arm64) ----------
+# ---------- DUCKDB: Unified server with DuckDB analytics (Linux/amd64 + macOS) ----------
   build_duckdb:
     if: contains(toJson(github.event.head_commit.message), 'stable release') || github.event_name == 'workflow_dispatch'
     runs-on: ${{ matrix.runner }}
@@ -101,6 +102,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Linux amd64 in container
+          - { target: linux_amd64_duckdb, goos: linux, goarch: amd64, goversion: "1.24", runner: "ubuntu-24.04", in_container: true }
           # macOS amd64/arm64: нативно
           - { target: darwin_amd64_duckdb, goos: darwin, goarch: amd64, goversion: "1.24", runner: "macos-13", in_container: false }
           - { target: darwin_arm64_duckdb, goos: darwin, goarch: arm64, goversion: "1.24", runner: "macos-14", in_container: false }
@@ -108,6 +111,29 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # --- Linux в контейнере ---
+      - name: Build (Linux duckdb container)
+        if: matrix.in_container == true
+        uses: addnab/docker-run-action@v3
+        with:
+          image: golang:${{ matrix.goversion }}
+          options: -v ${{ github.workspace }}:/build -w /build
+          run: |
+            set -euo pipefail
+            export CGO_ENABLED=1
+            export GOOS=${{ matrix.goos }}
+            export GOARCH=${{ matrix.goarch }}
+            VERSION=${{ github.run_number }}
+            mkdir -p dist
+            BIN="safecast-new-map_${GOOS}_${GOARCH}_duckdb"
+            apt-get update && apt-get install -y gcc libc6-dev
+            go get github.com/marcboeker/go-duckdb/v2@latest
+            go mod tidy
+            GOFLAGS="-trimpath -buildvcs=false" \
+            go build -tags "netgo,osusergo,duckdb" \
+                     -ldflags "-s -w -X main.CompileVersion=$VERSION" \
+                     -o "dist/${BIN}" ./cmd/unified-server
 
       # --- macOS нативно ---
       - name: Set up Go (macOS)
@@ -136,11 +162,11 @@ jobs:
           export CGO_ENABLED=1
           VERSION=${{ github.run_number }}
           mkdir -p dist
-          BIN="chicha-isotope-map_${GOOS}_${GOARCH}_duckdb"
+          BIN="safecast-new-map_${GOOS}_${GOARCH}_duckdb"
           GOFLAGS="-trimpath -buildvcs=false" \
           go build -tags "netgo,osusergo,duckdb" \
                    -ldflags "-s -w -X main.CompileVersion=$VERSION" \
-                   -o "dist/${BIN}"
+                   -o "dist/${BIN}" ./cmd/unified-server
 
       - name: Upload duckdb artifact
         uses: actions/upload-artifact@v4
@@ -163,6 +189,41 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: latest
-          name: "download stable version"
+          name: "download stable version - unified server with MCP + AI assistant"
+          body: |
+            ## Unified Server (Map + MCP + AI Assistant)
+            
+            This release contains a single unified binary with:
+            - Radiation monitoring map server
+            - MCP server for AI integration
+            - Web chat interface (requires ANTHROPIC_API_KEY)
+            - DuckDB analytics (in _duckdb variants)
+            
+            ### Usage
+            
+            **Basic (PostgreSQL only):**
+            ```bash
+            DATABASE_URL="postgres://user:pass@localhost/db" ./safecast-new-map_linux_amd64
+            ```
+            
+            **With DuckDB analytics:**
+            ```bash
+            DATABASE_URL="postgres://..." DUCKDB_PATH="./analytics.duckdb" ./safecast-new-map_linux_amd64_duckdb
+            ```
+            
+            **With AI assistant:**
+            ```bash
+            DATABASE_URL="postgres://..." \
+            ANTHROPIC_API_KEY="your-key" \
+            ./safecast-new-map_linux_amd64
+            ```
+            
+            ### Endpoints
+            
+            - Map: http://localhost:8765/
+            - MCP: http://localhost:8765/mcp-http
+            - AI Chat: http://localhost:8765/assistant/
+            - REST API: http://localhost:8765/api/
+            - Swagger: http://localhost:8765/docs/
           prerelease: false
           files: dist-raw/**/*
