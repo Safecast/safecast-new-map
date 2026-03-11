@@ -13,23 +13,24 @@ flowchart TB
         CF["simplemap.safecast.org\n(HTTP/HTTPS only)"]
         Assistant["assistant.safecast.org\n(web chat interface)"]
   end
- subgraph MCP["safecast-map-MCP (port 3333)"]
+ subgraph MCP["MCP Server — cmd/mcp-server (port 3333)"]
         MCPTools["16 MCP Tools\n(radiation, sensors, tracks, spectra)"]
-        REST_MCP["REST API + Swagger\n/api/* /docs/"]
+        REST_MCP["REST API + Swagger\n/api/radiation /api/sensors /docs/"]
         DuckDB["DuckDB\n(tool usage analytics)"]
   end
- subgraph MapServer["safecast-new-map (port 8765)"]
-        MapUI["Interactive Map UI"]
-        REST_Map["REST API\n/api/tracks /api/stats /api/json/..."]
+ subgraph MapServer["Map Server — safecast-new-map.go (port 8765)"]
+        MapUI["Interactive Map UI\n(map tiles, markers, spectrum viewer)"]
+        REST_Map["REST API\n/api/tracks /api/stats /api/spectrum/\n/api/json/ /api/upload"]
         Fetcher["bGeigie Auto-Sync\n(-safecast-fetcher)"]
         RTPoller["Real-time Sensor Poller\n(-safecast-realtime)"]
+        SpecParser["Spectrum Parser\n.n42 / .spe / .rctrk formats\n→ channels + calibration"]
   end
  subgraph DB["🗄️ PostgreSQL + PostGIS"]
-        markers["markers table\n(historical bGeigie data)"]
+        markers["markers table\n(bGeigie tracks + spectrum locations)"]
         realtime["realtime_measurements\n(fixed sensors)"]
-        spectra["spectra table\n(gamma spectroscopy)"]
+        spectra["spectra table\n(channels[], calibration, raw_data\nlinked to markers via marker_id)"]
   end
- subgraph WebChat["Web Chat (port 3334)"]
+ subgraph WebChat["Web Chat — cmd/web-chat (port 3334)"]
         ChatUI["Chat Interface\n(HTML + JavaScript)"]
         ClaudeAPI["Claude API Client\n(Haiku 4.5)"]
   end
@@ -44,8 +45,7 @@ flowchart TB
         Fixed["Pointcast / Solarcast\n(fixed stations)"]
   end
  subgraph CICD["⚙️ GitHub Actions (CI/CD)"]
-        GH_MCP["safecast-map-MCP\n→ cross-compile + deploy"]
-        GH_Map["safecast-new-map\n→ cross-compile + deploy"]
+        GH_All["safecast-new-map (monorepo)\n→ builds all 3 binaries + deploys"]
   end
     MCPTools --> DuckDB
     MCPTools -- primary: localhost queries --> DB
@@ -61,7 +61,9 @@ flowchart TB
     WebUsers["💬 Web Chat Users"] -- HTTPS --> Assistant
     Assistant -- proxy → port 3334 --> ChatUI
     ClaudeAPI -- "localhost MCP calls" --> MCPTools
-    bGeigie -- upload tracks --> REST_Map
+    bGeigie -- "upload tracks\n(.bgeigie / .rctrk / .n42 / .spe)" --> REST_Map
+    REST_Map -- "spectrum files" --> SpecParser
+    SpecParser -- "markers + spectra rows" --> markers
+    SpecParser -- "channels[] + calibration\n+ raw_data (BYTEA)" --> spectra
     Fixed -- "real-time readings" --> RTPoller
-    GH_MCP -- rsync → IP direct --> Server
-    GH_Map -- rsync → IP direct --> Server
+    GH_All -- rsync → IP direct --> Server

@@ -198,6 +198,27 @@ Import from local file:
 - **Statistics:** `/api/stats`
 - **Countries:** `/api/countries`
 
+### MCP Server & AI Integration
+
+This repo also includes an MCP (Model Context Protocol) server and a Claude-powered web chat interface, built and deployed alongside the map server from the same codebase.
+
+| Component | Source | Port | URL |
+|-----------|--------|------|-----|
+| MCP Server | `cmd/mcp-server/` | 3333 | `/mcp-http`, `/mcp/sse` |
+| REST API + Swagger | `cmd/mcp-server/` | 3333 | `/api/radiation`, `/docs/` |
+| Web Chat | `cmd/web-chat/` | 3334 | `/assistant/` |
+
+**Connect Claude to the live Safecast data:**
+```bash
+# Claude Code CLI
+claude mcp add --transport http safecast https://simplemap.safecast.org/mcp-http
+
+# Claude.ai: Settings → Integrations → Add custom integration
+# URL: https://simplemap.safecast.org/mcp-http
+```
+
+**Swagger API docs:** [simplemap.safecast.org/docs/](https://simplemap.safecast.org/docs/)
+
 ---
 
 ## Spectral Data Analysis
@@ -232,6 +253,8 @@ See [SPECTRAL_MIGRATION_GUIDE.md](SPECTRAL_MIGRATION_GUIDE.md) for details.
 - Peak detection and isotope identification
 - Visualization on map markers
 - API access for external analysis
+
+**Architecture diagram:** [docs/spectral-data-flow.mmd](docs/spectral-data-flow.mmd) — full pipeline from upload → parsers → DB storage → REST API → browser chart construction.
 
 ---
 
@@ -481,6 +504,8 @@ For deploying to production servers with CloudFront/CDN setup, see:
 - [Deployment Guide](docs/DEPLOYMENT.md) - Complete deployment procedures and troubleshooting
 - [GitHub Actions Guide](GITHUB_ACTIONS_GUIDE.md) - Automated CI/CD setup
 - [CloudFront Setup](docs/cloudfront-setup.md) - CDN configuration details
+- [Architecture Diagram](docs/Mermaid%20Chart%20-%20Create%20complex,%20visual%20diagrams%20with%20text.-2026-02-28-043816.mmd) - System overview (Mermaid)
+- [Spectral Data Flow](docs/spectral-data-flow.mmd) - Spectral upload/parse/store/render pipeline (Mermaid)
 
 **Important:** When using CloudFront, SSH and rsync must use the server's IP address directly, not the domain name.
 

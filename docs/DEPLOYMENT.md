@@ -8,6 +8,16 @@ This guide covers deploying to the production server at simplemap.safecast.org.
 **Server IP:** 65.108.24.131
 **CDN:** AWS CloudFront (Distribution ID: E12FYIQ8RRXOJ1)
 
+### Services
+
+All three services are built from this repo and deployed by the same GitHub Actions workflow:
+
+| Service | Binary | Port | Location on VPS |
+|---------|--------|------|-----------------|
+| Map server | `safecast-new-map` | 8765 | `/usr/local/bin/safecast-new-map` |
+| MCP server | `safecast-mcp` | 3333 | `/root/safecast-mcp-server/safecast-mcp` |
+| Web-chat | `safecast-web-chat` | 3334 | `/root/safecast-web-chat-server/safecast-web-chat` |
+
 ### Traffic Flow
 
 ```
@@ -52,32 +62,39 @@ ssh -i ~/.ssh/safecast-deploy root@simplemap.safecast.org  # CloudFront can't ha
 ### Prerequisites
 
 1. **SSH Key:** `~/.ssh/safecast-deploy` (private key)
-2. **Binary built:** `go build -o safecast-new-map .`
+2. **Binaries built:**
+   ```bash
+   go build -o safecast-new-map .
+   go build -o safecast-mcp ./cmd/mcp-server/
+   go build -o safecast-web-chat ./cmd/web-chat/
+   ```
 3. **Server access:** Ability to SSH to 65.108.24.131
 
-### Deployment Steps (Always Use This Order)
+### Deployment Steps — Map Server
 
-**Step 1: Stop the service**
 ```bash
 ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl stop safecast-new-map"
-```
-
-**Step 2: Sync the binary**
-```bash
 rsync -avP -e "ssh -i ~/.ssh/safecast-deploy" ./safecast-new-map root@65.108.24.131:/usr/local/bin/
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl start safecast-new-map && systemctl status safecast-new-map"
 ```
 
-**Step 3: Start the service**
+### Deployment Steps — MCP Server
+
 ```bash
-ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl start safecast-new-map"
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl stop safecast-mcp"
+rsync -avP -e "ssh -i ~/.ssh/safecast-deploy" ./safecast-mcp root@65.108.24.131:/root/safecast-mcp-server/safecast-mcp
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl start safecast-mcp && systemctl status safecast-mcp"
 ```
 
-**Step 4: Verify deployment**
+### Deployment Steps — Web-chat
+
 ```bash
-ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl status safecast-new-map"
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl stop safecast-web-chat"
+rsync -avP -e "ssh -i ~/.ssh/safecast-deploy" ./safecast-web-chat root@65.108.24.131:/root/safecast-web-chat-server/safecast-web-chat
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl start safecast-web-chat && systemctl status safecast-web-chat"
 ```
 
-**Step 5: Invalidate CloudFront cache (optional)**
+### Invalidate CloudFront cache (optional)
 ```bash
 aws cloudfront create-invalidation --distribution-id E12FYIQ8RRXOJ1 --paths "/*"
 ```
@@ -102,25 +119,24 @@ aws cloudfront create-invalidation --distribution-id E12FYIQ8RRXOJ1 --paths "/*"
 
 ### Required GitHub Secrets
 
-| Secret | Value | Purpose |
-|--------|-------|---------|
-| `DEPLOY_SSH_KEY` | Content of `~/.ssh/safecast-deploy` | SSH authentication |
-| `AWS_ACCESS_KEY_ID` | AWS access key | CloudFront invalidation |
-| `AWS_SECRET_ACCESS_KEY` | AWS secret key | CloudFront invalidation |
+| Secret | Purpose |
+|--------|---------|
+| `DEPLOY_SSH_KEY` | SSH key for deploying to 65.108.24.131 |
+| `AWS_ACCESS_KEY_ID` | CloudFront cache invalidation |
+| `AWS_SECRET_ACCESS_KEY` | CloudFront cache invalidation |
+| `DATABASE_URL` | Postgres connection string for MCP server |
+| `ANTHROPIC_API_KEY` | Claude API key for web-chat service |
 
 ### Workflow Steps
 
-```yaml
-1. Checkout code
-2. Set up Go 1.23
-3. Build binary
-4. Setup SSH (using 65.108.24.131 IP)
-5. Stop service
-6. Deploy binary via rsync
-7. Start service
-8. Verify deployment
-9. Invalidate CloudFront cache
-10. Cleanup SSH keys
+```
+1. Build all 3 binaries (safecast-new-map, safecast-mcp, safecast-web-chat)
+2. Setup SSH
+3. Stop → rsync → start: safecast-new-map
+4. Stop → rsync → start: safecast-mcp  (also writes /root/safecast-mcp-server/.env)
+5. Stop → rsync → start: safecast-web-chat  (also writes /root/safecast-web-chat-server/.env)
+6. Invalidate CloudFront cache (/*)
+7. Cleanup SSH keys
 ```
 
 **Note:** The workflow correctly uses the IP address (65.108.24.131) for all SSH operations.
@@ -162,18 +178,23 @@ AWS WAF protects against:
 
 ### Service Details
 
-**Service name:** `safecast-new-map`
-**Binary location:** `/usr/local/bin/safecast-new-map`
-**Service file:** `/etc/systemd/system/safecast-new-map.service`
+| Service | systemd name | Binary | Config |
+|---------|-------------|--------|--------|
+| Map server | `safecast-new-map` | `/usr/local/bin/safecast-new-map` | flags in service file |
+| MCP server | `safecast-mcp` | `/root/safecast-mcp-server/safecast-mcp` | `/root/safecast-mcp-server/.env` |
+| Web-chat | `safecast-web-chat` | `/root/safecast-web-chat-server/safecast-web-chat` | `/root/safecast-web-chat-server/.env` |
 
 ### Useful Commands
 
 ```bash
-# View service status
+# View service status (replace service name as needed)
 ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl status safecast-new-map"
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl status safecast-mcp"
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl status safecast-web-chat"
 
 # View logs
 ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "journalctl -u safecast-new-map -f"
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "journalctl -u safecast-mcp -f"
 
 # Restart service
 ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl restart safecast-new-map"
@@ -251,6 +272,27 @@ ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl start safecast-new-m
 - **WAF enabled:** Protects against common web attacks
 - **DDoS protection:** AWS Shield Standard included with CloudFront
 - **Origin protection:** Origin server (65.108.24.131) can be firewalled to only accept CloudFront IPs
+
+### PostgreSQL Security
+
+PostgreSQL (port 5432) **must never be exposed to the internet.**
+
+**Configuration** — `/etc/postgresql/16/main/postgresql.conf`:
+```
+listen_addresses = 'localhost'
+```
+
+**Firewall rules** (persisted via `iptables-persistent`):
+```bash
+# Allow postgres only on loopback
+iptables -A INPUT -i lo -p tcp --dport 5432 -j ACCEPT
+# Drop all external access
+iptables -A INPUT -p tcp --dport 5432 -j DROP
+```
+
+Rules are saved in `/etc/iptables/rules.v4` and restored automatically on reboot.
+
+> **Background:** In March 2026 the BSI (via Hetzner abuse) flagged port 5432 as publicly accessible. The root cause was `listen_addresses` including the public IP. Both the config and firewall were fixed and the rules persisted.
 
 ## Related Documentation
 

@@ -15,7 +15,7 @@
   -smtp-host "smtp.gmail.com" \
   -smtp-port 587 \
   -smtp-username "oudendijk.biz@gmail.com" \
-  -smtp-password "uyev szqd wsit dfnh" \
+  -smtp-password "xwbaoaogzlfiimpk" \
   -smtp-from "oudendijk.biz@gmail.com" \
   -base-url "http://localhost:8765" \
   -default-lat=37.43336 \
