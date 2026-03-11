@@ -4,7 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Safecast Radiation Assistant</title>
-  <link rel="icon" type="image/png" href="safecast-square-ct.png" />
+  <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png" />
+  <link rel="apple-touch-icon" href="safecast-square-ct.png" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -541,17 +544,15 @@
       sendBtn.disabled = false;
       msgEl.focus();
 
-      // Add AI disclaimer to successful bot messages
+      // Display bot response (disclaimer already included in _ai_generated_note from backend)
       if (success && accumulated) {
-        // Re-render with disclaimer
-        const disclaimerText = '\n\n---\n\n_Note: AI-generated response using data from the Safecast radiation monitoring network. For critical safety decisions, please consult official sources._';
-        botBubble.innerHTML = markdownToHTML(accumulated + disclaimerText);
+        botBubble.innerHTML = markdownToHTML(accumulated);
 
-        // Re-add copy button (since we replaced innerHTML)
+        // Re-add copy button
         const copyBtn = document.createElement('button');
         copyBtn.className = 'copy-btn';
         copyBtn.textContent = 'Copy';
-        copyBtn.onclick = () => copyMessage(accumulated, copyBtn); // Copy without disclaimer
+        copyBtn.onclick = () => copyMessage(accumulated, copyBtn);
         botBubble.appendChild(copyBtn);
 
         conversationHistory.push(

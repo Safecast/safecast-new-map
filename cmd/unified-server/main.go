@@ -8907,6 +8907,10 @@ func main() {
 		AdminCacheHandler:                adminCacheHandler,
 	})
 
+	// Register MCP Server (AI assistant, REST API, Swagger) on port 3333
+	// Uses existing PostgreSQL (db) and DuckDB (duckDB) connections
+	RegisterMCP()
+
 	// Selfupgrade runs in the background only when explicitly enabled so existing
 	// installations keep their manual release cadence. We assemble the config
 	// near main() so filesystem paths, database settings, and HTTP handlers stay
