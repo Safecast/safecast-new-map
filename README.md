@@ -200,13 +200,40 @@ Import from local file:
 
 ### MCP Server & AI Integration
 
-This repo also includes an MCP (Model Context Protocol) server and a Claude-powered web chat interface, built and deployed alongside the map server from the same codebase.
+The unified server includes an MCP (Model Context Protocol) server with a Claude-powered web chat interface, all in a single binary.
 
 | Component | Source | Port | URL |
 |-----------|--------|------|-----|
-| MCP Server | `cmd/mcp-server/` | 3333 | `/mcp-http`, `/mcp/sse` |
-| REST API + Swagger | `cmd/mcp-server/` | 3333 | `/api/radiation`, `/docs/` |
-| Web Chat | `cmd/web-chat/` | 3334 | `/assistant/` |
+| Unified Server (Map + MCP) | `cmd/unified-server/` | 8765 | `/`, `/mcp-http`, `/assistant/` |
+| MCP Server | `cmd/unified-server/` | 8765 | `/mcp-http`, `/mcp/sse` |
+| Web Chat | `cmd/unified-server/` | 8765 | `/assistant/` |
+| REST API + Swagger | `cmd/unified-server/` | 8765 | `/api/`, `/docs/` |
+
+**Build:**
+```bash
+# Basic build (PostgreSQL only)
+go build -o safecast-new-map ./cmd/unified-server
+
+# With DuckDB analytics (requires CGO)
+CGO_ENABLED=1 go build -tags duckdb -o safecast-new-map ./cmd/unified-server
+```
+
+**Run:**
+```bash
+# Map server with MCP (PostgreSQL required)
+DATABASE_URL="postgres://user:pass@localhost/db" ./safecast-new-map
+
+# With DuckDB analytics
+DATABASE_URL="postgres://..." \
+DUCKDB_PATH="./analytics.duckdb" \
+./safecast-new-map
+
+# With AI web chat (requires Anthropic API key)
+DATABASE_URL="postgres://..." \
+ANTHROPIC_API_KEY="your-key" \
+CLAUDE_MODEL="claude-sonnet-4-5" \
+./safecast-new-map
+```
 
 **Connect Claude to the live Safecast data:**
 ```bash
@@ -216,6 +243,8 @@ claude mcp add --transport http safecast https://simplemap.safecast.org/mcp-http
 # Claude.ai: Settings → Integrations → Add custom integration
 # URL: https://simplemap.safecast.org/mcp-http
 ```
+
+**Web Chat:** Open `http://localhost:8765/assistant/` in your browser.
 
 **Swagger API docs:** [simplemap.safecast.org/docs/](https://simplemap.safecast.org/docs/)
 
@@ -481,7 +510,7 @@ Automatically import approved bGeigie measurements:
 ```bash
 git clone https://github.com/Safecast/safecast-new-map.git
 cd safecast-new-map
-go build -o safecast-new-map ./cmd/safecast-new-map
+go build -o safecast-new-map ./cmd/unified-server
 ./safecast-new-map
 ```
 

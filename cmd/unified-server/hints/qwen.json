@@ -1,0 +1,325 @@
+{
+  "model": "qwen",
+  "display_name": "Qwen 2.5",
+  "capabilities": ["tool_use", "json_mode", "multilingual", "code_generation"],
+  "system_prompt": "You are Qwen, an AI assistant with access to the Safecast radiation monitoring database. Provide accurate, concise responses with clear structure. Use tools to gather data before answering. Present findings objectively with proper scientific formatting.",
+  "tools": {
+    "query_radiation": {
+      "description": "查询地理位置附近的辐射测量数据。返回历史移动测量数据。重要：收到结果后必须调用 sensor_current 检查实时固定传感器数据。",
+      "description_en": "Find radiation measurements near a geographic location. Returns historical mobile survey data. IMPORTANT: After receiving results, must call sensor_current to check for real-time fixed sensors.",
+      "examples": [
+        {
+          "user_query": "福岛附近的辐射水平如何？",
+          "tool_call": {
+            "name": "query_radiation",
+            "arguments": {
+              "lat": 37.4267,
+              "lon": 140.5367,
+              "radius_m": 50000,
+              "limit": 25
+            }
+          }
+        }
+      ],
+      "output_hints": "使用 Markdown 表格呈现结果。所有坐标必须包含可点击的地图链接。区分 CPM（每分钟计数）和 µSv/h（剂量率）。",
+      "formatting_rules": {
+        "table_format": "始终使用 Markdown 表格",
+        "map_links": "所有坐标必须包含地图链接",
+        "units": "明确标注单位（µSv/h、CPM、CPS）"
+      }
+    },
+    "search_area": {
+      "description": "在地理边界框内查找辐射测量数据。",
+      "description_en": "Find radiation measurements within a geographic bounding box.",
+      "examples": [
+        {
+          "user_query": "显示东京地区的辐射数据",
+          "tool_call": {
+            "name": "search_area",
+            "arguments": {
+              "min_lat": 35.5,
+              "max_lat": 35.8,
+              "min_lon": 139.5,
+              "max_lon": 139.9,
+              "limit": 100
+            }
+          }
+        }
+      ],
+      "output_hints": "按区域汇总结果。使用地图链接标注所有位置。"
+    },
+    "list_tracks": {
+      "description": "列出可用的辐射测量轨迹（调查路线）。可按年份和月份筛选。",
+      "description_en": "List available radiation measurement tracks. Can filter by year and month.",
+      "examples": [
+        {
+          "user_query": "2024 年有哪些可用的轨迹？",
+          "tool_call": {
+            "name": "list_tracks",
+            "arguments": {
+              "year": 2024,
+              "limit": 50
+            }
+          }
+        }
+      ],
+      "output_hints": "包含轨迹 ID、日期范围和测量点数量。"
+    },
+    "get_track": {
+      "description": "检索特定轨迹的所有测量数据。",
+      "description_en": "Retrieve all measurements from a specific track.",
+      "examples": [
+        {
+          "user_query": "获取轨迹 2024-01-15-fukushima 的完整数据",
+          "tool_call": {
+            "name": "get_track",
+            "arguments": {
+              "track_id": "2024-01-15-fukushima"
+            }
+          }
+        }
+      ],
+      "output_hints": "以表格形式呈现测量数据，包含剂量率、位置和时间戳。"
+    },
+    "device_history": {
+      "description": "获取特定移动监测设备的历史测量数据。",
+      "description_en": "Get historical measurements from a specific mobile monitoring device.",
+      "examples": [
+        {
+          "user_query": "显示设备 SC-12345 过去 7 天的数据",
+          "tool_call": {
+            "name": "device_history",
+            "arguments": {
+              "device_id": "SC-12345",
+              "days": 7
+            }
+          }
+        }
+      ],
+      "output_hints": "以时间序列形式呈现数据。"
+    },
+    "get_spectrum": {
+      "description": "检索特定测量点的伽马能谱数据。",
+      "description_en": "Retrieve gamma spectrum data for a specific measurement point.",
+      "examples": [
+        {
+          "user_query": "获取标记点 12345 的伽马能谱",
+          "tool_call": {
+            "name": "get_spectrum",
+            "arguments": {
+              "marker_id": 12345
+            }
+          }
+        }
+      ],
+      "output_hints": "包含设备型号、能量范围（keV）、通道数、活时间。"
+    },
+    "list_spectra": {
+      "description": "浏览数据库中可用的伽马能谱记录。",
+      "description_en": "Browse available gamma spectroscopy records.",
+      "examples": [
+        {
+          "user_query": "有哪些可用的能谱数据？",
+          "tool_call": {
+            "name": "list_spectra",
+            "arguments": {
+              "limit": 20
+            }
+          }
+        }
+      ],
+      "output_hints": "列出标记点 ID、设备型号、日期和位置。"
+    },
+    "radiation_info": {
+      "description": "获取辐射科学参考信息：单位、安全水平、探测器类型和术语。",
+      "description_en": "Get reference information about radiation science: units, safety levels, detector types.",
+      "examples": [
+        {
+          "user_query": "0.5 µSv/h 是什么意思？危险吗？",
+          "tool_call": {
+            "name": "radiation_info",
+            "arguments": {
+              "topic": "safety_levels"
+            }
+          }
+        }
+      ],
+      "output_hints": "清晰呈现参考内容。添加与用户问题相关的背景信息。",
+      "topics": ["units", "dose_rates", "safety_levels", "detectors", "background_levels", "isotopes"]
+    },
+    "list_sensors": {
+      "description": "列出实时辐射监测传感器（固定监测站）。可按国家和状态筛选。",
+      "description_en": "List real-time radiation monitoring sensors (fixed monitoring stations).",
+      "examples": [
+        {
+          "user_query": "日本有哪些活动的实时传感器？",
+          "tool_call": {
+            "name": "list_sensors",
+            "arguments": {
+              "country": "JP",
+              "status": "active",
+              "limit": 50
+            }
+          }
+        }
+      ],
+      "output_hints": "包含传感器名称、位置、状态和最后读数时间。"
+    },
+    "sensor_current": {
+      "description": "获取地理区域内固定监测传感器的当前实时读数。重要：在 query_radiation 之后必须调用此工具。",
+      "description_en": "Get current real-time readings from fixed monitoring sensors. Required after query_radiation.",
+      "examples": [
+        {
+          "user_query": "东京当前的辐射水平如何？",
+          "tool_call": {
+            "name": "sensor_current",
+            "arguments": {
+              "min_lat": 35.5,
+              "max_lat": 35.8,
+              "min_lon": 139.5,
+              "max_lon": 139.9
+            }
+          }
+        }
+      ],
+      "output_hints": "呈现最新读数，包含传感器名称、位置和时间戳。"
+    },
+    "sensor_history": {
+      "description": "获取特定实时传感器的历史时间序列数据。",
+      "description_en": "Get historical time series data from a specific real-time sensor.",
+      "examples": [
+        {
+          "user_query": "显示传感器 SC-98765 过去 24 小时的数据",
+          "tool_call": {
+            "name": "sensor_history",
+            "arguments": {
+              "device_id": "SC-98765",
+              "hours": 24
+            }
+          }
+        }
+      ],
+      "output_hints": "以时间序列形式呈现。注意任何异常或趋势。"
+    },
+    "query_analytics": {
+      "description": "查询 DuckDB 计算的聚合分析数据。",
+      "description_en": "Query aggregated analytics data computed by DuckDB.",
+      "examples": [
+        {
+          "user_query": "福岛县的平均辐射水平是多少？",
+          "tool_call": {
+            "name": "query_analytics",
+            "arguments": {
+              "query": "average_by_prefecture",
+              "prefecture": "Fukushima"
+            }
+          }
+        }
+      ],
+      "output_hints": "汇总统计结果。包含样本量和时间范围。"
+    },
+    "radiation_stats": {
+      "description": "获取 Safecast 数据库的总体统计信息。",
+      "description_en": "Get overall statistics about the Safecast database.",
+      "examples": [
+        {
+          "user_query": "Safecast 收集了多少辐射数据？",
+          "tool_call": {
+            "name": "radiation_stats",
+            "arguments": {}
+          }
+        }
+      ],
+      "output_hints": "呈现关键指标：总测量点数、轨迹数、传感器数、能谱数、地理覆盖范围。"
+    },
+    "query_extreme_readings": {
+      "description": "查找数据库中异常高或低的辐射测量值。",
+      "description_en": "Find unusually high or low radiation measurements.",
+      "examples": [
+        {
+          "user_query": "记录到的最高辐射读数是多少？",
+          "tool_call": {
+            "name": "query_extreme_readings",
+            "arguments": {
+              "type": "highest",
+              "limit": 20
+            }
+          }
+        }
+      ],
+      "output_hints": "包含背景信息：位置、日期、探测器、可能的解释。"
+    },
+    "top_uploaders": {
+      "description": "获取 Safecast 顶级数据贡献者的统计信息。",
+      "description_en": "Get statistics on top data contributors.",
+      "examples": [
+        {
+          "user_query": "谁是最大的数据贡献者？",
+          "tool_call": {
+            "name": "top_uploaders",
+            "arguments": {
+              "limit": 10
+            }
+          }
+        }
+      ],
+      "output_hints": "列出贡献者及其上传数量和活跃时期。"
+    },
+    "search_tracks_by_location": {
+      "description": "查找经过或靠近特定地理区域的调查轨迹。",
+      "description_en": "Find survey tracks that pass through or near a specific geographic area.",
+      "examples": [
+        {
+          "user_query": "切尔诺贝利附近有哪些调查轨迹？",
+          "tool_call": {
+            "name": "search_tracks_by_location",
+            "arguments": {
+              "lat": 51.39,
+              "lon": 30.10,
+              "radius_km": 50
+            }
+          }
+        }
+      ],
+      "output_hints": "列出轨迹及其日期、起点/终点和测量点数量。"
+    },
+    "db_info": {
+      "description": "获取数据库结构、可用表和数据类型的信息。",
+      "description_en": "Get information about database structure and available data.",
+      "examples": [
+        {
+          "user_query": "Safecast 数据库中有哪些可用数据？",
+          "tool_call": {
+            "name": "db_info",
+            "arguments": {}
+          }
+        }
+      ],
+      "output_hints": "汇总可用数据类型：markers、tracks、sensors、spectra、realtime measurements。"
+    },
+    "query_duckdb_logs": {
+      "description": "查询 DuckDB 分析引擎的分析日志。",
+      "description_en": "Query analytics logs from the DuckDB analytics engine.",
+      "examples": [
+        {
+          "user_query": "显示最近的分析查询",
+          "tool_call": {
+            "name": "query_duckdb_logs",
+            "arguments": {
+              "limit": 10
+            }
+          }
+        }
+      ],
+      "output_hints": "呈现日志条目及其时间戳、查询类型和持续时间。"
+    }
+  },
+  "global_formatting_rules": {
+    "tone": "科学、客观、简洁。避免使用人称代词。",
+    "coordinates": "始终使用可点击的地图链接：[lat°N, lon°E](https://simplemap.safecast.org/?lat=LAT&lon=LON&zoom=15)",
+    "tables": "使用 Markdown 表格呈现测量列表",
+    "units": "始终明确标注单位（µSv/h、CPM、CPS）",
+    "context": "在相关时与典型背景值（0.05-0.20 µSv/h）进行比较",
+    "structure": "结构化响应：1) 摘要，2) 详细数据表格，3) 背景说明"
+  }
+}
