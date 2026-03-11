@@ -13,26 +13,24 @@ go test ./pkg/... -timeout 120s
 ### Run a specific package
 
 ```bash
-go test ./pkg/api/...   -v    # API endpoints
+go test ./pkg/httpapi/... -v  # API and web handlers
 go test ./pkg/auth/...  -v    # Auth endpoints (slow: ~3s due to bcrypt)
-go test ./pkg/web/...   -v    # Web/spectrum/QR handlers
 ```
 
 ### Run a single test
 
 ```bash
-go test ./pkg/api/...  -run TestHandleShorten -v
+go test ./pkg/httpapi/... -run TestHandleShorten -v
 go test ./pkg/auth/... -run TestLoginHandler  -v
 ```
 
 ### Expected output
 
 ```
-ok  safecast-new-map/pkg/api              0.1s
+ok  safecast-new-map/pkg/httpapi          0.8s
 ok  safecast-new-map/pkg/auth             2.9s   ← slow due to bcrypt cost 12
 ok  safecast-new-map/pkg/countryresolver  0.7s
 ok  safecast-new-map/pkg/safecast-realtime 0.0s
-ok  safecast-new-map/pkg/web              0.5s
 ```
 
 ---
