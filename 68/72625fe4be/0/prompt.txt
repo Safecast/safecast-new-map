@@ -1,0 +1,5 @@
+can you check my local OpenClaw what model it uses?
+
+---
+
+[Request interrupted by user for tool use]
