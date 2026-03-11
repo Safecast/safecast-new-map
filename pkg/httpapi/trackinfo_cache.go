@@ -1,4 +1,5 @@
-package api
+// trackinfo_cache.go caches total track count and latest track ID to avoid heavy COUNT queries.
+package httpapi
 
 import (
 	"context"
@@ -8,27 +9,21 @@ import (
 	"safecast-new-map/pkg/database"
 )
 
-// ======================
-// Track info cache logic
-// ======================
-
-// errTrackInfoStopped reports that the cache goroutine has exited. Callers fall back to direct queries if this happens.
 var errTrackInfoStopped = errors.New("track info cache stopped")
 
-// trackInfoRequest models a single lookup. We send requests through a dedicated channel so the loop remains in charge of all state.
+// trackInfoRequest is sent to the cache goroutine.
 type trackInfoRequest struct {
 	ctx   context.Context
 	reply chan trackInfoResponse
 }
 
-// trackInfoResponse contains either cached data or an error explaining why it is unavailable.
 type trackInfoResponse struct {
 	totalTracks int64
 	latestID    string
 	err         error
 }
 
-// trackInfoSnapshot represents the most recently computed numbers. We keep the timestamp to decide when background refreshes are due.
+// trackInfoSnapshot holds the last known total and latest ID; ready is false until first load.
 type trackInfoSnapshot struct {
 	totalTracks int64
 	latestID    string
@@ -36,14 +31,14 @@ type trackInfoSnapshot struct {
 	ready       bool
 }
 
-// refreshOutcome is sent back from the loader goroutine. A nil error means the snapshot now contains fresh data.
+// refreshOutcome is the result of a background refresh.
 type refreshOutcome struct {
 	snapshot trackInfoSnapshot
 	err      error
 }
 
-// TrackInfoCache shields handlers from heavy COUNT(DISTINCT) queries by caching the result and refreshing it in the background.
-// Following the proverb "Don't communicate by sharing memory; share memory by communicating", we coordinate exclusively via channels.
+// TrackInfoCache caches total track count and latest track ID, refreshing in the background
+// so /api overview and similar endpoints stay fast on large datasets.
 type TrackInfoCache struct {
 	db      *database.Database
 	dbType  string
@@ -57,8 +52,7 @@ type TrackInfoCache struct {
 	quit     chan struct{}
 }
 
-// NewTrackInfoCache starts the cache goroutine. ttl controls how long results stay fresh, timeout bounds database calls and retry
-// decides how quickly we attempt to recover after failures. Passing nil db disables the cache so handlers can fall back to direct queries.
+// NewTrackInfoCache starts the cache goroutine. Returns nil if db is nil. ttl: how long results stay fresh; timeout: max time for a refresh; retry: delay after failure before retry.
 func NewTrackInfoCache(db *database.Database, dbType string, ttl, timeout, retry time.Duration, logf func(string, ...any)) *TrackInfoCache {
 	if db == nil || db.DB == nil {
 		return nil
@@ -87,7 +81,7 @@ func NewTrackInfoCache(db *database.Database, dbType string, ttl, timeout, retry
 	return cache
 }
 
-// Close stops the goroutine. The method is idempotent so shutdown paths stay simple.
+// Close stops the goroutine.
 func (c *TrackInfoCache) Close() {
 	if c == nil {
 		return
@@ -100,7 +94,7 @@ func (c *TrackInfoCache) Close() {
 	close(c.quit)
 }
 
-// Get returns the cached track count and latest ID. The call blocks until the first snapshot is ready or the context is cancelled.
+// Get returns the cached total track count and latest track ID. Blocks until first snapshot or ctx is done.
 func (c *TrackInfoCache) Get(ctx context.Context) (int64, string, error) {
 	if c == nil {
 		return 0, "", errors.New("track info cache disabled")
@@ -123,7 +117,6 @@ func (c *TrackInfoCache) Get(ctx context.Context) (int64, string, error) {
 	}
 }
 
-// loop serialises all cache access. A single goroutine owns the state so we avoid mutexes entirely.
 func (c *TrackInfoCache) loop() {
 	if c == nil {
 		return
@@ -132,7 +125,6 @@ func (c *TrackInfoCache) loop() {
 	var refreshCh <-chan refreshOutcome
 	refreshing := false
 	var timer *time.Timer
-
 	triggerRefresh := func() {
 		if refreshing {
 			return
@@ -140,7 +132,6 @@ func (c *TrackInfoCache) loop() {
 		refreshing = true
 		refreshCh = c.startRefresh(snapshot)
 	}
-
 	armTimer := func(d time.Duration) {
 		if d <= 0 {
 			if timer != nil {
@@ -166,9 +157,7 @@ func (c *TrackInfoCache) loop() {
 		}
 		timer.Reset(d)
 	}
-
 	triggerRefresh()
-
 	for {
 		var timerC <-chan time.Time
 		if timer != nil {
@@ -182,7 +171,6 @@ func (c *TrackInfoCache) loop() {
 			return
 		case req := <-c.requests:
 			if snapshot.ready {
-				// Serve cached data immediately and kick off a background refresh when it expired.
 				if c.ttl > 0 && c.now().Sub(snapshot.fetchedAt) >= c.ttl {
 					triggerRefresh()
 				}
@@ -251,8 +239,7 @@ func (c *TrackInfoCache) loop() {
 	}
 }
 
-// startRefresh spawns a goroutine that computes the latest totals. We reuse the previous snapshot when the loader fails
-// so callers can keep seeing stale-but-useful data.
+// startRefresh runs a refresh in a goroutine and sends the outcome on the returned channel.
 func (c *TrackInfoCache) startRefresh(prev trackInfoSnapshot) <-chan refreshOutcome {
 	ch := make(chan refreshOutcome, 1)
 	go func() {
@@ -273,7 +260,7 @@ func (c *TrackInfoCache) startRefresh(prev trackInfoSnapshot) <-chan refreshOutc
 	return ch
 }
 
-// loadTrackInfo calls into the database package. Keeping the logic isolated makes it easy to extend with alternative strategies later.
+// loadTrackInfo queries the database for total track count and latest track ID.
 func (c *TrackInfoCache) loadTrackInfo(ctx context.Context) (int64, string, error) {
 	if c.db == nil {
 		return 0, "", errors.New("database unavailable")
