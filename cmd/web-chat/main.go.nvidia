@@ -1,0 +1,61 @@
+// Add support for NVIDIA/Qwen API
+// Add these types and functions to main.go
+
+// NVIDIA/Qwen configuration via environment variables:
+// NVIDIA_API_KEY - Your NVIDIA API key
+// QWEN_MODEL - Model name (default: "qwen/qwen3.5-122b-a10b")
+// AI_PROVIDER - "anthropic" or "nvidia" (default: "anthropic")
+
+func main() {
+	aiProvider := os.Getenv("AI_PROVIDER")
+	if aiProvider == "" {
+		aiProvider = "anthropic"
+	}
+	
+	var apiKey string
+	var model string
+	
+	if aiProvider == "nvidia" {
+		apiKey = os.Getenv("NVIDIA_API_KEY")
+		if apiKey == "" {
+			log.Fatal("NVIDIA_API_KEY is required for NVIDIA provider")
+		}
+		model = os.Getenv("QWEN_MODEL")
+		if model == "" {
+			model = "qwen/qwen3.5-122b-a10b"
+		}
+		log.Printf("Using NVIDIA Qwen API: model=%s", model)
+	} else {
+		apiKey = os.Getenv("ANTHROPIC_API_KEY")
+		if apiKey == "" {
+			log.Fatal("ANTHROPIC_API_KEY is required")
+		}
+		model = os.Getenv("CLAUDE_MODEL")
+		if model == "" {
+			model = "claude-sonnet-4-5"
+		}
+		log.Printf("Using Anthropic Claude API: model=%s", model)
+	}
+	
+	mcpURL := os.Getenv("MCP_URL")
+	if mcpURL == "" {
+		mcpURL = "http://localhost:3333/mcp-http"
+	}
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3334"
+	}
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write(indexHTML)
+	})
+	http.HandleFunc("/chat", handleChat(mcpURL, apiKey, model, aiProvider))
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "ok")
+	})
+
+	log.Printf("Safecast web-chat on :%s  MCP→%s  provider=%s  model=%s", port, mcpURL, aiProvider, model)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
+}

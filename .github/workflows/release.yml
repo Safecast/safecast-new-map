@@ -18,21 +18,21 @@ jobs:
       matrix:
         include:
           # Linux
-          - { goos: linux,  goarch: amd64, goversion: "1.23", runner: "ubuntu-24.04" }
-          - { goos: linux,  goarch: arm64, goversion: "1.23", runner: "ubuntu-24.04" }
-          - { goos: linux,  goarch: 386,   goversion: "1.23", runner: "ubuntu-24.04" }
+          - { goos: linux,  goarch: amd64, goversion: "1.24", runner: "ubuntu-24.04" }
+          - { goos: linux,  goarch: arm64, goversion: "1.24", runner: "ubuntu-24.04" }
+          - { goos: linux,  goarch: 386,   goversion: "1.24", runner: "ubuntu-24.04" }
           # macOS
-          - { goos: darwin, goarch: amd64, goversion: "1.23", runner: "macos-13" }
-          - { goos: darwin, goarch: arm64, goversion: "1.23", runner: "macos-14" }
+          - { goos: darwin, goarch: amd64, goversion: "1.24", runner: "macos-13" }
+          - { goos: darwin, goarch: arm64, goversion: "1.24", runner: "macos-14" }
           # *BSD
-          - { goos: freebsd, goarch: amd64, goversion: "1.23", runner: "ubuntu-24.04" }
-          - { goos: freebsd, goarch: arm64, goversion: "1.23", runner: "ubuntu-24.04" }
-          - { goos: openbsd, goarch: amd64, goversion: "1.23", runner: "ubuntu-24.04" }
-          - { goos: openbsd, goarch: arm64, goversion: "1.23", runner: "ubuntu-24.04" }
-          - { goos: netbsd,  goarch: amd64, goversion: "1.23", runner: "ubuntu-24.04" }
+          - { goos: freebsd, goarch: amd64, goversion: "1.24", runner: "ubuntu-24.04" }
+          - { goos: freebsd, goarch: arm64, goversion: "1.24", runner: "ubuntu-24.04" }
+          - { goos: openbsd, goarch: amd64, goversion: "1.24", runner: "ubuntu-24.04" }
+          - { goos: openbsd, goarch: arm64, goversion: "1.24", runner: "ubuntu-24.04" }
+          - { goos: netbsd,  goarch: amd64, goversion: "1.24", runner: "ubuntu-24.04" }
           # Windows
-          - { goos: windows, goarch: amd64, goversion: "1.23", runner: "windows-latest" }
-          - { goos: windows, goarch: arm64, goversion: "1.23", runner: "windows-latest" }
+          - { goos: windows, goarch: amd64, goversion: "1.24", runner: "windows-latest" }
+          - { goos: windows, goarch: arm64, goversion: "1.24", runner: "windows-latest" }
 
     steps:
       - name: Checkout
@@ -102,8 +102,8 @@ jobs:
       matrix:
         include:
           # macOS amd64/arm64: нативно
-          - { target: darwin_amd64_duckdb, goos: darwin, goarch: amd64, goversion: "1.23", runner: "macos-13", in_container: false }
-          - { target: darwin_arm64_duckdb, goos: darwin, goarch: arm64, goversion: "1.23", runner: "macos-14", in_container: false }
+          - { target: darwin_amd64_duckdb, goos: darwin, goarch: amd64, goversion: "1.24", runner: "macos-13", in_container: false }
+          - { target: darwin_arm64_duckdb, goos: darwin, goarch: arm64, goversion: "1.24", runner: "macos-14", in_container: false }
 
     steps:
       - name: Checkout
