@@ -135,7 +135,8 @@ func main() {
 
 		if strings.ToLower(prompt) == "clear" {
 			messages = []Message{{Role: "system", Content: "You are a helpful AI assistant."}}
-			fmt.Println("🗑️  Conversation cleared.\n")
+			fmt.Println("🗑️  Conversation cleared.")
+			fmt.Println()
 			continue
 		}
 

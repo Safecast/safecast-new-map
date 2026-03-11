@@ -481,7 +481,7 @@ Automatically import approved bGeigie measurements:
 ```bash
 git clone https://github.com/Safecast/safecast-new-map.git
 cd safecast-new-map
-go build -o safecast-new-map
+go build -o safecast-new-map ./cmd/safecast-new-map
 ./safecast-new-map
 ```
 
@@ -489,6 +489,26 @@ go build -o safecast-new-map
 
 ```bash
 go test ./...
+```
+
+### Utility Tools
+
+The `cmd/tools/` directory contains standalone utilities for database maintenance and migration:
+
+| Tool | Usage |
+|------|-------|
+| `fix-pg-sequence` | Reset PostgreSQL markers sequence |
+| `fix-sequence` | Alternative sequence sync utility |
+| `add-internal-user-id` | Add internal user IDs to uploads |
+| `cleanup-test-users` | Remove test users from database |
+| `import-api-keys` | Import API keys from CSV |
+| `migrate-to-postgres` | Migrate from SQLite to PostgreSQL |
+| `migrate-users` | Migrate user data |
+
+Run any tool with:
+```bash
+go run ./cmd/tools/fix-pg-sequence
+export DATABASE_URL="postgres://user:pass@localhost/db" && go run ./cmd/tools/fix-pg-sequence
 ```
 
 ### Cross-Compile
