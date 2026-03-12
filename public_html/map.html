@@ -10259,6 +10259,16 @@
     .ai-table tr:nth-child(even) {
       background-color: rgba(0, 0, 0, 0.02);
     }
+
+    /* AI disclaimer styling */
+    .ai-bubble hr + em {
+      color: #777;
+      font-size: 11px;
+      display: block;
+      margin-top: 12px;
+      padding-top: 8px;
+      border-top: 1px solid #eee;
+    }
   </style>
 
   <button id="safecast-ai-toggle" aria-label="Open AI Assistant">
@@ -10554,6 +10564,8 @@
         }
       }
 
+      const AI_DISCLAIMER = '\n\n---\n\n_Note: AI-generated response using data from the Safecast radiation monitoring network. For critical safety decisions, please consult official sources._';
+
       function submitMessage() {
         const text = msgInput.value.trim();
         if (!text || busy) return;
@@ -10575,6 +10587,10 @@
           sendBtn.disabled = false;
           msgInput.focus();
           if (success && accumulated) {
+            // Add disclaimer to the response
+            const responseWithDisclaimer = accumulated + AI_DISCLAIMER;
+            botBubble.innerHTML = markdownToHTML(responseWithDisclaimer);
+            
             chatHistory.push(
               { role: 'user', content: text },
               { role: 'assistant', content: accumulated }
