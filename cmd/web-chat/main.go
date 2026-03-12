@@ -24,6 +24,10 @@ var logoPNG []byte
 // Maximum tokens for the prompt (input to Claude). Leave room for tool results.
 const maxPromptTokens = 150000
 
+// Maximum characters for a single tool result (~30K tokens).
+// Prevents a single large MCP response from blowing up the prompt.
+const maxToolResultChars = 120000
+
 // estimateTokens roughly estimates the number of tokens in a string.
 // Claude uses ~4 characters per token on average for English text.
 func estimateTokens(s string) int {
@@ -443,6 +447,11 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 					}
 				}
 
+
+				// Truncate oversized tool results to prevent exceeding API limits
+				if len(resultText) > maxToolResultChars {
+					resultText = resultText[:maxToolResultChars] + "\n\n... [truncated — result too large. Ask the user to narrow their query or use a smaller limit.]"
+				}
 				toolResults = append(toolResults, contentBlock{
 					Type:      "tool_result",
 					ToolUseID: tu.ID,
