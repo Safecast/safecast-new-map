@@ -1,0 +1,25 @@
+Can you find out why after modification of the AI bot delaimer adding of the widget, the unified server does not when running locally show a m]ap and a widget?  Yesterday all worked fine.
+
+---
+
+Can you restart the server with all the options?
+
+---
+
+[Request interrupted by user]
+
+---
+
+For go your can use /usr/local/go/bin/go
+
+---
+
+No map and the widget is at the wrong place.
+
+---
+
+THAT WORKS..
+
+---
+
+can you remove newer commits after Commit: 9e87fb44?
