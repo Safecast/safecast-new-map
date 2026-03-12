@@ -39,7 +39,7 @@ body, html {
         :root {
           --overlay-bg: rgba(255, 255, 255, 0.7);
           --progress-bg: #ffffff;
-          --progress-color: #333333;
+          --progress-color: var(--modal-text);
           --progress-bar-bg: #f4f4f4;
           --progress-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
           --upload-btn-bg: #4caf50; /* Standard site green for consistency */
@@ -150,7 +150,7 @@ body, html {
         :root[data-theme='light'] {
           --overlay-bg: rgba(255, 255, 255, 0.7);
           --progress-bg: #ffffff;
-          --progress-color: #333333;
+          --progress-color: var(--modal-text);
           --progress-bar-bg: #f4f4f4;
           --progress-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
           --upload-btn-bg: #4caf50; /* Standard site green for consistency */
@@ -378,7 +378,7 @@ body, html {
         }
 
         .theme-switch input:checked + .theme-slider {
-          background-color: #2196F3;
+          background-color: var(--link-color);
         }
 
         .theme-switch input:checked + .theme-slider:before {
@@ -543,7 +543,7 @@ body, html {
 
         .progress-bar-inner {
           height: 100%;
-          background-color: #4caf50;
+          background-opacity: 1;
           width: 0%;
         }
 
@@ -680,7 +680,7 @@ body, html {
         }
 
         .back-to-all-btn {
-          background-color: #2196F3;
+          background-color: var(--link-color);
           background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
           border: 2px solid #1976D2;
           border-radius: 6px;
@@ -1047,7 +1047,7 @@ body, html {
 
         .home-search-input:focus {
           outline: none;
-          border-color: #4caf50;
+          border-opacity: 1;
           box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
         }
 
@@ -1130,7 +1130,7 @@ body, html {
 
         .home-or-divider span {
           padding: 0 15px;
-          font-size: 14px;
+          font-size: var(--font-size-base);
         }
 
         .home-locate-btn {
@@ -1157,7 +1157,7 @@ body, html {
           display: block;
           margin-top: 25px;
           color: var(--link-color);
-          font-size: 14px;
+          font-size: var(--font-size-base);
           cursor: pointer;
           opacity: 0.8;
           text-decoration: underline;
@@ -9101,7 +9101,7 @@ function selectHomeSearchResult(result, query) {
             // Handle errors
             fileProgressElements.forEach(elem => {
               if (xhr.status === 401 || xhr.status === 403) {
-                elem.serverProcessing.innerHTML = '🔒 Please <a href="/login" style="color: #2196F3; text-decoration: underline;">log in</a> or <a href="/register" style="color: #2196F3; text-decoration: underline;">register</a> to upload files';
+                elem.serverProcessing.innerHTML = '🔒 Please <a href="/login" style="color: var(--link-color); text-decoration: underline;">log in</a> or <a href="/register" style="color: var(--link-color); text-decoration: underline;">register</a> to upload files';
                 elem.serverProcessing.style.color = '#ff9800';
                 elem.serverProcessing.style.fontSize = '16px';
                 elem.serverProcessing.style.fontWeight = 'bold';
@@ -9781,15 +9781,15 @@ function selectHomeSearchResult(result, query) {
       left: -470px;
       width: 450px;
       height: calc(100% - 20px);
-      background: #ffffff;
-      color: #333333;
-      box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
+      background: var(--modal-bg);
+      color: var(--modal-text);
+      box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
       z-index: 2001;
       display: flex;
       flex-direction: column;
       border-radius: 12px;
-      border: 1px solid #e0e0e0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      border: var(--modal-border);
+      font-family: var(--font-family-base);
       margin-left: 10px;
     }
 
@@ -9807,19 +9807,19 @@ function selectHomeSearchResult(result, query) {
       align-items: center;
       justify-content: space-between;
       padding: 16px 20px;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid var(--modal-border);
     }
 
     .ai-panel-header-text h3 {
       margin: 0;
       font-size: 16px;
       font-weight: 600;
-      color: #222;
+      color: var(--modal-text);
     }
 
     .ai-panel-header-text span {
       font-size: 11px;
-      color: #777;
+      color: var(--modal-text); opacity: 0.7;
       display: block;
     }
 
@@ -9832,19 +9832,19 @@ function selectHomeSearchResult(result, query) {
     #safecast-ai-close {
       background: none;
       border: none;
-      color: #999;
+      color: var(--modal-text); opacity: 0.7;
       font-size: 18px;
       cursor: pointer;
       padding: 4px;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: color 0.2s;
+      transition: opacity 0.2s;
     }
 
     #safecast-ai-expand:hover,
     #safecast-ai-close:hover {
-      color: #333;
+      opacity: 1;
     }
 
     .ai-panel-messages {
@@ -9854,7 +9854,7 @@ function selectHomeSearchResult(result, query) {
       display: flex;
       flex-direction: column;
       gap: 20px;
-      background: #ffffff;
+      background: var(--modal-bg);
     }
 
     #ai-panel-input-container {
@@ -9867,24 +9867,24 @@ function selectHomeSearchResult(result, query) {
       margin: 8px 0 0 0;
       font-size: 10px;
       line-height: 1.4;
-      color: #999;
+      color: var(--modal-text); opacity: 0.7;
       text-align: center;
     }
 
     #ai-form {
       position: relative;
-      background: #f5f5f7;
+      background: var(--control-bg);
       border-radius: 24px;
       padding: 4px;
       display: flex;
       align-items: center;
-      box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.05);
-      border: 1px solid rgba(0, 0, 0, 0.05);
+      box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.1);
+      border: 1px solid var(--modal-border);
       transition: all 0.2s;
     }
 
     #ai-form:focus-within {
-      background: #fff;
+      background: var(--modal-bg);
       box-shadow: 0 4px 20px rgba(76, 175, 80, 0.1), inset 0 1px 2px rgba(0, 0, 0, 0.02);
       border-color: rgba(76, 175, 80, 0.3);
     }
@@ -9892,11 +9892,11 @@ function selectHomeSearchResult(result, query) {
     #ai-msg {
       flex: 1;
       background: transparent;
-      color: #1a1a1a;
+      color: var(--modal-text);
       border: none;
       padding: 10px 48px 10px 16px;
       font-family: inherit;
-      font-size: 14px;
+      font-size: var(--font-size-base);
       resize: none;
       max-height: 150px;
       min-height: 24px;
@@ -9934,7 +9934,7 @@ function selectHomeSearchResult(result, query) {
       transform: translateY(-50%);
       background: transparent;
       border: none;
-      color: #777;
+      color: var(--modal-text); opacity: 0.7;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -9946,8 +9946,8 @@ function selectHomeSearchResult(result, query) {
     }
 
     #ai-search-map:hover {
-      background: rgba(0, 0, 0, 0.05) !important;
-      color: #4caf50;
+      background: var(--control-bg-hover) !important;
+      opacity: 1;
     }
 
     #ai-send:disabled {
@@ -9974,7 +9974,7 @@ function selectHomeSearchResult(result, query) {
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 14px;
+      font-size: var(--font-size-base);
       font-weight: bold;
       color: #fff;
       box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
@@ -9989,14 +9989,15 @@ function selectHomeSearchResult(result, query) {
     }
 
     .ai-msg-row.bot .ai-avatar {
-      background: linear-gradient(135deg, #1a1a1a, #444);
+      background: var(--control-bg);
+      border: var(--modal-border);
     }
 
     .ai-bubble {
       word-break: break-word;
-      font-size: 14px;
+      font-size: var(--font-size-base);
       line-height: 1.6;
-      color: #333;
+      opacity: 1;
       overflow-wrap: break-word;
     }
 
@@ -10017,7 +10018,7 @@ function selectHomeSearchResult(result, query) {
     }
 
     .ai-bubble a {
-      color: #2196F3;
+      color: var(--link-color);
       text-decoration: none;
     }
 
@@ -10040,7 +10041,7 @@ function selectHomeSearchResult(result, query) {
     }
 
     .ai-bubble code {
-      background: #f5f5f5;
+      background: var(--control-bg);
       padding: 2px 4px;
       border-radius: 4px;
       font-family: inherit;
@@ -10065,7 +10066,7 @@ function selectHomeSearchResult(result, query) {
       overflow-x: auto;
       margin: 8px 0;
       border-radius: 6px;
-      border: 1px solid #eee;
+      border: 1px solid var(--modal-border);
     }
 
     .ai-table {
@@ -10077,19 +10078,19 @@ function selectHomeSearchResult(result, query) {
 
     .ai-table th,
     .ai-table td {
-      border: 1px solid #eee;
+      border: 1px solid var(--modal-border);
       padding: 6px 10px;
       text-align: left;
     }
 
     .ai-table th {
-      background-color: #f9f9f9;
+      background-color: var(--control-bg);
       font-weight: 600;
-      color: #444;
+      color: var(--modal-text);
     }
 
     .ai-table tr:nth-child(even) {
-      background-color: rgba(0, 0, 0, 0.02);
+      background-color: var(--control-bg);
     }
   </style>
 
@@ -10286,7 +10287,7 @@ function selectHomeSearchResult(result, query) {
           .replace(/# (.+)/g, '<h1 style="margin: 28px 0 14px 0; font-size: 20px; font-weight: 700;">$1</h1>')
           .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
           .replace(/\*(.+?)\*/g, '<em>$1</em>')
-          .replace(/`([^`]+)`/g, '<code style="background: rgba(0,0,0,0.05); padding: 2px 5px; border-radius: 4px; font-size: 0.9em;">$1</code>')
+          .replace(/`([^`]+)`/g, '<code style="background: var(--control-bg); padding: 2px 5px; border-radius: 4px; font-size: 0.9em;">$1</code>')
           .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank">$1</a>');
 
         // Robust Markdown Table parser
