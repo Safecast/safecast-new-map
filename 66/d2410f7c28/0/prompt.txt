@@ -1,0 +1,13 @@
+Can you check why the #safecast-ai-panel does not show up in the page for switching light and dark theme of the widget?
+
+---
+
+The bot avatar is not responding to the theme.
+
+---
+
+Can you build and start the server locally with all the options, so I can test it.
+
+---
+
+Great.. that works. Please commit and create a PR for the main merge.
