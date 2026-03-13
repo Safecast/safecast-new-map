@@ -10,10 +10,11 @@ import (
 	"strings"
 )
 
-// logChatQuestion logs a user's chat question to DuckDB asynchronously.
-func logChatQuestion(r *http.Request, question, source, model, sessionID string, historyLen int, clientTimestamp string) {
+// logChatQuestion logs a user's chat question to DuckDB and returns the row ID.
+// The returned ID can be passed to logChatAnswer to attach the AI response.
+func logChatQuestion(r *http.Request, question, source, model, sessionID string, historyLen int, clientTimestamp string) int64 {
 	if !duckDBAvailable() {
-		return
+		return 0
 	}
 
 	if len(question) > 5000 {
@@ -39,19 +40,37 @@ func logChatQuestion(r *http.Request, question, source, model, sessionID string,
 		clientTS = clientTimestamp
 	}
 
+	var id int64
+	err := duckDB.QueryRow(`
+		INSERT INTO chat_questions (
+			question, source, ip_address, user_agent, is_mobile,
+			os, browser, country, accept_language, referer,
+			session_id, history_length, model, cloudfront, client_timestamp
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		RETURNING id`,
+		question, source, ip, ua, isMobile,
+		osName, browser, country, acceptLang, referer,
+		sessionID, historyLen, model, isCloudFront, clientTS,
+	).Scan(&id)
+	if err != nil {
+		log.Printf("chat_questions insert error: %v", err)
+		return 0
+	}
+	return id
+}
+
+// logChatAnswer updates a chat_questions row with the AI's response (async).
+func logChatAnswer(rowID int64, answer string) {
+	if !duckDBAvailable() || rowID == 0 {
+		return
+	}
+	if len(answer) > 50000 {
+		answer = answer[:50000]
+	}
 	go func() {
-		_, err := duckDB.Exec(`
-			INSERT INTO chat_questions (
-				question, source, ip_address, user_agent, is_mobile,
-				os, browser, country, accept_language, referer,
-				session_id, history_length, model, cloudfront, client_timestamp
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			question, source, ip, ua, isMobile,
-			osName, browser, country, acceptLang, referer,
-			sessionID, historyLen, model, isCloudFront, clientTS,
-		)
+		_, err := duckDB.Exec(`UPDATE chat_questions SET answer = ? WHERE id = ?`, answer, rowID)
 		if err != nil {
-			log.Printf("chat_questions insert error: %v", err)
+			log.Printf("chat_questions answer update error: %v", err)
 		}
 	}()
 }
