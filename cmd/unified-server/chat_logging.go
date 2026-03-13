@@ -11,7 +11,7 @@ import (
 )
 
 // logChatQuestion logs a user's chat question to DuckDB asynchronously.
-func logChatQuestion(r *http.Request, question, source, model, sessionID string, historyLen int) {
+func logChatQuestion(r *http.Request, question, source, model, sessionID string, historyLen int, clientTimestamp string) {
 	if !duckDBAvailable() {
 		return
 	}
@@ -33,16 +33,22 @@ func logChatQuestion(r *http.Request, question, source, model, sessionID string,
 		r.Header.Get("CloudFront-Forwarded-Proto") != "" ||
 		r.Header.Get("X-Amz-Cf-Id") != ""
 
+	// Parse client timestamp; use nil if not provided or invalid
+	var clientTS interface{}
+	if clientTimestamp != "" {
+		clientTS = clientTimestamp
+	}
+
 	go func() {
 		_, err := duckDB.Exec(`
 			INSERT INTO chat_questions (
 				question, source, ip_address, user_agent, is_mobile,
 				os, browser, country, accept_language, referer,
-				session_id, history_length, model, cloudfront
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				session_id, history_length, model, cloudfront, client_timestamp
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			question, source, ip, ua, isMobile,
 			osName, browser, country, acceptLang, referer,
-			sessionID, historyLen, model, isCloudFront,
+			sessionID, historyLen, model, isCloudFront, clientTS,
 		)
 		if err != nil {
 			log.Printf("chat_questions insert error: %v", err)
