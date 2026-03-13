@@ -1,0 +1,35 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "f06d52491c86",
+  "strategy": "manual-commit",
+  "branch": "feat/log-chat-answers",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "assistant.html",
+    "cmd/mcp-server/duckdb_client.go",
+    "cmd/mcp-server/tool_duckdb_logs.go",
+    "cmd/unified-server/chat_logging.go",
+    "cmd/unified-server/duckdb_analytics.go",
+    "cmd/unified-server/public_html/map.html",
+    "cmd/web-chat/index.html",
+    "go.mod",
+    "go.sum",
+    "pkg/database/drivers/duckdb.go"
+  ],
+  "sessions": [
+    {
+      "metadata": "/f0/6d52491c86/0/metadata.json",
+      "transcript": "/f0/6d52491c86/0/full.jsonl",
+      "context": "/f0/6d52491c86/0/context.md",
+      "content_hash": "/f0/6d52491c86/0/content_hash.txt",
+      "prompt": "/f0/6d52491c86/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  }
+}
