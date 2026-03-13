@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "4b1a34dcc81a",
+  "session_id": "f2c92b6a-d8fd-4c7e-bfa8-9bb6c99493dd",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-13T01:17:29.62839593Z",
+  "branch": "feat/chat-timestamps",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "cmd/unified-server/duckdb_analytics.go"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "a81f6da3ed60",
+  "checkpoint_transcript_start": 813,
+  "transcript_lines_at_start": 813,
+  "token_usage": {
+    "input_tokens": 5,
+    "cache_creation_tokens": 1803,
+    "cache_read_tokens": 746347,
+    "output_tokens": 1032,
+    "api_call_count": 5
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-13T01:17:27.103048531Z",
+    "agent_lines": 3,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 3,
+    "agent_percentage": 100
+  }
+}
