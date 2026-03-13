@@ -3,7 +3,7 @@
   "checkpoint_id": "f06d52491c86",
   "strategy": "manual-commit",
   "branch": "feat/log-chat-answers",
-  "checkpoints_count": 0,
+  "checkpoints_count": 9,
   "files_touched": [
     "assistant.html",
     "cmd/mcp-server/duckdb_client.go",
@@ -23,13 +23,20 @@
       "context": "/f0/6d52491c86/0/context.md",
       "content_hash": "/f0/6d52491c86/0/content_hash.txt",
       "prompt": "/f0/6d52491c86/0/prompt.txt"
+    },
+    {
+      "metadata": "/f0/6d52491c86/1/metadata.json",
+      "transcript": "/f0/6d52491c86/1/full.jsonl",
+      "context": "/f0/6d52491c86/1/context.md",
+      "content_hash": "/f0/6d52491c86/1/content_hash.txt",
+      "prompt": "/f0/6d52491c86/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 0,
-    "cache_creation_tokens": 0,
-    "cache_read_tokens": 0,
-    "output_tokens": 0,
-    "api_call_count": 0
+    "input_tokens": 456,
+    "cache_creation_tokens": 307102,
+    "cache_read_tokens": 21692900,
+    "output_tokens": 59339,
+    "api_call_count": 234
   }
 }
