@@ -214,7 +214,7 @@ The unified server includes an MCP (Model Context Protocol) server with a Claude
 # Basic build (PostgreSQL only)
 go build -o safecast-new-map ./cmd/unified-server
 
-# With DuckDB analytics (requires CGO)
+# With DuckDB analytics via DuckLake (requires CGO)
 CGO_ENABLED=1 go build -tags duckdb -o safecast-new-map ./cmd/unified-server
 ```
 
@@ -223,9 +223,10 @@ CGO_ENABLED=1 go build -tags duckdb -o safecast-new-map ./cmd/unified-server
 # Map server with MCP (PostgreSQL required)
 DATABASE_URL="postgres://user:pass@localhost/db" ./safecast-new-map
 
-# With DuckDB analytics
+# With DuckLake analytics (in-memory DuckDB + PostgreSQL catalog + Parquet data)
 DATABASE_URL="postgres://..." \
-DUCKDB_PATH="./analytics.duckdb" \
+DUCKLAKE_PG_URL="dbname=ducklake_catalog host=localhost user=ducklake_rw" \
+DUCKLAKE_DATA_PATH="/var/lib/safecast/ducklake/" \
 ./safecast-new-map
 
 # With AI web chat (requires Anthropic API key)
@@ -562,7 +563,7 @@ For deploying to production servers with CloudFront/CDN setup, see:
 
 ## Performance Notes
 
-**DuckDB Performance:** For large imports, see [doc/DUCKDB_PERFORMANCE.md](doc/DUCKDB_PERFORMANCE.md) for checkpoint and Parquet optimization.
+**Analytics:** The platform uses DuckLake for analytics (in-memory DuckDB with a PostgreSQL catalog and Parquet data files), allowing multiple services to share analytics tables concurrently. Set `DUCKLAKE_PG_URL` and `DUCKLAKE_DATA_PATH` environment variables to configure.
 
 **PostgreSQL Tuning:** Use connection pooling and appropriate `work_mem` settings for large batch imports.
 
