@@ -10436,7 +10436,7 @@ function selectHomeSearchResult(result, query) {
           }
         }
 
-        fetch('https://assistant.safecast.org/chat', {
+        fetch('/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
