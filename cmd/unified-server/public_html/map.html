@@ -10423,7 +10423,8 @@ function selectHomeSearchResult(result, query) {
           body: JSON.stringify({
             message: text,
             history: chatHistory,
-            map_context: getMapContext()
+            map_context: getMapContext(),
+            source: 'widget'
           }),
         }).then(response => {
           const reader = response.body.getReader();

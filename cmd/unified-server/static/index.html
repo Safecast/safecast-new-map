@@ -573,7 +573,8 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         message: text,
-        history: conversationHistory
+        history: conversationHistory,
+        source: 'web-chat'
       }),
     }).then(response => {
       const reader  = response.body.getReader();
