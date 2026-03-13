@@ -1,5 +1,5 @@
 // DuckDB Analytics Initialization for Unified Server
-// DuckDB is used for analytics queries, attaching to PostgreSQL for read-only access
+// Uses DuckLake with PostgreSQL catalog for shared analytics across all services
 
 package main
 
@@ -10,28 +10,22 @@ import (
 	"os"
 	"strings"
 
-	_ "github.com/marcboeker/go-duckdb"
+	_ "github.com/duckdb/duckdb-go/v2"
 )
 
 var duckDB *sql.DB
 
-// initDuckDBAnalytics initializes DuckDB for analytics queries
-// It attaches to the PostgreSQL database for read-only analytics
+// initDuckDBAnalytics initializes DuckDB with DuckLake catalog backed by PostgreSQL.
+// This allows multiple services to share the same analytics tables concurrently.
 func initDuckDBAnalytics() error {
-	// Get DuckDB file path from environment
-	duckPath := os.Getenv("DUCKDB_PATH")
-	if duckPath == "" {
-		duckPath = "./analytics.duckdb"
-	}
-
+	// Open in-memory DuckDB — all persistent data lives in DuckLake (PostgreSQL + Parquet)
 	var err error
-	duckDB, err = sql.Open("duckdb", duckPath+"?access_mode=READ_WRITE")
+	duckDB, err = sql.Open("duckdb", "")
 	if err != nil {
 		return fmt.Errorf("failed to open duckdb: %w", err)
 	}
 
-	// Configure connection pool for DuckDB
-	duckDB.SetMaxOpenConns(1)  // Single writer
+	duckDB.SetMaxOpenConns(1)
 	duckDB.SetMaxIdleConns(1)
 	duckDB.SetConnMaxLifetime(0)
 
@@ -39,60 +33,83 @@ func initDuckDBAnalytics() error {
 		return fmt.Errorf("failed to ping duckdb: %w", err)
 	}
 
-	log.Printf("DuckDB initialized at %s", duckPath)
+	log.Println("DuckDB initialized (in-memory)")
 
-	// Enable WAL for durability
-	duckDB.Exec("PRAGMA wal_autocheckpoint=1000;")
-
-	// Try to load postgres extension and attach to PostgreSQL
-	databaseURL := os.Getenv("DATABASE_URL")
-	if databaseURL != "" {
-		if err := attachPostgres(databaseURL); err != nil {
-			log.Printf("Warning: PostgreSQL attach failed: %v (analytics will use local DuckDB only)", err)
-		} else {
-			log.Println("DuckDB attached to PostgreSQL for analytics queries")
+	// Install and load required extensions
+	for _, ext := range []string{"ducklake", "postgres"} {
+		if _, err := duckDB.Exec(fmt.Sprintf("INSTALL %s;", ext)); err != nil {
+			log.Printf("Warning: INSTALL %s failed: %v", ext, err)
+		}
+		if _, err := duckDB.Exec(fmt.Sprintf("LOAD %s;", ext)); err != nil {
+			return fmt.Errorf("LOAD %s: %w", ext, err)
 		}
 	}
 
-	// Create analytics schema
+	// Attach DuckLake catalog via PostgreSQL
+	ducklakePGURL := os.Getenv("DUCKLAKE_PG_URL")
+	if ducklakePGURL == "" {
+		ducklakePGURL = "dbname=ducklake_catalog host=localhost user=postgres password=LvjxpY1xNTijMT"
+	}
+	dataPath := os.Getenv("DUCKLAKE_DATA_PATH")
+	if dataPath == "" {
+		dataPath = "/var/lib/safecast/ducklake/"
+	}
+
+	attachQuery := fmt.Sprintf(
+		"ATTACH 'ducklake:postgres:%s' AS analytics (DATA_PATH '%s');",
+		ducklakePGURL, dataPath,
+	)
+	if _, err := duckDB.Exec(attachQuery); err != nil {
+		return fmt.Errorf("attach DuckLake: %w", err)
+	}
+	log.Printf("DuckLake attached (catalog=PostgreSQL, data=%s)", dataPath)
+
+	// Use analytics as default database
+	if _, err := duckDB.Exec("USE analytics;"); err != nil {
+		return fmt.Errorf("USE analytics: %w", err)
+	}
+
+	// Also attach main Safecast PostgreSQL for cross-database queries (read-only)
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		// Unified server uses -db-conn flag; construct URL from that
+		// Fall back to environment variable
+	}
+	if databaseURL != "" {
+		if err := attachPostgres(databaseURL); err != nil {
+			log.Printf("Warning: PostgreSQL attach failed: %v (cross-db analytics disabled)", err)
+		} else {
+			log.Println("Safecast PostgreSQL attached for cross-database queries")
+		}
+	}
+
+	// Create analytics schema in DuckLake
 	if err := createDuckDBSchema(); err != nil {
-		log.Printf("Warning: failed to create DuckDB schema: %v", err)
+		log.Printf("Warning: failed to create DuckLake schema: %v", err)
 	}
 
 	return nil
 }
 
-// attachPostgres attaches DuckDB to PostgreSQL for read-only analytics queries
+// attachPostgres attaches the main Safecast PostgreSQL for read-only cross-database queries
 func attachPostgres(databaseURL string) error {
-	// Install and load postgres extension
-	if _, err := duckDB.Exec("INSTALL postgres;"); err != nil {
-		return fmt.Errorf("install postgres extension: %w", err)
-	}
-	if _, err := duckDB.Exec("LOAD postgres;"); err != nil {
-		return fmt.Errorf("load postgres extension: %w", err)
-	}
-
-	// Parse PostgreSQL URL and create attachment string
-	// Format: postgres://user:pass@host:port/dbname?sslmode=...
-	// Need to extract query params for proper attachment
 	attachStr := databaseURL
 	if !strings.Contains(databaseURL, "?") {
 		attachStr = databaseURL + "?sslmode=prefer"
 	}
 
-	createSchemaQuery := fmt.Sprintf("ATTACH '%s' AS postgres (TYPE POSTGRES, READ_ONLY);", attachStr)
-
-	if _, err := duckDB.Exec(createSchemaQuery); err != nil {
+	query := fmt.Sprintf("ATTACH '%s' AS postgres_db (TYPE POSTGRES, READ_ONLY);", attachStr)
+	if _, err := duckDB.Exec(query); err != nil {
 		return fmt.Errorf("attach postgres: %w", err)
 	}
-
 	return nil
 }
 
-// createDuckDBSchema creates the local analytics tables
+// createDuckDBSchema creates the shared analytics tables in DuckLake
 func createDuckDBSchema() error {
-	createSchemaQuery := `
-		CREATE TABLE IF NOT EXISTS mcp_query_log (
+	// DuckLake doesn't support multi-statement exec, so run each separately
+	tables := []string{
+		`CREATE TABLE IF NOT EXISTS mcp_query_log (
 			tool_name VARCHAR,
 			timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			duration_ms BIGINT,
@@ -100,9 +117,8 @@ func createDuckDBSchema() error {
 			client VARCHAR,
 			user_id VARCHAR,
 			user_email VARCHAR
-		);
-		
-		CREATE TABLE IF NOT EXISTS mcp_ai_query_log (
+		)`,
+		`CREATE TABLE IF NOT EXISTS mcp_ai_query_log (
 			user_id VARCHAR,
 			user_email VARCHAR,
 			session_id VARCHAR,
@@ -112,11 +128,9 @@ func createDuckDBSchema() error {
 			duration_ms BIGINT,
 			commit_hash VARCHAR,
 			error VARCHAR
-		);
-
-		CREATE SEQUENCE IF NOT EXISTS seq_chat_questions START 1;
-		CREATE TABLE IF NOT EXISTS chat_questions (
-			id BIGINT DEFAULT nextval('seq_chat_questions'),
+		)`,
+		`CREATE TABLE IF NOT EXISTS chat_questions (
+			id BIGINT,
 			timestamp TIMESTAMPTZ DEFAULT now(),
 			question VARCHAR,
 			source VARCHAR,
@@ -134,32 +148,16 @@ func createDuckDBSchema() error {
 			cloudfront BOOLEAN,
 			client_timestamp TIMESTAMPTZ,
 			answer VARCHAR
-		);
-	`
-
-	if _, err := duckDB.Exec(createSchemaQuery); err != nil {
-		return fmt.Errorf("create schema: %w", err)
+		)`,
 	}
 
-	// Migrate: add columns if table already exists without them
-	duckDB.Exec("ALTER TABLE chat_questions ADD COLUMN IF NOT EXISTS client_timestamp TIMESTAMPTZ;")
-	duckDB.Exec("ALTER TABLE chat_questions ADD COLUMN IF NOT EXISTS answer VARCHAR;")
-
-	// Create indexes for common queries
-	indexes := []string{
-		"CREATE INDEX IF NOT EXISTS idx_query_log_tool ON mcp_query_log(tool_name);",
-		"CREATE INDEX IF NOT EXISTS idx_query_log_timestamp ON mcp_query_log(timestamp);",
-		"CREATE INDEX IF NOT EXISTS idx_ai_log_tool ON mcp_ai_query_log(tool_name);",
-		"CREATE INDEX IF NOT EXISTS idx_ai_log_timestamp ON mcp_ai_query_log(timestamp);",
-		"CREATE INDEX IF NOT EXISTS idx_chat_q_timestamp ON chat_questions(timestamp);",
-		"CREATE INDEX IF NOT EXISTS idx_chat_q_source ON chat_questions(source);",
+	for _, ddl := range tables {
+		if _, err := duckDB.Exec(ddl); err != nil {
+			return fmt.Errorf("create schema: %w", err)
+		}
 	}
 
-	for _, idx := range indexes {
-		duckDB.Exec(idx)
-	}
-
-	log.Println("DuckDB schema ready")
+	log.Println("DuckLake analytics schema ready")
 	return nil
 }
 
