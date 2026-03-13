@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "4812354154ed",
+  "strategy": "manual-commit",
+  "branch": "feat/chat-timestamps",
+  "checkpoints_count": 0,
+  "files_touched": [
+    ".gitignore",
+    "cmd/unified-server/chat_logging.go",
+    "cmd/unified-server/duckdb_analytics.go",
+    "cmd/unified-server/mcp_register.go",
+    "cmd/unified-server/public_html/map.html",
+    "cmd/unified-server/static/index.html"
+  ],
+  "sessions": [
+    {
+      "metadata": "/48/12354154ed/0/metadata.json",
+      "transcript": "/48/12354154ed/0/full.jsonl",
+      "context": "/48/12354154ed/0/context.md",
+      "content_hash": "/48/12354154ed/0/content_hash.txt",
+      "prompt": "/48/12354154ed/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  }
+}
