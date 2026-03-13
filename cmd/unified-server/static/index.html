@@ -141,6 +141,13 @@
       word-break: break-word;
       line-height: 1.55;
     }
+    .msg-timestamp {
+      font-size: 11px;
+      color: var(--muted, #999);
+      margin-top: 2px;
+      padding: 0 4px;
+    }
+    .msg.user .msg-timestamp { text-align: right; }
     .bubble strong { font-weight: 600; }
     .bubble em { font-style: italic; }
     .bubble code {
@@ -461,8 +468,16 @@
       bubble.textContent = text;
     }
 
+    const ts = document.createElement('div');
+    ts.className = 'msg-timestamp';
+    ts.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const wrapper = document.createElement('div');
+    wrapper.appendChild(bubble);
+    wrapper.appendChild(ts);
+
     msg.appendChild(avatar);
-    msg.appendChild(bubble);
+    msg.appendChild(wrapper);
     messagesEl.appendChild(msg);
     messagesEl.scrollTop = messagesEl.scrollHeight;
     return bubble;
@@ -574,7 +589,8 @@
       body: JSON.stringify({
         message: text,
         history: conversationHistory,
-        source: 'web-chat'
+        source: 'web-chat',
+        client_timestamp: new Date().toISOString()
       }),
     }).then(response => {
       const reader  = response.body.getReader();

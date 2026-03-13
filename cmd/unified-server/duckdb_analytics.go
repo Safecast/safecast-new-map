@@ -131,7 +131,8 @@ func createDuckDBSchema() error {
 			session_id VARCHAR,
 			history_length INTEGER,
 			model VARCHAR,
-			cloudfront BOOLEAN
+			cloudfront BOOLEAN,
+			client_timestamp TIMESTAMPTZ
 		);
 	`
 
