@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "038c711b22f1",
+  "strategy": "manual-commit",
+  "branch": "feat/log-chat-answers",
+  "checkpoints_count": 0,
+  "files_touched": [
+    ".github/workflows/deploy.yml"
+  ],
+  "sessions": [
+    {
+      "metadata": "/03/8c711b22f1/0/metadata.json",
+      "transcript": "/03/8c711b22f1/0/full.jsonl",
+      "context": "/03/8c711b22f1/0/context.md",
+      "content_hash": "/03/8c711b22f1/0/content_hash.txt",
+      "prompt": "/03/8c711b22f1/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  }
+}
