@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "2e656771bad5",
+  "session_id": "65133d5d-4fb7-491c-af16-1eb8d4690726",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-13T12:15:09.695273962Z",
+  "branch": "feat/log-chat-answers",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "docs/Mermaid Chart - Create complex, visual diagrams with text.-2026-02-28-043816.mmd"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "e5173d24f987",
+  "token_usage": {
+    "input_tokens": 3041,
+    "cache_creation_tokens": 272880,
+    "cache_read_tokens": 14669276,
+    "output_tokens": 55788,
+    "api_call_count": 172
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-13T12:15:08.641860698Z",
+    "agent_lines": 2,
+    "human_added": 97488,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 97490,
+    "agent_percentage": 0.0020514924607652066
+  }
+}
