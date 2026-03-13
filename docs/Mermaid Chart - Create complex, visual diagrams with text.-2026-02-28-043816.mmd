@@ -16,7 +16,7 @@ flowchart TB
  subgraph MCP["MCP Server — cmd/mcp-server (port 3333)"]
         MCPTools["16 MCP Tools\n(radiation, sensors, tracks, spectra)"]
         REST_MCP["REST API + Swagger\n/api/radiation /api/sensors /docs/"]
-        DuckDB["DuckDB\n(tool usage analytics)"]
+        DuckLake["DuckLake\n(analytics: PG catalog + Parquet)"]
   end
  subgraph MapServer["Map Server — safecast-new-map.go (port 8765)"]
         MapUI["Interactive Map UI\n(map tiles, markers, spectrum viewer)"]
@@ -47,7 +47,7 @@ flowchart TB
  subgraph CICD["⚙️ GitHub Actions (CI/CD)"]
         GH_All["safecast-new-map (monorepo)\n→ builds all 3 binaries + deploys"]
   end
-    MCPTools --> DuckDB
+    MCPTools --> DuckLake
     MCPTools -- primary: localhost queries --> DB
     MapServer --> DB
     Fetcher -- "auto-sync approved imports" --> DB
