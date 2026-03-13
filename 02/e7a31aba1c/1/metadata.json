@@ -1,0 +1,35 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "02e7a31aba1c",
+  "session_id": "f2c92b6a-d8fd-4c7e-bfa8-9bb6c99493dd",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-13T00:40:39.766590114Z",
+  "branch": "feat/chat-question-logging",
+  "checkpoints_count": 12,
+  "files_touched": [
+    "cmd/unified-server/chat_logging.go",
+    "cmd/unified-server/duckdb_analytics.go",
+    "cmd/unified-server/mcp_register.go",
+    "cmd/unified-server/public_html/map.html",
+    "cmd/unified-server/static/index.html",
+    "cmd/unified-server/tool_duckdb_logs.go"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "9062868bbc05",
+  "token_usage": {
+    "input_tokens": 95,
+    "cache_creation_tokens": 80829,
+    "cache_read_tokens": 4740015,
+    "output_tokens": 14743,
+    "api_call_count": 67
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-13T00:40:38.875872546Z",
+    "agent_lines": 35,
+    "human_added": 120,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 155,
+    "agent_percentage": 22.58064516129032
+  }
+}
