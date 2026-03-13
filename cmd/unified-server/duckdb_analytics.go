@@ -140,6 +140,9 @@ func createDuckDBSchema() error {
 		return fmt.Errorf("create schema: %w", err)
 	}
 
+	// Migrate: add client_timestamp column if table already exists without it
+	duckDB.Exec("ALTER TABLE chat_questions ADD COLUMN IF NOT EXISTS client_timestamp TIMESTAMPTZ;")
+
 	// Create indexes for common queries
 	indexes := []string{
 		"CREATE INDEX IF NOT EXISTS idx_query_log_tool ON mcp_query_log(tool_name);",
