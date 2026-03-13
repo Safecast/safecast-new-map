@@ -186,9 +186,10 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 		ctx := r.Context()
 
 		var chatReq struct {
-			Message string              `json:"message"`
-			History []anthropicMessage `json:"history,omitempty"`
-			Source  string              `json:"source,omitempty"`
+			Message         string             `json:"message"`
+			History         []anthropicMessage `json:"history,omitempty"`
+			Source          string             `json:"source,omitempty"`
+			ClientTimestamp string             `json:"client_timestamp,omitempty"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&chatReq); err != nil || chatReq.Message == "" {
 			w.WriteHeader(http.StatusBadRequest)
@@ -204,7 +205,7 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 		if source == "" {
 			source = "web-chat"
 		}
-		logChatQuestion(r, chatReq.Message, source, model, "", len(chatReq.History))
+		logChatQuestion(r, chatReq.Message, source, model, "", len(chatReq.History), chatReq.ClientTimestamp)
 
 		mc, err := mcpclient.NewStreamableHttpClient(mcpURL)
 		if err != nil {

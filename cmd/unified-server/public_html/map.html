@@ -10010,6 +10010,17 @@ function selectHomeSearchResult(result, query) {
       box-shadow: 0 4px 15px rgba(76, 175, 80, 0.2);
     }
 
+    .ai-timestamp {
+      font-size: 11px;
+      color: var(--text-muted, #999);
+      margin-top: 2px;
+      padding: 0 4px;
+    }
+
+    .ai-msg-row.user .ai-timestamp {
+      text-align: right;
+    }
+
     .ai-msg-row.bot .ai-bubble {
       padding: 0;
       background: transparent;
@@ -10356,8 +10367,16 @@ function selectHomeSearchResult(result, query) {
           bubble.textContent = text;
         }
 
+        const ts = document.createElement('div');
+        ts.className = 'ai-timestamp';
+        ts.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        const wrapper = document.createElement('div');
+        wrapper.appendChild(bubble);
+        wrapper.appendChild(ts);
+
         row.appendChild(avatar);
-        row.appendChild(bubble);
+        row.appendChild(wrapper);
         messagesEl.appendChild(row);
         messagesEl.scrollTop = messagesEl.scrollHeight;
         return bubble;
@@ -10424,7 +10443,8 @@ function selectHomeSearchResult(result, query) {
             message: text,
             history: chatHistory,
             map_context: getMapContext(),
-            source: 'widget'
+            source: 'widget',
+            client_timestamp: new Date().toISOString()
           }),
         }).then(response => {
           const reader = response.body.getReader();

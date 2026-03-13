@@ -131,13 +131,17 @@ func createDuckDBSchema() error {
 			session_id VARCHAR,
 			history_length INTEGER,
 			model VARCHAR,
-			cloudfront BOOLEAN
+			cloudfront BOOLEAN,
+			client_timestamp TIMESTAMPTZ
 		);
 	`
 
 	if _, err := duckDB.Exec(createSchemaQuery); err != nil {
 		return fmt.Errorf("create schema: %w", err)
 	}
+
+	// Migrate: add client_timestamp column if table already exists without it
+	duckDB.Exec("ALTER TABLE chat_questions ADD COLUMN IF NOT EXISTS client_timestamp TIMESTAMPTZ;")
 
 	// Create indexes for common queries
 	indexes := []string{
