@@ -3,7 +3,7 @@
   "checkpoint_id": "3d08ef159d28",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 1,
+  "checkpoints_count": 3,
   "files_touched": [
     "local-server-config.sh",
     "safecast-mcp",
@@ -23,13 +23,20 @@
       "context": "/3d/08ef159d28/1/context.md",
       "content_hash": "/3d/08ef159d28/1/content_hash.txt",
       "prompt": "/3d/08ef159d28/1/prompt.txt"
+    },
+    {
+      "metadata": "/3d/08ef159d28/2/metadata.json",
+      "transcript": "/3d/08ef159d28/2/full.jsonl",
+      "context": "/3d/08ef159d28/2/context.md",
+      "content_hash": "/3d/08ef159d28/2/content_hash.txt",
+      "prompt": "/3d/08ef159d28/2/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 40,
-    "cache_creation_tokens": 45273,
-    "cache_read_tokens": 1470293,
-    "output_tokens": 5038,
-    "api_call_count": 34
+    "input_tokens": 138,
+    "cache_creation_tokens": 127264,
+    "cache_read_tokens": 6530291,
+    "output_tokens": 20385,
+    "api_call_count": 104
   }
 }
