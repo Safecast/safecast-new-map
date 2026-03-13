@@ -417,6 +417,9 @@ func RegisterMCP() {
 	mcpURL := fmt.Sprintf("http://localhost:%s/mcp-http", mcpPort)
 
 	if apiKey != "" {
+		chatHandler := handleWebChat(mcpURL, apiKey, model)
+
+		// Register on MCP mux (port 3333)
 		mux.HandleFunc("/assistant/", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.Write(webChatIndexHTML)
@@ -426,7 +429,13 @@ func RegisterMCP() {
 			w.Header().Set("Cache-Control", "public, max-age=86400")
 			w.Write(webChatLogoPNG)
 		})
-		mux.HandleFunc("/chat", handleWebChat(mcpURL, apiKey, model))
+		mux.HandleFunc("/chat", chatHandler)
+
+		// Also register /chat on main map server (port 8765) so the
+		// embedded widget can use a relative "/chat" URL without
+		// cross-origin or CloudFront routing issues.
+		http.HandleFunc("/chat", chatHandler)
+
 		log.Printf("Web chat enabled at http://localhost:%s/assistant/ (model=%s)", mcpPort, model)
 	} else {
 		log.Println("Web chat disabled: ANTHROPIC_API_KEY not set")
