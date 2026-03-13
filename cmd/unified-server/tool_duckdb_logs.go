@@ -11,7 +11,7 @@ import (
 var queryDuckDBLogsToolDef = mcp.NewTool(
 	"query_duckdb_logs",
 	mcp.WithDescription(
-		"Query MCP AI logs stored in DuckDB. Supports simple SQL SELECT queries.",
+		"Query MCP AI logs stored in DuckDB. Supports simple SQL SELECT queries. Available tables: mcp_ai_query_log (tool execution logs), mcp_query_log (tool usage stats), chat_questions (user questions from web-chat and map widget with metadata: timestamp, question, source, ip_address, user_agent, is_mobile, os, browser, country, accept_language, referer, session_id, history_length, model, cloudfront).",
 	),
 	mcp.WithString(
 		"query",

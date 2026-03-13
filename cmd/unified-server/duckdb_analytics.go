@@ -113,6 +113,26 @@ func createDuckDBSchema() error {
 			commit_hash VARCHAR,
 			error VARCHAR
 		);
+
+		CREATE SEQUENCE IF NOT EXISTS seq_chat_questions START 1;
+		CREATE TABLE IF NOT EXISTS chat_questions (
+			id BIGINT DEFAULT nextval('seq_chat_questions'),
+			timestamp TIMESTAMPTZ DEFAULT now(),
+			question VARCHAR,
+			source VARCHAR,
+			ip_address VARCHAR,
+			user_agent VARCHAR,
+			is_mobile BOOLEAN,
+			os VARCHAR,
+			browser VARCHAR,
+			country VARCHAR,
+			accept_language VARCHAR,
+			referer VARCHAR,
+			session_id VARCHAR,
+			history_length INTEGER,
+			model VARCHAR,
+			cloudfront BOOLEAN
+		);
 	`
 
 	if _, err := duckDB.Exec(createSchemaQuery); err != nil {
@@ -125,6 +145,8 @@ func createDuckDBSchema() error {
 		"CREATE INDEX IF NOT EXISTS idx_query_log_timestamp ON mcp_query_log(timestamp);",
 		"CREATE INDEX IF NOT EXISTS idx_ai_log_tool ON mcp_ai_query_log(tool_name);",
 		"CREATE INDEX IF NOT EXISTS idx_ai_log_timestamp ON mcp_ai_query_log(timestamp);",
+		"CREATE INDEX IF NOT EXISTS idx_chat_q_timestamp ON chat_questions(timestamp);",
+		"CREATE INDEX IF NOT EXISTS idx_chat_q_source ON chat_questions(source);",
 	}
 
 	for _, idx := range indexes {
