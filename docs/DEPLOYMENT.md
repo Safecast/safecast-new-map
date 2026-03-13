@@ -125,6 +125,8 @@ aws cloudfront create-invalidation --distribution-id E12FYIQ8RRXOJ1 --paths "/*"
 | `AWS_ACCESS_KEY_ID` | CloudFront cache invalidation |
 | `AWS_SECRET_ACCESS_KEY` | CloudFront cache invalidation |
 | `DATABASE_URL` | Postgres connection string for MCP server |
+| `DUCKLAKE_PG_URL` | DuckLake PostgreSQL catalog connection (e.g., `dbname=ducklake_catalog host=localhost user=ducklake_rw`) |
+| `DUCKLAKE_DATA_PATH` | Path for DuckLake Parquet data files (e.g., `/var/lib/safecast/ducklake/`) |
 | `ANTHROPIC_API_KEY` | Claude API key for web-chat service |
 
 ### Workflow Steps
@@ -173,6 +175,16 @@ AWS WAF protects against:
 - ~~Large request bodies~~ (Changed to "Count" mode for file uploads)
 
 **Important:** `SizeRestrictions_BODY` rule is in "Count" mode to allow large file uploads. See [docs/cloudfront-fix-waf-403.md](cloudfront-fix-waf-403.md) for details.
+
+## Analytics (DuckLake)
+
+Both the unified server and MCP server use DuckLake for analytics (tool usage logs, chat questions). Architecture: in-memory DuckDB attaches a shared DuckLake catalog backed by PostgreSQL + Parquet files, allowing concurrent access from multiple services.
+
+**Required env vars** (set in `.env` files or systemd service):
+- `DUCKLAKE_PG_URL` — PostgreSQL connection for DuckLake catalog (e.g., `dbname=ducklake_catalog host=localhost user=ducklake_rw`)
+- `DUCKLAKE_DATA_PATH` — Directory for Parquet data files (e.g., `/var/lib/safecast/ducklake/`)
+
+**Shared tables:** `chat_questions`, `mcp_query_log`, `mcp_ai_query_log`
 
 ## Server Configuration
 

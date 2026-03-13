@@ -44,7 +44,7 @@ func initDuckDB() error {
 	// Attach DuckLake catalog via PostgreSQL
 	ducklakePGURL := os.Getenv("DUCKLAKE_PG_URL")
 	if ducklakePGURL == "" {
-		ducklakePGURL = "dbname=ducklake_catalog host=localhost user=postgres password=LvjxpY1xNTijMT"
+		ducklakePGURL = "dbname=ducklake_catalog host=localhost user=ducklake_rw"
 	}
 	dataPath := os.Getenv("DUCKLAKE_DATA_PATH")
 	if dataPath == "" {
