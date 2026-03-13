@@ -1,4 +1,4 @@
-// Chat question logging to DuckDB analytics
+// Chat question logging to DuckLake analytics
 // Captures user questions from the web-chat and map widget with request metadata
 
 package main
@@ -8,9 +8,10 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"time"
 )
 
-// logChatQuestion logs a user's chat question to DuckDB and returns the row ID.
+// logChatQuestion logs a user's chat question to DuckLake and returns a unique row ID.
 // The returned ID can be passed to logChatAnswer to attach the AI response.
 func logChatQuestion(r *http.Request, question, source, model, sessionID string, historyLen int, clientTimestamp string) int64 {
 	if !duckDBAvailable() {
@@ -40,18 +41,19 @@ func logChatQuestion(r *http.Request, question, source, model, sessionID string,
 		clientTS = clientTimestamp
 	}
 
-	var id int64
-	err := duckDB.QueryRow(`
+	// Generate unique ID (DuckLake doesn't support RETURNING or sequences)
+	id := time.Now().UnixNano()
+
+	_, err := duckDB.Exec(`
 		INSERT INTO chat_questions (
-			question, source, ip_address, user_agent, is_mobile,
+			id, question, source, ip_address, user_agent, is_mobile,
 			os, browser, country, accept_language, referer,
 			session_id, history_length, model, cloudfront, client_timestamp
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		RETURNING id`,
-		question, source, ip, ua, isMobile,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, question, source, ip, ua, isMobile,
 		osName, browser, country, acceptLang, referer,
 		sessionID, historyLen, model, isCloudFront, clientTS,
-	).Scan(&id)
+	)
 	if err != nil {
 		log.Printf("chat_questions insert error: %v", err)
 		return 0
