@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	mcpclient "github.com/mark3labs/mcp-go/client"
@@ -205,7 +206,8 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 		if source == "" {
 			source = "web-chat"
 		}
-		logChatQuestion(r, chatReq.Message, source, model, "", len(chatReq.History), chatReq.ClientTimestamp)
+		chatRowID := logChatQuestion(r, chatReq.Message, source, model, "", len(chatReq.History), chatReq.ClientTimestamp)
+		var answerText strings.Builder
 
 		mc, err := mcpclient.NewStreamableHttpClient(mcpURL)
 		if err != nil {
@@ -265,6 +267,7 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 			for _, block := range resp.Content {
 				switch block.Type {
 				case "text":
+					answerText.WriteString(block.Text)
 					writeChunkBuffered(w, chunk{Type: "text", Text: block.Text}, &buffer, isCloudFront)
 				case "tool_use":
 					toolUses = append(toolUses, block)
@@ -308,6 +311,8 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 				Content: toolResults,
 			})
 		}
+
+		logChatAnswer(chatRowID, strings.TrimSpace(answerText.String()))
 
 		writeChunkBuffered(w, chunk{Type: "done"}, &buffer, isCloudFront)
 		if isCloudFront {
