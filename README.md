@@ -232,7 +232,7 @@ DUCKLAKE_DATA_PATH="/var/lib/safecast/ducklake/" \
 # With AI web chat (requires Anthropic API key)
 DATABASE_URL="postgres://..." \
 ANTHROPIC_API_KEY="your-key" \
-CLAUDE_MODEL="claude-sonnet-4-5" \
+CLAUDE_MODEL="claude-haiku-4-5-20251001" \
 ./safecast-new-map
 ```
 
