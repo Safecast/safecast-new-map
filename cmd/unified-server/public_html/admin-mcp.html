@@ -45,7 +45,7 @@
     h1 { margin-bottom: 15px; font-size: 1.6em; }
 
     /* Admin tab bar */
-    .admin-tabs { display: flex; gap: 2px; margin-bottom: 20px; background: var(--border-color); border-radius: 8px; overflow: hidden; }
+    .admin-tabs { display: flex; gap: 2px; margin-top: 10px; margin-bottom: 10px; background: var(--border-color); border-radius: 8px; overflow: hidden; }
     .admin-tabs a, .admin-tabs span { padding: 10px 20px; text-decoration: none; color: var(--text-secondary); background: var(--bg-card); font-weight: 500; font-size: 0.95em; transition: background 0.2s; }
     .admin-tabs a:hover { background: var(--hover-bg); color: var(--text-primary); }
     .admin-tabs a.active { background: var(--tab-active-bg); color: var(--tab-active-text); }
@@ -114,11 +114,18 @@
     .modal h3 { margin-bottom: 10px; }
     .modal pre { white-space: pre-wrap; word-break: break-word; font-size: 0.9em; line-height: 1.5; background: var(--bg-primary); padding: 15px; border-radius: 8px; max-height: 60vh; overflow-y: auto; }
     .modal button { margin-top: 15px; padding: 8px 20px; background: var(--tab-active-bg); color: white; border: none; border-radius: var(--btn-border-radius); cursor: pointer; }
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0; }
+    .page-header h1 { margin: 0; }
+    .back-to-map-btn { background: #2196F3 !important; color: white !important; padding: 8px 16px; border-radius: var(--btn-border-radius); text-decoration: none !important; font-weight: 500; transition: background 0.2s; }
+    .back-to-map-btn:hover { background: #1976D2 !important; text-decoration: none !important; }
   </style>
 </head>
 <body>
 
-<h1>MCP Analytics</h1>
+<div class="page-header">
+  <h1>MCP Analytics</h1>
+  <a href="/" class="back-to-map-btn">Back to Map</a>
+</div>
 
 <div class="admin-tabs" id="adminTabs"></div>
 
