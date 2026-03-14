@@ -3,7 +3,7 @@
   "checkpoint_id": "a0028c8bca17",
   "strategy": "manual-commit",
   "branch": "docs/cleanup-and-deprecate-old-plans",
-  "checkpoints_count": 0,
+  "checkpoints_count": 2,
   "files_touched": [
     "README.md",
     "docs/MODEL_ADAPTER_PLAN.md",
@@ -24,13 +24,20 @@
       "context": "/a0/028c8bca17/1/context.md",
       "content_hash": "/a0/028c8bca17/1/content_hash.txt",
       "prompt": "/a0/028c8bca17/1/prompt.txt"
+    },
+    {
+      "metadata": "/a0/028c8bca17/2/metadata.json",
+      "transcript": "/a0/028c8bca17/2/full.jsonl",
+      "context": "/a0/028c8bca17/2/context.md",
+      "content_hash": "/a0/028c8bca17/2/content_hash.txt",
+      "prompt": "/a0/028c8bca17/2/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 195,
-    "cache_creation_tokens": 124059,
-    "cache_read_tokens": 1395995,
-    "output_tokens": 38,
-    "api_call_count": 20
+    "input_tokens": 412,
+    "cache_creation_tokens": 325802,
+    "cache_read_tokens": 19140858,
+    "output_tokens": 49302,
+    "api_call_count": 211
   }
 }
