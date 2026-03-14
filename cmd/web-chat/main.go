@@ -484,7 +484,7 @@ func main() {
 	}
 	model := os.Getenv("CLAUDE_MODEL")
 	if model == "" {
-		model = "claude-sonnet-4-5"
+		model = "claude-haiku-4-5-20251001"
 	}
 	mcpURL := os.Getenv("MCP_URL")
 	if mcpURL == "" {
