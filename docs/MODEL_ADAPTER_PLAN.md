@@ -1,8 +1,14 @@
 # Model Adapter Layer Implementation Plan
 
-**Branch:** `model-adapter-layer`  
-**Date:** 2026-03-07  
-**Status:** 📋 Planning
+**Branch:** `model-adapter-layer`
+**Date:** 2026-03-07
+**Status:** 🗄️ DEPRECATED - Superseded by [MCP_MODEL_ADAPTER_PLAN.md](MCP_MODEL_ADAPTER_PLAN.md)
+
+---
+
+> **Note:** This document has been superseded by [MCP_MODEL_ADAPTER_PLAN.md](MCP_MODEL_ADAPTER_PLAN.md), which reflects the actual implementation in the unified server architecture. This document is kept for historical reference.
+
+---
 
 ## Overview
 
@@ -24,12 +30,12 @@ Create a model adapter layer that detects which AI model is calling the MCP serv
 - **Tools:** 17 MCP tools with hardcoded `_ai_hint` annotations
 
 ### Key Files
-| File | Purpose |
-|------|---------|
-| `go/cmd/mcp-server/main.go` | Server entry point, tool registration |
-| `go/cmd/mcp-server/tool_*.go` | Individual tool definitions (17 files) |
-| `go/cmd/mcp-server/api_client.go` | REST API client |
-| `go/cmd/mcp-server/ai_logging.go` | AI session logging |
+| File                              | Purpose                                |
+| --------------------------------- | -------------------------------------- |
+| `go/cmd/mcp-server/main.go`       | Server entry point, tool registration  |
+| `go/cmd/mcp-server/tool_*.go`     | Individual tool definitions (17 files) |
+| `go/cmd/mcp-server/api_client.go` | REST API client                        |
+| `go/cmd/mcp-server/ai_logging.go` | AI session logging                     |
 
 ### Current Limitations
 1. **No model detection** - Server hardcodes `"claude-client"` in logging
@@ -193,21 +199,21 @@ func ModelDetectionMiddleware(next http.Handler) http.Handler {
 
 ## Success Metrics
 
-| Metric | Target |
-|--------|--------|
-| Model detection accuracy | >95% |
-| Added latency per request | <5ms |
-| Code coverage (new code) | >80% |
-| Backward compatibility | 100% (no breaking changes) |
+| Metric                    | Target                     |
+| ------------------------- | -------------------------- |
+| Model detection accuracy  | >95%                       |
+| Added latency per request | <5ms                       |
+| Code coverage (new code)  | >80%                       |
+| Backward compatibility    | 100% (no breaking changes) |
 
 ## Risks and Mitigations
 
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| MCP library changes break middleware | High | Pin library version, add integration tests |
-| Model detection false positives | Medium | Conservative detection, fallback to default |
-| Performance regression | Medium | Benchmark before/after, optimize hot paths |
-| Hint maintenance burden | Low | Document clearly, keep hints DRY |
+| Risk                                 | Impact | Mitigation                                  |
+| ------------------------------------ | ------ | ------------------------------------------- |
+| MCP library changes break middleware | High   | Pin library version, add integration tests  |
+| Model detection false positives      | Medium | Conservative detection, fallback to default |
+| Performance regression               | Medium | Benchmark before/after, optimize hot paths  |
+| Hint maintenance burden              | Low    | Document clearly, keep hints DRY            |
 
 ## Next Steps
 
