@@ -61,20 +61,53 @@ func logChatQuestion(r *http.Request, question, source, model, sessionID string,
 	return id
 }
 
-// logChatAnswer updates a chat_questions row with the AI's response (async).
-func logChatAnswer(rowID int64, answer string) {
-	if !duckDBAvailable() || rowID == 0 {
+// logChatQuestionWithAnswer inserts a complete chat_questions row including the answer.
+// DuckLake UPDATE silently corrupts large string values, so we do a single INSERT with all fields.
+func logChatQuestionWithAnswer(r *http.Request, question, source, model, sessionID string, historyLen int, clientTimestamp string, answer string) {
+	if !duckDBAvailable() {
 		return
+	}
+
+	if len(question) > 5000 {
+		question = question[:5000]
 	}
 	if len(answer) > 50000 {
 		answer = answer[:50000]
 	}
-	go func() {
-		_, err := duckDB.Exec(`UPDATE chat_questions SET answer = ? WHERE id = ?`, answer, rowID)
-		if err != nil {
-			log.Printf("chat_questions answer update error: %v", err)
-		}
-	}()
+
+	ip := getClientIP(r)
+	ua := r.Header.Get("User-Agent")
+	isMobile, osName, browser := parseUserAgent(ua)
+	country := r.Header.Get("CloudFront-Viewer-Country")
+	acceptLang := r.Header.Get("Accept-Language")
+	if len(acceptLang) > 200 {
+		acceptLang = acceptLang[:200]
+	}
+	referer := r.Header.Get("Referer")
+	isCloudFront := r.Header.Get("CloudFront-Viewer-Country") != "" ||
+		r.Header.Get("CloudFront-Forwarded-Proto") != "" ||
+		r.Header.Get("X-Amz-Cf-Id") != ""
+
+	var clientTS interface{}
+	if clientTimestamp != "" {
+		clientTS = clientTimestamp
+	}
+
+	id := time.Now().UnixNano()
+
+	_, err := duckDB.Exec(`
+		INSERT INTO chat_questions (
+			id, question, answer, source, ip_address, user_agent, is_mobile,
+			os, browser, country, accept_language, referer,
+			session_id, history_length, model, cloudfront, client_timestamp
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, question, answer, source, ip, ua, isMobile,
+		osName, browser, country, acceptLang, referer,
+		sessionID, historyLen, model, isCloudFront, clientTS,
+	)
+	if err != nil {
+		log.Printf("chat_questions insert (with answer) error: %v", err)
+	}
 }
 
 // getClientIP extracts the client IP from the request, respecting proxy headers.
