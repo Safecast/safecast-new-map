@@ -3,7 +3,7 @@
   "checkpoint_id": "38ce53c87709",
   "strategy": "manual-commit",
   "branch": "feat/log-chat-answers",
-  "checkpoints_count": 3,
+  "checkpoints_count": 27,
   "files_touched": [
     "cmd/unified-server/admin_mcp.go",
     "cmd/unified-server/chat_logging.go",
@@ -27,13 +27,20 @@
       "context": "/38/ce53c87709/1/context.md",
       "content_hash": "/38/ce53c87709/1/content_hash.txt",
       "prompt": "/38/ce53c87709/1/prompt.txt"
+    },
+    {
+      "metadata": "/38/ce53c87709/2/metadata.json",
+      "transcript": "/38/ce53c87709/2/full.jsonl",
+      "context": "/38/ce53c87709/2/context.md",
+      "content_hash": "/38/ce53c87709/2/content_hash.txt",
+      "prompt": "/38/ce53c87709/2/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 480,
-    "cache_creation_tokens": 320196,
-    "cache_read_tokens": 23731787,
-    "output_tokens": 62794,
-    "api_call_count": 252
+    "input_tokens": 742,
+    "cache_creation_tokens": 560284,
+    "cache_read_tokens": 39292489,
+    "output_tokens": 118355,
+    "api_call_count": 447
   }
 }
