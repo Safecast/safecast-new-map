@@ -71,8 +71,11 @@
     /* Data table */
     .table-wrap { overflow-x: auto; background: var(--bg-card); border-radius: 8px; box-shadow: var(--shadow); }
     table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
-    th { background: var(--th-bg); color: white; padding: 10px 12px; text-align: left; white-space: nowrap; position: sticky; top: 0; }
-    td { padding: 8px 12px; border-bottom: 1px solid var(--border-color); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    table { table-layout: fixed; }
+    th { background: var(--th-bg); color: white; padding: 10px 12px; text-align: left; white-space: nowrap; position: sticky; top: 0; overflow: hidden; text-overflow: ellipsis; position: relative; }
+    td { padding: 8px 12px; border-bottom: 1px solid var(--border-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .resize-handle { position: absolute; right: 0; top: 0; width: 5px; height: 100%; cursor: col-resize; background: transparent; z-index: 1; }
+    .resize-handle:hover, .resize-handle.active { background: rgba(255,255,255,0.3); }
     td.wrap { white-space: normal; word-break: break-word; }
     tr:hover { background: var(--hover-bg); }
     .sortable { cursor: pointer; user-select: none; position: relative; padding-right: 20px; }
@@ -80,6 +83,10 @@
     .sortable::after { content: '\21C5'; position: absolute; right: 4px; opacity: 0.5; }
     .sortable.asc::after { content: '\25B2'; opacity: 1; }
     .sortable.desc::after { content: '\25BC'; opacity: 1; }
+
+    /* Column filter row */
+    .filter-input { width: 100%; padding: 4px 8px; border: 1px solid var(--border-color); border-radius: var(--btn-border-radius); background: var(--bg-card); color: var(--text-primary); font-size: 0.85em; box-sizing: border-box; }
+    .filter-row th { background: var(--bg-card); padding: 4px 6px; position: sticky; top: 38px; }
 
     /* Expandable cell */
     td.expandable { cursor: pointer; }
@@ -190,9 +197,8 @@ function buildAdminTabs() {
   const tabs = [
     { label: 'Users', href: '/admin/users' },
     { label: 'Uploads', href: '/admin/uploads' },
-    { label: 'Tracks', href: '/api/admin/tracks' },
     { label: 'MCP Analytics', href: '/admin/mcp', active: true },
-    { label: 'Realtime', disabled: true }
+    { label: 'Realtime', href: '/admin/realtime' }
   ];
   const container = document.getElementById('adminTabs');
   tabs.forEach(t => {
@@ -210,6 +216,7 @@ function switchTable(table) {
   currentOffset = 0;
   currentSort = 'timestamp';
   currentOrder = 'desc';
+  columnWidths = {};
 
   // Update sub-tab active state
   document.querySelectorAll('.sub-tabs button').forEach(btn => {
@@ -244,6 +251,7 @@ function exportCSV() {
 }
 
 function sortBy(col) {
+  if (resizing) return;
   if (currentSort === col) {
     currentOrder = currentOrder === 'desc' ? 'asc' : 'desc';
   } else {
@@ -314,7 +322,14 @@ async function fetchData() {
     columns.forEach(col => {
       const label = COLUMN_LABELS[col] || col;
       const sortClass = currentSort === col ? (currentOrder === 'asc' ? 'sortable asc' : 'sortable desc') : 'sortable';
-      headerHTML += `<th class="${sortClass}" onclick="sortBy('${col}')">${label}</th>`;
+      headerHTML += `<th class="${sortClass}" onclick="sortBy('${col}')">${label}<span class="resize-handle"></span></th>`;
+    });
+    headerHTML += '</tr>';
+    // Filter row
+    headerHTML += '<tr class="filter-row"><th></th>';
+    columns.forEach(col => {
+      const label = COLUMN_LABELS[col] || col;
+      headerHTML += `<th><input type="text" class="filter-input" placeholder="${label}..." onkeyup="filterTable()"></th>`;
     });
     headerHTML += '</tr>';
     thead.innerHTML = headerHTML;
@@ -344,6 +359,7 @@ async function fetchData() {
     });
     tbody.innerHTML = bodyHTML;
     table.style.display = 'table';
+    initColumnResize();
     updateDeleteBtn();
 
     // Summary
@@ -419,13 +435,32 @@ function formatTimestamp(ts) {
   try {
     const d = new Date(ts);
     if (isNaN(d.getTime())) return ts;
-    return d.toLocaleString();
+    return d.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, ' UTC');
   } catch { return ts; }
 }
 
 function toggleAll(master) {
   document.querySelectorAll('.row-cb').forEach(cb => { cb.checked = master.checked; });
   updateDeleteBtn();
+}
+
+function filterTable() {
+  const tbody = document.getElementById('tableBody');
+  const filters = document.querySelectorAll('.filter-input');
+  const rows = tbody.querySelectorAll('tr');
+  rows.forEach(row => {
+    let show = true;
+    filters.forEach((filter, index) => {
+      const val = filter.value.toLowerCase();
+      if (val) {
+        const cell = row.cells[index + 1]; // +1 for checkbox column
+        if (cell) {
+          if (!cell.textContent.toLowerCase().includes(val)) show = false;
+        }
+      }
+    });
+    row.style.display = show ? '' : 'none';
+  });
 }
 
 function updateDeleteBtn() {
@@ -472,6 +507,54 @@ async function deleteAll() {
   } catch (err) {
     alert('Delete failed: ' + err.message);
   }
+}
+
+let columnWidths = {}; // Persist widths across re-renders, keyed by column index
+let resizing = false; // Suppress sort click after drag
+
+function initColumnResize() {
+  const table = document.getElementById('dataTable');
+  if (!table) return;
+  const headerRow = table.querySelector('thead tr:first-child');
+  if (!headerRow) return;
+  const ths = headerRow.querySelectorAll('th');
+
+  // Restore saved widths or capture initial computed widths
+  ths.forEach((th, i) => {
+    if (columnWidths[i]) {
+      th.style.width = columnWidths[i];
+    } else {
+      th.style.width = th.offsetWidth + 'px';
+    }
+  });
+
+  document.querySelectorAll('.resize-handle').forEach(handle => {
+    handle.addEventListener('mousedown', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      resizing = true;
+      const th = this.parentElement;
+      const colIndex = Array.from(th.parentElement.children).indexOf(th);
+      const startX = e.pageX;
+      const startWidth = th.offsetWidth;
+      this.classList.add('active');
+
+      const onMouseMove = (e) => {
+        const newWidth = Math.max(40, startWidth + (e.pageX - startX));
+        th.style.width = newWidth + 'px';
+        columnWidths[colIndex] = newWidth + 'px';
+      };
+      const onMouseUp = () => {
+        this.classList.remove('active');
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        // Delay resetting flag so the click event on th is suppressed
+        setTimeout(() => { resizing = false; }, 50);
+      };
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+  });
 }
 
 // Init
