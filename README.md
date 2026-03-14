@@ -134,30 +134,30 @@ sudo dnf install postgis34_16
 
 ### Common Flags
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `-port` | 8765 | HTTP server port |
-| `-domain` | - | Domain for HTTPS (enables Let's Encrypt) |
-| `-db-type` | pgx | Database: pgx, duckdb, sqlite, chai, clickhouse |
-| `-db-path` | . | Path for file-based databases |
-| `-db-conn` | - | Connection string for network databases |
-| `-default-lat` | 44.08832 | Initial map latitude |
-| `-default-lon` | 42.97577 | Initial map longitude |
-| `-default-zoom` | 11 | Initial map zoom level |
-| `-default-layer` | OpenStreetMap | Base map layer |
-| `-admin-password` | - | Enable admin panel (track management) |
-| `-allow-registration` | false | Enable user registration |
-| `-require-auth` | false | Require authentication for uploads |
-| `-smtp-host` | - | SMTP server for email (e.g., smtp.gmail.com) |
-| `-smtp-port` | 587 | SMTP server port |
-| `-smtp-username` | - | SMTP authentication username |
-| `-smtp-password` | - | SMTP authentication password |
-| `-smtp-from` | - | Email "From" address |
-| `-session-secret` | - | Secret key for session encryption |
-| `-base-url` | - | Base URL for email links (e.g., https://example.com) |
-| `-safecast-realtime` | false | Poll live Safecast device data |
-| `-safecast-fetcher` | false | Auto-sync approved bGeigie imports |
-| `-json-archive-frequency` | weekly | Archive generation: daily, weekly, monthly, yearly |
+| Flag                      | Default       | Description                                          |
+| ------------------------- | ------------- | ---------------------------------------------------- |
+| `-port`                   | 8765          | HTTP server port                                     |
+| `-domain`                 | -             | Domain for HTTPS (enables Let's Encrypt)             |
+| `-db-type`                | pgx           | Database: pgx, duckdb, sqlite, chai, clickhouse      |
+| `-db-path`                | .             | Path for file-based databases                        |
+| `-db-conn`                | -             | Connection string for network databases              |
+| `-default-lat`            | 44.08832      | Initial map latitude                                 |
+| `-default-lon`            | 42.97577      | Initial map longitude                                |
+| `-default-zoom`           | 11            | Initial map zoom level                               |
+| `-default-layer`          | OpenStreetMap | Base map layer                                       |
+| `-admin-password`         | -             | Enable admin panel (track management)                |
+| `-allow-registration`     | false         | Enable user registration                             |
+| `-require-auth`           | false         | Require authentication for uploads                   |
+| `-smtp-host`              | -             | SMTP server for email (e.g., smtp.gmail.com)         |
+| `-smtp-port`              | 587           | SMTP server port                                     |
+| `-smtp-username`          | -             | SMTP authentication username                         |
+| `-smtp-password`          | -             | SMTP authentication password                         |
+| `-smtp-from`              | -             | Email "From" address                                 |
+| `-session-secret`         | -             | Secret key for session encryption                    |
+| `-base-url`               | -             | Base URL for email links (e.g., https://example.com) |
+| `-safecast-realtime`      | false         | Poll live Safecast device data                       |
+| `-safecast-fetcher`       | false         | Auto-sync approved bGeigie imports                   |
+| `-json-archive-frequency` | weekly        | Archive generation: daily, weekly, monthly, yearly   |
 
 ---
 
@@ -202,12 +202,12 @@ Import from local file:
 
 The unified server includes an MCP (Model Context Protocol) server with a Claude-powered web chat interface, all in a single binary.
 
-| Component | Source | Port | URL |
-|-----------|--------|------|-----|
+| Component                  | Source                | Port | URL                             |
+| -------------------------- | --------------------- | ---- | ------------------------------- |
 | Unified Server (Map + MCP) | `cmd/unified-server/` | 8765 | `/`, `/mcp-http`, `/assistant/` |
-| MCP Server | `cmd/unified-server/` | 8765 | `/mcp-http`, `/mcp/sse` |
-| Web Chat | `cmd/unified-server/` | 8765 | `/assistant/` |
-| REST API + Swagger | `cmd/unified-server/` | 8765 | `/api/`, `/docs/` |
+| MCP Server                 | `cmd/unified-server/` | 8765 | `/mcp-http`, `/mcp/sse`         |
+| Web Chat                   | `cmd/unified-server/` | 8765 | `/assistant/`                   |
+| REST API + Swagger         | `cmd/unified-server/` | 8765 | `/api/`, `/docs/`               |
 
 **Build:**
 ```bash
@@ -452,19 +452,19 @@ psql -h 127.0.0.1 -U postgres -d safecast -f migrations/link_historical_uploads_
 
 Customize map views with URL parameters:
 
-| Parameter | Values | Description |
-|-----------|--------|-------------|
-| `place` | City, country, or location name | Navigate to a specific location by name |
-| `lat` | Latitude (-90 to 90) | Latitude coordinate for map center |
-| `lon` | Longitude (-180 to 180) | Longitude coordinate for map center |
-| `zoom` | 1-18 | Zoom level (used with lat/lon) |
-| `minLat`, `minLon`, `maxLat`, `maxLon` | Coordinates | Define map bounds (legacy format) |
-| `coloring` | safecast, chicha | Scientific gradient vs. safety bins |
-| `unit` | uSv, uR | Display units (microsieverts or microroentgen) |
-| `legend` | 1, 0 | Show/hide legend |
-| `lang` | en, ru, ja, etc. | Interface language |
-| `layer` | OpenStreetMap, Google Satellite | Base map |
-| `show` | rt | Filter to show only realtime sensors |
+| Parameter                              | Values                          | Description                                    |
+| -------------------------------------- | ------------------------------- | ---------------------------------------------- |
+| `place`                                | City, country, or location name | Navigate to a specific location by name        |
+| `lat`                                  | Latitude (-90 to 90)            | Latitude coordinate for map center             |
+| `lon`                                  | Longitude (-180 to 180)         | Longitude coordinate for map center            |
+| `zoom`                                 | 1-18                            | Zoom level (used with lat/lon)                 |
+| `minLat`, `minLon`, `maxLat`, `maxLon` | Coordinates                     | Define map bounds (legacy format)              |
+| `coloring`                             | safecast, chicha                | Scientific gradient vs. safety bins            |
+| `unit`                                 | uSv, uR                         | Display units (microsieverts or microroentgen) |
+| `legend`                               | 1, 0                            | Show/hide legend                               |
+| `lang`                                 | en, ru, ja, etc.                | Interface language                             |
+| `layer`                                | OpenStreetMap, Google Satellite | Base map                                       |
+| `show`                                 | rt                              | Filter to show only realtime sensors           |
 
 **Location Examples:**
 - Direct to Tokyo: `/?place=Tokyo`
@@ -525,15 +525,15 @@ go test ./...
 
 The `cmd/tools/` directory contains standalone utilities for database maintenance and migration:
 
-| Tool | Usage |
-|------|-------|
-| `fix-pg-sequence` | Reset PostgreSQL markers sequence |
-| `fix-sequence` | Alternative sequence sync utility |
-| `add-internal-user-id` | Add internal user IDs to uploads |
-| `cleanup-test-users` | Remove test users from database |
-| `import-api-keys` | Import API keys from CSV |
-| `migrate-to-postgres` | Migrate from SQLite to PostgreSQL |
-| `migrate-users` | Migrate user data |
+| Tool                   | Usage                             |
+| ---------------------- | --------------------------------- |
+| `fix-pg-sequence`      | Reset PostgreSQL markers sequence |
+| `fix-sequence`         | Alternative sequence sync utility |
+| `add-internal-user-id` | Add internal user IDs to uploads  |
+| `cleanup-test-users`   | Remove test users from database   |
+| `import-api-keys`      | Import API keys from CSV          |
+| `migrate-to-postgres`  | Migrate from SQLite to PostgreSQL |
+| `migrate-users`        | Migrate user data                 |
 
 Run any tool with:
 ```bash
@@ -554,7 +554,7 @@ For deploying to production servers with CloudFront/CDN setup, see:
 - [Deployment Guide](docs/DEPLOYMENT.md) - Complete deployment procedures and troubleshooting
 - [GitHub Actions Guide](GITHUB_ACTIONS_GUIDE.md) - Automated CI/CD setup
 - [CloudFront Setup](docs/cloudfront-setup.md) - CDN configuration details
-- [Architecture Diagram](docs/Mermaid%20Chart%20-%20Create%20complex,%20visual%20diagrams%20with%20text.-2026-02-28-043816.mmd) - System overview (Mermaid)
+- [Architecture Diagram](docs/architecture-overview.mmd) - System overview (Mermaid)
 - [Spectral Data Flow](docs/spectral-data-flow.mmd) - Spectral upload/parse/store/render pipeline (Mermaid)
 
 **Important:** When using CloudFront, SSH and rsync must use the server's IP address directly, not the domain name.
@@ -603,12 +603,12 @@ psql -h 127.0.0.1 -U postgres -d safecast -c "
 
 ### Useful Maintenance Scripts
 
-| Script | Purpose |
-|--------|---------|
-| `tools/reset_postgres_sequences.sh` | Reset all PostgreSQL sequences after migration |
-| `tools/reset_postgres_marker_sequence.sh` | Reset only the markers sequence |
-| `tools/refresh_track_stats.sh` | Refresh track statistics materialized view |
-| `tools/populate_usernames.sh` | Fetch usernames from Safecast API for uploads |
+| Script                                    | Purpose                                        |
+| ----------------------------------------- | ---------------------------------------------- |
+| `tools/reset_postgres_sequences.sh`       | Reset all PostgreSQL sequences after migration |
+| `tools/reset_postgres_marker_sequence.sh` | Reset only the markers sequence                |
+| `tools/refresh_track_stats.sh`            | Refresh track statistics materialized view     |
+| `tools/populate_usernames.sh`             | Fetch usernames from Safecast API for uploads  |
 
 ---
 
