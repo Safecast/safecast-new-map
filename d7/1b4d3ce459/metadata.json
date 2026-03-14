@@ -3,7 +3,7 @@
   "checkpoint_id": "d71b4d3ce459",
   "strategy": "manual-commit",
   "branch": "fix/switch-to-haiku-model",
-  "checkpoints_count": 0,
+  "checkpoints_count": 2,
   "files_touched": [
     ".github/workflows/deploy.yml",
     "README.md",
@@ -17,13 +17,20 @@
       "context": "/d7/1b4d3ce459/0/context.md",
       "content_hash": "/d7/1b4d3ce459/0/content_hash.txt",
       "prompt": "/d7/1b4d3ce459/0/prompt.txt"
+    },
+    {
+      "metadata": "/d7/1b4d3ce459/1/metadata.json",
+      "transcript": "/d7/1b4d3ce459/1/full.jsonl",
+      "context": "/d7/1b4d3ce459/1/context.md",
+      "content_hash": "/d7/1b4d3ce459/1/content_hash.txt",
+      "prompt": "/d7/1b4d3ce459/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 0,
-    "cache_creation_tokens": 0,
-    "cache_read_tokens": 0,
-    "output_tokens": 0,
-    "api_call_count": 0
+    "input_tokens": 18,
+    "cache_creation_tokens": 13000,
+    "cache_read_tokens": 320585,
+    "output_tokens": 2129,
+    "api_call_count": 12
   }
 }
