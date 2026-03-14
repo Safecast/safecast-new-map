@@ -206,7 +206,13 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 		if source == "" {
 			source = "web-chat"
 		}
-		chatRowID := logChatQuestion(r, chatReq.Message, source, model, "", len(chatReq.History), chatReq.ClientTimestamp)
+		// Capture request metadata now; the full row (with answer) is inserted after the AI responds
+		chatReqRef := r
+		chatQuestion := chatReq.Message
+		chatSource := source
+		chatModel := model
+		chatHistory := len(chatReq.History)
+		chatClientTS := chatReq.ClientTimestamp
 		var answerText strings.Builder
 
 		mc, err := mcpclient.NewStreamableHttpClient(mcpURL)
@@ -312,7 +318,7 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 			})
 		}
 
-		logChatAnswer(chatRowID, strings.TrimSpace(answerText.String()))
+		logChatQuestionWithAnswer(chatReqRef, chatQuestion, chatSource, chatModel, "", chatHistory, chatClientTS, strings.TrimSpace(answerText.String()))
 
 		writeChunkBuffered(w, chunk{Type: "done"}, &buffer, isCloudFront)
 		if isCloudFront {
