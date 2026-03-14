@@ -1,0 +1,9 @@
+I noticed on the production we are using Claude Sonnet? I though we were setup to use Haiku?
+
+---
+
+Yes, please switch.
+
+---
+
+Please make a commit, push, PR and merge.
