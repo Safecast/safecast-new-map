@@ -148,10 +148,18 @@
     .search-btn:hover { background: #1976D2; }
     .clear-search-btn { background: var(--border-color); color: var(--text-primary); border: none; padding: 5px 12px; border-radius: var(--btn-border-radius); cursor: pointer; margin-left: 5px; }
     .clear-search-btn:hover { opacity: 0.8; }
+    /* Admin tab bar */
+    .admin-tabs { display: flex; gap: 2px; margin-bottom: 20px; background: var(--border-color); border-radius: 8px; overflow: hidden; }
+    .admin-tabs a, .admin-tabs span { padding: 10px 20px; text-decoration: none; color: var(--text-secondary); background: var(--bg-card); font-weight: 500; font-size: 0.95em; transition: background 0.2s; }
+    .admin-tabs a:hover { background: var(--hover-bg); color: var(--text-primary); }
+    .admin-tabs a.active { background: #2196F3; color: white; }
+    .admin-tabs span.disabled { color: var(--text-muted); cursor: not-allowed; font-style: italic; }
   </style>
 </head>
 <body>
   <h1>User Administration</h1>
+
+  <div class="admin-tabs" id="adminTabs"></div>
 
   <div class="nav">
     <div class="nav-left">
@@ -330,7 +338,28 @@
     }
 
     // Check authentication on page load
+    function buildAdminTabs() {
+      const pw = new URLSearchParams(window.location.search).get('password') || '';
+      const tabs = [
+        { label: 'Users', href: '/admin/users', active: true },
+        { label: 'Uploads', href: '/admin/uploads' },
+        { label: 'Tracks', href: '/api/admin/tracks' },
+        { label: 'MCP Analytics', href: '/admin/mcp' },
+        { label: 'Realtime', disabled: true }
+      ];
+      const container = document.getElementById('adminTabs');
+      tabs.forEach(t => {
+        if (t.disabled) {
+          container.innerHTML += '<span class="disabled">' + t.label + '</span>';
+        } else {
+          const href = t.href + (pw ? '?password=' + encodeURIComponent(pw) : '');
+          container.innerHTML += '<a href="' + href + '" class="' + (t.active ? 'active' : '') + '">' + t.label + '</a>';
+        }
+      });
+    }
+
     window.addEventListener('DOMContentLoaded', async function() {
+      buildAdminTabs();
       // Check if user is authenticated via session
       try {
         const response = await fetch('/api/user/profile');
