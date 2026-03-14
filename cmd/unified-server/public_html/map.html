@@ -2258,11 +2258,8 @@ body, html {
     <a href="/profile" style="padding: 4px 10px; background: #4CAF50; border: none; border-radius: var(--btn-border-radius, 8px); color: white; font-size: 11px; text-decoration: none;">
       Profile
     </a>
-    <a id="adminUsersBtn" href="/admin/users" style="display: none; padding: 4px 10px; background: #2196F3; border: none; border-radius: var(--btn-border-radius, 8px); color: white; font-size: 11px; text-decoration: none;">
-      Admin Users
-    </a>
-    <a id="adminTracksBtn" href="/admin/uploads" style="display: none; padding: 4px 10px; background: #FF9800; border: none; border-radius: var(--btn-border-radius, 8px); color: white; font-size: 11px; text-decoration: none;">
-      Admin Uploads
+    <a id="adminBtn" href="/admin/users" style="display: none; padding: 4px 10px; background: #2196F3; border: none; border-radius: var(--btn-border-radius, 8px); color: white; font-size: 11px; text-decoration: none;">
+      Admin
     </a>
     <button onclick="logout()" style="padding: 4px 10px; background: #f44336; border: none; border-radius: var(--btn-border-radius, 8px); cursor: pointer; color: white; font-size: 11px;">
       Logout
@@ -2319,8 +2316,7 @@ body, html {
         const loginBtn = document.getElementById('loginButton');
         const userMenu = document.getElementById('userMenu');
         const userMenuName = document.getElementById('userMenuName');
-        const adminUsersBtn = document.getElementById('adminUsersBtn');
-        const adminTracksBtn = document.getElementById('adminTracksBtn');
+        const adminBtn = document.getElementById('adminBtn');
 
         if (loginBtn) loginBtn.style.display = 'none';
         if (userMenu) {
@@ -2330,13 +2326,11 @@ body, html {
           }
         }
 
-        // Show admin buttons only for admin users
+        // Show admin button only for admin users
         if (currentUser && currentUser.is_admin) {
-          if (adminUsersBtn) adminUsersBtn.style.display = 'inline-block';
-          if (adminTracksBtn) adminTracksBtn.style.display = 'inline-block';
+          if (adminBtn) adminBtn.style.display = 'inline-block';
         } else {
-          if (adminUsersBtn) adminUsersBtn.style.display = 'none';
-          if (adminTracksBtn) adminTracksBtn.style.display = 'none';
+          if (adminBtn) adminBtn.style.display = 'none';
         }
       }
 

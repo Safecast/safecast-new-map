@@ -5148,10 +5148,23 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		.import-status.success { background: #4CAF50; color: white; }
 		.import-status.error { background: #f44336; color: white; }
 		.import-status.info { background: #2196F3; color: white; }
+		/* Admin tab bar */
+		.admin-tabs { display: flex; gap: 2px; margin-bottom: 20px; background: var(--border-color); border-radius: 8px; overflow: hidden; }
+		.admin-tabs a, .admin-tabs span { padding: 10px 20px; text-decoration: none; color: var(--text-secondary); background: var(--bg-card); font-weight: 500; font-size: 0.95em; transition: background 0.2s; }
+		.admin-tabs a:hover { background: var(--hover-bg); color: var(--text-primary); }
+		.admin-tabs a.active { background: #2196F3; color: white; }
+		.admin-tabs span.disabled { color: var(--text-muted); cursor: not-allowed; font-style: italic; }
 	</style>
 </head>
 <body>
 	<h1>File Uploads Administration</h1>
+	<div class="admin-tabs">
+		<a href="/admin/users` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">Users</a>
+		<a href="/admin/uploads` + func() string { if password != "" { return "?password=" + password } ; return "" }() + `" class="active">Uploads</a>
+		<a href="/api/admin/tracks` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">Tracks</a>
+		<a href="/admin/mcp` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">MCP Analytics</a>
+		<span class="disabled">Realtime</span>
+	</div>
 	<div class="nav">
 		<div class="nav-left">
 			<a href="/api/admin/tracks?password=` + password + `">All Tracks</a>
@@ -6466,10 +6479,23 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 		.sortable.desc::after { content: '▼'; opacity: 1; }
 		.filter-input { width: 100%; padding: 4px 8px; border: 1px solid var(--border-color); border-radius: 3px; background: var(--bg-card); color: var(--text-primary); font-size: 0.85em; box-sizing: border-box; }
 		.filter-row th { background: var(--bg-card); padding: 8px 12px; }
+		/* Admin tab bar */
+		.admin-tabs { display: flex; gap: 2px; margin-bottom: 20px; background: var(--border-color); border-radius: 8px; overflow: hidden; }
+		.admin-tabs a, .admin-tabs span { padding: 10px 20px; text-decoration: none; color: var(--text-secondary); background: var(--bg-card); font-weight: 500; font-size: 0.95em; transition: background 0.2s; }
+		.admin-tabs a:hover { background: var(--hover-bg); color: var(--text-primary); }
+		.admin-tabs a.active { background: #2196F3; color: white; }
+		.admin-tabs span.disabled { color: var(--text-muted); cursor: not-allowed; font-style: italic; }
 	</style>
 </head>
 <body>
 	<h1>All Tracks Administration</h1>
+	<div class="admin-tabs">
+		<a href="/admin/users` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">Users</a>
+		<a href="/admin/uploads` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">Uploads</a>
+		<a href="/api/admin/tracks` + func() string { if password != "" { return "?password=" + password }; return "" }() + `" class="active">Tracks</a>
+		<a href="/admin/mcp` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">MCP Analytics</a>
+		<span class="disabled">Realtime</span>
+	</div>
 	<div class="nav">
 		<div class="nav-left">
 			<a href="/api/admin/tracks?password=` + password + `">All Tracks</a>
@@ -8867,6 +8893,44 @@ func main() {
 			}
 			// Forward to the API endpoint which handles the uploads listing
 			adminUploadsHandler(w, r)
+		}))
+
+		// Serve admin MCP analytics page
+		http.HandleFunc("/admin/mcp", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
+			w.Header().Set("Pragma", "no-cache")
+			w.Header().Set("Expires", "0")
+
+			if !checkAdminAccess(w, r) {
+				return
+			}
+			data, err := content.ReadFile("public_html/admin-mcp.html")
+			if err != nil {
+				http.Error(w, "Admin MCP page not found", http.StatusNotFound)
+				return
+			}
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Write(data)
+		}))
+
+		// MCP analytics API endpoints
+		http.HandleFunc("/api/admin/mcp/data", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminAccess(w, r) {
+				return
+			}
+			adminMCPDataHandler(w, r)
+		}))
+		http.HandleFunc("/api/admin/mcp/export", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminAccess(w, r) {
+				return
+			}
+			adminMCPExportHandler(w, r)
+		}))
+		http.HandleFunc("/api/admin/mcp/delete", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminAccess(w, r) {
+				return
+			}
+			adminMCPDeleteHandler(w, r)
 		}))
 
 	}
