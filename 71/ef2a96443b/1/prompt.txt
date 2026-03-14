@@ -1,0 +1,25 @@
+can you do a PR and a merge to the main branch?
+
+---
+
+Mnn seems strange to me.  Main should be the latest isn't?
+
+---
+
+Thanks
+
+---
+
+On the users tab and on the upload tab we have a back to map button. I like to have on Realtime and MCP also back to map button. Maybe best it they are on all pages the same on the top right on the highest bar?
+
+---
+
+Users page, MCP and realtime page are fine, but the track/uploads page the back to map button shows on the left side.
+
+---
+
+can we have the tab bar just a liitle bit lower. Now it overlaps with the Header text and space under the tab bar is too big.
+
+---
+
+Great.. Nice now. Please create a branch, commit, push , create PR and merge.
