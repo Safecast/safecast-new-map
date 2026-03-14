@@ -5109,6 +5109,8 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		.nav a:hover { text-decoration: underline; }
 		.back-to-map-btn { background: #2196F3 !important; color: white !important; padding: 8px 16px; border-radius: 4px; text-decoration: none !important; font-weight: 500; transition: background 0.2s; }
 		.back-to-map-btn:hover { background: #1976D2 !important; text-decoration: none !important; }
+		.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0; }
+		.page-header h1 { margin: 0; }
 		.summary { background: var(--bg-card); padding: 15px; margin-bottom: 20px; border-radius: 5px; box-shadow: var(--shadow); }
 		table { border-collapse: collapse; width: 100%; background: var(--bg-card); box-shadow: var(--shadow); }
 		th { background: var(--th-bg); color: white; padding: 12px; text-align: left; font-weight: 600; }
@@ -5149,7 +5151,7 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		.import-status.error { background: #f44336; color: white; }
 		.import-status.info { background: #2196F3; color: white; }
 		/* Admin tab bar */
-		.admin-tabs { display: flex; gap: 2px; margin-bottom: 20px; background: var(--border-color); border-radius: 8px; overflow: hidden; }
+		.admin-tabs { display: flex; gap: 2px; margin-top: 10px; margin-bottom: 10px; background: var(--border-color); border-radius: 8px; overflow: hidden; }
 		.admin-tabs a, .admin-tabs span { padding: 10px 20px; text-decoration: none; color: var(--text-secondary); background: var(--bg-card); font-weight: 500; font-size: 0.95em; transition: background 0.2s; }
 		.admin-tabs a:hover { background: var(--hover-bg); color: var(--text-primary); }
 		.admin-tabs a.active { background: #2196F3; color: white; }
@@ -5157,7 +5159,10 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 	</style>
 </head>
 <body>
-	<h1>File Uploads Administration</h1>
+	<div class="page-header">
+		<h1>File Uploads Administration</h1>
+		<a href="/" class="back-to-map-btn">Back to Map</a>
+	</div>
 	<div class="admin-tabs">
 		<a href="/admin/users` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">Users</a>
 		<a href="/admin/uploads` + func() string { if password != "" { return "?password=" + password } ; return "" }() + `" class="active">Uploads</a>
@@ -5172,7 +5177,6 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 			<button class="view-selected-btn" id="viewSelectedBtn" onclick="viewSelected()" disabled>View Selected on Map</button>
 			<button class="delete-selected-btn" id="deleteSelectedBtn" onclick="deleteSelected()" disabled>Delete Selected</button>
 		</div>
-		<a href="/" class="back-to-map-btn">Back to Map</a>
 	</div>
 	<div class="import-form">
 		<h3>Import from Safecast API</h3>
@@ -6448,6 +6452,8 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 		.nav a:hover { text-decoration: underline; }
 		.back-to-map-btn { background: #2196F3 !important; color: white !important; padding: 8px 16px; border-radius: 4px; text-decoration: none !important; font-weight: 500; transition: background 0.2s; }
 		.back-to-map-btn:hover { background: #1976D2 !important; text-decoration: none !important; }
+		.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0; }
+		.page-header h1 { margin: 0; }
 		.summary { background: var(--bg-card); padding: 15px; margin-bottom: 20px; border-radius: 5px; box-shadow: var(--shadow); }
 		table { border-collapse: collapse; width: 100%; background: var(--bg-card); box-shadow: var(--shadow); }
 		th { background: var(--th-bg); color: white; padding: 12px; text-align: left; font-weight: 600; }
@@ -6480,7 +6486,7 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 		.filter-input { width: 100%; padding: 4px 8px; border: 1px solid var(--border-color); border-radius: 3px; background: var(--bg-card); color: var(--text-primary); font-size: 0.85em; box-sizing: border-box; }
 		.filter-row th { background: var(--bg-card); padding: 8px 12px; }
 		/* Admin tab bar */
-		.admin-tabs { display: flex; gap: 2px; margin-bottom: 20px; background: var(--border-color); border-radius: 8px; overflow: hidden; }
+		.admin-tabs { display: flex; gap: 2px; margin-top: 10px; margin-bottom: 10px; background: var(--border-color); border-radius: 8px; overflow: hidden; }
 		.admin-tabs a, .admin-tabs span { padding: 10px 20px; text-decoration: none; color: var(--text-secondary); background: var(--bg-card); font-weight: 500; font-size: 0.95em; transition: background 0.2s; }
 		.admin-tabs a:hover { background: var(--hover-bg); color: var(--text-primary); }
 		.admin-tabs a.active { background: #2196F3; color: white; }
@@ -6488,7 +6494,10 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 	</style>
 </head>
 <body>
-	<h1>All Tracks Administration</h1>
+	<div class="page-header">
+		<h1>All Tracks Administration</h1>
+		<a href="/" class="back-to-map-btn">Back to Map</a>
+	</div>
 	<div class="admin-tabs">
 		<a href="/admin/users` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">Users</a>
 		<a href="/admin/uploads` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">Uploads</a>
@@ -6504,7 +6513,6 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 			<button class="view-selected-btn" id="viewSelectedBtn" onclick="viewSelected()" disabled>View Selected on Map</button>
 			<button class="delete-selected-btn" id="deleteSelectedBtn" onclick="deleteSelected()" disabled>Delete Selected</button>
 		</div>
-		<a href="/" class="back-to-map-btn">Back to Map</a>
 	</div>
 	<div class="summary">
 		<strong>Total Tracks:</strong> ` + strconv.Itoa(totalCount) + ` tracks

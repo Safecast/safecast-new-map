@@ -72,6 +72,8 @@
     .nav-left { display: flex; align-items: center; gap: 15px; }
     .nav a { color: var(--link-color); text-decoration: none; }
     .nav a:hover { text-decoration: underline; }
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0; }
+    .page-header h1 { margin: 0; }
     .back-to-map-btn { background: #2196F3 !important; color: white !important; padding: 8px 16px; border-radius: var(--btn-border-radius); text-decoration: none !important; font-weight: 500; transition: background 0.2s; }
     .back-to-map-btn:hover { background: #1976D2 !important; text-decoration: none !important; }
     .summary { background: var(--bg-card); padding: 15px; margin-bottom: 20px; border-radius: var(--btn-border-radius); box-shadow: var(--shadow); }
@@ -151,7 +153,7 @@
     .clear-search-btn { background: var(--border-color); color: var(--text-primary); border: none; padding: 5px 12px; border-radius: var(--btn-border-radius); cursor: pointer; margin-left: 5px; }
     .clear-search-btn:hover { opacity: 0.8; }
     /* Admin tab bar */
-    .admin-tabs { display: flex; gap: 2px; margin-bottom: 20px; background: var(--border-color); border-radius: 8px; overflow: hidden; }
+    .admin-tabs { display: flex; gap: 2px; margin-top: 10px; margin-bottom: 10px; background: var(--border-color); border-radius: 8px; overflow: hidden; }
     .admin-tabs a, .admin-tabs span { padding: 10px 20px; text-decoration: none; color: var(--text-secondary); background: var(--bg-card); font-weight: 500; font-size: 0.95em; transition: background 0.2s; }
     .admin-tabs a:hover { background: var(--hover-bg); color: var(--text-primary); }
     .admin-tabs a.active { background: #2196F3; color: white; }
@@ -159,7 +161,10 @@
   </style>
 </head>
 <body>
-  <h1>User Administration</h1>
+  <div class="page-header">
+    <h1>User Administration</h1>
+    <a href="/" class="back-to-map-btn">Back to Map</a>
+  </div>
 
   <div class="admin-tabs" id="adminTabs"></div>
 
@@ -168,7 +173,6 @@
       <button class="add-user-btn" onclick="openAddUserModal()">Add User</button>
       <button class="delete-selected-btn" id="deleteSelectedBtn" onclick="deleteSelectedUsers()" style="display:none;">Delete Selected</button>
     </div>
-    <a href="/" class="back-to-map-btn">Back to Map</a>
   </div>
 
   <div class="summary" id="summary">
