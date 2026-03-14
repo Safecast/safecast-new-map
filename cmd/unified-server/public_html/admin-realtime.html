@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>MCP Analytics - Safecast Admin</title>
+  <title>Realtime Devices - Safecast Admin</title>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="apple-touch-icon" sizes="180x180" href="/static/images/apple-touch-icon.png">
@@ -51,12 +51,6 @@
     .admin-tabs a.active { background: var(--tab-active-bg); color: var(--tab-active-text); }
     .admin-tabs span.disabled { color: var(--text-muted); cursor: not-allowed; font-style: italic; }
 
-    /* Sub-tabs for table selection */
-    .sub-tabs { display: flex; gap: 0; margin-bottom: 15px; border-bottom: 2px solid var(--border-color); }
-    .sub-tabs button { padding: 8px 20px; border: none; background: none; color: var(--text-secondary); font-size: 0.95em; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; font-weight: 500; }
-    .sub-tabs button:hover { color: var(--text-primary); }
-    .sub-tabs button.active { color: var(--tab-active-bg); border-bottom-color: var(--tab-active-bg); }
-
     /* Controls bar */
     .controls { display: flex; gap: 10px; align-items: center; margin-bottom: 15px; flex-wrap: wrap; }
     .controls input[type="text"] { padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--btn-border-radius); background: var(--bg-card); color: var(--text-primary); font-size: 0.95em; min-width: 250px; }
@@ -70,8 +64,7 @@
 
     /* Data table */
     .table-wrap { overflow-x: auto; background: var(--bg-card); border-radius: 8px; box-shadow: var(--shadow); }
-    table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
-    table { table-layout: fixed; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85em; table-layout: fixed; }
     th { background: var(--th-bg); color: white; padding: 10px 12px; text-align: left; white-space: nowrap; position: sticky; top: 0; overflow: hidden; text-overflow: ellipsis; position: relative; }
     td { padding: 8px 12px; border-bottom: 1px solid var(--border-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .resize-handle { position: absolute; right: 0; top: 0; width: 5px; height: 100%; cursor: col-resize; background: transparent; z-index: 1; }
@@ -118,15 +111,9 @@
 </head>
 <body>
 
-<h1>MCP Analytics</h1>
+<h1>Realtime Devices</h1>
 
 <div class="admin-tabs" id="adminTabs"></div>
-
-<div class="sub-tabs">
-  <button class="active" onclick="switchTable('chat_questions')">Chat Questions</button>
-  <button onclick="switchTable('mcp_query_log')">Tool Usage</button>
-  <button onclick="switchTable('mcp_ai_query_log')">AI Query Log</button>
-</div>
 
 <div class="controls">
   <input type="text" id="searchInput" placeholder="Search across all fields..." onkeydown="if(event.key==='Enter')doSearch()">
@@ -163,21 +150,16 @@ const AUTH_PARAM = PASSWORD ? '?password=' + encodeURIComponent(PASSWORD) : '';
 
 // Column display names
 const COLUMN_LABELS = {
-  id: 'ID', timestamp: 'Timestamp', question: 'Question', answer: 'Answer',
-  source: 'Source', model: 'Model', ip_address: 'IP', country: 'Country',
-  is_mobile: 'Mobile', os: 'OS', browser: 'Browser', user_agent: 'User Agent',
-  accept_language: 'Language', referer: 'Referer', session_id: 'Session',
-  history_length: 'History', cloudfront: 'CF', client_timestamp: 'Client Time',
-  tool_name: 'Tool', duration_ms: 'Duration (ms)', result_count: 'Results',
-  client: 'Client', user_id: 'User ID', user_email: 'Email',
-  generated_query: 'Query', commit_hash: 'Commit', error: 'Error'
+  id: 'ID', device_id: 'Device ID', device_name: 'Device Name',
+  tube: 'Tube', transport: 'Transport', country: 'Country',
+  value: 'Value', unit: 'Unit', lat: 'Lat', lon: 'Lon',
+  measured_at: 'Measured At', fetched_at: 'Fetched At', extra: 'Extra'
 };
 
 // Columns that should be expandable (long text)
-const EXPANDABLE = new Set(['question', 'answer', 'generated_query', 'user_agent', 'accept_language', 'referer']);
+const EXPANDABLE = new Set(['extra', 'device_name']);
 
-let currentTable = 'chat_questions';
-let currentSort = 'timestamp';
+let currentSort = 'fetched_at';
 let currentOrder = 'desc';
 let currentSearch = '';
 let currentOffset = 0;
@@ -186,19 +168,13 @@ let totalRows = 0;
 let currentData = [];
 let currentColumns = [];
 
-const KEY_COLUMNS = {
-  'chat_questions': 'id',
-  'mcp_query_log': 'timestamp',
-  'mcp_ai_query_log': 'timestamp'
-};
-
 // Build admin tabs
 function buildAdminTabs() {
   const tabs = [
     { label: 'Users', href: '/admin/users' },
     { label: 'Uploads', href: '/admin/uploads' },
-    { label: 'MCP Analytics', href: '/admin/mcp', active: true },
-    { label: 'Realtime', href: '/admin/realtime' }
+    { label: 'MCP Analytics', href: '/admin/mcp' },
+    { label: 'Realtime', href: '/admin/realtime', active: true }
   ];
   const container = document.getElementById('adminTabs');
   tabs.forEach(t => {
@@ -209,25 +185,6 @@ function buildAdminTabs() {
       container.innerHTML += `<a href="${href}" class="${t.active ? 'active' : ''}">${t.label}</a>`;
     }
   });
-}
-
-function switchTable(table) {
-  currentTable = table;
-  currentOffset = 0;
-  currentSort = 'timestamp';
-  currentOrder = 'desc';
-  columnWidths = {};
-
-  // Update sub-tab active state
-  document.querySelectorAll('.sub-tabs button').forEach(btn => {
-    btn.classList.toggle('active', btn.textContent === {
-      'chat_questions': 'Chat Questions',
-      'mcp_query_log': 'Tool Usage',
-      'mcp_ai_query_log': 'AI Query Log'
-    }[table]);
-  });
-
-  fetchData();
 }
 
 function doSearch() {
@@ -244,9 +201,9 @@ function clearSearch() {
 }
 
 function exportCSV() {
-  let url = '/api/admin/mcp/export?table=' + currentTable;
-  if (PASSWORD) url += '&password=' + encodeURIComponent(PASSWORD);
-  if (currentSearch) url += '&search=' + encodeURIComponent(currentSearch);
+  let url = '/api/admin/realtime/export';
+  url += PASSWORD ? '?password=' + encodeURIComponent(PASSWORD) : '';
+  if (currentSearch) url += (PASSWORD ? '&' : '?') + 'search=' + encodeURIComponent(currentSearch);
   window.location.href = url;
 }
 
@@ -262,6 +219,17 @@ function sortBy(col) {
   fetchData();
 }
 
+function formatUnixTimestamp(val) {
+  if (!val) return '';
+  try {
+    const num = Number(val);
+    if (isNaN(num) || num <= 0) return String(val);
+    const d = new Date(num * 1000);
+    if (isNaN(d.getTime())) return String(val);
+    return d.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, ' UTC');
+  } catch { return String(val); }
+}
+
 async function fetchData() {
   const loading = document.getElementById('loading');
   const table = document.getElementById('dataTable');
@@ -271,7 +239,7 @@ async function fetchData() {
   table.style.display = 'none';
   noData.style.display = 'none';
 
-  let url = `/api/admin/mcp/data?table=${currentTable}&limit=${currentLimit}&offset=${currentOffset}&sort=${currentSort}&order=${currentOrder}`;
+  let url = `/api/admin/realtime/data?limit=${currentLimit}&offset=${currentOffset}&sort=${currentSort}&order=${currentOrder}`;
   if (PASSWORD) url += '&password=' + encodeURIComponent(PASSWORD);
   if (currentSearch) url += '&search=' + encodeURIComponent(currentSearch);
 
@@ -282,7 +250,6 @@ async function fetchData() {
         loading.textContent = 'Unauthorized - please login as admin or provide password';
         return;
       }
-      // Try to parse error JSON
       try {
         const errJson = await resp.json();
         if (errJson.error) {
@@ -290,10 +257,6 @@ async function fetchData() {
           return;
         }
       } catch {}
-      if (resp.status === 503) {
-        loading.textContent = 'DuckDB analytics not available. Ensure DUCKLAKE_PG_URL is configured and ducklake_catalog database exists.';
-        return;
-      }
       throw new Error('HTTP ' + resp.status);
     }
 
@@ -311,13 +274,11 @@ async function fetchData() {
       return;
     }
 
-    // Store current data for delete operations
     currentData = data;
     currentColumns = columns;
 
     // Build header
     const thead = document.getElementById('tableHead');
-    const keyCol = KEY_COLUMNS[currentTable];
     let headerHTML = '<tr><th class="checkbox-col"><input type="checkbox" onchange="toggleAll(this)"></th>';
     columns.forEach(col => {
       const label = COLUMN_LABELS[col] || col;
@@ -338,7 +299,7 @@ async function fetchData() {
     const tbody = document.getElementById('tableBody');
     let bodyHTML = '';
     data.forEach((row, idx) => {
-      const keyVal = row[keyCol];
+      const keyVal = row['id'];
       bodyHTML += `<tr><td class="checkbox-col"><input type="checkbox" class="row-cb" value="${keyVal}" onchange="updateDeleteBtn()"></td>`;
       columns.forEach(col => {
         let val = row[col];
@@ -347,10 +308,12 @@ async function fetchData() {
         if (EXPANDABLE.has(col) && strVal.length > 60) {
           const preview = strVal.substring(0, 60) + '...';
           bodyHTML += `<td class="expandable" title="Click to expand" onclick="showModal('${COLUMN_LABELS[col] || col}', ${JSON.stringify(strVal).replace(/'/g, "&#39;")})">${escapeHtml(preview)}</td>`;
-        } else if (col === 'is_mobile' || col === 'cloudfront') {
-          bodyHTML += `<td>${val ? 'Yes' : (val === false ? 'No' : '')}</td>`;
-        } else if (col === 'timestamp' || col === 'client_timestamp') {
-          bodyHTML += `<td>${formatTimestamp(strVal)}</td>`;
+        } else if (col === 'measured_at' || col === 'fetched_at') {
+          bodyHTML += `<td>${formatUnixTimestamp(val)}</td>`;
+        } else if (col === 'value') {
+          bodyHTML += `<td>${typeof val === 'number' ? val.toFixed(4) : escapeHtml(strVal)}</td>`;
+        } else if (col === 'lat' || col === 'lon') {
+          bodyHTML += `<td>${typeof val === 'number' ? val.toFixed(6) : escapeHtml(strVal)}</td>`;
         } else {
           bodyHTML += `<td>${escapeHtml(strVal)}</td>`;
         }
@@ -367,7 +330,6 @@ async function fetchData() {
     const totalPages = Math.ceil(totalRows / currentLimit);
     document.getElementById('summary').textContent = `${totalRows} total rows | Page ${page} of ${totalPages}`;
 
-    // Pagination
     buildPagination(totalPages, page);
 
   } catch (err) {
@@ -382,7 +344,6 @@ function buildPagination(totalPages, currentPage) {
   html += `<button ${currentPage <= 1 ? 'disabled' : ''} onclick="goToPage(1)">First</button>`;
   html += `<button ${currentPage <= 1 ? 'disabled' : ''} onclick="goToPage(${currentPage - 1})">Prev</button>`;
 
-  // Page number buttons (show max 7)
   let start = Math.max(1, currentPage - 3);
   let end = Math.min(totalPages, start + 6);
   start = Math.max(1, end - 6);
@@ -430,15 +391,6 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-function formatTimestamp(ts) {
-  if (!ts) return '';
-  try {
-    const d = new Date(ts);
-    if (isNaN(d.getTime())) return ts;
-    return d.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, ' UTC');
-  } catch { return ts; }
-}
-
 function toggleAll(master) {
   document.querySelectorAll('.row-cb').forEach(cb => { cb.checked = master.checked; });
   updateDeleteBtn();
@@ -476,7 +428,7 @@ async function deleteSelected() {
   if (!confirm(`Delete ${checked.length} selected row(s)?`)) return;
 
   const ids = Array.from(checked).map(cb => cb.value).join(',');
-  let url = `/api/admin/mcp/delete?table=${currentTable}&ids=${encodeURIComponent(ids)}`;
+  let url = `/api/admin/realtime/delete?ids=${encodeURIComponent(ids)}`;
   if (PASSWORD) url += '&password=' + encodeURIComponent(PASSWORD);
 
   try {
@@ -492,9 +444,9 @@ async function deleteSelected() {
 
 async function deleteAll() {
   const scope = currentSearch ? 'all filtered rows' : 'ALL rows';
-  if (!confirm(`Delete ${scope} from ${currentTable}? This cannot be undone.`)) return;
+  if (!confirm(`Delete ${scope} from realtime_measurements? This cannot be undone.`)) return;
 
-  let url = `/api/admin/mcp/delete?table=${currentTable}&all=true`;
+  let url = `/api/admin/realtime/delete?all=true`;
   if (PASSWORD) url += '&password=' + encodeURIComponent(PASSWORD);
   if (currentSearch) url += '&search=' + encodeURIComponent(currentSearch);
 
@@ -509,8 +461,8 @@ async function deleteAll() {
   }
 }
 
-let columnWidths = {}; // Persist widths across re-renders, keyed by column index
-let resizing = false; // Suppress sort click after drag
+let columnWidths = {};
+let resizing = false;
 
 function initColumnResize() {
   const table = document.getElementById('dataTable');
@@ -519,7 +471,6 @@ function initColumnResize() {
   if (!headerRow) return;
   const ths = headerRow.querySelectorAll('th');
 
-  // Restore saved widths or capture initial computed widths
   ths.forEach((th, i) => {
     if (columnWidths[i]) {
       th.style.width = columnWidths[i];
@@ -548,7 +499,6 @@ function initColumnResize() {
         this.classList.remove('active');
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
-        // Delay resetting flag so the click event on th is suppressed
         setTimeout(() => { resizing = false; }, 50);
       };
       document.addEventListener('mousemove', onMouseMove);

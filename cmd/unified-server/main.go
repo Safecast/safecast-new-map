@@ -8933,6 +8933,43 @@ func main() {
 			adminMCPDeleteHandler(w, r)
 		}))
 
+		// Serve admin Realtime page and API endpoints
+		http.HandleFunc("/admin/realtime", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
+			w.Header().Set("Pragma", "no-cache")
+			w.Header().Set("Expires", "0")
+
+			if !checkAdminAccess(w, r) {
+				return
+			}
+			data, err := content.ReadFile("public_html/admin-realtime.html")
+			if err != nil {
+				http.Error(w, "Admin Realtime page not found", http.StatusNotFound)
+				return
+			}
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Write(data)
+		}))
+
+		http.HandleFunc("/api/admin/realtime/data", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminAccess(w, r) {
+				return
+			}
+			adminRealtimeDataHandler(w, r)
+		}))
+		http.HandleFunc("/api/admin/realtime/export", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminAccess(w, r) {
+				return
+			}
+			adminRealtimeExportHandler(w, r)
+		}))
+		http.HandleFunc("/api/admin/realtime/delete", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminAccess(w, r) {
+				return
+			}
+			adminRealtimeDeleteHandler(w, r)
+		}))
+
 	}
 
 	// Upload endpoint - protected with auth if required

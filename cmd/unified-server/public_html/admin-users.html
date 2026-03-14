@@ -75,9 +75,11 @@
     .back-to-map-btn { background: #2196F3 !important; color: white !important; padding: 8px 16px; border-radius: var(--btn-border-radius); text-decoration: none !important; font-weight: 500; transition: background 0.2s; }
     .back-to-map-btn:hover { background: #1976D2 !important; text-decoration: none !important; }
     .summary { background: var(--bg-card); padding: 15px; margin-bottom: 20px; border-radius: var(--btn-border-radius); box-shadow: var(--shadow); }
-    table { border-collapse: collapse; width: 100%; background: var(--bg-card); box-shadow: var(--shadow); }
-    th { background: var(--th-bg); color: white; padding: 12px; text-align: left; font-weight: 600; }
-    td { padding: 6px 8px; border-bottom: 1px solid var(--border-color); }
+    table { border-collapse: collapse; width: 100%; background: var(--bg-card); box-shadow: var(--shadow); table-layout: fixed; }
+    th { background: var(--th-bg); color: white; padding: 12px; text-align: left; font-weight: 600; overflow: hidden; text-overflow: ellipsis; position: relative; }
+    td { padding: 6px 8px; border-bottom: 1px solid var(--border-color); overflow: hidden; text-overflow: ellipsis; }
+    .resize-handle { position: absolute; right: 0; top: 0; width: 5px; height: 100%; cursor: col-resize; background: transparent; z-index: 1; }
+    .resize-handle:hover, .resize-handle.active { background: rgba(255,255,255,0.3); }
     tr:hover { background: var(--hover-bg); }
     .empty { text-align: center; padding: 40px; color: var(--text-muted); font-style: italic; }
     .checkbox-col { width: 40px; text-align: center; }
@@ -204,16 +206,16 @@
     <thead>
       <tr>
         <th class="checkbox-col"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"></th>
-        <th class="sortable" onclick="sortTable(1)" data-type="number">ID</th>
-        <th class="sortable" onclick="sortTable(2)" data-type="text">Email</th>
-        <th class="sortable" onclick="sortTable(3)" data-type="text">Username</th>
-        <th class="sortable" onclick="sortTable(4)" data-type="text">External ID</th>
-        <th class="sortable" onclick="sortTable(5)" data-type="text">API Key</th>
-        <th class="sortable" onclick="sortTable(6)" data-type="text">Status</th>
-        <th class="sortable" onclick="sortTable(7)" data-type="text">Admin</th>
-        <th class="sortable" onclick="sortTable(8)" data-type="text">Email Verified</th>
-        <th class="sortable" onclick="sortTable(9)" data-type="date">Created</th>
-        <th class="sortable" onclick="sortTable(10)" data-type="date">Last Login</th>
+        <th class="sortable" onclick="sortTable(1)" data-type="number">ID<span class="resize-handle"></span></th>
+        <th class="sortable" onclick="sortTable(2)" data-type="text">Email<span class="resize-handle"></span></th>
+        <th class="sortable" onclick="sortTable(3)" data-type="text">Username<span class="resize-handle"></span></th>
+        <th class="sortable" onclick="sortTable(4)" data-type="text">External ID<span class="resize-handle"></span></th>
+        <th class="sortable" onclick="sortTable(5)" data-type="text">API Key<span class="resize-handle"></span></th>
+        <th class="sortable" onclick="sortTable(6)" data-type="text">Status<span class="resize-handle"></span></th>
+        <th class="sortable" onclick="sortTable(7)" data-type="text">Admin<span class="resize-handle"></span></th>
+        <th class="sortable" onclick="sortTable(8)" data-type="text">Email Verified<span class="resize-handle"></span></th>
+        <th class="sortable" onclick="sortTable(9)" data-type="date">Created<span class="resize-handle"></span></th>
+        <th class="sortable" onclick="sortTable(10)" data-type="date">Last Login<span class="resize-handle"></span></th>
         <th>Actions</th>
       </tr>
       <tr class="filter-row">
@@ -343,9 +345,8 @@
       const tabs = [
         { label: 'Users', href: '/admin/users', active: true },
         { label: 'Uploads', href: '/admin/uploads' },
-        { label: 'Tracks', href: '/api/admin/tracks' },
         { label: 'MCP Analytics', href: '/admin/mcp' },
-        { label: 'Realtime', disabled: true }
+        { label: 'Realtime', href: '/admin/realtime' }
       ];
       const container = document.getElementById('adminTabs');
       tabs.forEach(t => {
@@ -358,8 +359,55 @@
       });
     }
 
+    let columnWidths = {};
+    let resizing = false;
+
+    function initColumnResize() {
+      const table = document.getElementById('usersTable');
+      if (!table) return;
+      const headerRow = table.querySelector('thead tr:first-child');
+      if (!headerRow) return;
+      const ths = headerRow.querySelectorAll('th');
+
+      ths.forEach((th, i) => {
+        if (columnWidths[i]) {
+          th.style.width = columnWidths[i];
+        } else {
+          th.style.width = th.offsetWidth + 'px';
+        }
+      });
+
+      document.querySelectorAll('.resize-handle').forEach(handle => {
+        handle.addEventListener('mousedown', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          resizing = true;
+          const th = this.parentElement;
+          const colIndex = Array.from(th.parentElement.children).indexOf(th);
+          const startX = e.pageX;
+          const startWidth = th.offsetWidth;
+          this.classList.add('active');
+
+          const onMouseMove = (e) => {
+            const newWidth = Math.max(40, startWidth + (e.pageX - startX));
+            th.style.width = newWidth + 'px';
+            columnWidths[colIndex] = newWidth + 'px';
+          };
+          const onMouseUp = () => {
+            this.classList.remove('active');
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            setTimeout(() => { resizing = false; }, 50);
+          };
+          document.addEventListener('mousemove', onMouseMove);
+          document.addEventListener('mouseup', onMouseUp);
+        });
+      });
+    }
+
     window.addEventListener('DOMContentLoaded', async function() {
       buildAdminTabs();
+      initColumnResize();
       // Check if user is authenticated via session
       try {
         const response = await fetch('/api/user/profile');
@@ -587,12 +635,13 @@
     function formatDate(timestamp) {
       if (!timestamp) return 'N/A';
       const date = new Date(timestamp * 1000);
-      return date.toISOString().split('T')[0];
+      return date.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, ' UTC');
     }
 
     // Sorting functionality (client-side for current page)
     let sortDirection = {};
     function sortTable(columnIndex) {
+      if (resizing) return;
       const table = document.getElementById('usersTable');
       const tbody = document.getElementById('usersTableBody');
       const rows = Array.from(tbody.querySelectorAll('tr'));
