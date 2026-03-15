@@ -186,6 +186,22 @@ Both the unified server and MCP server use DuckLake for analytics (tool usage lo
 
 **Shared tables:** `chat_questions`, `mcp_query_log`, `mcp_ai_query_log`
 
+## Translations (i18n)
+
+Translations are stored in PostgreSQL (`translations` table) and loaded into memory at startup. The table is auto-created and seeded from the embedded `translations.json` if empty.
+
+**Run the extended UI translations migration:**
+```bash
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 \
+  "psql -h 127.0.0.1 -U postgres -d safecast -f /tmp/add_ui_translations.sql"
+```
+
+**Admin UI:** `/admin/translations` — edit translations live, then click "Reload into Memory" to apply without restart.
+
+**Supported languages (29):** ar, bg, cs, da, de, el, en, es, fa, fi, fr, he, hi, hu, id, it, ja, ko, ms, nl, no, pl, pt, ru, sv, th, tr, uk, vi, zh
+
+**Translated components:** Map legend, AI assistant widget, login/register/forgot-password modals, user menu, search bar, spectrum viewer, coordinate input dialog, profile page.
+
 ## Server Configuration
 
 ### Service Details
