@@ -1856,17 +1856,7 @@ func seedTranslationsDB(fs embed.FS, filename string) {
 		return
 	}
 
-	var count int
-	err := db.DB.QueryRow("SELECT COUNT(*) FROM translations").Scan(&count)
-	if err != nil {
-		log.Printf("[i18n] Cannot check translations table: %v", err)
-		return
-	}
-	if count > 0 {
-		return // already seeded
-	}
-
-	// Load from file
+	// Load from file — always check for missing keys (not just empty table)
 	file, err := fs.Open(filename)
 	if err != nil {
 		log.Printf("[i18n] Cannot open translation file for seeding: %v", err)
@@ -1912,7 +1902,9 @@ func seedTranslationsDB(fs embed.FS, filename string) {
 		return
 	}
 
-	log.Printf("[i18n] Seeded %d translations into database from embedded file", inserted)
+	if inserted > 0 {
+		log.Printf("[i18n] Seeded %d new translations into database from embedded file", inserted)
+	}
 }
 
 func getPreferredLanguage(r *http.Request) string {
