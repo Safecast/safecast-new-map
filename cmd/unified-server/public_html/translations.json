@@ -279,7 +279,8 @@
     "webchat_copy": "Copy",
     "webchat_copied": "Copied!",
     "webchat_no_conversation": "No conversation to download yet!",
-    "webchat_thinking": "...thinking..."
+    "webchat_thinking": "...thinking...",
+    "ai_generated_note": "تم استرجاع هذه البيانات بواسطة مساعد ذكاء اصطناعي باستخدام أدوات Safecast. قد يتأثر تفسير وعرض هذه البيانات بنظام الذكاء الاصطناعي."
   },
   "cs": {
     "api_example_archive_desc": "Stáhne archiv tgz se všemi zveřejněnými soubory .json, pokud je JSON archiv zapnutý.",
@@ -561,7 +562,8 @@
     "webchat_copy": "Copy",
     "webchat_copied": "Copied!",
     "webchat_no_conversation": "No conversation to download yet!",
-    "webchat_thinking": "...thinking..."
+    "webchat_thinking": "...thinking...",
+    "ai_generated_note": "Tato data byla získána AI asistentem pomocí nástrojů Safecast. Interpretace a prezentace těchto dat může být ovlivněna systémem AI."
   },
   "da": {
     "api_example_archive_desc": "Downloader en tgz-pakke med alle offentliggjorte .json-filer når JSON-arkivet er aktiveret.",
@@ -843,7 +845,8 @@
     "webchat_copy": "Copy",
     "webchat_copied": "Copied!",
     "webchat_no_conversation": "No conversation to download yet!",
-    "webchat_thinking": "...thinking..."
+    "webchat_thinking": "...thinking...",
+    "ai_generated_note": "Disse data blev hentet af en AI-assistent ved hjælp af Safecast-værktøjer. Fortolkningen og præsentationen af disse data kan være påvirket af AI-systemet."
   },
   "de": {
     "api_example_archive_desc": "Lädt ein tgz-Paket mit allen veröffentlichten .json-Dateien, sofern das JSON-Archiv aktiv ist.",
@@ -1125,7 +1128,8 @@
     "webchat_copy": "Kopieren",
     "webchat_copied": "Kopiert!",
     "webchat_no_conversation": "Noch kein Gespräch!",
-    "webchat_thinking": "...denke nach..."
+    "webchat_thinking": "...denke nach...",
+    "ai_generated_note": "Diese Daten wurden von einem KI-Assistenten mithilfe von Safecast-Tools abgerufen. Die Interpretation und Darstellung dieser Daten kann durch das KI-System beeinflusst sein."
   },
   "el": {
     "api_example_archive_desc": "Κατεβάζει ένα αρχείο tgz με όλα τα δημοσιευμένα αρχεία .json όταν είναι ενεργό το JSON αρχείο.",
@@ -1407,7 +1411,8 @@
     "webchat_copy": "Copy",
     "webchat_copied": "Copied!",
     "webchat_no_conversation": "No conversation to download yet!",
-    "webchat_thinking": "...thinking..."
+    "webchat_thinking": "...thinking...",
+    "ai_generated_note": "Αυτά τα δεδομένα ανακτήθηκαν από βοηθό τεχνητής νοημοσύνης χρησιμοποιώντας εργαλεία Safecast. Η ερμηνεία και παρουσίαση αυτών των δεδομένων μπορεί να επηρεαστεί από το σύστημα AI."
   },
   "en": {
     "api_example_archive_desc": "Downloads a tgz bundle with every published .json file when the server enables the JSON archive.",
@@ -1688,7 +1693,8 @@
     "webchat_copy": "Copy",
     "webchat_copied": "Copied!",
     "webchat_no_conversation": "No conversation to download yet!",
-    "webchat_thinking": "...thinking..."
+    "webchat_thinking": "...thinking...",
+    "ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system."
   },
   "es": {
     "api_example_archive_desc": "Descarga un paquete tgz con todos los archivos .json publicados cuando el archivo JSON está activado.",
@@ -1970,7 +1976,8 @@
     "webchat_copy": "Copiar",
     "webchat_copied": "¡Copiado!",
     "webchat_no_conversation": "¡Aún no hay conversación!",
-    "webchat_thinking": "...pensando..."
+    "webchat_thinking": "...pensando...",
+    "ai_generated_note": "Estos datos fueron obtenidos por un asistente de IA utilizando herramientas de Safecast. La interpretación y presentación de estos datos puede estar influenciada por el sistema de IA."
   },
   "fa": {
     "api_example_archive_desc": "وقتی آرشیو JSON فعال باشد یک بسته tgz شامل تمام فایل‌های .json منتشرشده را دانلود می‌کند.",
@@ -2252,7 +2259,8 @@
     "webchat_copy": "Copy",
     "webchat_copied": "Copied!",
     "webchat_no_conversation": "No conversation to download yet!",
-    "webchat_thinking": "...thinking..."
+    "webchat_thinking": "...thinking...",
+    "ai_generated_note": "این داده‌ها توسط یک دستیار هوش مصنوعی با استفاده از ابزارهای Safecast بازیابی شده‌اند. تفسیر و ارائه این داده‌ها ممکن است تحت تأثیر سیستم هوش مصنوعی باشد."
   },
   "fi": {
     "api_example_archive_desc": "Lataa tgz-paketin, jossa on kaikki julkaistut .json-tiedostot, kun JSON-arkisto on käytössä.",
@@ -2534,7 +2542,8 @@
     "webchat_copy": "Copy",
     "webchat_copied": "Copied!",
     "webchat_no_conversation": "No conversation to download yet!",
-    "webchat_thinking": "...thinking..."
+    "webchat_thinking": "...thinking...",
+    "ai_generated_note": "Nämä tiedot on hakenut tekoälyavustaja Safecast-työkalujen avulla. Tietojen tulkintaan ja esittämiseen voi vaikuttaa tekoälyjärjestelmä."
   },
   "fr": {
     "api_example_archive_desc": "Télécharge une archive tgz avec tous les fichiers .json publiés lorsque l’archive JSON est activée.",
@@ -2816,7 +2825,8 @@
     "webchat_copy": "Copier",
     "webchat_copied": "Copié !",
     "webchat_no_conversation": "Pas encore de conversation !",
-    "webchat_thinking": "...réflexion..."
+    "webchat_thinking": "...réflexion...",
+    "ai_generated_note": "Ces données ont été récupérées par un assistant IA utilisant les outils Safecast. L'interprétation et la présentation de ces données peuvent être influencées par le système d'IA."
   },
   "he": {
     "api_example_archive_desc": "מורידה חבילת tgz עם כל קבצי .json שפורסמו כאשר ארכיון ה-JSON מופעל.",
@@ -3098,7 +3108,8 @@
     "webchat_copy": "Copy",
     "webchat_copied": "Copied!",
     "webchat_no_conversation": "No conversation to download yet!",
-    "webchat_thinking": "...thinking..."
+    "webchat_thinking": "...thinking...",
+    "ai_generated_note": "נתונים אלה אוחזרו על ידי עוזר בינה מלאכותית באמצעות כלי Safecast. הפרשנות וההצגה של נתונים אלה עשויות להיות מושפעות ממערכת הבינה המלאכותית."
   },
   "hi": {
     "api_example_archive_desc": "JSON संग्रह सक्षम होने पर सभी प्रकाशित .json फ़ाइलों वाला tgz पैकेज डाउनलोड करता है।",
@@ -3380,7 +3391,8 @@
     "webchat_copy": "Copy",
     "webchat_copied": "Copied!",
     "webchat_no_conversation": "No conversation to download yet!",
-    "webchat_thinking": "...thinking..."
+    "webchat_thinking": "...thinking...",
+    "ai_generated_note": "यह डेटा Safecast उपकरणों का उपयोग करके एक AI सहायक द्वारा प्राप्त किया गया था। इस डेटा की व्याख्या और प्रस्तुति AI प्रणाली से प्रभावित हो सकती है।"
   },
   "hu": {
     "api_example_archive_desc": "Letölt egy tgz csomagot az összes közzétett .json fájllal, ha a JSON archívum engedélyezett.",
@@ -3662,7 +3674,8 @@
     "webchat_copy": "Copy",
     "webchat_copied": "Copied!",
     "webchat_no_conversation": "No conversation to download yet!",
-    "webchat_thinking": "...thinking..."
+    "webchat_thinking": "...thinking...",
+    "ai_generated_note": "Ezeket az adatokat egy AI asszisztens kérte le a Safecast eszközeivel. Az adatok értelmezését és bemutatását befolyásolhatja az AI rendszer."
   },
   "id": {
     "api_example_archive_desc": "Mengunduh paket tgz dengan semua berkas .json yang dipublikasikan saat arsip JSON diaktifkan.",
@@ -3944,7 +3957,8 @@
     "webchat_copy": "Copy",
     "webchat_copied": "Copied!",
     "webchat_no_conversation": "No conversation to download yet!",
-    "webchat_thinking": "...thinking..."
+    "webchat_thinking": "...thinking...",
+    "ai_generated_note": "Data ini diambil oleh asisten AI menggunakan alat Safecast. Interpretasi dan penyajian data ini mungkin dipengaruhi oleh sistem AI."
   },
   "it": {
     "api_example_archive_desc": "Scarica un archivio tgz con tutti i file .json pubblicati quando l’archivio JSON è attivo.",
@@ -4226,7 +4240,8 @@
     "webchat_copy": "Copy",
     "webchat_copied": "Copied!",
     "webchat_no_conversation": "No conversation to download yet!",
-    "webchat_thinking": "...thinking..."
+    "webchat_thinking": "...thinking...",
+    "ai_generated_note": "Questi dati sono stati recuperati da un assistente AI utilizzando gli strumenti Safecast. L'interpretazione e la presentazione di questi dati possono essere influenzate dal sistema AI."
   },
   "ja": {
     "api_example_archive_desc": "JSON アーカイブが有効な場合、公開済みの .json ファイルをすべて含む tgz バンドルをダウンロードします。",
@@ -4508,7 +4523,8 @@
     "webchat_copy": "コピー",
     "webchat_copied": "コピーしました！",
     "webchat_no_conversation": "ダウンロードする会話がありません！",
-    "webchat_thinking": "...考え中..."
+    "webchat_thinking": "...考え中...",
+    "ai_generated_note": "このデータは Safecast ツールを使用して AI アシスタントによって取得されました。このデータの解釈と表示は AI システムの影響を受ける可能性があります。"
   },
   "ko": {
     "api_example_archive_desc": "JSON 아카이브가 활성화된 경우 게시된 모든 .json 파일이 포함된 tgz 번들을 다운로드합니다.",
@@ -4790,7 +4806,8 @@
     "webchat_copy": "복사",
     "webchat_copied": "복사됨!",
     "webchat_no_conversation": "다운로드할 대화가 없습니다!",
-    "webchat_thinking": "...생각 중..."
+    "webchat_thinking": "...생각 중...",
+    "ai_generated_note": "이 데이터는 Safecast 도구를 사용하여 AI 어시스턴트가 가져온 것입니다. 이 데이터의 해석 및 표시는 AI 시스템의 영향을 받을 수 있습니다."
   },
   "ms": {
     "api_example_archive_desc": "Memuat turun pakej tgz dengan semua fail .json yang diterbitkan apabila arkib JSON diaktifkan.",
@@ -5072,7 +5089,8 @@
     "webchat_copy": "Copy",
     "webchat_copied": "Copied!",
     "webchat_no_conversation": "No conversation to download yet!",
-    "webchat_thinking": "...thinking..."
+    "webchat_thinking": "...thinking...",
+    "ai_generated_note": "Data ini diperoleh oleh pembantu AI menggunakan alat Safecast. Tafsiran dan pembentangan data ini mungkin dipengaruhi oleh sistem AI."
   },
   "nl": {
     "api_example_archive_desc": "Downloadt een tgz-pakket met alle gepubliceerde .json-bestanden wanneer het JSON-archief is ingeschakeld.",
@@ -5354,7 +5372,8 @@
     "webchat_copy": "Copy",
     "webchat_copied": "Copied!",
     "webchat_no_conversation": "No conversation to download yet!",
-    "webchat_thinking": "...thinking..."
+    "webchat_thinking": "...thinking...",
+    "ai_generated_note": "Deze gegevens zijn opgehaald door een AI-assistent met behulp van Safecast-tools. De interpretatie en presentatie van deze gegevens kan beïnvloed zijn door het AI-systeem."
   },
   "no": {
     "api_example_archive_desc": "Laster ned en tgz-pakke med alle publiserte .json-filer når JSON-arkivet er aktivert.",
@@ -5636,7 +5655,8 @@
     "webchat_copy": "Copy",
     "webchat_copied": "Copied!",
     "webchat_no_conversation": "No conversation to download yet!",
-    "webchat_thinking": "...thinking..."
+    "webchat_thinking": "...thinking...",
+    "ai_generated_note": "Disse dataene ble hentet av en AI-assistent ved hjelp av Safecast-verktøy. Tolkningen og presentasjonen av disse dataene kan være påvirket av AI-systemet."
   },
   "pl": {
     "api_example_archive_desc": "Pobiera paczkę tgz ze wszystkimi opublikowanymi plikami .json, gdy archiwum JSON jest włączone.",
@@ -5918,7 +5938,8 @@
     "webchat_copy": "Copy",
     "webchat_copied": "Copied!",
     "webchat_no_conversation": "No conversation to download yet!",
-    "webchat_thinking": "...thinking..."
+    "webchat_thinking": "...thinking...",
+    "ai_generated_note": "Te dane zostały pobrane przez asystenta AI przy użyciu narzędzi Safecast. Interpretacja i prezentacja tych danych może być pod wpływem systemu AI."
   },
   "pt": {
     "api_example_archive_desc": "Baixa um pacote tgz com todos os arquivos .json publicados quando o arquivo JSON está ativado.",
@@ -6200,7 +6221,8 @@
     "webchat_copy": "Copy",
     "webchat_copied": "Copied!",
     "webchat_no_conversation": "No conversation to download yet!",
-    "webchat_thinking": "...thinking..."
+    "webchat_thinking": "...thinking...",
+    "ai_generated_note": "Estes dados foram obtidos por um assistente de IA utilizando ferramentas Safecast. A interpretação e apresentação destes dados pode ser influenciada pelo sistema de IA."
   },
   "ru": {
     "api_example_archive_desc": "Скачивает архив tgz со всеми опубликованными файлами .json, если включён JSON‑архив.",
@@ -6482,7 +6504,8 @@
     "webchat_copy": "Копировать",
     "webchat_copied": "Скопировано!",
     "webchat_no_conversation": "Нет разговора для скачивания!",
-    "webchat_thinking": "...думаю..."
+    "webchat_thinking": "...думаю...",
+    "ai_generated_note": "Эти данные были получены ИИ-ассистентом с использованием инструментов Safecast. Интерпретация и представление этих данных могут быть подвержены влиянию системы ИИ."
   },
   "sv": {
     "api_example_archive_desc": "Hämtar ett tgz-paket med alla publicerade .json-filer när JSON-arkivet är aktiverat.",
@@ -6764,7 +6787,8 @@
     "webchat_copy": "Copy",
     "webchat_copied": "Copied!",
     "webchat_no_conversation": "No conversation to download yet!",
-    "webchat_thinking": "...thinking..."
+    "webchat_thinking": "...thinking...",
+    "ai_generated_note": "Dessa data hämtades av en AI-assistent med hjälp av Safecast-verktyg. Tolkningen och presentationen av dessa data kan påverkas av AI-systemet."
   },
   "th": {
     "api_example_archive_desc": "ดาวน์โหลดแพ็กเกจ tgz ที่มีไฟล์ .json ทั้งหมดเมื่อเปิดใช้งานคลัง JSON",
@@ -7046,7 +7070,8 @@
     "webchat_copy": "Copy",
     "webchat_copied": "Copied!",
     "webchat_no_conversation": "No conversation to download yet!",
-    "webchat_thinking": "...thinking..."
+    "webchat_thinking": "...thinking...",
+    "ai_generated_note": "ข้อมูลนี้ถูกเรียกดูโดยผู้ช่วย AI โดยใช้เครื่องมือ Safecast การตีความและการนำเสนอข้อมูลนี้อาจได้รับอิทธิพลจากระบบ AI"
   },
   "tr": {
     "api_example_archive_desc": "JSON arşivi etkinse yayımlanmış tüm .json dosyalarıyla bir tgz paketi indirir.",
@@ -7328,7 +7353,8 @@
     "webchat_copy": "Copy",
     "webchat_copied": "Copied!",
     "webchat_no_conversation": "No conversation to download yet!",
-    "webchat_thinking": "...thinking..."
+    "webchat_thinking": "...thinking...",
+    "ai_generated_note": "Bu veriler Safecast araçları kullanılarak bir yapay zeka asistanı tarafından alınmıştır. Bu verilerin yorumlanması ve sunumu yapay zeka sisteminden etkilenebilir."
   },
   "uk": {
     "api_example_archive_desc": "Завантажує tgz-пакет з усіма опублікованими файлами .json, коли JSON-архів увімкнено.",
@@ -7610,7 +7636,8 @@
     "webchat_copy": "Copy",
     "webchat_copied": "Copied!",
     "webchat_no_conversation": "No conversation to download yet!",
-    "webchat_thinking": "...thinking..."
+    "webchat_thinking": "...thinking...",
+    "ai_generated_note": "Ці дані були отримані ШІ-асистентом за допомогою інструментів Safecast. Інтерпретація та подання цих даних можуть бути під впливом системи ШІ."
   },
   "vi": {
     "api_example_archive_desc": "Tải gói tgz chứa mọi tệp .json đã công bố khi bật lưu trữ JSON.",
@@ -7892,7 +7919,8 @@
     "webchat_copy": "Copy",
     "webchat_copied": "Copied!",
     "webchat_no_conversation": "No conversation to download yet!",
-    "webchat_thinking": "...thinking..."
+    "webchat_thinking": "...thinking...",
+    "ai_generated_note": "Dữ liệu này được truy xuất bởi trợ lý AI sử dụng các công cụ Safecast. Việc diễn giải và trình bày dữ liệu này có thể bị ảnh hưởng bởi hệ thống AI."
   },
   "zh": {
     "api_example_archive_desc": "在启用 JSON 归档时，下载包含所有已发布 .json 文件的 tgz 包。",
@@ -8174,7 +8202,8 @@
     "webchat_copy": "复制",
     "webchat_copied": "已复制！",
     "webchat_no_conversation": "还没有对话可下载！",
-    "webchat_thinking": "...思考中..."
+    "webchat_thinking": "...思考中...",
+    "ai_generated_note": "此数据由 AI 助手使用 Safecast 工具检索。此数据的解释和呈现可能受到 AI 系统的影响。"
   },
   "bg": {
     "ai_open": "Open AI Assistant",
@@ -8320,6 +8349,7 @@
     "webchat_copy": "Copy",
     "webchat_copied": "Copied!",
     "webchat_no_conversation": "No conversation to download yet!",
-    "webchat_thinking": "...thinking..."
+    "webchat_thinking": "...thinking...",
+    "ai_generated_note": "Тези данни бяха извлечени от AI асистент, използващ инструментите на Safecast. Интерпретацията и представянето на тези данни може да бъдат повлияни от AI системата."
   }
 }
