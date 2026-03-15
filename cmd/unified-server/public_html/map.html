@@ -1707,10 +1707,10 @@ body, html {
           type="text"
           id="searchInput"
           class="search-input"
-          placeholder="Search for a city or location..."
+          placeholder="{{translate "search_placeholder"}}"
           autocomplete="off"
-          aria-label="Search for a city or location">
-        <button id="searchClear" class="search-clear" aria-label="Clear search">&times;</button>
+          aria-label="{{translate "search_placeholder"}}">
+        <button id="searchClear" class="search-clear" aria-label="{{translate "search_clear"}}">&times;</button>
       </div>
       <div id="searchResults" class="search-results"></div>
     </div>
@@ -2065,7 +2065,7 @@ body, html {
     <div class="live-modal-header">
       <div style="font-size: 40px; line-height: 1;">📊</div>
       <div>
-        <h3 id="spectrumModalTitle" class="live-modal-title">Gamma Spectrum</h3>
+        <h3 id="spectrumModalTitle" class="live-modal-title">{{translate "spectrum_title"}}</h3>
         <p id="spectrumModalDescription" class="live-modal-description"></p>
       </div>
     </div>
@@ -2073,63 +2073,63 @@ body, html {
     <div class="live-chart-stack">
       <div class="live-chart-block">
         <h4 class="live-chart-title">
-          <span class="live-chart-label">Energy Spectrum</span>
-          <span class="live-chart-unit">Counts</span>
+          <span class="live-chart-label">{{translate "spectrum_energy"}}</span>
+          <span class="live-chart-unit">{{translate "spectrum_counts"}}</span>
         </h4>
         <canvas id="spectrumChart" class="live-chart-canvas"></canvas>
         <p id="spectrumChartEmpty" class="live-chart-empty"></p>
       </div>
     </div>
     <div id="spectrumIsotopes" style="margin-top: 16px; padding: 12px; background: var(--control-bg); border: var(--legend-border); border-radius: 8px;">
-      <h4 style="margin: 0 0 8px 0; font-size: var(--font-size-base); font-weight: 600; color: var(--modal-text);">Common Isotope Peaks Reference</h4>
+      <h4 style="margin: 0 0 8px 0; font-size: var(--font-size-base); font-weight: 600; color: var(--modal-text);">{{translate "spectrum_isotopes_title"}}</h4>
       <div id="spectrumIsotopeList" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 4px 12px; font-size: var(--font-size-sm);">
         <!-- Will be populated dynamically with isotope reference list -->
-        <div style="padding: 4px 0; color: var(--modal-text); opacity: 0.6; font-style: italic;">Loading isotope database...</div>
+        <div style="padding: 4px 0; color: var(--modal-text); opacity: 0.6; font-style: italic;">{{translate "spectrum_loading"}}</div>
       </div>
     </div>
     <div style="margin-top: 16px; text-align: center;">
-      <button id="spectrumDownloadJSON" style="margin: 4px; padding: 8px 16px; background: var(--control-bg); border: var(--legend-border); border-radius: 6px; cursor: pointer; color: var(--modal-text);">Download JSON</button>
-      <button id="spectrumDownloadCSV" style="margin: 4px; padding: 8px 16px; background: var(--control-bg); border: var(--legend-border); border-radius: 6px; cursor: pointer; color: var(--modal-text);">Download CSV</button>
+      <button id="spectrumDownloadJSON" style="margin: 4px; padding: 8px 16px; background: var(--control-bg); border: var(--legend-border); border-radius: 6px; cursor: pointer; color: var(--modal-text);">{{translate "spectrum_download_json"}}</button>
+      <button id="spectrumDownloadCSV" style="margin: 4px; padding: 8px 16px; background: var(--control-bg); border: var(--legend-border); border-radius: 6px; cursor: pointer; color: var(--modal-text);">{{translate "spectrum_download_csv"}}</button>
     </div>
-    <button type="button" class="live-modal-close" id="spectrumModalClose">Close</button>
+    <button type="button" class="live-modal-close" id="spectrumModalClose">{{translate "spectrum_close"}}</button>
   </div>
 </div>
 
 <!-- Coordinate Input Dialog for spectrum files without GPS -->
 <div id="coordinateInputDialog" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 10001; align-items: center; justify-content: center;">
   <div style="background: var(--modal-bg); padding: 24px; border-radius: 12px; max-width: 500px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-    <h3 style="margin: 0 0 16px 0; color: var(--modal-text); font-size: 20px;">📍 Set Spectrum Location</h3>
+    <h3 style="margin: 0 0 16px 0; color: var(--modal-text); font-size: 20px;">📍 {{translate "spectrum_location_title"}}</h3>
     <p style="margin: 0 0 20px 0; color: var(--modal-text); opacity: 0.8; font-size: var(--font-size-base);">
-      This spectrum file doesn't contain GPS coordinates. Please enter the location where the measurement was taken.
+      {{translate "spectrum_location_desc"}}
     </p>
 
     <div style="margin-bottom: 16px;">
-      <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">Latitude:</label>
+      <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">{{translate "spectrum_latitude"}}</label>
       <input type="number" id="coordInputLat" step="0.000001" placeholder="e.g., 34.4883891"
              style="width: 100%; padding: 10px; border: var(--legend-border); border-radius: 6px; background: var(--control-bg); color: var(--modal-text); font-size: var(--font-size-base); box-sizing: border-box;">
     </div>
 
     <div style="margin-bottom: 20px;">
-      <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">Longitude:</label>
+      <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">{{translate "spectrum_longitude"}}</label>
       <input type="number" id="coordInputLon" step="0.000001" placeholder="e.g., 136.1659156"
              style="width: 100%; padding: 10px; border: var(--legend-border); border-radius: 6px; background: var(--control-bg); color: var(--modal-text); font-size: var(--font-size-base); box-sizing: border-box;">
     </div>
 
     <div style="display: flex; gap: 12px; margin-bottom: 16px;">
       <button id="coordMapPickBtn" style="flex: 1; padding: 10px; background: var(--control-bg); border: var(--legend-border); border-radius: 6px; cursor: pointer; color: var(--modal-text); font-size: var(--font-size-base);">
-        📌 Click on Map
+        📌 {{translate "spectrum_click_map"}}
       </button>
       <button id="coordCurrentBtn" style="flex: 1; padding: 10px; background: var(--control-bg); border: var(--legend-border); border-radius: 6px; cursor: pointer; color: var(--modal-text); font-size: var(--font-size-base);">
-        📍 Use Current Location
+        📍 {{translate "spectrum_use_location"}}
       </button>
     </div>
 
     <div style="display: flex; gap: 12px;">
       <button id="coordSubmitBtn" style="flex: 1; padding: 12px; background: #4CAF50; border: none; border-radius: 6px; cursor: pointer; color: white; font-weight: 600; font-size: var(--font-size-base);">
-        Submit Location
+        {{translate "spectrum_submit"}}
       </button>
       <button id="coordCancelBtn" style="flex: 1; padding: 12px; background: #f44336; border: none; border-radius: 6px; cursor: pointer; color: white; font-weight: 600; font-size: var(--font-size-base);">
-        Cancel
+        {{translate "spectrum_cancel"}}
       </button>
     </div>
 
@@ -2142,45 +2142,45 @@ body, html {
 <!-- Login Modal -->
 <div id="loginModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 10002; align-items: center; justify-content: center;">
   <div style="background: var(--modal-bg); padding: 32px; border-radius: 12px; max-width: 450px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-    <h2 style="margin: 0 0 24px 0; color: var(--modal-text); font-size: 24px;">Login to Safecast</h2>
+    <h2 style="margin: 0 0 24px 0; color: var(--modal-text); font-size: 24px;">{{translate "auth_login_title"}}</h2>
     <form id="loginForm">
       <div style="margin-bottom: 16px;">
-        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">Email:</label>
-        <input type="email" id="loginEmail" placeholder="your@email.com" required
+        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">{{translate "auth_email"}}</label>
+        <input type="email" id="loginEmail" placeholder="{{translate "auth_email_placeholder"}}" required
                style="width: 100%; padding: 12px; border: var(--legend-border); border-radius: 6px; background: var(--control-bg); color: var(--modal-text); font-size: var(--font-size-base); box-sizing: border-box;">
       </div>
       <div style="margin-bottom: 20px;">
-        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">Password:</label>
-        <input type="password" id="loginPassword" placeholder="Password"
+        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">{{translate "auth_password"}}</label>
+        <input type="password" id="loginPassword" placeholder="{{translate "auth_password_placeholder"}}"
                style="width: 100%; padding: 12px; border: var(--legend-border); border-radius: 6px; background: var(--control-bg); color: var(--modal-text); font-size: var(--font-size-base); box-sizing: border-box;">
       </div>
 
       <!-- OR Divider -->
       <div style="display: flex; align-items: center; margin: 20px 0;">
         <div style="flex: 1; height: 1px; background: var(--legend-border);"></div>
-        <span style="padding: 0 12px; color: var(--modal-text); font-size: var(--font-size-sm); font-weight: 600;">OR</span>
+        <span style="padding: 0 12px; color: var(--modal-text); font-size: var(--font-size-sm); font-weight: 600;">{{translate "auth_or"}}</span>
         <div style="flex: 1; height: 1px; background: var(--legend-border);"></div>
       </div>
 
       <div style="margin-bottom: 20px;">
-        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">API Key:</label>
-        <input type="text" id="loginAPIKey" placeholder="Your API key"
+        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">{{translate "auth_api_key"}}</label>
+        <input type="text" id="loginAPIKey" placeholder="{{translate "auth_api_key_placeholder"}}"
                style="width: 100%; padding: 12px; border: var(--legend-border); border-radius: 6px; background: var(--control-bg); color: var(--modal-text); font-size: var(--font-size-base); box-sizing: border-box; font-family: monospace;">
-        <p style="margin: 4px 0 0 0; font-size: var(--font-size-sm); color: var(--modal-text); opacity: 0.7;">You can log in with either your password or API key</p>
+        <p style="margin: 4px 0 0 0; font-size: var(--font-size-sm); color: var(--modal-text); opacity: 0.7;">{{translate "auth_api_key_info"}}</p>
       </div>
 
       <button type="submit" style="width: 100%; padding: 14px; background: #4CAF50; border: none; border-radius: 6px; cursor: pointer; color: white; font-weight: 600; font-size: 16px; margin-bottom: 12px;">
-        Login
+        {{translate "auth_login_button"}}
       </button>
       <p id="loginError" style="color: #f44336; font-size: var(--font-size-sm); margin: 12px 0 0 0; display: none;"></p>
     </form>
     <div style="margin-top: 20px; text-align: center; color: var(--modal-text); font-size: var(--font-size-sm);">
-      <p style="margin: 8px 0;"><a href="#" onclick="showForgotPassword(); return false;" style="color: var(--isotope-highlight); text-decoration: none;">Forgot password?</a></p>
-      <p style="margin: 8px 0;"><a href="#" onclick="showForgotPassword(); return false;" style="color: var(--isotope-highlight); text-decoration: none; font-weight: 600;">First time? Set up your password</a></p>
-      <p style="margin: 8px 0;">Don't have an account? <a href="#" onclick="showRegister(); return false;" style="color: var(--isotope-highlight); text-decoration: none;">Register</a></p>
+      <p style="margin: 8px 0;"><a href="#" onclick="showForgotPassword(); return false;" style="color: var(--isotope-highlight); text-decoration: none;">{{translate "auth_forgot_password"}}</a></p>
+      <p style="margin: 8px 0;"><a href="#" onclick="showForgotPassword(); return false;" style="color: var(--isotope-highlight); text-decoration: none; font-weight: 600;">{{translate "auth_first_time"}}</a></p>
+      <p style="margin: 8px 0;">{{translate "auth_no_account"}} <a href="#" onclick="showRegister(); return false;" style="color: var(--isotope-highlight); text-decoration: none;">{{translate "auth_register"}}</a></p>
     </div>
     <button type="button" onclick="closeLoginModal()" style="margin-top: 16px; width: 100%; padding: 10px; background: transparent; border: var(--legend-border); border-radius: 6px; cursor: pointer; color: var(--modal-text);">
-      Close
+      {{translate "auth_close"}}
     </button>
   </div>
 </div>
@@ -2188,38 +2188,38 @@ body, html {
 <!-- Register Modal -->
 <div id="registerModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 10002; align-items: center; justify-content: center;">
   <div style="background: var(--modal-bg); padding: 32px; border-radius: 12px; max-width: 450px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-    <h2 style="margin: 0 0 24px 0; color: var(--modal-text); font-size: 24px;">Create Account</h2>
+    <h2 style="margin: 0 0 24px 0; color: var(--modal-text); font-size: 24px;">{{translate "auth_register_title"}}</h2>
     <form id="registerForm">
       <div style="margin-bottom: 16px;">
-        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">Email:</label>
-        <input type="email" id="registerEmail" placeholder="your@email.com" required
+        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">{{translate "auth_email"}}</label>
+        <input type="email" id="registerEmail" placeholder="{{translate "auth_email_placeholder"}}" required
                style="width: 100%; padding: 12px; border: var(--legend-border); border-radius: 6px; background: var(--control-bg); color: var(--modal-text); font-size: var(--font-size-base); box-sizing: border-box;">
       </div>
       <div style="margin-bottom: 16px;">
-        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">Username (optional):</label>
-        <input type="text" id="registerUsername" placeholder="username"
+        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">{{translate "auth_username"}}</label>
+        <input type="text" id="registerUsername" placeholder="{{translate "auth_username_placeholder"}}"
                style="width: 100%; padding: 12px; border: var(--legend-border); border-radius: 6px; background: var(--control-bg); color: var(--modal-text); font-size: var(--font-size-base); box-sizing: border-box;">
       </div>
       <div style="margin-bottom: 16px;">
-        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">Password:</label>
-        <input type="password" id="registerPassword" placeholder="At least 8 characters" required
+        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">{{translate "auth_password"}}</label>
+        <input type="password" id="registerPassword" placeholder="{{translate "auth_password_min"}}" required
                style="width: 100%; padding: 12px; border: var(--legend-border); border-radius: 6px; background: var(--control-bg); color: var(--modal-text); font-size: var(--font-size-base); box-sizing: border-box;">
       </div>
       <div style="margin-bottom: 20px;">
-        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">Confirm Password:</label>
-        <input type="password" id="registerPasswordConfirm" placeholder="Re-enter password" required
+        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">{{translate "auth_confirm_password"}}</label>
+        <input type="password" id="registerPasswordConfirm" placeholder="{{translate "auth_confirm_placeholder"}}" required
                style="width: 100%; padding: 12px; border: var(--legend-border); border-radius: 6px; background: var(--control-bg); color: var(--modal-text); font-size: var(--font-size-base); box-sizing: border-box;">
       </div>
       <button type="submit" style="width: 100%; padding: 14px; background: #4CAF50; border: none; border-radius: 6px; cursor: pointer; color: white; font-weight: 600; font-size: 16px; margin-bottom: 12px;">
-        Register
+        {{translate "auth_register"}}
       </button>
       <p id="registerError" style="color: #f44336; font-size: var(--font-size-sm); margin: 12px 0 0 0; display: none;"></p>
     </form>
     <div style="margin-top: 20px; text-align: center; color: var(--modal-text); font-size: var(--font-size-sm);">
-      <p style="margin: 8px 0;">Already have an account? <a href="#" onclick="showLogin(); return false;" style="color: var(--isotope-highlight); text-decoration: none;">Login</a></p>
+      <p style="margin: 8px 0;">{{translate "auth_have_account"}} <a href="#" onclick="showLogin(); return false;" style="color: var(--isotope-highlight); text-decoration: none;">{{translate "auth_login_button"}}</a></p>
     </div>
     <button type="button" onclick="closeRegisterModal()" style="margin-top: 16px; width: 100%; padding: 10px; background: transparent; border: var(--legend-border); border-radius: 6px; cursor: pointer; color: var(--modal-text);">
-      Close
+      {{translate "auth_close"}}
     </button>
   </div>
 </div>
@@ -2227,26 +2227,26 @@ body, html {
 <!-- Forgot Password Modal -->
 <div id="forgotPasswordModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 10002; align-items: center; justify-content: center;">
   <div style="background: var(--modal-bg); padding: 32px; border-radius: 12px; max-width: 450px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-    <h2 style="margin: 0 0 16px 0; color: var(--modal-text); font-size: 24px;">Reset Password</h2>
+    <h2 style="margin: 0 0 16px 0; color: var(--modal-text); font-size: 24px;">{{translate "auth_reset_title"}}</h2>
     <p style="margin: 0 0 24px 0; color: var(--modal-text); opacity: 0.8; font-size: var(--font-size-base);">
-      Enter your email address and we'll send you a link to reset your password.
+      {{translate "auth_reset_instructions"}}
     </p>
     <form id="forgotPasswordForm">
       <div style="margin-bottom: 20px;">
-        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">Email:</label>
-        <input type="email" id="forgotEmail" placeholder="your@email.com" required
+        <label style="display: block; margin-bottom: 6px; color: var(--modal-text); font-weight: 600;">{{translate "auth_email"}}</label>
+        <input type="email" id="forgotEmail" placeholder="{{translate "auth_email_placeholder"}}" required
                style="width: 100%; padding: 12px; border: var(--legend-border); border-radius: 6px; background: var(--control-bg); color: var(--modal-text); font-size: var(--font-size-base); box-sizing: border-box;">
       </div>
       <button type="submit" style="width: 100%; padding: 14px; background: #4CAF50; border: none; border-radius: 6px; cursor: pointer; color: white; font-weight: 600; font-size: 16px; margin-bottom: 12px;">
-        Send Reset Link
+        {{translate "auth_send_reset"}}
       </button>
       <p id="forgotPasswordMessage" style="color: var(--isotope-highlight); font-size: var(--font-size-sm); margin: 12px 0 0 0; display: none;"></p>
     </form>
     <div style="margin-top: 20px; text-align: center; color: var(--modal-text); font-size: var(--font-size-sm);">
-      <p style="margin: 8px 0;"><a href="#" onclick="showLogin(); return false;" style="color: var(--isotope-highlight); text-decoration: none;">Back to login</a></p>
+      <p style="margin: 8px 0;"><a href="#" onclick="showLogin(); return false;" style="color: var(--isotope-highlight); text-decoration: none;">{{translate "auth_back_to_login"}}</a></p>
     </div>
     <button type="button" onclick="closeForgotPasswordModal()" style="margin-top: 16px; width: 100%; padding: 10px; background: transparent; border: var(--legend-border); border-radius: 6px; cursor: pointer; color: var(--modal-text);">
-      Close
+      {{translate "auth_close"}}
     </button>
   </div>
 </div>
@@ -2256,13 +2256,13 @@ body, html {
   <div style="display: flex; align-items: center; gap: 8px;">
     <span id="userMenuName" style="color: var(--modal-text); font-weight: 600; font-size: 12px;"></span>
     <a href="/profile" style="padding: 4px 10px; background: #4CAF50; border: none; border-radius: var(--btn-border-radius, 8px); color: white; font-size: 11px; text-decoration: none;">
-      Profile
+      {{translate "auth_profile"}}
     </a>
     <a id="adminBtn" href="/admin/users" style="display: none; padding: 4px 10px; background: #2196F3; border: none; border-radius: var(--btn-border-radius, 8px); color: white; font-size: 11px; text-decoration: none;">
-      Admin
+      {{translate "auth_admin"}}
     </a>
     <button onclick="logout()" style="padding: 4px 10px; background: #f44336; border: none; border-radius: var(--btn-border-radius, 8px); cursor: pointer; color: white; font-size: 11px;">
-      Logout
+      {{translate "auth_logout"}}
     </button>
   </div>
 </div>
@@ -2270,7 +2270,7 @@ body, html {
 <!-- Login Button (shown when logged out) -->
 <div id="loginButton" style="display: none; position: fixed; top: 10px; right: 20px; z-index: 1000;">
   <button onclick="showLogin()" style="padding: 6px 0; width: 100px; text-align: center; background: var(--upload-btn-bg, #4CAF50); border: var(--legend-border, none); border-radius: var(--btn-border-radius, 8px); cursor: pointer; color: white; font-weight: 600; font-size: 13px; box-shadow: 0 1px 5px rgba(0,0,0,0.65); box-sizing: border-box;">
-    Login
+    {{translate "auth_login_button"}}
   </button>
 </div>
 
@@ -2372,14 +2372,14 @@ body, html {
           } else {
             const error = await response.json();
             if (errorEl) {
-              errorEl.textContent = error.error || 'Login failed';
+              errorEl.textContent = error.error || translate('auth_login_failed');
               errorEl.style.display = 'block';
             }
           }
         } catch (error) {
           const errorEl = document.getElementById('loginError');
           if (errorEl) {
-            errorEl.textContent = 'Network error. Please try again.';
+            errorEl.textContent = translate('auth_network_error');
             errorEl.style.display = 'block';
           }
         }
@@ -2398,19 +2398,19 @@ body, html {
 
           if (response.ok) {
             closeRegisterModal();
-            alert('Registration successful! Please check your email to verify your account.');
+            alert(translate('auth_register_success'));
             if (errorEl) errorEl.style.display = 'none';
           } else {
             const error = await response.json();
             if (errorEl) {
-              errorEl.textContent = error.error || 'Registration failed';
+              errorEl.textContent = error.error || translate('auth_register_failed');
               errorEl.style.display = 'block';
             }
           }
         } catch (error) {
           const errorEl = document.getElementById('registerError');
           if (errorEl) {
-            errorEl.textContent = 'Network error. Please try again.';
+            errorEl.textContent = translate('auth_network_error');
             errorEl.style.display = 'block';
           }
         }
@@ -2422,7 +2422,7 @@ body, html {
           await fetch('/api/auth/logout', { method: 'POST' });
           currentUser = null;
           updateUIForLoggedOutUser();
-          alert('Logged out successfully');
+          alert(translate('auth_logout_success'));
         } catch (error) {
           console.error('Logout failed:', error);
         }
@@ -2441,14 +2441,14 @@ body, html {
 
           if (response.ok) {
             if (msgEl) {
-              msgEl.textContent = 'Password reset link sent! Check your email.';
+              msgEl.textContent = translate('auth_reset_sent');
               msgEl.style.display = 'block';
               msgEl.style.color = 'var(--isotope-highlight)';
             }
           } else {
             const error = await response.json();
             if (msgEl) {
-              msgEl.textContent = error.error || 'Request failed';
+              msgEl.textContent = error.error || translate('auth_request_failed');
               msgEl.style.display = 'block';
               msgEl.style.color = '#f44336';
             }
@@ -2456,7 +2456,7 @@ body, html {
         } catch (error) {
           const msgEl = document.getElementById('forgotPasswordMessage');
           if (msgEl) {
-            msgEl.textContent = 'Network error. Please try again.';
+            msgEl.textContent = translate('auth_network_error');
             msgEl.style.display = 'block';
             msgEl.style.color = '#f44336';
           }
@@ -2532,7 +2532,7 @@ body, html {
         // Check for email verification success
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('emailVerified') === 'true') {
-          alert('Email verified successfully! You can now login.');
+          alert(translate('auth_email_verified'));
         }
 
         // Login form
@@ -2561,7 +2561,7 @@ body, html {
 
             if (password !== confirm) {
               if (errorEl) {
-                errorEl.textContent = 'Passwords do not match';
+                errorEl.textContent = translate('auth_passwords_mismatch');
                 errorEl.style.display = 'block';
               }
               return;
@@ -8527,7 +8527,7 @@ async function performSearch(query, selectFirst = false) {
     const results = await response.json();
 
     if (results.length === 0) {
-      searchResults.innerHTML = '<div class="search-result-item">No results found</div>';
+      searchResults.innerHTML = '<div class="search-result-item">' + translate('search_no_results') + '</div>';
       searchResults.classList.add('active');
       return;
     }
@@ -8560,7 +8560,7 @@ async function performSearch(query, selectFirst = false) {
     searchResults.classList.add('active');
   } catch (error) {
     console.error('Search error:', error);
-    searchResults.innerHTML = '<div class="search-result-item">Search error. Please try again.</div>';
+    searchResults.innerHTML = '<div class="search-result-item">' + translate('search_error') + '</div>';
     searchResults.classList.add('active');
   }
 }
@@ -10099,7 +10099,7 @@ function selectHomeSearchResult(result, query) {
     }
   </style>
 
-  <button id="safecast-ai-toggle" aria-label="Open AI Assistant">
+  <button id="safecast-ai-toggle" aria-label="{{translate "ai_open"}}">
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
       stroke-linecap="round" stroke-linejoin="round">
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
@@ -10109,11 +10109,11 @@ function selectHomeSearchResult(result, query) {
   <div id="safecast-ai-panel">
     <div class="ai-panel-header">
       <div class="ai-panel-header-text">
-        <h3>Safecast AI Assistant</h3>
-        <span>AI-powered map and data guide</span>
+        <h3>{{translate "ai_title"}}</h3>
+        <span>{{translate "ai_subtitle"}}</span>
       </div>
       <div class="ai-header-actions">
-        <button id="safecast-ai-expand" title="Expand panel" aria-label="Expand AI Assistant">
+        <button id="safecast-ai-expand" title="{{translate "ai_expand"}}" aria-label="{{translate "ai_expand"}}">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
             stroke-linecap="round" stroke-linejoin="round">
             <polyline points="15 3 21 3 21 9"></polyline>
@@ -10122,22 +10122,22 @@ function selectHomeSearchResult(result, query) {
             <line x1="3" y1="21" x2="10" y2="14"></line>
           </svg>
         </button>
-        <button id="safecast-ai-close" title="Close panel" aria-label="Close AI Assistant">&times;</button>
+        <button id="safecast-ai-close" title="{{translate "ai_close"}}" aria-label="{{translate "ai_close"}}">&times;</button>
       </div>
     </div>
     <div class="ai-panel-messages" id="ai-messages">
     </div>
     <div id="ai-panel-input-container">
       <form id="ai-form">
-        <textarea id="ai-msg" rows="1" placeholder="Search a place or ask AI..."></textarea>
-        <button type="button" id="ai-search-map" title="Teleport map to location" aria-label="Search map location">
+        <textarea id="ai-msg" rows="1" placeholder="{{translate "ai_placeholder"}}"></textarea>
+        <button type="button" id="ai-search-map" title="{{translate "ai_search_map"}}" aria-label="{{translate "ai_search_map"}}">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
             stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
             <circle cx="12" cy="10" r="3"></circle>
           </svg>
         </button>
-        <button type="submit" id="ai-send" title="Send message">
+        <button type="submit" id="ai-send" title="{{translate "ai_send"}}">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
             stroke-linecap="round" stroke-linejoin="round">
             <line x1="22" y1="2" x2="11" y2="13"></line>
@@ -10145,7 +10145,7 @@ function selectHomeSearchResult(result, query) {
           </svg>
         </button>
       </form>
-      <p id="ai-disclaimer">Note: AI-generated response using data from the Safecast radiation monitoring network. For critical safety decisions, please consult official sources. Prompts and usage data are collected to improve this service.</p>
+      <p id="ai-disclaimer">{{translate "ai_disclaimer"}}</p>
     </div>
   </div>
 
@@ -10173,7 +10173,7 @@ function selectHomeSearchResult(result, query) {
         }, 100);
         msgInput.focus();
         if (!initialMessageAdded) {
-          addMessageUI('bot', 'I have access to live readings from Safecast sensors across Japan and worldwide. How can I help?');
+          addMessageUI('bot', translate('ai_greeting'));
           initialMessageAdded = true;
         }
       });
@@ -10193,7 +10193,7 @@ function selectHomeSearchResult(result, query) {
       expandBtn.addEventListener('click', () => {
         panel.classList.toggle('expanded');
         const isExpanded = panel.classList.contains('expanded');
-        expandBtn.title = isExpanded ? 'Collapse panel' : 'Expand panel';
+        expandBtn.title = isExpanded ? translate('ai_collapse') : translate('ai_expand');
 
         // Update icon based on state
         if (isExpanded) {
@@ -10407,7 +10407,7 @@ function selectHomeSearchResult(result, query) {
         sendBtn.disabled = true;
 
         addMessageUI('user', text);
-        const botBubble = addMessageUI('bot', '...thinking...');
+        const botBubble = addMessageUI('bot', translate('ai_thinking'));
         botBubble.classList.add('ai-thinking');
 
         msgInput.value = '';
@@ -10470,7 +10470,7 @@ function selectHomeSearchResult(result, query) {
                   } else if (ev.type === 'done') {
                     finish(true);
                   } else if (ev.type === 'error') {
-                    botBubble.textContent = 'Error: ' + ev.error;
+                    botBubble.textContent = translate('ai_error') + ev.error;
                     botBubble.classList.remove('ai-thinking');
                     finish(false);
                   }
@@ -10481,7 +10481,7 @@ function selectHomeSearchResult(result, query) {
           }
           return pump();
         }).catch(err => {
-          botBubble.textContent = 'Connection error: ' + err.message;
+          botBubble.textContent = translate('ai_connection_error') + err.message;
           botBubble.classList.remove('ai-thinking');
           finish(false);
         });

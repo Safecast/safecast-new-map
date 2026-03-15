@@ -8950,13 +8950,25 @@ func main() {
 			w.Header().Set("Pragma", "no-cache")
 			w.Header().Set("Expires", "0")
 
-			data, err := content.ReadFile("public_html/profile.html")
+			lang := getPreferredLanguage(r)
+			translationsMu.RLock()
+			localTranslations := translations
+			translationsMu.RUnlock()
+
+			tmpl, err := template.New("profile.html").Funcs(template.FuncMap{
+				"translate": func(key string) string {
+					if val, ok := localTranslations[lang][key]; ok {
+						return val
+					}
+					return localTranslations["en"][key]
+				},
+			}).ParseFS(content, "public_html/profile.html")
 			if err != nil {
 				http.Error(w, "Profile page not found", http.StatusNotFound)
 				return
 			}
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.Write(data)
+			tmpl.Execute(w, nil)
 		}))
 
 		// Serve reset-password page
