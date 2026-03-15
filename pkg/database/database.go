@@ -1191,6 +1191,19 @@ CREATE TABLE IF NOT EXISTS email_verification_tokens (
 
 CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_token ON email_verification_tokens(token);
 CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_user_id ON email_verification_tokens(user_id);
+
+-- Translations table
+CREATE TABLE IF NOT EXISTS translations (
+  id              BIGSERIAL PRIMARY KEY,
+  language_code   VARCHAR(10) NOT NULL,
+  key             VARCHAR(255) NOT NULL,
+  value           TEXT NOT NULL,
+  updated_at      TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT translations_unique UNIQUE (language_code, key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_translations_lang ON translations(language_code);
+CREATE INDEX IF NOT EXISTS idx_translations_key ON translations(key);
 `
 
 	case "sqlite", "chai":
@@ -1361,6 +1374,19 @@ CREATE TABLE IF NOT EXISTS email_verification_tokens (
 
 CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_token ON email_verification_tokens(token);
 CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_user_id ON email_verification_tokens(user_id);
+
+-- Translations table
+CREATE TABLE IF NOT EXISTS translations (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  language_code   TEXT NOT NULL,
+  key             TEXT NOT NULL,
+  value           TEXT NOT NULL,
+  updated_at      TEXT DEFAULT (datetime('now')),
+  CONSTRAINT translations_unique UNIQUE (language_code, key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_translations_lang ON translations(language_code);
+CREATE INDEX IF NOT EXISTS idx_translations_key ON translations(key);
 `
 
 	case "duckdb":
