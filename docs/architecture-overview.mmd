@@ -24,11 +24,14 @@ flowchart TB
         Fetcher["bGeigie Auto-Sync\n(-safecast-fetcher)"]
         RTPoller["Real-time Sensor Poller\n(-safecast-realtime)"]
         SpecParser["Spectrum Parser\n.n42 / .spe / .rctrk formats\n→ channels + calibration"]
+        I18n["i18n / Translations\n29 languages · DB-backed\nAdmin UI: /admin/translations"]
+        AdminPages["Admin Panel\nUsers · Uploads · MCP Analytics\nRealtime · Translations"]
   end
  subgraph DB["🗄️ PostgreSQL + PostGIS"]
         markers["markers table\n(bGeigie tracks + spectrum locations)"]
         realtime["realtime_measurements\n(fixed sensors)"]
         spectra["spectra table\n(channels[], calibration, raw_data\nlinked to markers via marker_id)"]
+        translations["translations table\n(language_code, key, value\n29 languages × 279 keys)"]
   end
  subgraph WebChat["Web Chat — cmd/web-chat (port 3334)"]
         ChatUI["Chat Interface\n(HTML + JavaScript)"]
@@ -66,4 +69,5 @@ flowchart TB
     SpecParser -- "markers + spectra rows" --> markers
     SpecParser -- "channels[] + calibration\n+ raw_data (BYTEA)" --> spectra
     Fixed -- "real-time readings" --> RTPoller
+    I18n -- "load at startup\nreload via admin" --> translations
     GH_All -- rsync → IP direct --> Server
