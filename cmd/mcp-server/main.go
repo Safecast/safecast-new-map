@@ -13,6 +13,9 @@ import (
 	"safecast-new-map/cmd/mcp-server/model-adapter"
 )
 
+// aiGeneratedNote is the disclaimer appended to every tool response.
+const aiGeneratedNote = "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system."
+
 var (
 	// modelAdapter handles model-specific hints and formatting
 	modelAdapter *modeladapter.Adapter

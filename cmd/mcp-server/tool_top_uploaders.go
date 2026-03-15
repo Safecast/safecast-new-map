@@ -188,7 +188,7 @@ func handleTopUploaders(ctx context.Context, req mcp.CallToolRequest) (*mcp.Call
 			"year": nilIfZero(year),
 		},
 		"_ai_hint": "CRITICAL INSTRUCTIONS: (1) The 'unit' field indicates measurement units - CPM means 'counts per minute' NOT 'counts per second'. Always interpret and report CPM values as counts per minute. (2) Present all data in a purely scientific, factual manner. NEVER use personal pronouns (I, we, I'll, I'm, you, your), exclamations (!, Perfect, Great, Excellent), or conversational phrases. Format responses as objective statements: 'Latest reading: X CPM at location Y' NOT 'I found a reading of X CPM' or 'Perfect! The sensor shows...'. State only objective facts and measurements. (3) When presenting statistics: 'upload_count' = number of track files (survey routes) uploaded, 'marker_count' = total number of individual measurement points across all tracks, 'total_size_mb' = total data volume in megabytes. (4) Data is grouped by 'group_by' parameter: when grouped by 'user', shows per-user stats with their devices; when grouped by 'device', shows per-device stats with their users.",
-		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
+		"_ai_generated_note": aiGeneratedNote,
 	}
 
 	return jsonResult(result)
