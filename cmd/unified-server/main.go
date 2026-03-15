@@ -1908,17 +1908,20 @@ func seedTranslationsDB(fs embed.FS, filename string) {
 }
 
 func getPreferredLanguage(r *http.Request) string {
-	langHeader := r.Header.Get("Accept-Language")
-	if langHeader == "" {
-		return "en"
-	}
-
 	// Поддерживаемые языки (добавлены: da, fa)
 	supported := map[string]struct{}{
 		"en": {}, "zh": {}, "es": {}, "hi": {}, "ar": {}, "fr": {}, "ru": {}, "pt": {}, "de": {}, "ja": {}, "tr": {}, "it": {},
 		"ko": {}, "pl": {}, "uk": {}, "mn": {}, "no": {}, "fi": {}, "ka": {}, "sv": {}, "he": {}, "nl": {}, "el": {}, "hu": {},
 		"cs": {}, "ro": {}, "th": {}, "vi": {}, "id": {}, "ms": {}, "bg": {}, "lt": {}, "et": {}, "lv": {}, "sl": {},
 		"da": {}, "fa": {},
+	}
+
+	// Check ?lang= query parameter first (explicit override)
+	if langParam := r.URL.Query().Get("lang"); langParam != "" {
+		code := strings.ToLower(strings.TrimSpace(langParam))
+		if _, ok := supported[code]; ok {
+			return code
+		}
 	}
 
 	// Нормализация/синонимы: приводим варианты к поддерживаемым базовым кодам
@@ -1942,6 +1945,12 @@ func getPreferredLanguage(r *http.Request) string {
 		// Португальский варианты → "pt"
 		"pt-br": "pt",
 		"pt-pt": "pt",
+	}
+
+	// Fall back to Accept-Language header
+	langHeader := r.Header.Get("Accept-Language")
+	if langHeader == "" {
+		return "en"
 	}
 
 	langs := strings.Split(langHeader, ",")
