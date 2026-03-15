@@ -10438,6 +10438,7 @@ function selectHomeSearchResult(result, query) {
             history: chatHistory,
             map_context: getMapContext(),
             source: 'widget',
+            lang: currentLang,
             client_timestamp: new Date().toISOString()
           }),
         }).then(response => {
