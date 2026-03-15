@@ -1,0 +1,36 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "f1bc9c3db2ee",
+  "strategy": "manual-commit",
+  "branch": "feat/translations-db-admin",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "cmd/unified-server/admin_translations.go",
+    "cmd/unified-server/main.go",
+    "cmd/unified-server/public_html/admin-mcp.html",
+    "cmd/unified-server/public_html/admin-realtime.html",
+    "cmd/unified-server/public_html/admin-translations.html",
+    "cmd/unified-server/public_html/admin-users.html",
+    "cmd/unified-server/public_html/translations.json",
+    "migrations/add_translations_table.sql",
+    "migrations/seed_translations.sql",
+    "pkg/database/database.go",
+    "public_html/translations.json"
+  ],
+  "sessions": [
+    {
+      "metadata": "/f1/bc9c3db2ee/0/metadata.json",
+      "transcript": "/f1/bc9c3db2ee/0/full.jsonl",
+      "context": "/f1/bc9c3db2ee/0/context.md",
+      "content_hash": "/f1/bc9c3db2ee/0/content_hash.txt",
+      "prompt": "/f1/bc9c3db2ee/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  }
+}
