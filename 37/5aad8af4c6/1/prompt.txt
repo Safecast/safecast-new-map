@@ -1,0 +1,25 @@
+Is there a way to fix translations that are not correct for the UI part of the setup?
+
+---
+
+Czech  is according to some peple not correct.
+
+---
+
+Please fix
+
+---
+
+Can you check for other languages too?
+
+---
+
+Can you tell me where ""Attention"/"Danger" are used?
+
+---
+
+It hat only use when the interface is not in safecast style mode?
+
+---
+
+Ok..Please make a branch, commit, push, PR and merge.
