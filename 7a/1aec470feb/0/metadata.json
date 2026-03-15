@@ -1,0 +1,49 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "7a1aec470feb",
+  "session_id": "48a5f2be-0855-4c4d-83e1-cd38eee6cd6d",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-15T13:12:56.537313759Z",
+  "branch": "feat/translate-ai-disclaimer",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "cmd/mcp-server/tool_analytics.go",
+    "cmd/mcp-server/tool_get_track.go",
+    "cmd/mcp-server/tool_list_tracks.go",
+    "cmd/mcp-server/tool_sensor_current.go",
+    "cmd/unified-server/public_html/translations.json",
+    "cmd/mcp-server/main.go",
+    "cmd/mcp-server/tool_get_spectrum.go",
+    "cmd/mcp-server/tool_list_spectra.go",
+    "cmd/mcp-server/tool_search_area.go",
+    "cmd/mcp-server/tool_search_tracks_location.go",
+    "cmd/mcp-server/tool_db_info.go",
+    "cmd/mcp-server/tool_device_history.go",
+    "cmd/mcp-server/tool_list_sensors.go",
+    "cmd/mcp-server/tool_query_radiation.go",
+    "cmd/mcp-server/tool_sensor_history.go",
+    "cmd/mcp-server/tool_extreme_readings.go",
+    "cmd/mcp-server/tool_radiation_info.go",
+    "cmd/mcp-server/tool_top_uploaders.go"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "9665a7a9ea09",
+  "checkpoint_transcript_start": 11,
+  "transcript_lines_at_start": 11,
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-15T13:12:56.514123852Z",
+    "agent_lines": 86,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 86,
+    "agent_percentage": 100
+  }
+}
