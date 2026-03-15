@@ -5274,16 +5274,13 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 	</div>
 	<div class="admin-tabs">
 		<a href="/admin/users` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">Users</a>
-		<a href="/admin/uploads` + func() string { if password != "" { return "?password=" + password } ; return "" }() + `" class="active">Uploads</a>
-		<a href="/api/admin/tracks` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">Tracks</a>
+		<a href="/admin/uploads` + func() string { if password != "" { return "?password=" + password }; return "" }() + `" class="active">Uploads</a>
 		<a href="/admin/mcp` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">MCP Analytics</a>
-		<span class="disabled">Realtime</span>
+		<a href="/admin/realtime` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">Realtime</a>
 		<a href="/admin/translations` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">Translations</a>
 	</div>
 	<div class="nav">
 		<div class="nav-left">
-			<a href="/api/admin/tracks?password=` + password + `">All Tracks</a>
-			<a href="/api/admin/uploads?password=` + password + `">Tracked Uploads</a>
 			<button class="view-selected-btn" id="viewSelectedBtn" onclick="viewSelected()" disabled>View Selected on Map</button>
 			<button class="delete-selected-btn" id="deleteSelectedBtn" onclick="deleteSelected()" disabled>Delete Selected</button>
 		</div>
@@ -6611,15 +6608,12 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 	<div class="admin-tabs">
 		<a href="/admin/users` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">Users</a>
 		<a href="/admin/uploads` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">Uploads</a>
-		<a href="/api/admin/tracks` + func() string { if password != "" { return "?password=" + password }; return "" }() + `" class="active">Tracks</a>
 		<a href="/admin/mcp` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">MCP Analytics</a>
-		<span class="disabled">Realtime</span>
+		<a href="/admin/realtime` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">Realtime</a>
 		<a href="/admin/translations` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">Translations</a>
 	</div>
 	<div class="nav">
 		<div class="nav-left">
-			<a href="/api/admin/tracks?password=` + password + `">All Tracks</a>
-			<a href="/api/admin/uploads?password=` + password + `">Tracked Uploads</a>
 			<button class="backfill-btn" onclick="backfillUploads()">Backfill Upload Records</button>
 			<button class="view-selected-btn" id="viewSelectedBtn" onclick="viewSelected()" disabled>View Selected on Map</button>
 			<button class="delete-selected-btn" id="deleteSelectedBtn" onclick="deleteSelected()" disabled>Delete Selected</button>
