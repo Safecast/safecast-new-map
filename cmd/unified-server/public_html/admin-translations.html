@@ -188,6 +188,7 @@ let currentOffset = 0;
 let currentLimit = 50;
 let totalRows = 0;
 let availableLanguages = [];
+let currentData = []; // Store fetched rows for edit lookups
 
 function buildAdminTabs() {
   const tabs = [
@@ -314,19 +315,20 @@ async function fetchData() {
     }
 
     // Build body
+    currentData = data;
     const tbody = document.getElementById('tableBody');
     let html = '';
-    data.forEach(row => {
+    data.forEach((row, idx) => {
       const valuePreview = row.value.length > 120 ? row.value.substring(0, 120) + '...' : row.value;
       html += `<tr>
         <td class="col-id">${row.id}</td>
         <td class="col-lang"><span class="lang-badge">${escapeHtml(row.language_code)}</span></td>
         <td class="col-key">${escapeHtml(row.key)}</td>
-        <td class="col-value" title="Click to edit" onclick="showEditModal(${row.id}, '${escapeAttr(row.language_code)}', '${escapeAttr(row.key)}', ${JSON.stringify(row.value)})">${escapeHtml(valuePreview)}</td>
+        <td class="col-value" title="Click to edit" onclick="editByIndex(${idx})">${escapeHtml(valuePreview)}</td>
         <td class="col-date">${formatDate(row.updated_at)}</td>
         <td class="col-actions">
-          <button class="btn-edit" onclick="showEditModal(${row.id}, '${escapeAttr(row.language_code)}', '${escapeAttr(row.key)}', ${JSON.stringify(row.value)})">Edit</button>
-          <button class="btn-delete" onclick="deleteTranslation(${row.id}, '${escapeAttr(row.language_code)}', '${escapeAttr(row.key)}')">Del</button>
+          <button class="btn-edit" onclick="editByIndex(${idx})">Edit</button>
+          <button class="btn-delete" onclick="deleteByIndex(${idx})">Del</button>
         </td>
       </tr>`;
     });
@@ -342,10 +344,6 @@ async function fetchData() {
   } catch (err) {
     loading.textContent = 'Error loading data: ' + err.message;
   }
-}
-
-function escapeAttr(str) {
-  return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
 
 function buildPagination(totalPages, currentPage) {
@@ -378,6 +376,18 @@ function changeLimit(val) {
   currentLimit = parseInt(val);
   currentOffset = 0;
   fetchData();
+}
+
+function editByIndex(idx) {
+  const row = currentData[idx];
+  if (!row) return;
+  showEditModal(row.id, row.language_code, row.key, row.value);
+}
+
+function deleteByIndex(idx) {
+  const row = currentData[idx];
+  if (!row) return;
+  deleteTranslation(row.id, row.language_code, row.key);
 }
 
 function showEditModal(id, lang, key, value) {
