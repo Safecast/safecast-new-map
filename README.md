@@ -44,10 +44,10 @@ Natural background radiation is typically low and safe. This map helps identify 
 **Advanced Capabilities**
 - Gamma spectrum analysis (.spe, .n42 formats)
 - User authentication with API key support
-- Admin panel for content moderation
+- Admin panel for content moderation and translation management
 - Comprehensive authentication logging
 - Short link generation for sharing
-- Multi-language interface
+- Multi-language interface (29 languages) with PostgreSQL-backed translations and admin UI
 - Auto-update system
 
 ---
@@ -295,11 +295,28 @@ Enable the admin panel with:
 ./safecast-new-map -admin-password your-secure-password
 ```
 
-**Admin capabilities:**
-- View all uploads and tracks
-- Delete inappropriate content
-- Monitor system statistics
-- Manage user contributions
+Access the admin panel at `/admin/users?password=your-secure-password` or log in as an admin user.
+
+**Admin pages:**
+
+| Page | URL | Description |
+|------|-----|-------------|
+| Users | `/admin/users` | Manage user accounts, roles, and API keys |
+| Uploads | `/admin/uploads` | View uploads, import from Safecast API, delete tracks |
+| MCP Analytics | `/admin/mcp` | Monitor MCP tool usage and AI query logs |
+| Realtime | `/admin/realtime` | Manage real-time sensor device data |
+| Translations | `/admin/translations` | Edit, add, and delete UI translations for all 29 languages |
+
+### Translation Management
+
+Translations are stored in PostgreSQL and loaded into memory at startup. The admin translations page provides:
+- Filter by language (29 languages: ar, bg, cs, da, de, el, en, es, fa, fi, fr, he, hi, hu, id, it, ja, ko, ms, nl, no, pl, pt, ru, sv, th, tr, uk, vi, zh)
+- Search across keys and values
+- Inline editing with save
+- Add new translation keys
+- **Reload into Memory** button to apply changes without restarting the server
+
+All UI components are translated: map legend, AI assistant widget, login/register modals, search bar, spectrum viewer, profile page, and coordinate input dialog.
 
 ---
 
@@ -433,7 +450,10 @@ Add user authentication to existing databases:
 ```bash
 psql -h 127.0.0.1 -U postgres -d safecast -f migrations/create_users_table.sql
 psql -h 127.0.0.1 -U postgres -d safecast -f migrations/link_historical_uploads_to_users.sql
+psql -h 127.0.0.1 -U postgres -d safecast -f migrations/add_ui_translations.sql
 ```
+
+**Note:** The translations table is auto-created at startup and seeded from the embedded `translations.json` if no DB rows exist. The `add_ui_translations.sql` migration adds the extended UI translations (AI widget, auth modals, search, spectrum, profile page).
 
 **Key columns in users table:**
 - `id` - Unique user identifier
@@ -462,7 +482,7 @@ Customize map views with URL parameters:
 | `coloring`                             | safecast, chicha                | Scientific gradient vs. safety bins            |
 | `unit`                                 | uSv, uR                         | Display units (microsieverts or microroentgen) |
 | `legend`                               | 1, 0                            | Show/hide legend                               |
-| `lang`                                 | en, ru, ja, etc.                | Interface language                             |
+| `lang`                                 | en, ja, de, fr, etc. (29 langs) | Interface language                             |
 | `layer`                                | OpenStreetMap, Google Satellite | Base map                                       |
 | `show`                                 | rt                              | Filter to show only realtime sensors           |
 
