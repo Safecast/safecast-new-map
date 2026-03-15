@@ -36,7 +36,16 @@ var webChatIndexHTML []byte
 //go:embed static/safecast-square-ct.png
 var webChatLogoPNG []byte
 
-const webChatSystemPrompt = `Safecast radiation monitoring assistant with REAL-TIME sensor data and historical archives.`
+const webChatSystemPrompt = `Safecast radiation monitoring assistant with REAL-TIME sensor data and historical archives.
+
+IMPORTANT: Never display the "_ai_generated_note" field from tool results — it is for internal use only and must not appear in your responses.`
+
+func webChatSystemPromptForLang(lang string) string {
+	if lang == "" || lang == "en" {
+		return webChatSystemPrompt
+	}
+	return webChatSystemPrompt + "\n\nIMPORTANT: The user's interface language is \"" + lang + "\". Respond in that language."
+}
 
 // Anthropic API types
 type anthropicTool struct {
@@ -107,11 +116,11 @@ func flushBuffer(w http.ResponseWriter, buffer []chunk) {
 	}
 }
 
-func callAnthropic(ctx context.Context, apiKey, model string, messages []anthropicMessage, tools []anthropicTool) (*anthropicResponse, error) {
+func callAnthropic(ctx context.Context, apiKey, model, systemPrompt string, messages []anthropicMessage, tools []anthropicTool) (*anthropicResponse, error) {
 	reqBody := anthropicRequest{
 		Model:     model,
 		MaxTokens: 4096,
-		System:    webChatSystemPrompt,
+		System:    systemPrompt,
 		Messages:  messages,
 		Tools:     tools,
 	}
@@ -190,6 +199,7 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 			Message         string             `json:"message"`
 			History         []anthropicMessage `json:"history,omitempty"`
 			Source          string             `json:"source,omitempty"`
+			Lang            string             `json:"lang,omitempty"`
 			ClientTimestamp string             `json:"client_timestamp,omitempty"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&chatReq); err != nil || chatReq.Message == "" {
@@ -254,8 +264,10 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 		}
 		messages = append(messages, anthropicMessage{Role: "user", Content: chatReq.Message})
 
+		sysPrompt := webChatSystemPromptForLang(chatReq.Lang)
+
 		for {
-			resp, err := callAnthropic(ctx, apiKey, model, messages, tools)
+			resp, err := callAnthropic(ctx, apiKey, model, sysPrompt, messages, tools)
 			if err != nil {
 				writeChunkBuffered(w, chunk{Type: "error", Error: err.Error()}, &buffer, isCloudFront)
 				if isCloudFront {
