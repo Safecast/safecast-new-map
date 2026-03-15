@@ -318,6 +318,12 @@ Translations are stored in PostgreSQL and loaded into memory at startup. The adm
 
 All UI components are translated: map legend, AI assistant widget, login/register modals, search bar, spectrum viewer, profile page, and coordinate input dialog.
 
+**How it works:**
+- **Language selection:** The `?lang=` URL parameter takes priority, then the browser's `Accept-Language` header, defaulting to English
+- **Incremental seeding:** On startup, any new keys in the embedded `translations.json` are inserted into the DB (`ON CONFLICT DO NOTHING` preserves existing edits)
+- **Performance:** Only the active language + English fallback are embedded in the page HTML (~30KB vs ~850KB for all 30 languages), keeping the AI widget within Claude's token limits
+- **Branding:** "Safecast" must remain untranslated as a brand name in all languages
+
 ---
 
 ## User Authentication & API Keys
@@ -482,7 +488,7 @@ Customize map views with URL parameters:
 | `coloring`                             | safecast, chicha                | Scientific gradient vs. safety bins            |
 | `unit`                                 | uSv, uR                         | Display units (microsieverts or microroentgen) |
 | `legend`                               | 1, 0                            | Show/hide legend                               |
-| `lang`                                 | en, ja, de, fr, etc. (29 langs) | Interface language                             |
+| `lang`                                 | en, ja, de, fr, etc. (29 langs) | Interface language (server-side + client-side)  |
 | `layer`                                | OpenStreetMap, Google Satellite | Base map                                       |
 | `show`                                 | rt                              | Filter to show only realtime sensors           |
 
