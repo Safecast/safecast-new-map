@@ -188,19 +188,43 @@ Both the unified server and MCP server use DuckLake for analytics (tool usage lo
 
 ## Translations (i18n)
 
-Translations are stored in PostgreSQL (`translations` table) and loaded into memory at startup. The table is auto-created and seeded from the embedded `translations.json` if empty.
+Translations are stored in PostgreSQL (`translations` table) and loaded into memory at startup.
 
-**Run the extended UI translations migration:**
-```bash
-ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 \
-  "psql -h 127.0.0.1 -U postgres -d safecast -f /tmp/add_ui_translations.sql"
-```
+### How Seeding Works
+
+On every startup, `seedTranslationsDB()` reads the embedded `translations.json` and inserts any missing keys using `ON CONFLICT DO NOTHING`. This means:
+- New translation keys added to `translations.json` are automatically seeded on next deploy
+- Existing DB values (including admin edits) are never overwritten
+- No manual migration is needed when adding new keys
+
+### Language Selection Priority
+
+1. `?lang=` URL parameter (e.g., `/?lang=ja`) — checked first, server-side
+2. `Accept-Language` HTTP header from the browser
+3. Falls back to English (`en`)
+
+### Performance: Filtered TranslationsJSON
+
+Only the active language + English fallback are embedded in the page HTML (`TranslationsJSON`), reducing the payload from ~850KB (all 30 languages) to ~30KB. This keeps the AI assistant widget within Claude's 200K token context limit. Server-side template rendering (`{{translate "key"}}`) still uses the full translations map.
+
+### Branding Rule
+
+"Safecast" must remain untranslated as a brand name in all languages. Never translate it to local equivalents.
 
 **Admin UI:** `/admin/translations` — edit translations live, then click "Reload into Memory" to apply without restart.
 
 **Supported languages (29):** ar, bg, cs, da, de, el, en, es, fa, fi, fr, he, hi, hu, id, it, ja, ko, ms, nl, no, pl, pt, ru, sv, th, tr, uk, vi, zh
 
 **Translated components:** Map legend, AI assistant widget, login/register/forgot-password modals, user menu, search bar, spectrum viewer, coordinate input dialog, profile page.
+
+### Fixing Translations via SQL
+
+To fix a translation directly in the production DB:
+```bash
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 \
+  "psql -h 127.0.0.1 -U postgres -d safecast -c \"UPDATE translations SET value = 'New value' WHERE language_code='ja' AND key='title'\""
+```
+Then restart the service to reload: `systemctl restart safecast-new-map`
 
 ## Server Configuration
 
