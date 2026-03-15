@@ -391,15 +391,15 @@
 <body>
 
 <div class="header">
-  <h1>My Profile</h1>
-  <a href="/">&larr; Back to Map</a>
+  <h1>{{translate "profile_title"}}</h1>
+  <a href="/">&larr; {{translate "profile_back_to_map"}}</a>
 </div>
 
 <div id="loginPrompt" style="display: none;">
   <div class="card">
     <div class="empty-state">
-      <p style="font-size: 18px; margin-bottom: 12px;">Please log in to view your profile.</p>
-      <a href="/" style="color: var(--link-color);">Go to Map &rarr;</a>
+      <p style="font-size: 18px; margin-bottom: 12px;">{{translate "profile_login_required"}}</p>
+      <a href="/" style="color: var(--link-color);">{{translate "profile_go_to_map"}} &rarr;</a>
     </div>
   </div>
 </div>
@@ -408,60 +408,60 @@
 
   <!-- Account Info -->
   <div class="card">
-    <h2>Account</h2>
+    <h2>{{translate "profile_account"}}</h2>
     <div class="info-row">
-      <span class="info-label">Username</span>
+      <span class="info-label">{{translate "profile_username"}}</span>
       <span class="info-value" id="profileUsername"></span>
     </div>
     <div class="info-row">
-      <span class="info-label">Email</span>
+      <span class="info-label">{{translate "profile_email"}}</span>
       <span class="info-value" id="profileEmail"></span>
     </div>
     <div class="info-row">
-      <span class="info-label">Status</span>
+      <span class="info-label">{{translate "profile_status"}}</span>
       <span class="info-value" id="profileStatus"></span>
     </div>
     <div class="info-row">
-      <span class="info-label">Member since</span>
+      <span class="info-label">{{translate "profile_member_since"}}</span>
       <span class="info-value" id="profileCreated"></span>
     </div>
   </div>
 
   <!-- API Key -->
   <div class="card">
-    <h2>API Key</h2>
+    <h2>{{translate "profile_api_key_title"}}</h2>
     <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
-      Your unique API key can be used to:
+      {{translate "profile_api_key_desc"}}
     </p>
     <ul style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px; padding-left: 20px;">
-      <li><strong>Log in</strong> to your account (along with your email)</li>
-      <li>Authenticate API requests via the <code>X-API-Key</code> header or <code>?api_key=</code> query parameter</li>
-      <li>Upload measurement data programmatically</li>
+      <li><strong>{{translate "profile_api_key_login"}}</strong></li>
+      <li>{{translate "profile_api_key_auth"}}</li>
+      <li>{{translate "profile_api_key_upload"}}</li>
     </ul>
     <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">
-      <strong>Keep this key secure!</strong> If you lose it, contact an admin to regenerate it.
+      <strong>{{translate "profile_api_key_warning"}}</strong>
     </p>
     <div class="api-key-wrapper" style="justify-content: flex-start;">
       <span class="api-key" id="profileApiKey"></span>
-      <button class="copy-btn" onclick="copyApiKey()">Copy</button>
+      <button class="copy-btn" onclick="copyApiKey()">{{translate "profile_copy"}}</button>
     </div>
-    <div id="copyMsg" style="display: none; margin-top: 8px; font-size: 12px; color: var(--primary-color);">Copied!</div>
+    <div id="copyMsg" style="display: none; margin-top: 8px; font-size: 12px; color: var(--primary-color);">{{translate "profile_copied"}}</div>
   </div>
 
   <!-- Uploads / Tracks -->
   <div class="card">
-    <h2>My Uploads</h2>
-    <div id="uploadsLoading" class="loading">Loading uploads...</div>
+    <h2>{{translate "profile_uploads"}}</h2>
+    <div id="uploadsLoading" class="loading">{{translate "profile_loading"}}</div>
     <div id="uploadsEmpty" class="empty-state" style="display: none;">
-      <p>No uploads found for your account.</p>
+      <p>{{translate "profile_no_uploads"}}</p>
     </div>
     <div id="uploadsContainer" style="display: none;">
       <!-- Summary and controls -->
       <div class="summary">
-        <span><strong>Total Uploads:</strong> <span id="totalCount">0</span> files</span>
-        <span><strong>Page:</strong> <span id="currentPage">1</span> of <span id="totalPages">1</span></span>
+        <span><strong>{{translate "profile_total_uploads"}}</strong> <span id="totalCount">0</span></span>
+        <span><strong>{{translate "profile_page"}}</strong> <span id="currentPage">1</span> {{translate "profile_of"}} <span id="totalPages">1</span></span>
         <span>
-          <label><strong>Per page:</strong></label>
+          <label><strong>{{translate "profile_per_page"}}</strong></label>
           <select id="limitSelect" onchange="changeLimit()">
             <option value="25">25</option>
             <option value="50" selected>50</option>
@@ -470,8 +470,8 @@
           </select>
         </span>
         <span>
-          <label><strong>Search:</strong></label>
-          <input type="text" id="searchInput" placeholder="Search..." style="width: 200px;" onkeypress="if(event.key === 'Enter') performSearch()">
+          <label><strong>{{translate "profile_search"}}</strong></label>
+          <input type="text" id="searchInput" placeholder="{{translate "profile_search_placeholder"}}" style="width: 200px;" onkeypress="if(event.key === 'Enter') performSearch()">
           <button onclick="performSearch()" style="padding: 4px 12px; background: var(--link-color); color: white; border: none; border-radius: 4px; cursor: pointer;">🔍</button>
           <button onclick="clearSearch()" id="clearSearchBtn" style="display: none; padding: 4px 12px; background: transparent; color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer;">Clear</button>
         </span>
@@ -479,10 +479,10 @@
 
       <!-- Selection controls -->
       <div class="selection-controls">
-        <button class="view-selected-btn" id="viewMapBtn" onclick="viewSelectedOnMap()" disabled>📍 View Selected on Map</button>
-        <button class="secondary" onclick="selectAll()">Select All</button>
-        <button class="secondary" onclick="deselectAll()">Deselect All</button>
-        <span class="selection-count" id="selectionCount">0 selected</span>
+        <button class="view-selected-btn" id="viewMapBtn" onclick="viewSelectedOnMap()" disabled>📍 {{translate "profile_view_on_map"}}</button>
+        <button class="secondary" onclick="selectAll()">{{translate "profile_select_all"}}</button>
+        <button class="secondary" onclick="deselectAll()">{{translate "profile_deselect_all"}}</button>
+        <span class="selection-count" id="selectionCount">0 {{translate "profile_selected"}}</span>
       </div>
 
       <!-- Table -->
@@ -491,12 +491,12 @@
           <thead>
             <tr>
               <th class="checkbox-col"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th>
-              <th class="sortable" onclick="sortBy('id')" data-sort="id">ID</th>
-              <th class="sortable" onclick="sortBy('trackID')" data-sort="trackID">Track ID</th>
-              <th class="sortable" onclick="sortBy('filename')" data-sort="filename">Filename</th>
-              <th class="sortable" onclick="sortBy('detector')" data-sort="detector">Detector</th>
-              <th class="sortable" onclick="sortBy('recordingDate')" data-sort="recordingDate">Date</th>
-              <th class="sortable" onclick="sortBy('fileSize')" data-sort="fileSize">Size</th>
+              <th class="sortable" onclick="sortBy('id')" data-sort="id">{{translate "profile_col_id"}}</th>
+              <th class="sortable" onclick="sortBy('trackID')" data-sort="trackID">{{translate "profile_col_track"}}</th>
+              <th class="sortable" onclick="sortBy('filename')" data-sort="filename">{{translate "profile_col_filename"}}</th>
+              <th class="sortable" onclick="sortBy('detector')" data-sort="detector">{{translate "profile_col_detector"}}</th>
+              <th class="sortable" onclick="sortBy('recordingDate')" data-sort="recordingDate">{{translate "profile_col_date"}}</th>
+              <th class="sortable" onclick="sortBy('fileSize')" data-sort="fileSize">{{translate "profile_col_size"}}</th>
             </tr>
             <tr class="filter-row">
               <th></th>
@@ -519,13 +519,13 @@
 
   <!-- Change Password -->
   <div class="card">
-    <h2>Change Password</h2>
-    <button class="pw-toggle" id="pwToggle" onclick="togglePasswordForm()">Change password...</button>
+    <h2>{{translate "profile_change_password"}}</h2>
+    <button class="pw-toggle" id="pwToggle" onclick="togglePasswordForm()">{{translate "profile_change_password_btn"}}</button>
     <div class="pw-form" id="pwForm" style="display: none;">
-      <input type="password" id="currentPassword" placeholder="Current password">
-      <input type="password" id="newPassword" placeholder="New password (min 8 characters)">
-      <input type="password" id="confirmPassword" placeholder="Confirm new password">
-      <button onclick="changePassword()">Update Password</button>
+      <input type="password" id="currentPassword" placeholder="{{translate "profile_current_password"}}">
+      <input type="password" id="newPassword" placeholder="{{translate "profile_new_password"}}">
+      <input type="password" id="confirmPassword" placeholder="{{translate "profile_confirm_password"}}">
+      <button onclick="changePassword()">{{translate "profile_update_password"}}</button>
       <div id="pwMsg" style="display: none;"></div>
     </div>
   </div>
@@ -533,6 +533,23 @@
 </div>
 
 <script>
+  // Translations injected from server
+  const _t = {
+    verified: '{{translate "profile_verified"}}',
+    unverified: '{{translate "profile_unverified"}}',
+    admin_badge: '{{translate "profile_admin_badge"}}',
+    load_failed: '{{translate "profile_load_failed"}}',
+    selected: '{{translate "profile_selected"}}',
+    previous: '{{translate "profile_previous"}}',
+    next: '{{translate "profile_next"}}',
+    select_track: '{{translate "profile_select_track"}}',
+    fill_fields: '{{translate "profile_fill_fields"}}',
+    password_min: '{{translate "profile_password_min_error"}}',
+    passwords_mismatch: '{{translate "profile_passwords_mismatch"}}',
+    password_changed: '{{translate "profile_password_changed"}}',
+    password_failed: '{{translate "profile_password_failed"}}',
+    network_error: '{{translate "profile_network_error"}}',
+  };
   let currentUser = null;
   let selectedTracks = new Set();
   let lastSelectedIndex = -1;
@@ -568,12 +585,12 @@
     const statusEl = document.getElementById('profileStatus');
     let badges = '';
     if (currentUser.email_verified) {
-      badges += '<span class="badge badge-green">Verified</span> ';
+      badges += '<span class="badge badge-green">' + _t.verified + '</span> ';
     } else {
-      badges += '<span class="badge badge-orange">Unverified</span> ';
+      badges += '<span class="badge badge-orange">' + _t.unverified + '</span> ';
     }
     if (currentUser.is_admin) {
-      badges += '<span class="badge badge-blue">Admin</span> ';
+      badges += '<span class="badge badge-blue">' + _t.admin_badge + '</span> ';
     }
     statusEl.innerHTML = badges;
 
@@ -603,7 +620,7 @@
       displayPage();
       document.getElementById('uploadsContainer').style.display = 'block';
     } catch (e) {
-      document.getElementById('uploadsLoading').textContent = 'Failed to load uploads.';
+      document.getElementById('uploadsLoading').textContent = _t.load_failed;
     }
   }
 
@@ -650,9 +667,9 @@
 
     // Previous
     if (currentPage > 1) {
-      html += '<a href="#" class="page-btn" onclick="changePage(' + (currentPage - 1) + '); return false;">&laquo; Previous</a>';
+      html += '<a href="#" class="page-btn" onclick="changePage(' + (currentPage - 1) + '); return false;">&laquo; ' + _t.previous + '</a>';
     } else {
-      html += '<span class="page-btn disabled">&laquo; Previous</span>';
+      html += '<span class="page-btn disabled">&laquo; ' + _t.previous + '</span>';
     }
 
     // Page numbers
@@ -679,9 +696,9 @@
 
     // Next
     if (currentPage < totalPages) {
-      html += '<a href="#" class="page-btn" onclick="changePage(' + (currentPage + 1) + '); return false;">Next &raquo;</a>';
+      html += '<a href="#" class="page-btn" onclick="changePage(' + (currentPage + 1) + '); return false;">' + _t.next + ' &raquo;</a>';
     } else {
-      html += '<span class="page-btn disabled">Next &raquo;</span>';
+      html += '<span class="page-btn disabled">' + _t.next + ' &raquo;</span>';
     }
 
     pagination.innerHTML = html;
@@ -864,13 +881,13 @@
   }
 
   function updateSelectionCount() {
-    document.getElementById('selectionCount').textContent = selectedTracks.size + ' selected';
+    document.getElementById('selectionCount').textContent = selectedTracks.size + ' ' + _t.selected;
     document.getElementById('viewMapBtn').disabled = selectedTracks.size === 0;
   }
 
   function viewSelectedOnMap() {
     if (selectedTracks.size === 0) {
-      alert('Please select at least one track to view on the map.');
+      alert(_t.select_track);
       return;
     }
     const trackIDs = Array.from(selectedTracks).join(',');
@@ -906,19 +923,19 @@
 
     if (!current || !newPw) {
       msgEl.className = 'msg msg-error';
-      msgEl.textContent = 'Please fill in all fields.';
+      msgEl.textContent = _t.fill_fields;
       msgEl.style.display = 'block';
       return;
     }
     if (newPw.length < 8) {
       msgEl.className = 'msg msg-error';
-      msgEl.textContent = 'New password must be at least 8 characters.';
+      msgEl.textContent = _t.password_min;
       msgEl.style.display = 'block';
       return;
     }
     if (newPw !== confirm) {
       msgEl.className = 'msg msg-error';
-      msgEl.textContent = 'Passwords do not match.';
+      msgEl.textContent = _t.passwords_mismatch;
       msgEl.style.display = 'block';
       return;
     }
@@ -932,18 +949,18 @@
       const data = await res.json();
       if (res.ok) {
         msgEl.className = 'msg msg-success';
-        msgEl.textContent = 'Password changed successfully.';
+        msgEl.textContent = _t.password_changed;
         document.getElementById('currentPassword').value = '';
         document.getElementById('newPassword').value = '';
         document.getElementById('confirmPassword').value = '';
       } else {
         msgEl.className = 'msg msg-error';
-        msgEl.textContent = data.error || 'Failed to change password.';
+        msgEl.textContent = data.error || _t.password_failed;
       }
       msgEl.style.display = 'block';
     } catch (e) {
       msgEl.className = 'msg msg-error';
-      msgEl.textContent = 'Network error. Please try again.';
+      msgEl.textContent = _t.network_error;
       msgEl.style.display = 'block';
     }
   }
