@@ -4754,6 +4754,23 @@ func marshalTemplateJS(value interface{}) (template.JS, error) {
 	return template.JS(payload), nil
 }
 
+// translationsForLang returns a filtered copy of the translations map containing
+// only the requested language and "en" (fallback). This keeps the embedded JSON
+// small (~30KB instead of ~850KB for all 30 languages) so the AI widget stays
+// well within Claude's context limit.
+func translationsForLang(all map[string]map[string]string, lang string) map[string]map[string]string {
+	filtered := make(map[string]map[string]string, 2)
+	if en, ok := all["en"]; ok {
+		filtered["en"] = en
+	}
+	if lang != "en" {
+		if langMap, ok := all[lang]; ok {
+			filtered[lang] = langMap
+		}
+	}
+	return filtered
+}
+
 // parseDebugAllowlist converts the comma-separated flag payload into a lookup
 // map. Returning a new map keeps the zero value useful and avoids hidden shared
 // state that could surprise future callers.
@@ -4829,7 +4846,7 @@ func mapHandler(w http.ResponseWriter, r *http.Request) {
 		CompileVersion = "latest"
 	}
 
-	translationsJSON, err := marshalTemplateJS(translations)
+	translationsJSON, err := marshalTemplateJS(translationsForLang(translations, lang))
 	if err != nil {
 		log.Printf("map handler: marshal translations failed: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -7386,7 +7403,7 @@ func trackHandler(w http.ResponseWriter, r *http.Request) {
 		},
 	}).ParseFS(content, "public_html/map.html"))
 
-	translationsJSON, err := marshalTemplateJS(translations)
+	translationsJSON, err := marshalTemplateJS(translationsForLang(translations, lang))
 	if err != nil {
 		log.Printf("track handler: marshal translations failed: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -7475,7 +7492,7 @@ func tracksHandler(w http.ResponseWriter, r *http.Request) {
 		},
 	}).ParseFS(content, "public_html/map.html"))
 
-	translationsJSON, err := marshalTemplateJS(translations)
+	translationsJSON, err := marshalTemplateJS(translationsForLang(translations, lang))
 	if err != nil {
 		log.Printf("tracks handler: marshal translations failed: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
