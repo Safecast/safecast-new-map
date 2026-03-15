@@ -1787,8 +1787,51 @@ func precomputeMarkersForAllZoomLevels(src []database.Marker) []database.Marker 
 // Транслейт
 // =====================
 var translations map[string]map[string]string
+var translationsMu sync.RWMutex
 
-func loadTranslations(fs embed.FS, filename string) {
+// loadTranslationsFromDB loads all translations from the database into the in-memory map.
+// Returns true if successful, false if the table doesn't exist or DB is unavailable.
+func loadTranslationsFromDB() bool {
+	if db == nil || db.DB == nil {
+		return false
+	}
+
+	rows, err := db.DB.Query("SELECT language_code, key, value FROM translations")
+	if err != nil {
+		log.Printf("[i18n] Cannot load translations from DB: %v", err)
+		return false
+	}
+	defer rows.Close()
+
+	newTranslations := make(map[string]map[string]string)
+	count := 0
+	for rows.Next() {
+		var lang, key, value string
+		if err := rows.Scan(&lang, &key, &value); err != nil {
+			log.Printf("[i18n] Error scanning translation row: %v", err)
+			continue
+		}
+		if newTranslations[lang] == nil {
+			newTranslations[lang] = make(map[string]string)
+		}
+		newTranslations[lang][key] = value
+		count++
+	}
+
+	if count == 0 {
+		return false
+	}
+
+	translationsMu.Lock()
+	translations = newTranslations
+	translationsMu.Unlock()
+
+	log.Printf("[i18n] Loaded %d translations from database", count)
+	return true
+}
+
+// loadTranslationsFromFile loads translations from the embedded JSON file (fallback).
+func loadTranslationsFromFile(fs embed.FS, filename string) {
 	file, err := fs.Open(filename)
 	if err != nil {
 		log.Fatalf("Error opening translation file: %v", err)
@@ -1804,6 +1847,72 @@ func loadTranslations(fs embed.FS, filename string) {
 	if err != nil {
 		log.Fatalf("Error parsing translations: %v", err)
 	}
+	log.Printf("[i18n] Loaded translations from embedded file (fallback)")
+}
+
+// seedTranslationsDB seeds the database from the embedded JSON file if the table is empty.
+func seedTranslationsDB(fs embed.FS, filename string) {
+	if db == nil || db.DB == nil {
+		return
+	}
+
+	var count int
+	err := db.DB.QueryRow("SELECT COUNT(*) FROM translations").Scan(&count)
+	if err != nil {
+		log.Printf("[i18n] Cannot check translations table: %v", err)
+		return
+	}
+	if count > 0 {
+		return // already seeded
+	}
+
+	// Load from file
+	file, err := fs.Open(filename)
+	if err != nil {
+		log.Printf("[i18n] Cannot open translation file for seeding: %v", err)
+		return
+	}
+	defer file.Close()
+
+	data, err := ioutil.ReadAll(file)
+	if err != nil {
+		log.Printf("[i18n] Cannot read translation file for seeding: %v", err)
+		return
+	}
+
+	var fileTranslations map[string]map[string]string
+	if err := json.Unmarshal(data, &fileTranslations); err != nil {
+		log.Printf("[i18n] Cannot parse translation file for seeding: %v", err)
+		return
+	}
+
+	tx, err := db.DB.Begin()
+	if err != nil {
+		log.Printf("[i18n] Cannot begin transaction for seeding: %v", err)
+		return
+	}
+
+	inserted := 0
+	for lang, keys := range fileTranslations {
+		for key, value := range keys {
+			_, err := tx.Exec(
+				"INSERT INTO translations (language_code, key, value) VALUES ($1, $2, $3) ON CONFLICT (language_code, key) DO NOTHING",
+				lang, key, value,
+			)
+			if err != nil {
+				log.Printf("[i18n] Error seeding %s.%s: %v", lang, key, err)
+				continue
+			}
+			inserted++
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		log.Printf("[i18n] Error committing seed transaction: %v", err)
+		return
+	}
+
+	log.Printf("[i18n] Seeded %d translations into database from embedded file", inserted)
 }
 
 func getPreferredLanguage(r *http.Request) string {
@@ -5169,6 +5278,7 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		<a href="/api/admin/tracks` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">Tracks</a>
 		<a href="/admin/mcp` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">MCP Analytics</a>
 		<span class="disabled">Realtime</span>
+		<a href="/admin/translations` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">Translations</a>
 	</div>
 	<div class="nav">
 		<div class="nav-left">
@@ -6504,6 +6614,7 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 		<a href="/api/admin/tracks` + func() string { if password != "" { return "?password=" + password }; return "" }() + `" class="active">Tracks</a>
 		<a href="/admin/mcp` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">MCP Analytics</a>
 		<span class="disabled">Realtime</span>
+		<a href="/admin/translations` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">Translations</a>
 	</div>
 	<div class="nav">
 		<div class="nav-left">
@@ -8520,7 +8631,7 @@ func main() {
 	// 1. Флаги и версии
 	flag.Parse()
 	debugIPAllowlist = parseDebugAllowlist(*debugIPsFlag)
-	loadTranslations(content, "public_html/translations.json")
+	loadTranslationsFromFile(content, "public_html/translations.json")
 	selfupgradeStartupDelay(log.Printf)
 
 	archiveFrequency, freqErr := jsonarchive.ParseFrequency(*jsonArchiveFrequencyFlag)
@@ -8590,6 +8701,10 @@ func main() {
 		log.Fatalf("DB schema: %v", err)
 	}
 	queueDuckDBMaintenanceAfterImport(driverName, db, log.Printf, "startup")
+
+	// Seed translations into DB if empty, then reload from DB
+	seedTranslationsDB(content, "public_html/translations.json")
+	loadTranslationsFromDB()
 
 	// Initialize authentication system if configured
 	var authManager *auth.Manager
@@ -8976,6 +9091,52 @@ func main() {
 				return
 			}
 			adminRealtimeDeleteHandler(w, r)
+		}))
+
+		// Admin translations page and API
+		http.HandleFunc("/admin/translations", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminAccess(w, r) {
+				return
+			}
+			data, err := content.ReadFile("public_html/admin-translations.html")
+			if err != nil {
+				http.Error(w, "Page not found", http.StatusNotFound)
+				return
+			}
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Write(data)
+		}))
+		http.HandleFunc("/api/admin/translations/reload", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminAccess(w, r) {
+				return
+			}
+			adminTranslationsReloadHandler(w, r)
+		}))
+		http.HandleFunc("/api/admin/translations/", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminAccess(w, r) {
+				return
+			}
+			switch r.Method {
+			case http.MethodPut:
+				adminTranslationUpdateHandler(w, r)
+			case http.MethodDelete:
+				adminTranslationDeleteHandler(w, r)
+			default:
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			}
+		}))
+		http.HandleFunc("/api/admin/translations", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminAccess(w, r) {
+				return
+			}
+			switch r.Method {
+			case http.MethodGet:
+				adminTranslationsDataHandler(w, r)
+			case http.MethodPost:
+				adminTranslationCreateHandler(w, r)
+			default:
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			}
 		}))
 
 	}
