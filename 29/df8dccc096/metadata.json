@@ -3,7 +3,7 @@
   "checkpoint_id": "29df8dccc096",
   "strategy": "manual-commit",
   "branch": "fix/admin-translations-edit",
-  "checkpoints_count": 0,
+  "checkpoints_count": 1,
   "files_touched": [
     "cmd/unified-server/public_html/admin-translations.html"
   ],
@@ -14,13 +14,20 @@
       "context": "/29/df8dccc096/0/context.md",
       "content_hash": "/29/df8dccc096/0/content_hash.txt",
       "prompt": "/29/df8dccc096/0/prompt.txt"
+    },
+    {
+      "metadata": "/29/df8dccc096/1/metadata.json",
+      "transcript": "/29/df8dccc096/1/full.jsonl",
+      "context": "/29/df8dccc096/1/context.md",
+      "content_hash": "/29/df8dccc096/1/content_hash.txt",
+      "prompt": "/29/df8dccc096/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 0,
-    "cache_creation_tokens": 0,
-    "cache_read_tokens": 0,
-    "output_tokens": 0,
-    "api_call_count": 0
+    "input_tokens": 14617,
+    "cache_creation_tokens": 624180,
+    "cache_read_tokens": 31008378,
+    "output_tokens": 171135,
+    "api_call_count": 312
   }
 }

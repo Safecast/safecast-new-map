@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "29df8dccc096",
+  "session_id": "a556acf6-f669-4837-a3c9-66291f8cf6d0",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-15T11:50:39.899932274Z",
+  "branch": "fix/admin-translations-edit",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "cmd/unified-server/public_html/admin-translations.html"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "664077bf80fb",
+  "token_usage": {
+    "input_tokens": 14617,
+    "cache_creation_tokens": 624180,
+    "cache_read_tokens": 31008378,
+    "output_tokens": 171135,
+    "api_call_count": 312
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-15T11:50:19.423365869Z",
+    "agent_lines": 18,
+    "human_added": 3,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 21,
+    "agent_percentage": 85.71428571428571
+  }
+}
