@@ -1,0 +1,21 @@
+can you add a DeepWiki crawler to the repo? See https://github.com/marketplace/actions/deepwiki-documentation-crawler
+
+---
+
+How to use it?
+
+---
+
+We have to commit and psuh?
+
+---
+
+yes
+
+---
+
+Seems the fist push did not work, but the second push is fine? https://github.com/Safecast/safecast-new-map/actions/runs/23123096268/job/67160714428
+
+---
+
+yes
