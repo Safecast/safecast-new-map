@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "a71cc57cac9d",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".github/workflows/deepwiki.yml"
+  ],
+  "sessions": [
+    {
+      "metadata": "/a7/1cc57cac9d/0/metadata.json",
+      "transcript": "/a7/1cc57cac9d/0/full.jsonl",
+      "context": "/a7/1cc57cac9d/0/context.md",
+      "content_hash": "/a7/1cc57cac9d/0/content_hash.txt",
+      "prompt": "/a7/1cc57cac9d/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 17,
+    "cache_creation_tokens": 5176,
+    "cache_read_tokens": 306374,
+    "output_tokens": 1456,
+    "api_call_count": 11
+  }
+}
