@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "4c469f08758b",
+  "session_id": "01171b51-4eaa-47f3-9f5a-15df83a7d2f4",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-16T00:35:51.560324141Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".github/workflows/deepwiki.yml"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "30005df30045",
+  "token_usage": {
+    "input_tokens": 125,
+    "cache_creation_tokens": 6497,
+    "cache_read_tokens": 165752,
+    "output_tokens": 1190,
+    "api_call_count": 7
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-16T00:35:51.531860373Z",
+    "agent_lines": 28,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 28,
+    "agent_percentage": 100
+  }
+}
