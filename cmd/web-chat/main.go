@@ -21,6 +21,94 @@ var indexHTML []byte
 //go:embed safecast-square-ct.png
 var logoPNG []byte
 
+// Maximum tokens for the prompt (input to Claude). Leave room for tool results.
+const maxPromptTokens = 150000
+
+// Maximum characters for a single tool result (~30K tokens).
+// Prevents a single large MCP response from blowing up the prompt.
+const maxToolResultChars = 120000
+
+// estimateTokens roughly estimates the number of tokens in a string.
+// Claude uses ~4 characters per token on average for English text.
+func estimateTokens(s string) int {
+	if len(s) == 0 {
+		return 0
+	}
+	return len(s) / 4
+}
+
+// truncateHistory removes older messages from history to stay under token limit.
+// It keeps the most recent messages and always includes the system prompt.
+func truncateHistory(messages []anthropicMessage, maxTokens int) []anthropicMessage {
+	if len(messages) == 0 {
+		return messages
+	}
+
+	// Estimate current token count
+	totalTokens := 0
+	for _, msg := range messages {
+		switch content := msg.Content.(type) {
+		case string:
+			totalTokens += estimateTokens(content)
+		case []contentBlock:
+			for _, block := range content {
+				totalTokens += estimateTokens(block.Text)
+			}
+		}
+		// Add ~10 tokens per message for role metadata
+		totalTokens += 10
+	}
+
+	// If under limit, return as-is
+	if totalTokens <= maxTokens {
+		return messages
+	}
+
+	// Remove messages from the beginning until we're under the limit
+	// Keep at least the last message (current user query)
+	for len(messages) > 1 && totalTokens > maxTokens {
+		// Remove the oldest message
+		removed := messages[0]
+		switch content := removed.Content.(type) {
+		case string:
+			totalTokens -= estimateTokens(content) + 10
+		case []contentBlock:
+			for _, block := range content {
+				totalTokens -= estimateTokens(block.Text)
+			}
+			totalTokens -= 10
+		}
+		messages = messages[1:]
+	}
+
+	// If still over limit, truncate the content of the first message
+	if len(messages) > 0 && totalTokens > maxTokens {
+		switch content := messages[0].Content.(type) {
+		case string:
+			// Truncate string content
+			maxLen := (maxTokens * 4)
+			if len(content) > maxLen {
+				messages[0].Content = content[:maxLen] + "... [truncated due to length]"
+			}
+		case []contentBlock:
+			// Truncate text blocks
+			for i := range content {
+				if totalTokens <= maxTokens {
+					break
+				}
+				maxLen := (maxTokens * 4)
+				if len(content[i].Text) > maxLen {
+					content[i].Text = content[i].Text[:maxLen] + "... [truncated due to length]"
+					totalTokens = estimateTokens(content[i].Text)
+				}
+			}
+			messages[0].Content = content
+		}
+	}
+
+	return messages
+}
+
 const systemPrompt = `Safecast radiation monitoring assistant with REAL-TIME sensor data and historical archives.
 
 **Tool Selection**
@@ -153,6 +241,9 @@ func flushBuffer(w http.ResponseWriter, buffer []chunk) {
 // ── Anthropic call ─────────────────────────────────────────────────────────
 
 func callAnthropic(ctx context.Context, apiKey, model string, messages []anthropicMessage, tools []anthropicTool) (*anthropicResponse, error) {
+	// Truncate history if it exceeds the token limit
+	messages = truncateHistory(messages, maxPromptTokens)
+
 	reqBody := anthropicRequest{
 		Model:     model,
 		MaxTokens: 4096,
@@ -356,6 +447,11 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 					}
 				}
 
+
+				// Truncate oversized tool results to prevent exceeding API limits
+				if len(resultText) > maxToolResultChars {
+					resultText = resultText[:maxToolResultChars] + "\n\n... [truncated — result too large. Ask the user to narrow their query or use a smaller limit.]"
+				}
 				toolResults = append(toolResults, contentBlock{
 					Type:      "tool_result",
 					ToolUseID: tu.ID,
@@ -388,7 +484,7 @@ func main() {
 	}
 	model := os.Getenv("CLAUDE_MODEL")
 	if model == "" {
-		model = "claude-sonnet-4-5"
+		model = "claude-haiku-4-5-20251001"
 	}
 	mcpURL := os.Getenv("MCP_URL")
 	if mcpURL == "" {

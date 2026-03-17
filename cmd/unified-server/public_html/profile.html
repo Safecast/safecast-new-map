@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script>
+    // Apply theme from map's sessionStorage before first paint
+    (function() {
+      var theme = sessionStorage.getItem('themePreference');
+      if (theme) document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Profile - Safecast</title>
+  <style>
+    /* Admin-style theme variables */
+    :root {
+      --bg-primary: #f5f5f5;
+      --bg-card: white;
+      --text-primary: #333;
+      --text-secondary: #666;
+      --text-muted: #999;
+      --border-color: #ddd;
+      --link-color: #0066cc;
+      --shadow: 0 1px 3px rgba(0,0,0,0.1);
+      --th-bg: #424242;
+      --hover-bg: #f9f9f9;
+      --primary-color: #4CAF50;
+      --error-color: #f44336;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1a1a1a;
+        --bg-card: #2b2b2b;
+        --text-primary: #eee;
+        --text-secondary: #aaa;
+        --text-muted: #777;
+        --border-color: #444;
+        --link-color: #90caf9;
+        --shadow: 0 1px 3px rgba(255,255,255,0.1);
+        --th-bg: #616161;
+        --hover-bg: #333;
+        color-scheme: dark;
+      }
+    }
+
+    :root[data-theme='light'] {
+      --bg-primary: #f5f5f5;
+      --bg-card: white;
+      --text-primary: #333;
+      --text-secondary: #666;
+      --text-muted: #999;
+      --border-color: #ddd;
+      --link-color: #0066cc;
+      --th-bg: #424242;
+      --hover-bg: #f9f9f9;
+    }
+
+    :root[data-theme='dark'] {
+      --bg-primary: #1a1a1a;
+      --bg-card: #2b2b2b;
+      --text-primary: #eee;
+      --text-secondary: #aaa;
+      --text-muted: #777;
+      --border-color: #444;
+      --link-color: #90caf9;
+      --th-bg: #616161;
+      --hover-bg: #333;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding: 20px;
+      line-height: 1.6;
+    }
+
+    .header {
+      max-width: 1400px;
+      margin: 0 auto 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 { font-size: 24px; color: var(--text-primary); }
+
+    .header a {
+      color: var(--link-color);
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border-radius: 8px;
+      padding: 24px;
+      max-width: 1400px;
+      margin: 0 auto 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .card h2 {
+      font-size: 18px;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-primary);
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .info-row:last-child { border-bottom: none; }
+
+    .info-label {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text-muted);
+      min-width: 140px;
+    }
+
+    .info-value {
+      font-size: 14px;
+      flex: 1;
+      text-align: right;
+      color: var(--text-primary);
+    }
+
+    .api-key-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .api-key {
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      background: var(--bg-primary);
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 13px;
+      letter-spacing: 0.5px;
+      color: var(--text-primary);
+    }
+
+    .copy-btn {
+      padding: 4px 10px;
+      background: var(--primary-color);
+      border: none;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .copy-btn:hover { opacity: 0.85; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .badge-green { background: #2e7d32; color: white; }
+    .badge-orange { background: #e65100; color: white; }
+    .badge-blue { background: #1565c0; color: white; }
+
+    /* Uploads table - Admin style */
+    .summary {
+      background: var(--bg-card);
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 5px;
+      font-size: 0.9em;
+      color: var(--text-secondary);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      align-items: center;
+    }
+
+    .summary strong { color: var(--text-primary); }
+
+    .summary select, .summary input {
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-card);
+      color: var(--text-primary);
+    }
+
+    .page-btn {
+      display: inline-block;
+      padding: 6px 12px;
+      margin: 0 2px;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      background: var(--bg-card);
+      color: var(--link-color);
+      text-decoration: none;
+      font-size: 0.9em;
+      cursor: pointer;
+    }
+
+    .page-btn:hover { background: var(--hover-bg); }
+    .page-btn.active { background: var(--link-color); color: white; font-weight: bold; }
+    .page-btn.disabled { color: var(--text-muted); cursor: not-allowed; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      background: var(--bg-card);
+    }
+
+    th {
+      text-align: left;
+      padding: 12px;
+      background: var(--th-bg);
+      color: white;
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-primary);
+    }
+
+    tr:hover td { background: var(--hover-bg); }
+
+    td a {
+      color: var(--link-color);
+      text-decoration: none;
+    }
+
+    td a:hover { text-decoration: underline; }
+
+    .sortable {
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+      padding-right: 20px;
+    }
+
+    .sortable:hover { background: rgba(255,255,255,0.1); }
+    .sortable::after { content: '⇅'; position: absolute; right: 8px; opacity: 0.5; }
+    .sortable.asc::after { content: '▲'; opacity: 1; }
+    .sortable.desc::after { content: '▼'; opacity: 1; }
+
+    .filter-input {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid var(--border-color);
+      border-radius: 3px;
+      background: var(--bg-card);
+      color: var(--text-primary);
+      font-size: 0.85em;
+      box-sizing: border-box;
+    }
+
+    .filter-row th {
+      background: var(--bg-card);
+      padding: 8px 12px;
+      color: var(--text-primary);
+    }
+
+    .checkbox-col { width: 40px; text-align: center; }
+
+    .selection-controls {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+    }
+
+    .selection-controls button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .view-selected-btn {
+      background: #2196F3;
+      color: white;
+    }
+
+    .view-selected-btn:hover { background: #1976D2; }
+    .view-selected-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+    .selection-controls button.secondary {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+    }
+
+    .selection-controls button.secondary:hover { background: var(--hover-bg); }
+
+    .selection-count {
+      padding: 10px 15px;
+      background: var(--bg-primary);
+      border-radius: 4px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    tr.selected td { background: rgba(76, 175, 80, 0.15) !important; }
+
+    table input[type="checkbox"] {
+      cursor: pointer;
+      width: 16px;
+      height: 16px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+    }
+
+    .loading { text-align: center; padding: 40px; color: var(--text-muted); }
+
+    /* Password change form */
+    .pw-form { margin-top: 12px; }
+
+    .pw-form input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+
+    .pw-form button {
+      padding: 10px 20px;
+      background: var(--primary-color);
+      border: none;
+      border-radius: 6px;
+      color: white;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .pw-form button:hover { opacity: 0.85; }
+
+    .pw-toggle {
+      padding: 8px 16px;
+      background: transparent;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-primary);
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .msg { padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 13px; }
+    .msg-success { background: #1b5e20; color: #a5d6a7; }
+    .msg-error { background: #b71c1c; color: #ef9a9a; }
+
+    @media (prefers-color-scheme: light) {
+      .msg-success { background: #e8f5e9; color: #2e7d32; }
+      .msg-error { background: #ffebee; color: #c62828; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>{{translate "profile_title"}}</h1>
+  <a href="/">&larr; {{translate "profile_back_to_map"}}</a>
+</div>
+
+<div id="loginPrompt" style="display: none;">
+  <div class="card">
+    <div class="empty-state">
+      <p style="font-size: 18px; margin-bottom: 12px;">{{translate "profile_login_required"}}</p>
+      <a href="/" style="color: var(--link-color);">{{translate "profile_go_to_map"}} &rarr;</a>
+    </div>
+  </div>
+</div>
+
+<div id="profileContent" style="display: none;">
+
+  <!-- Account Info -->
+  <div class="card">
+    <h2>{{translate "profile_account"}}</h2>
+    <div class="info-row">
+      <span class="info-label">{{translate "profile_username"}}</span>
+      <span class="info-value" id="profileUsername"></span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">{{translate "profile_email"}}</span>
+      <span class="info-value" id="profileEmail"></span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">{{translate "profile_status"}}</span>
+      <span class="info-value" id="profileStatus"></span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">{{translate "profile_member_since"}}</span>
+      <span class="info-value" id="profileCreated"></span>
+    </div>
+  </div>
+
+  <!-- API Key -->
+  <div class="card">
+    <h2>{{translate "profile_api_key_title"}}</h2>
+    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+      {{translate "profile_api_key_desc"}}
+    </p>
+    <ul style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px; padding-left: 20px;">
+      <li><strong>{{translate "profile_api_key_login"}}</strong></li>
+      <li>{{translate "profile_api_key_auth"}}</li>
+      <li>{{translate "profile_api_key_upload"}}</li>
+    </ul>
+    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">
+      <strong>{{translate "profile_api_key_warning"}}</strong>
+    </p>
+    <div class="api-key-wrapper" style="justify-content: flex-start;">
+      <span class="api-key" id="profileApiKey"></span>
+      <button class="copy-btn" onclick="copyApiKey()">{{translate "profile_copy"}}</button>
+    </div>
+    <div id="copyMsg" style="display: none; margin-top: 8px; font-size: 12px; color: var(--primary-color);">{{translate "profile_copied"}}</div>
+  </div>
+
+  <!-- Uploads / Tracks -->
+  <div class="card">
+    <h2>{{translate "profile_uploads"}}</h2>
+    <div id="uploadsLoading" class="loading">{{translate "profile_loading"}}</div>
+    <div id="uploadsEmpty" class="empty-state" style="display: none;">
+      <p>{{translate "profile_no_uploads"}}</p>
+    </div>
+    <div id="uploadsContainer" style="display: none;">
+      <!-- Summary and controls -->
+      <div class="summary">
+        <span><strong>{{translate "profile_total_uploads"}}</strong> <span id="totalCount">0</span></span>
+        <span><strong>{{translate "profile_page"}}</strong> <span id="currentPage">1</span> {{translate "profile_of"}} <span id="totalPages">1</span></span>
+        <span>
+          <label><strong>{{translate "profile_per_page"}}</strong></label>
+          <select id="limitSelect" onchange="changeLimit()">
+            <option value="25">25</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+            <option value="250">250</option>
+          </select>
+        </span>
+        <span>
+          <label><strong>{{translate "profile_search"}}</strong></label>
+          <input type="text" id="searchInput" placeholder="{{translate "profile_search_placeholder"}}" style="width: 200px;" onkeypress="if(event.key === 'Enter') performSearch()">
+          <button onclick="performSearch()" style="padding: 4px 12px; background: var(--link-color); color: white; border: none; border-radius: 4px; cursor: pointer;">🔍</button>
+          <button onclick="clearSearch()" id="clearSearchBtn" style="display: none; padding: 4px 12px; background: transparent; color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer;">Clear</button>
+        </span>
+      </div>
+
+      <!-- Selection controls -->
+      <div class="selection-controls">
+        <button class="view-selected-btn" id="viewMapBtn" onclick="viewSelectedOnMap()" disabled>📍 {{translate "profile_view_on_map"}}</button>
+        <button class="secondary" onclick="selectAll()">{{translate "profile_select_all"}}</button>
+        <button class="secondary" onclick="deselectAll()">{{translate "profile_deselect_all"}}</button>
+        <span class="selection-count" id="selectionCount">0 {{translate "profile_selected"}}</span>
+      </div>
+
+      <!-- Table -->
+      <div style="overflow-x: auto;">
+        <table id="uploadsTable">
+          <thead>
+            <tr>
+              <th class="checkbox-col"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th>
+              <th class="sortable" onclick="sortBy('id')" data-sort="id">{{translate "profile_col_id"}}</th>
+              <th class="sortable" onclick="sortBy('trackID')" data-sort="trackID">{{translate "profile_col_track"}}</th>
+              <th class="sortable" onclick="sortBy('filename')" data-sort="filename">{{translate "profile_col_filename"}}</th>
+              <th class="sortable" onclick="sortBy('detector')" data-sort="detector">{{translate "profile_col_detector"}}</th>
+              <th class="sortable" onclick="sortBy('recordingDate')" data-sort="recordingDate">{{translate "profile_col_date"}}</th>
+              <th class="sortable" onclick="sortBy('fileSize')" data-sort="fileSize">{{translate "profile_col_size"}}</th>
+            </tr>
+            <tr class="filter-row">
+              <th></th>
+              <th><input type="text" class="filter-input" placeholder="ID..." onkeyup="filterTable()"></th>
+              <th><input type="text" class="filter-input" placeholder="Track ID..." onkeyup="filterTable()"></th>
+              <th><input type="text" class="filter-input" placeholder="Filename..." onkeyup="filterTable()"></th>
+              <th><input type="text" class="filter-input" placeholder="Detector..." onkeyup="filterTable()"></th>
+              <th><input type="text" class="filter-input" placeholder="Date..." onkeyup="filterTable()"></th>
+              <th><input type="text" class="filter-input" placeholder="Size..." onkeyup="filterTable()"></th>
+            </tr>
+          </thead>
+          <tbody id="uploadsBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div id="pagination" style="margin-top: 15px; text-align: center;"></div>
+    </div>
+  </div>
+
+  <!-- Change Password -->
+  <div class="card">
+    <h2>{{translate "profile_change_password"}}</h2>
+    <button class="pw-toggle" id="pwToggle" onclick="togglePasswordForm()">{{translate "profile_change_password_btn"}}</button>
+    <div class="pw-form" id="pwForm" style="display: none;">
+      <input type="password" id="currentPassword" placeholder="{{translate "profile_current_password"}}">
+      <input type="password" id="newPassword" placeholder="{{translate "profile_new_password"}}">
+      <input type="password" id="confirmPassword" placeholder="{{translate "profile_confirm_password"}}">
+      <button onclick="changePassword()">{{translate "profile_update_password"}}</button>
+      <div id="pwMsg" style="display: none;"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Translations injected from server
+  const _t = {
+    verified: '{{translate "profile_verified"}}',
+    unverified: '{{translate "profile_unverified"}}',
+    admin_badge: '{{translate "profile_admin_badge"}}',
+    load_failed: '{{translate "profile_load_failed"}}',
+    selected: '{{translate "profile_selected"}}',
+    previous: '{{translate "profile_previous"}}',
+    next: '{{translate "profile_next"}}',
+    select_track: '{{translate "profile_select_track"}}',
+    fill_fields: '{{translate "profile_fill_fields"}}',
+    password_min: '{{translate "profile_password_min_error"}}',
+    passwords_mismatch: '{{translate "profile_passwords_mismatch"}}',
+    password_changed: '{{translate "profile_password_changed"}}',
+    password_failed: '{{translate "profile_password_failed"}}',
+    network_error: '{{translate "profile_network_error"}}',
+  };
+  let currentUser = null;
+  let selectedTracks = new Set();
+  let lastSelectedIndex = -1;
+  let allUploads = [];
+  let filteredUploads = [];
+  let displayedUploads = [];
+  let currentSort = { field: 'id', direction: 'desc' };
+  let currentLimit = 50;
+  let currentOffset = 0;
+  let searchTerm = '';
+
+  async function init() {
+    try {
+      const res = await fetch('/api/user/profile');
+      if (!res.ok) {
+        document.getElementById('loginPrompt').style.display = 'block';
+        return;
+      }
+      currentUser = await res.json();
+      renderProfile();
+      document.getElementById('profileContent').style.display = 'block';
+      loadUploads();
+    } catch (e) {
+      document.getElementById('loginPrompt').style.display = 'block';
+    }
+  }
+
+  function renderProfile() {
+    document.getElementById('profileUsername').textContent = currentUser.username || '-';
+    document.getElementById('profileEmail').textContent = currentUser.email;
+    document.getElementById('profileApiKey').textContent = currentUser.api_key || 'None';
+
+    const statusEl = document.getElementById('profileStatus');
+    let badges = '';
+    if (currentUser.email_verified) {
+      badges += '<span class="badge badge-green">' + _t.verified + '</span> ';
+    } else {
+      badges += '<span class="badge badge-orange">' + _t.unverified + '</span> ';
+    }
+    if (currentUser.is_admin) {
+      badges += '<span class="badge badge-blue">' + _t.admin_badge + '</span> ';
+    }
+    statusEl.innerHTML = badges;
+
+    if (currentUser.created_at) {
+      const d = new Date(currentUser.created_at * 1000);
+      document.getElementById('profileCreated').textContent = d.toLocaleDateString('en-US', {
+        year: 'numeric', month: 'long', day: 'numeric'
+      });
+    }
+  }
+
+  async function loadUploads() {
+    try {
+      // Load all uploads at once (or use API pagination if needed)
+      const res = await fetch('/api/user/uploads?limit=10000&offset=0');
+      const data = await res.json();
+      document.getElementById('uploadsLoading').style.display = 'none';
+
+      if (!data.uploads || data.uploads.length === 0) {
+        document.getElementById('uploadsEmpty').style.display = 'block';
+        return;
+      }
+
+      allUploads = data.uploads;
+      filteredUploads = [...allUploads];
+      applySort();
+      displayPage();
+      document.getElementById('uploadsContainer').style.display = 'block';
+    } catch (e) {
+      document.getElementById('uploadsLoading').textContent = _t.load_failed;
+    }
+  }
+
+  function displayPage() {
+    const start = currentOffset;
+    const end = start + currentLimit;
+    displayedUploads = filteredUploads.slice(start, end);
+
+    const tbody = document.getElementById('uploadsBody');
+    tbody.innerHTML = '';
+
+    displayedUploads.forEach(function(u, idx) {
+      const date = u.recordingDate ? new Date(u.recordingDate * 1000).toLocaleDateString() : '-';
+      const size = u.fileSize ? formatBytes(u.fileSize) : '-';
+      const trackLink = u.trackID ? '<a href="/trackid/' + u.trackID + '">' + u.trackID + '</a>' : '-';
+      const tr = document.createElement('tr');
+      const isSelected = selectedTracks.has(u.trackID);
+      tr.className = isSelected ? 'selected' : '';
+      tr.setAttribute('data-index', idx);
+      tr.setAttribute('data-trackid', u.trackID || '');
+      tr.innerHTML = '<td class="checkbox-col"><input type="checkbox" ' + (isSelected ? 'checked' : '') + ' onchange="toggleTrack(\'' + u.trackID + '\', ' + idx + ', event)"></td>' +
+        '<td>' + (u.id || '-') + '</td>' +
+        '<td>' + trackLink + '</td>' +
+        '<td>' + (u.filename || '-') + '</td>' +
+        '<td>' + (u.detector || '-') + '</td>' +
+        '<td>' + date + '</td>' +
+        '<td>' + size + '</td>';
+      tbody.appendChild(tr);
+    });
+
+    updatePagination();
+    updateSelectionCount();
+  }
+
+  function updatePagination() {
+    document.getElementById('totalCount').textContent = filteredUploads.length;
+    const totalPages = Math.ceil(filteredUploads.length / currentLimit) || 1;
+    const currentPage = Math.floor(currentOffset / currentLimit) + 1;
+    document.getElementById('currentPage').textContent = currentPage;
+    document.getElementById('totalPages').textContent = totalPages;
+
+    const pagination = document.getElementById('pagination');
+    let html = '';
+
+    // Previous
+    if (currentPage > 1) {
+      html += '<a href="#" class="page-btn" onclick="changePage(' + (currentPage - 1) + '); return false;">&laquo; ' + _t.previous + '</a>';
+    } else {
+      html += '<span class="page-btn disabled">&laquo; ' + _t.previous + '</span>';
+    }
+
+    // Page numbers
+    const startPage = Math.max(1, currentPage - 2);
+    const endPage = Math.min(totalPages, startPage + 4);
+
+    if (startPage > 1) {
+      html += '<a href="#" class="page-btn" onclick="changePage(1); return false;">1</a>';
+      if (startPage > 2) html += '<span class="page-btn disabled">...</span>';
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      if (i === currentPage) {
+        html += '<span class="page-btn active">' + i + '</span>';
+      } else {
+        html += '<a href="#" class="page-btn" onclick="changePage(' + i + '); return false;">' + i + '</a>';
+      }
+    }
+
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) html += '<span class="page-btn disabled">...</span>';
+      html += '<a href="#" class="page-btn" onclick="changePage(' + totalPages + '); return false;">' + totalPages + '</a>';
+    }
+
+    // Next
+    if (currentPage < totalPages) {
+      html += '<a href="#" class="page-btn" onclick="changePage(' + (currentPage + 1) + '); return false;">' + _t.next + ' &raquo;</a>';
+    } else {
+      html += '<span class="page-btn disabled">' + _t.next + ' &raquo;</span>';
+    }
+
+    pagination.innerHTML = html;
+  }
+
+  function changePage(page) {
+    currentOffset = (page - 1) * currentLimit;
+    displayPage();
+  }
+
+  function changeLimit() {
+    currentLimit = parseInt(document.getElementById('limitSelect').value);
+    currentOffset = 0;
+    displayPage();
+  }
+
+  function sortBy(field) {
+    if (currentSort.field === field) {
+      currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+      currentSort.field = field;
+      currentSort.direction = 'desc';
+    }
+
+    // Update sort indicators
+    document.querySelectorAll('.sortable').forEach(th => {
+      th.classList.remove('asc', 'desc');
+      if (th.getAttribute('data-sort') === field) {
+        th.classList.add(currentSort.direction);
+      }
+    });
+
+    applySort();
+    currentOffset = 0;
+    displayPage();
+  }
+
+  function applySort() {
+    filteredUploads.sort((a, b) => {
+      let aVal = a[currentSort.field];
+      let bVal = b[currentSort.field];
+
+      // Handle nulls
+      if (aVal == null) aVal = '';
+      if (bVal == null) bVal = '';
+
+      // Numeric comparison for certain fields
+      if (currentSort.field === 'id' || currentSort.field === 'fileSize' || currentSort.field === 'recordingDate') {
+        aVal = Number(aVal) || 0;
+        bVal = Number(bVal) || 0;
+      }
+
+      if (aVal < bVal) return currentSort.direction === 'asc' ? -1 : 1;
+      if (aVal > bVal) return currentSort.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
+
+  function filterTable() {
+    const filters = Array.from(document.querySelectorAll('.filter-input')).map(input => input.value.toLowerCase());
+    filteredUploads = allUploads.filter(u => {
+      return (
+        (!filters[0] || String(u.id || '').toLowerCase().includes(filters[0])) &&
+        (!filters[1] || String(u.trackID || '').toLowerCase().includes(filters[1])) &&
+        (!filters[2] || String(u.filename || '').toLowerCase().includes(filters[2])) &&
+        (!filters[3] || String(u.detector || '').toLowerCase().includes(filters[3])) &&
+        (!filters[4] || (u.recordingDate && new Date(u.recordingDate * 1000).toLocaleDateString().toLowerCase().includes(filters[4]))) &&
+        (!filters[5] || (u.fileSize && formatBytes(u.fileSize).toLowerCase().includes(filters[5])))
+      );
+    });
+    currentOffset = 0;
+    displayPage();
+  }
+
+  function performSearch() {
+    searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+    if (!searchTerm) {
+      clearSearch();
+      return;
+    }
+
+    filteredUploads = allUploads.filter(u => {
+      return (
+        String(u.id || '').toLowerCase().includes(searchTerm) ||
+        String(u.trackID || '').toLowerCase().includes(searchTerm) ||
+        String(u.filename || '').toLowerCase().includes(searchTerm) ||
+        String(u.detector || '').toLowerCase().includes(searchTerm) ||
+        (u.recordingDate && new Date(u.recordingDate * 1000).toLocaleDateString().toLowerCase().includes(searchTerm)) ||
+        (u.fileSize && formatBytes(u.fileSize).toLowerCase().includes(searchTerm))
+      );
+    });
+    currentOffset = 0;
+    document.getElementById('clearSearchBtn').style.display = 'inline-block';
+    displayPage();
+  }
+
+  function clearSearch() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('clearSearchBtn').style.display = 'none';
+    searchTerm = '';
+    filteredUploads = [...allUploads];
+    currentOffset = 0;
+    displayPage();
+  }
+
+  function formatBytes(bytes) {
+    if (bytes === 0) return '0 B';
+    var k = 1024;
+    var sizes = ['B', 'KB', 'MB', 'GB'];
+    var i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  }
+
+  // Selection functions
+  function toggleTrack(trackID, index, event) {
+    if (!trackID) return;
+
+    if (event.shiftKey && lastSelectedIndex !== -1) {
+      const start = Math.min(lastSelectedIndex, index);
+      const end = Math.max(lastSelectedIndex, index);
+      for (let i = start; i <= end; i++) {
+        if (displayedUploads[i] && displayedUploads[i].trackID) {
+          selectedTracks.add(displayedUploads[i].trackID);
+        }
+      }
+      updateAllCheckboxes();
+    } else {
+      if (selectedTracks.has(trackID)) {
+        selectedTracks.delete(trackID);
+      } else {
+        selectedTracks.add(trackID);
+      }
+      lastSelectedIndex = index;
+      updateRowHighlight(trackID);
+    }
+    updateSelectionCount();
+  }
+
+  function toggleSelectAll() {
+    const checkbox = document.getElementById('selectAllCheckbox');
+    if (checkbox.checked) {
+      selectAll();
+    } else {
+      deselectAll();
+    }
+  }
+
+  function selectAll() {
+    displayedUploads.forEach(u => {
+      if (u.trackID) selectedTracks.add(u.trackID);
+    });
+    updateAllCheckboxes();
+    updateSelectionCount();
+  }
+
+  function deselectAll() {
+    selectedTracks.clear();
+    updateAllCheckboxes();
+    updateSelectionCount();
+  }
+
+  function updateAllCheckboxes() {
+    const rows = document.querySelectorAll('#uploadsBody tr');
+    rows.forEach(row => {
+      const trackID = row.getAttribute('data-trackid');
+      const checkbox = row.querySelector('input[type="checkbox"]');
+      if (checkbox && trackID) {
+        checkbox.checked = selectedTracks.has(trackID);
+        row.className = selectedTracks.has(trackID) ? 'selected' : '';
+      }
+    });
+    document.getElementById('selectAllCheckbox').checked = displayedUploads.length > 0 && displayedUploads.every(u => selectedTracks.has(u.trackID));
+  }
+
+  function updateRowHighlight(trackID) {
+    const row = document.querySelector('tr[data-trackid="' + trackID + '"]');
+    if (row) {
+      row.className = selectedTracks.has(trackID) ? 'selected' : '';
+    }
+  }
+
+  function updateSelectionCount() {
+    document.getElementById('selectionCount').textContent = selectedTracks.size + ' ' + _t.selected;
+    document.getElementById('viewMapBtn').disabled = selectedTracks.size === 0;
+  }
+
+  function viewSelectedOnMap() {
+    if (selectedTracks.size === 0) {
+      alert(_t.select_track);
+      return;
+    }
+    const trackIDs = Array.from(selectedTracks).join(',');
+    window.location.href = '/tracks/' + encodeURIComponent(trackIDs);
+  }
+
+  function copyApiKey() {
+    const key = document.getElementById('profileApiKey').textContent;
+    navigator.clipboard.writeText(key).then(function() {
+      const msg = document.getElementById('copyMsg');
+      msg.style.display = 'block';
+      setTimeout(function() { msg.style.display = 'none'; }, 2000);
+    });
+  }
+
+  function togglePasswordForm() {
+    const form = document.getElementById('pwForm');
+    const btn = document.getElementById('pwToggle');
+    if (form.style.display === 'none') {
+      form.style.display = 'block';
+      btn.style.display = 'none';
+    } else {
+      form.style.display = 'none';
+      btn.style.display = 'inline-block';
+    }
+  }
+
+  async function changePassword() {
+    const current = document.getElementById('currentPassword').value;
+    const newPw = document.getElementById('newPassword').value;
+    const confirm = document.getElementById('confirmPassword').value;
+    const msgEl = document.getElementById('pwMsg');
+
+    if (!current || !newPw) {
+      msgEl.className = 'msg msg-error';
+      msgEl.textContent = _t.fill_fields;
+      msgEl.style.display = 'block';
+      return;
+    }
+    if (newPw.length < 8) {
+      msgEl.className = 'msg msg-error';
+      msgEl.textContent = _t.password_min;
+      msgEl.style.display = 'block';
+      return;
+    }
+    if (newPw !== confirm) {
+      msgEl.className = 'msg msg-error';
+      msgEl.textContent = _t.passwords_mismatch;
+      msgEl.style.display = 'block';
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/user/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ current_password: current, new_password: newPw })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        msgEl.className = 'msg msg-success';
+        msgEl.textContent = _t.password_changed;
+        document.getElementById('currentPassword').value = '';
+        document.getElementById('newPassword').value = '';
+        document.getElementById('confirmPassword').value = '';
+      } else {
+        msgEl.className = 'msg msg-error';
+        msgEl.textContent = data.error || _t.password_failed;
+      }
+      msgEl.style.display = 'block';
+    } catch (e) {
+      msgEl.className = 'msg msg-error';
+      msgEl.textContent = _t.network_error;
+      msgEl.style.display = 'block';
+    }
+  }
+
+  init();
+</script>
+
+</body>
+</html>

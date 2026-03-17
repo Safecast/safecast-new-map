@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Safecast Radiation Assistant</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png" />
+  <link rel="apple-touch-icon" href="safecast-square-ct.png" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #1a1e24;
+      --surface:  #242930;
+      --border:   #2e3540;
+      --blue:     #1e88e5;
+      --blue-dk:  #1565c0;
+      --green:    #1e88e5;
+      --green-dk: #1565c0;
+      --text:     #e4e8ef;
+      --muted:    #7a8494;
+      --user-bg:  #1e88e522;
+      --err:      #e17055;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    /* ── Layout ── */
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      width: 90%;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      padding: 16px 20px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    header .logo {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+      cursor: pointer;
+    }
+    header .logo img {
+      width: 100%; height: 100%;
+      object-fit: contain;
+    }
+    header .title-area { flex: 1; cursor: pointer; }
+    header .title-area:hover h1 { color: var(--green); }
+    header h1 { font-size: 16px; font-weight: 600; transition: color .15s; }
+    header p  { font-size: 12px; color: var(--muted); }
+
+    /* Download button in header */
+    #download-btn {
+      background: var(--green);
+      border: none;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 13px;
+      cursor: pointer;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background .15s;
+    }
+    #download-btn:hover { background: var(--green-dk); }
+    #download-btn svg { width: 14px; height: 14px; fill: #fff; }
+
+    /* ── Messages ── */
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .msg {
+      display: flex;
+      gap: 10px;
+      max-width: 100%;
+      position: relative;
+    }
+    .msg.user  { flex-direction: row-reverse; }
+    .msg.user  .bubble { background: var(--user-bg); border: 1px solid var(--green); margin-left: 40px; }
+    .msg.bot   .bubble { background: var(--surface); border: 1px solid var(--border); margin-right: 40px; position: relative; }
+
+    /* Copy button for bot messages */
+    .msg.bot .copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 11px;
+      cursor: pointer;
+      color: var(--muted);
+      opacity: 0;
+      transition: opacity .15s, color .15s, border-color .15s;
+    }
+    .msg.bot:hover .copy-btn { opacity: 1; }
+    .msg.bot .copy-btn:hover { color: var(--green); border-color: var(--green); }
+    .msg.bot .copy-btn.copied { color: var(--green); opacity: 1; }
+
+    .avatar {
+      width: 30px; height: 30px; border-radius: 50%;
+      flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      overflow: hidden;
+    }
+    .msg.user .avatar { background: var(--green); color: #fff; }
+    .msg.bot  .avatar { background: var(--surface); border: 1px solid var(--border); }
+    .msg.bot  .avatar img { width: 100%; height: 100%; object-fit: contain; }
+
+    .bubble {
+      padding: 10px 14px;
+      border-radius: 12px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.55;
+    }
+    .msg-timestamp {
+      font-size: 11px;
+      color: var(--muted, #999);
+      margin-top: 2px;
+      padding: 0 4px;
+    }
+    .msg.user .msg-timestamp { text-align: right; }
+    .bubble strong { font-weight: 600; }
+    .bubble em { font-style: italic; }
+    .bubble code {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+      font-size: 13px;
+    }
+    .bubble a {
+      color: var(--blue);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: border-color .15s;
+    }
+    .bubble a:hover { border-bottom-color: var(--blue); }
+
+    /* Markdown headers */
+    .bubble h1 { font-size: 20px; font-weight: 700; margin: 16px 0 10px; color: var(--text); }
+    .bubble h2 { font-size: 18px; font-weight: 600; margin: 14px 0 8px; color: var(--text); }
+    .bubble h3 { font-size: 16px; font-weight: 600; margin: 12px 0 6px; color: var(--text); }
+    .bubble h1 + br, .bubble h2 + br, .bubble h3 + br { display: none; } /* Remove line breaks after headers */
+
+    /* Markdown tables */
+    .bubble table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .bubble table td {
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      line-height: 1.4;
+      word-wrap: break-word;
+      word-break: break-word;
+      hyphens: auto;
+      -webkit-hyphens: auto;
+      -moz-hyphens: auto;
+    }
+    .bubble table tr:first-child td {
+      background: rgba(255, 255, 255, 0.08);
+      font-weight: 600;
+    }
+    .bubble table br { display: none; } /* Remove line breaks inside tables */
+    .bubble table + br { display: none; } /* Remove line breaks after tables */
+
+    /* Markdown lists */
+    .bubble ul {
+      margin: 10px 0;
+      padding-left: 24px;
+      list-style-type: disc;
+    }
+    .bubble ul li { margin: 4px 0; }
+    .bubble ul br { display: none; } /* Remove line breaks inside lists */
+
+    /* Markdown horizontal rule */
+    .bubble hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 16px 0;
+    }
+
+    /* AI disclaimer styling */
+    .bubble hr + em {
+      color: var(--muted);
+      font-size: 12px;
+      display: block;
+      margin-top: 12px;
+    }
+
+    .bubble.thinking {
+      color: var(--muted);
+      font-style: italic;
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+
+    .bubble.error { color: var(--err); border-color: var(--err); }
+
+    /* ── Intro ── */
+    #intro {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+    }
+    #intro h2 { font-size: 22px; color: var(--text); margin-bottom: 8px; }
+    #intro p  { font-size: 14px; max-width: 400px; margin: 0 auto 20px; }
+    #intro .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+    #intro .chip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: border-color .15s;
+    }
+    #intro .chip:hover { border-color: var(--green); color: var(--green); }
+
+    /* ── Input ── */
+    #input-area {
+      padding: 14px 20px 18px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    #form {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+    #msg {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      padding: 10px 14px;
+      font-size: 14px;
+      resize: none;
+      max-height: 120px;
+      outline: none;
+      font-family: inherit;
+      line-height: 1.5;
+      transition: border-color .15s;
+    }
+    #msg:focus { border-color: var(--green); }
+    #msg::placeholder { color: var(--muted); }
+
+    #send {
+      background: var(--green);
+      border: none;
+      border-radius: 10px;
+      width: 42px; height: 42px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: background .15s;
+    }
+    #send:hover:not(:disabled) { background: var(--green-dk); }
+    #send:disabled { opacity: .4; cursor: not-allowed; }
+    #send svg { fill: #fff; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="logo" onclick="clearConversation()"><img src="safecast-square-ct.png" alt="Safecast" /></div>
+    <div class="title-area" onclick="clearConversation()">
+      <h1>Safecast Radiation Assistant</h1>
+      <p>Radiation data from the Safecast sensor network</p>
+    </div>
+    <button id="download-btn" onclick="downloadConversation()">
+      <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+      Download
+    </button>
+  </header>
+
+  <div id="messages">
+    <div id="intro">
+      <h2>Ask about radiation data</h2>
+      <p>I have access to live readings from Safecast sensors across Japan and worldwide.</p>
+      <div class="chips">
+        <span class="chip" onclick="ask(this)">What's the radiation level near Tokyo?</span>
+        <span class="chip" onclick="ask(this)">Show sensors near Fukushima</span>
+        <span class="chip" onclick="ask(this)">What are the latest readings in Osaka?</span>
+        <span class="chip" onclick="ask(this)">What are the highest readings ever recorded?</span>
+        <span class="chip" onclick="ask(this)">How does radiation compare year over year?</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="input-area">
+    <form id="form" onsubmit="return false;">
+      <textarea id="msg" rows="1" placeholder="Ask about radiation levels, sensors, or locations…"></textarea>
+      <button id="send" type="submit" title="Send">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+      </button>
+    </form>
+  </div>
+</div>
+
+<script>
+  const messagesEl = document.getElementById('messages');
+  const introEl    = document.getElementById('intro');
+  const formEl     = document.getElementById('form');
+  const msgEl      = document.getElementById('msg');
+  const sendBtn    = document.getElementById('send');
+
+  let busy = false;
+  let conversationHistory = []; // Track conversation for context
+
+  // Auto-grow textarea
+  msgEl.addEventListener('input', () => {
+    msgEl.style.height = 'auto';
+    msgEl.style.height = Math.min(msgEl.scrollHeight, 120) + 'px';
+  });
+
+  // Send on Enter (Shift+Enter = newline)
+  msgEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
+  });
+
+  formEl.addEventListener('submit', submit);
+
+  function ask(chip) {
+    msgEl.value = chip.textContent;
+    submit();
+  }
+
+  function submit() {
+    const text = msgEl.value.trim();
+    if (!text || busy) return;
+    sendMessage(text);
+    msgEl.value = '';
+    msgEl.style.height = 'auto';
+  }
+
+  // Convert markdown to HTML
+  function markdownToHTML(text) {
+    let html = text;
+
+    // Headers (must be at start of line)
+    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+    // Horizontal rules
+    html = html.replace(/^---+$/gm, '<hr>');
+
+    // Tables (simple approach - detect table rows)
+    html = html.replace(/^\|(.+)\|$/gm, function(match, content) {
+      const cells = content.split('|').map(c => c.trim());
+      const cellTags = cells.map(c => {
+        // Check if this is a separator row (--|---|---)
+        if (/^:?-+:?$/.test(c)) return null;
+        return `<td>${c}</td>`;
+      }).filter(Boolean);
+      if (cellTags.length === 0) return '';
+      return '<tr>' + cellTags.join('') + '</tr>';
+    });
+    // Wrap table rows in table tags
+    html = html.replace(/(<tr>.+<\/tr>\n?)+/g, '<table>$&</table>');
+
+    // Unordered lists (lines starting with - or *)
+    html = html.replace(/^[*-] (.+)$/gm, '<li>$1</li>');
+    html = html.replace(/(<li>.+<\/li>\n?)+/g, '<ul>$&</ul>');
+
+    // Ordered lists (lines starting with 1., 2., etc)
+    html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+
+    // Bold: **text** or __text__
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+
+    // Italic: *text* or _text_
+    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    html = html.replace(/_(.+?)_/g, '<em>$1</em>');
+
+    // Inline code: `code`
+    html = html.replace(/`(.+?)`/g, '<code>$1</code>');
+
+    // Links: [text](url) - do this BEFORE auto-linking plain URLs
+    html = html.replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+
+    // Auto-link plain URLs (but not ones already in <a> tags)
+    html = html.replace(/(^|[^"'>])(https?:\/\/[^\s<]+)/g, function(match, prefix, url) {
+      // Don't link if it's already inside an href attribute
+      return prefix + '<a href="' + url + '" target="_blank" rel="noopener">' + url + '</a>';
+    });
+
+    // Line breaks: preserve newlines, but not after block elements or between table rows
+    html = html.replace(/\n/g, (match, offset, string) => {
+      // Don't add <br> after closing block tags
+      const beforeContext = string.substring(Math.max(0, offset - 50), offset);
+      if (/<\/(table|ul|h[123]|tr)>\s*$/.test(beforeContext)) return '';
+      // Don't add <br> before opening table rows
+      const afterContext = string.substring(offset + 1, Math.min(string.length, offset + 10));
+      if (/^\s*<tr>/.test(afterContext)) return '';
+      return '<br>';
+    });
+
+    return html;
+  }
+
+  function addMessage(role, text, cls) {
+    if (introEl) introEl.style.display = 'none';
+
+    const msg    = document.createElement('div');
+    msg.className = `msg ${role}`;
+
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar';
+    if (role === 'user') {
+      avatar.textContent = '👤';
+    } else {
+      const img = document.createElement('img');
+      img.src = 'safecast-square-ct.png';
+      img.alt = 'Safecast';
+      avatar.appendChild(img);
+    }
+
+    const bubble = document.createElement('div');
+    bubble.className = `bubble ${cls || ''}`;
+    // User messages are plain text, bot messages support markdown
+    if (role === 'bot') {
+      bubble.innerHTML = markdownToHTML(text);
+
+      // Add copy button for bot messages
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'copy-btn';
+      copyBtn.textContent = 'Copy';
+      copyBtn.onclick = () => copyMessage(text, copyBtn);
+      bubble.appendChild(copyBtn);
+    } else {
+      bubble.textContent = text;
+    }
+
+    const ts = document.createElement('div');
+    ts.className = 'msg-timestamp';
+    ts.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const wrapper = document.createElement('div');
+    wrapper.appendChild(bubble);
+    wrapper.appendChild(ts);
+
+    msg.appendChild(avatar);
+    msg.appendChild(wrapper);
+    messagesEl.appendChild(msg);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return bubble;
+  }
+
+  function copyMessage(text, btn) {
+    navigator.clipboard.writeText(text).then(() => {
+      const originalText = btn.textContent;
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = originalText;
+        btn.classList.remove('copied');
+      }, 2000);
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+    });
+  }
+
+  function downloadConversation() {
+    if (conversationHistory.length === 0) {
+      alert('No conversation to download yet!');
+      return;
+    }
+
+    // Build markdown format
+    let markdown = '# Safecast Radiation Assistant Conversation\n\n';
+    markdown += `Date: ${new Date().toLocaleString()}\n\n`;
+    markdown += '---\n\n';
+
+    conversationHistory.forEach(msg => {
+      const role = msg.role === 'user' ? 'You' : 'Assistant';
+      markdown += `## ${role}\n\n`;
+      markdown += msg.content + '\n\n';
+      markdown += '---\n\n';
+    });
+
+    // Create download link
+    const blob = new Blob([markdown], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `safecast-conversation-${new Date().toISOString().slice(0,10)}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function clearConversation() {
+    // Clear conversation history
+    conversationHistory = [];
+
+    // Clear all messages
+    while (messagesEl.firstChild) {
+      messagesEl.removeChild(messagesEl.firstChild);
+    }
+
+    // Show intro again
+    messagesEl.appendChild(introEl);
+    introEl.style.display = 'block';
+
+    // Focus on input
+    msgEl.focus();
+  }
+
+  function sendMessage(text) {
+    busy = true;
+    sendBtn.disabled = true;
+
+    addMessage('user', text);
+    const botBubble = addMessage('bot', '…thinking…', 'thinking');
+
+    let accumulated = '';
+
+    function finish(success = true) {
+      botBubble.classList.remove('thinking');
+      busy = false;
+      sendBtn.disabled = false;
+      msgEl.focus();
+
+      // Display bot response (disclaimer already included in _ai_generated_note from backend)
+      if (success && accumulated) {
+        botBubble.innerHTML = markdownToHTML(accumulated);
+
+        // Re-add copy button
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'copy-btn';
+        copyBtn.textContent = 'Copy';
+        copyBtn.onclick = () => copyMessage(accumulated, copyBtn);
+        botBubble.appendChild(copyBtn);
+
+        conversationHistory.push(
+          { role: 'user', content: text },
+          { role: 'assistant', content: accumulated }
+        );
+
+        // Keep only last 10 messages (5 exchanges) to prevent rate limits
+        const MAX_HISTORY = 10;
+        if (conversationHistory.length > MAX_HISTORY) {
+          conversationHistory = conversationHistory.slice(-MAX_HISTORY);
+        }
+      }
+    }
+
+    fetch('/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: text,
+        history: conversationHistory,
+        source: 'web-chat',
+        client_timestamp: new Date().toISOString()
+      }),
+    }).then(response => {
+      const reader  = response.body.getReader();
+      const decoder = new TextDecoder();
+      let   buffer  = '';
+
+      function pump() {
+        return reader.read().then(({ done, value }) => {
+          if (done) { finish(); return; }
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop(); // keep incomplete last line
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            try {
+              const ev = JSON.parse(line);
+              if (ev.type === 'text') {
+                if (botBubble.classList.contains('thinking')) {
+                  botBubble.classList.remove('thinking');
+                  accumulated = '';
+                }
+                accumulated += ev.text;
+                botBubble.innerHTML = markdownToHTML(accumulated);
+                messagesEl.scrollTop = messagesEl.scrollHeight;
+              } else if (ev.type === 'done') {
+                finish();
+              } else if (ev.type === 'error') {
+                botBubble.classList.remove('thinking');
+                botBubble.classList.add('error');
+                botBubble.textContent = 'Error: ' + ev.error;
+                finish(false);
+              }
+            } catch { /* malformed line, skip */ }
+          }
+          return pump();
+        });
+      }
+      return pump();
+    }).catch(err => {
+      botBubble.classList.remove('thinking');
+      botBubble.classList.add('error');
+      botBubble.textContent = 'Connection error: ' + err.message;
+      finish(false);
+    });
+  }
+
+  msgEl.focus();
+</script>
+</body>
+</html>

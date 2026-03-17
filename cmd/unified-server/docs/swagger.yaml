@@ -1,0 +1,554 @@
+basePath: /api
+host: simplemap.safecast.org
+info:
+  contact:
+    name: Safecast
+    url: https://safecast.org
+  description: REST access to the Safecast radiation monitoring dataset via simplemap.safecast.org
+    — 200M+ measurements from citizen scientists worldwide. All data is CC0-licensed
+    and read-only. Powered by PostgreSQL+PostGIS.
+  license:
+    name: CC0 1.0 Universal
+    url: https://creativecommons.org/publicdomain/zero/1.0/
+  title: Safecast Map API
+  version: "1.0"
+paths:
+  /area:
+    get:
+      description: Returns historical bGeigie measurements inside the specified geographic
+        rectangle. Falls back to Safecast REST API if no database is configured.
+      parameters:
+      - description: Southern boundary latitude (-90 to 90)
+        in: query
+        name: min_lat
+        required: true
+        type: number
+      - description: Northern boundary latitude (-90 to 90)
+        in: query
+        name: max_lat
+        required: true
+        type: number
+      - description: Western boundary longitude (-180 to 180)
+        in: query
+        name: min_lon
+        required: true
+        type: number
+      - description: Eastern boundary longitude (-180 to 180)
+        in: query
+        name: max_lon
+        required: true
+        type: number
+      - default: 100
+        description: Maximum number of results (1 to 10000)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Measurements with count, bbox, and source
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid or missing parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Find radiation measurements within a bounding box
+      tags:
+      - historical
+  /device/{id}/history:
+    get:
+      description: Returns time-series radiation data from a bGeigie mobile device
+        or fixed sensor. Queries both the markers table (bGeigie imports) and realtime_measurements
+        table (fixed sensors).
+      parameters:
+      - description: Device identifier
+        in: path
+        name: id
+        required: true
+        type: string
+      - default: 30
+        description: Days of history to retrieve (1 to 365)
+        in: query
+        name: days
+        type: integer
+      - default: 200
+        description: Maximum number of results (1 to 10000)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Device measurements with period metadata
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get historical measurements from a device
+      tags:
+      - historical
+  /info/{topic}:
+    get:
+      description: Returns static educational reference content about radiation units,
+        safety levels, detector types, background levels, and isotopes.
+      parameters:
+      - description: Topic to retrieve
+        enum:
+        - units
+        - dose_rates
+        - safety_levels
+        - detectors
+        - background_levels
+        - isotopes
+        in: path
+        name: topic
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Reference content for the requested topic
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid or missing topic
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get radiation reference information
+      tags:
+      - reference
+  /radiation:
+    get:
+      description: Returns historical bGeigie measurements within a radius of the
+        given coordinates, sorted by most recent. Uses PostGIS spatial index for fast
+        queries. Falls back to Safecast REST API if no database is configured.
+      parameters:
+      - description: Latitude in decimal degrees (-90 to 90)
+        in: query
+        name: lat
+        required: true
+        type: number
+      - description: Longitude in decimal degrees (-180 to 180)
+        in: query
+        name: lon
+        required: true
+        type: number
+      - default: 1500
+        description: Search radius in meters (25 to 50000)
+        in: query
+        name: radius_m
+        type: number
+      - default: 25
+        description: Maximum number of results (1 to 10000)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Radiation measurements with count, source, and query metadata
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Find radiation measurements near a location
+      tags:
+      - historical
+  /sensor/{id}/current:
+    get:
+      description: Routes to current or history endpoint based on the path suffix.
+        Use /current for the latest reading, /history for time-series data.
+      parameters:
+      - description: Device identifier
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Start date for history (YYYY-MM-DD) — required for /history
+        in: query
+        name: start_date
+        type: string
+      - description: 'End date for history (YYYY-MM-DD, default: today)'
+        in: query
+        name: end_date
+        type: string
+      - default: 25
+        description: Maximum number of results (1 to 1000)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sensor readings
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Database unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get readings from a specific sensor
+      tags:
+      - realtime
+  /sensor/{id}/history:
+    get:
+      description: Routes to current or history endpoint based on the path suffix.
+        Use /current for the latest reading, /history for time-series data.
+      parameters:
+      - description: Device identifier
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Start date for history (YYYY-MM-DD) — required for /history
+        in: query
+        name: start_date
+        type: string
+      - description: 'End date for history (YYYY-MM-DD, default: today)'
+        in: query
+        name: end_date
+        type: string
+      - default: 25
+        description: Maximum number of results (1 to 1000)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sensor readings
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Database unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get readings from a specific sensor
+      tags:
+      - realtime
+  /sensors:
+    get:
+      description: Lists active fixed radiation sensors (Pointcast, Solarcast, bGeigieZen,
+        etc.) with their location, type, and last reading timestamp. Requires database
+        connection.
+      parameters:
+      - description: Filter by sensor type (e.g. Pointcast, Solarcast, bGeigieZen)
+        in: query
+        name: type
+        type: string
+      - default: -90
+        description: Southern boundary latitude
+        in: query
+        name: min_lat
+        type: number
+      - default: 90
+        description: Northern boundary latitude
+        in: query
+        name: max_lat
+        type: number
+      - default: -180
+        description: Western boundary longitude
+        in: query
+        name: min_lon
+        type: number
+      - default: 180
+        description: Eastern boundary longitude
+        in: query
+        name: max_lon
+        type: number
+      - default: 50
+        description: Maximum number of sensors (1 to 1000)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sensor list with locations and last reading times
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Database unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Discover active fixed sensors
+      tags:
+      - realtime
+  /spectra:
+    get:
+      description: Returns spectroscopy metadata (filename, device model, energy range,
+        location) without channel data. Use GET /api/spectrum/{marker_id} to fetch
+        full channel data. Requires database connection.
+      parameters:
+      - description: Southern boundary latitude (requires all 4 bbox params)
+        in: query
+        name: min_lat
+        type: number
+      - description: Northern boundary latitude (requires all 4 bbox params)
+        in: query
+        name: max_lat
+        type: number
+      - description: Western boundary longitude (requires all 4 bbox params)
+        in: query
+        name: min_lon
+        type: number
+      - description: Eastern boundary longitude (requires all 4 bbox params)
+        in: query
+        name: max_lon
+        type: number
+      - description: Filter by file format (e.g. spe, csv)
+        in: query
+        name: source_format
+        type: string
+      - description: Filter by detector model name (partial match)
+        in: query
+        name: device_model
+        type: string
+      - description: Filter by track identifier
+        in: query
+        name: track_id
+        type: string
+      - default: 50
+        description: Maximum number of results (1 to 500)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Spectroscopy records with metadata
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Database unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Browse gamma spectroscopy records
+      tags:
+      - spectroscopy
+  /spectrum/{marker_id}:
+    get:
+      description: Returns complete gamma spectroscopy data including all channel
+        counts for the specified measurement point. Use GET /api/spectra to find marker
+        IDs.
+      parameters:
+      - description: Marker/measurement identifier
+        in: path
+        name: marker_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Full spectroscopy channel data
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid marker_id
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Database unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get full spectroscopy channel data
+      tags:
+      - spectroscopy
+  /stats:
+    get:
+      description: Returns aggregate radiation dose-rate statistics from the Safecast
+        database grouped by time interval. Powered by DuckDB + PostgreSQL.
+      parameters:
+      - default: year
+        description: 'Aggregation interval: year, month, or overall'
+        enum:
+        - year
+        - month
+        - overall
+        in: query
+        name: interval
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Statistics data with interval and source metadata
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid interval value
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Analytics engine unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get aggregate radiation statistics
+      tags:
+      - reference
+  /track/{id}:
+    get:
+      description: Retrieves radiation measurements recorded during a specific bGeigie
+        drive. Use GET /api/tracks to find track IDs first.
+      parameters:
+      - description: Track identifier (e.g. 8eh5m1)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Start marker ID for filtering
+        in: query
+        name: from
+        type: integer
+      - description: End marker ID for filtering
+        in: query
+        name: to
+        type: integer
+      - default: 200
+        description: Maximum number of results (1 to 10000)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Measurements for the track
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get all measurements from a specific track
+      tags:
+      - historical
+  /tracks:
+    get:
+      description: Lists bGeigie Import tracks (bulk radiation measurement drives).
+        Each track represents measurements from a single bGeigie session. Can filter
+        by year, month, and detector/device name.
+      parameters:
+      - description: Filter by year (2000–2100)
+        in: query
+        name: year
+        type: integer
+      - description: Filter by month (1–12, requires year)
+        in: query
+        name: month
+        type: integer
+      - description: Filter by detector/device name (e.g., 'bGeigieZen', 'bGeigie',
+          'Pointcast'). Partial match supported.
+        in: query
+        name: detector
+        type: string
+      - default: 50
+        description: Maximum number of results (1 to 50000)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Track list with count and filter metadata
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Browse bGeigie measurement tracks
+      tags:
+      - historical
+schemes:
+- https
+- http
+swagger: "2.0"
+tags:
+- description: Historical bGeigie mobile radiation measurements
+  name: historical
+- description: Real-time fixed sensor readings (Pointcast, Solarcast, bGeigieZen)
+  name: realtime
+- description: Gamma spectroscopy records
+  name: spectroscopy
+- description: Aggregate statistics and reference information
+  name: reference

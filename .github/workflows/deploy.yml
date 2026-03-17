@@ -20,16 +20,14 @@ jobs:
           cache: true
           cache-dependency-path: go.sum
 
-      - name: Build binaries
+      - name: Build unified server
         run: |
-          go build -o safecast-new-map safecast-new-map.go
-          go build -o safecast-mcp ./cmd/mcp-server/
-          go build -o safecast-web-chat ./cmd/web-chat/
+          go build -o safecast-new-map ./cmd/unified-server
 
       - name: Prepare MCP hints directory
         run: |
           mkdir -p hints
-          cp -r cmd/mcp-server/hints/* hints/
+          cp -r cmd/unified-server/hints/* hints/
 
       - name: Setup SSH
         run: |
@@ -40,11 +38,15 @@ jobs:
 
       - name: Stop service
         run: |
-          ssh -i ~/.ssh/deploy_key root@65.108.24.131 "systemctl stop safecast-new-map"
+          ssh -i ~/.ssh/deploy_key root@65.108.24.131 "systemctl stop safecast-new-map || true"
 
       - name: Deploy binary
         run: |
-          rsync -avP -e "ssh -i ~/.ssh/deploy_key" ./safecast-new-map root@65.108.24.131:/usr/local/bin/
+          rsync -avP -e "ssh -i ~/.ssh/deploy_key" ./safecast-new-map root@65.108.24.131:/usr/local/bin/safecast-new-map
+
+      - name: Deploy hints
+        run: |
+          rsync -avP -e "ssh -i ~/.ssh/deploy_key" ./hints/ root@65.108.24.131:/root/safecast-mcp-server/hints/
 
       - name: Start service
         run: |
@@ -54,26 +56,19 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key root@65.108.24.131 "systemctl status safecast-new-map"
 
-      - name: Deploy MCP server
+      - name: Update environment
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: |
-          ssh -i ~/.ssh/deploy_key root@65.108.24.131 "systemctl stop safecast-mcp || true"
-          rsync -avP -e "ssh -i ~/.ssh/deploy_key" ./safecast-mcp root@65.108.24.131:/root/safecast-mcp-server/safecast-mcp
-          rsync -avP -e "ssh -i ~/.ssh/deploy_key" ./hints/ root@65.108.24.131:/root/safecast-mcp-server/hints/
-          ssh -i ~/.ssh/deploy_key root@65.108.24.131 \
-            "printf 'MCP_BASE_URL=https://simplemap.safecast.org/mcp\nDATABASE_URL=${DATABASE_URL}\nDUCKDB_PATH=/root/safecast-mcp-server/analytics.duckdb\nMCP_HINTS_DIR=/root/safecast-mcp-server/hints\n' > /root/safecast-mcp-server/.env && systemctl start safecast-mcp && systemctl status safecast-mcp"
-        # Requires secret: DATABASE_URL (postgres connection string)
-
-      - name: Deploy web-chat
-        env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DUCKLAKE_PG_URL: ${{ secrets.DUCKLAKE_PG_URL }}
+          DUCKLAKE_DATA_PATH: ${{ secrets.DUCKLAKE_DATA_PATH }}
         run: |
-          ssh -i ~/.ssh/deploy_key root@65.108.24.131 "systemctl stop safecast-web-chat || true"
-          rsync -avP -e "ssh -i ~/.ssh/deploy_key" ./safecast-web-chat root@65.108.24.131:/root/safecast-web-chat-server/safecast-web-chat
           ssh -i ~/.ssh/deploy_key root@65.108.24.131 \
-            "printf 'MCP_URL=http://localhost:3333/mcp-http\nPORT=3334\nCLAUDE_MODEL=claude-haiku-4-5-20251001\nANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}\n' > /root/safecast-web-chat-server/.env && systemctl start safecast-web-chat && systemctl status safecast-web-chat"
-        # Requires secret: ANTHROPIC_API_KEY
+            "printf 'DATABASE_URL=${DATABASE_URL}\nDUCKLAKE_PG_URL=${DUCKLAKE_PG_URL}\nDUCKLAKE_DATA_PATH=${DUCKLAKE_DATA_PATH}\nMCP_HINTS_DIR=/root/safecast-mcp-server/hints\nANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}\nCLAUDE_MODEL=claude-haiku-4-5-20251001\nMCP_BASE_URL=https://simplemap.safecast.org/mcp\n' > /root/safecast-mcp-server/.env"
+
+      - name: Restart service with new config
+        run: |
+          ssh -i ~/.ssh/deploy_key root@65.108.24.131 "systemctl restart safecast-new-map && systemctl status safecast-new-map"
 
       - name: Invalidate CloudFront cache
         run: |
