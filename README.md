@@ -44,10 +44,10 @@ Natural background radiation is typically low and safe. This map helps identify 
 **Advanced Capabilities**
 - Gamma spectrum analysis (.spe, .n42 formats)
 - User authentication with API key support
-- Admin panel for content moderation
+- Admin panel for content moderation and translation management
 - Comprehensive authentication logging
 - Short link generation for sharing
-- Multi-language interface
+- Multi-language interface (29 languages) with PostgreSQL-backed translations and admin UI
 - Auto-update system
 
 ---
@@ -134,30 +134,30 @@ sudo dnf install postgis34_16
 
 ### Common Flags
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `-port` | 8765 | HTTP server port |
-| `-domain` | - | Domain for HTTPS (enables Let's Encrypt) |
-| `-db-type` | pgx | Database: pgx, duckdb, sqlite, chai, clickhouse |
-| `-db-path` | . | Path for file-based databases |
-| `-db-conn` | - | Connection string for network databases |
-| `-default-lat` | 44.08832 | Initial map latitude |
-| `-default-lon` | 42.97577 | Initial map longitude |
-| `-default-zoom` | 11 | Initial map zoom level |
-| `-default-layer` | OpenStreetMap | Base map layer |
-| `-admin-password` | - | Enable admin panel (track management) |
-| `-allow-registration` | false | Enable user registration |
-| `-require-auth` | false | Require authentication for uploads |
-| `-smtp-host` | - | SMTP server for email (e.g., smtp.gmail.com) |
-| `-smtp-port` | 587 | SMTP server port |
-| `-smtp-username` | - | SMTP authentication username |
-| `-smtp-password` | - | SMTP authentication password |
-| `-smtp-from` | - | Email "From" address |
-| `-session-secret` | - | Secret key for session encryption |
-| `-base-url` | - | Base URL for email links (e.g., https://example.com) |
-| `-safecast-realtime` | false | Poll live Safecast device data |
-| `-safecast-fetcher` | false | Auto-sync approved bGeigie imports |
-| `-json-archive-frequency` | weekly | Archive generation: daily, weekly, monthly, yearly |
+| Flag                      | Default       | Description                                          |
+| ------------------------- | ------------- | ---------------------------------------------------- |
+| `-port`                   | 8765          | HTTP server port                                     |
+| `-domain`                 | -             | Domain for HTTPS (enables Let's Encrypt)             |
+| `-db-type`                | pgx           | Database: pgx, duckdb, sqlite, chai, clickhouse      |
+| `-db-path`                | .             | Path for file-based databases                        |
+| `-db-conn`                | -             | Connection string for network databases              |
+| `-default-lat`            | 44.08832      | Initial map latitude                                 |
+| `-default-lon`            | 42.97577      | Initial map longitude                                |
+| `-default-zoom`           | 11            | Initial map zoom level                               |
+| `-default-layer`          | OpenStreetMap | Base map layer                                       |
+| `-admin-password`         | -             | Enable admin panel (track management)                |
+| `-allow-registration`     | false         | Enable user registration                             |
+| `-require-auth`           | false         | Require authentication for uploads                   |
+| `-smtp-host`              | -             | SMTP server for email (e.g., smtp.gmail.com)         |
+| `-smtp-port`              | 587           | SMTP server port                                     |
+| `-smtp-username`          | -             | SMTP authentication username                         |
+| `-smtp-password`          | -             | SMTP authentication password                         |
+| `-smtp-from`              | -             | Email "From" address                                 |
+| `-session-secret`         | -             | Secret key for session encryption                    |
+| `-base-url`               | -             | Base URL for email links (e.g., https://example.com) |
+| `-safecast-realtime`      | false         | Poll live Safecast device data                       |
+| `-safecast-fetcher`       | false         | Auto-sync approved bGeigie imports                   |
+| `-json-archive-frequency` | weekly        | Archive generation: daily, weekly, monthly, yearly   |
 
 ---
 
@@ -201,13 +201,41 @@ Import from local file:
 
 ### MCP Server & AI Integration
 
-This repo also includes an MCP (Model Context Protocol) server and a Claude-powered web chat interface, built and deployed alongside the map server from the same codebase.
+The unified server includes an MCP (Model Context Protocol) server with a Claude-powered web chat interface, all in a single binary.
 
-| Component | Source | Port | URL |
-|-----------|--------|------|-----|
-| MCP Server | `cmd/mcp-server/` | 3333 | `/mcp-http`, `/mcp/sse` |
-| REST API + Swagger | `cmd/mcp-server/` | 3333 | `/api/radiation`, `/docs/` |
-| Web Chat | `cmd/web-chat/` | 3334 | `/assistant/` |
+| Component                  | Source                | Port | URL                             |
+| -------------------------- | --------------------- | ---- | ------------------------------- |
+| Unified Server (Map + MCP) | `cmd/unified-server/` | 8765 | `/`, `/mcp-http`, `/assistant/` |
+| MCP Server                 | `cmd/unified-server/` | 8765 | `/mcp-http`, `/mcp/sse`         |
+| Web Chat                   | `cmd/unified-server/` | 8765 | `/assistant/`                   |
+| REST API + Swagger         | `cmd/unified-server/` | 8765 | `/api/`, `/docs/`               |
+
+**Build:**
+```bash
+# Basic build (PostgreSQL only)
+go build -o safecast-new-map ./cmd/unified-server
+
+# With DuckDB analytics via DuckLake (requires CGO)
+CGO_ENABLED=1 go build -tags duckdb -o safecast-new-map ./cmd/unified-server
+```
+
+**Run:**
+```bash
+# Map server with MCP (PostgreSQL required)
+DATABASE_URL="postgres://user:pass@localhost/db" ./safecast-new-map
+
+# With DuckLake analytics (in-memory DuckDB + PostgreSQL catalog + Parquet data)
+DATABASE_URL="postgres://..." \
+DUCKLAKE_PG_URL="dbname=ducklake_catalog host=localhost user=ducklake_rw" \
+DUCKLAKE_DATA_PATH="/var/lib/safecast/ducklake/" \
+./safecast-new-map
+
+# With AI web chat (requires Anthropic API key)
+DATABASE_URL="postgres://..." \
+ANTHROPIC_API_KEY="your-key" \
+CLAUDE_MODEL="claude-haiku-4-5-20251001" \
+./safecast-new-map
+```
 
 **Connect Claude to the live Safecast data:**
 ```bash
@@ -217,6 +245,8 @@ claude mcp add --transport http safecast https://simplemap.safecast.org/mcp-http
 # Claude.ai: Settings → Integrations → Add custom integration
 # URL: https://simplemap.safecast.org/mcp-http
 ```
+
+**Web Chat:** Open `http://localhost:8765/assistant/` in your browser.
 
 **Swagger API docs:** [simplemap.safecast.org/docs/](https://simplemap.safecast.org/docs/)
 
@@ -276,11 +306,34 @@ Enable the admin panel with:
 ./safecast-new-map -admin-password your-secure-password
 ```
 
-**Admin capabilities:**
-- View all uploads and tracks
-- Delete inappropriate content
-- Monitor system statistics
-- Manage user contributions
+Access the admin panel at `/admin/users?password=your-secure-password` or log in as an admin user.
+
+**Admin pages:**
+
+| Page | URL | Description |
+|------|-----|-------------|
+| Users | `/admin/users` | Manage user accounts, roles, and API keys |
+| Uploads | `/admin/uploads` | View uploads, import from Safecast API, delete tracks |
+| MCP Analytics | `/admin/mcp` | Monitor MCP tool usage and AI query logs |
+| Realtime | `/admin/realtime` | Manage real-time sensor device data |
+| Translations | `/admin/translations` | Edit, add, and delete UI translations for all 29 languages |
+
+### Translation Management
+
+Translations are stored in PostgreSQL and loaded into memory at startup. The admin translations page provides:
+- Filter by language (29 languages: ar, bg, cs, da, de, el, en, es, fa, fi, fr, he, hi, hu, id, it, ja, ko, ms, nl, no, pl, pt, ru, sv, th, tr, uk, vi, zh)
+- Search across keys and values
+- Inline editing with save
+- Add new translation keys
+- **Reload into Memory** button to apply changes without restarting the server
+
+All UI components are translated: map legend, AI assistant widget, login/register modals, search bar, spectrum viewer, profile page, and coordinate input dialog.
+
+**How it works:**
+- **Language selection:** The `?lang=` URL parameter takes priority, then the browser's `Accept-Language` header, defaulting to English
+- **Incremental seeding:** On startup, any new keys in the embedded `translations.json` are inserted into the DB (`ON CONFLICT DO NOTHING` preserves existing edits)
+- **Performance:** Only the active language + English fallback are embedded in the page HTML (~30KB vs ~850KB for all 30 languages), keeping the AI widget within Claude's token limits
+- **Branding:** "Safecast" must remain untranslated as a brand name in all languages
 
 ---
 
@@ -414,7 +467,10 @@ Add user authentication to existing databases:
 ```bash
 psql -h 127.0.0.1 -U postgres -d safecast -f migrations/create_users_table.sql
 psql -h 127.0.0.1 -U postgres -d safecast -f migrations/link_historical_uploads_to_users.sql
+psql -h 127.0.0.1 -U postgres -d safecast -f migrations/add_ui_translations.sql
 ```
+
+**Note:** The translations table is auto-created at startup and seeded from the embedded `translations.json` if no DB rows exist. The `add_ui_translations.sql` migration adds the extended UI translations (AI widget, auth modals, search, spectrum, profile page).
 
 **Key columns in users table:**
 - `id` - Unique user identifier
@@ -433,19 +489,19 @@ psql -h 127.0.0.1 -U postgres -d safecast -f migrations/link_historical_uploads_
 
 Customize map views with URL parameters:
 
-| Parameter | Values | Description |
-|-----------|--------|-------------|
-| `place` | City, country, or location name | Navigate to a specific location by name |
-| `lat` | Latitude (-90 to 90) | Latitude coordinate for map center |
-| `lon` | Longitude (-180 to 180) | Longitude coordinate for map center |
-| `zoom` | 1-18 | Zoom level (used with lat/lon) |
-| `minLat`, `minLon`, `maxLat`, `maxLon` | Coordinates | Define map bounds (legacy format) |
-| `coloring` | safecast, chicha | Scientific gradient vs. safety bins |
-| `unit` | uSv, uR | Display units (microsieverts or microroentgen) |
-| `legend` | 1, 0 | Show/hide legend |
-| `lang` | en, ru, ja, etc. | Interface language |
-| `layer` | OpenStreetMap, Google Satellite | Base map |
-| `show` | rt | Filter to show only realtime sensors |
+| Parameter                              | Values                          | Description                                    |
+| -------------------------------------- | ------------------------------- | ---------------------------------------------- |
+| `place`                                | City, country, or location name | Navigate to a specific location by name        |
+| `lat`                                  | Latitude (-90 to 90)            | Latitude coordinate for map center             |
+| `lon`                                  | Longitude (-180 to 180)         | Longitude coordinate for map center            |
+| `zoom`                                 | 1-18                            | Zoom level (used with lat/lon)                 |
+| `minLat`, `minLon`, `maxLat`, `maxLon` | Coordinates                     | Define map bounds (legacy format)              |
+| `coloring`                             | safecast, chicha                | Scientific gradient vs. safety bins            |
+| `unit`                                 | uSv, uR                         | Display units (microsieverts or microroentgen) |
+| `legend`                               | 1, 0                            | Show/hide legend                               |
+| `lang`                                 | en, ja, de, fr, etc. (29 langs) | Interface language (server-side + client-side)  |
+| `layer`                                | OpenStreetMap, Google Satellite | Base map                                       |
+| `show`                                 | rt                              | Filter to show only realtime sensors           |
 
 **Location Examples:**
 - Direct to Tokyo: `/?place=Tokyo`
@@ -492,7 +548,7 @@ Automatically import approved bGeigie measurements:
 ```bash
 git clone https://github.com/Safecast/safecast-new-map.git
 cd safecast-new-map
-go build -o safecast-new-map
+go build -o safecast-new-map ./cmd/unified-server
 ./safecast-new-map
 ```
 
@@ -500,6 +556,26 @@ go build -o safecast-new-map
 
 ```bash
 go test ./...
+```
+
+### Utility Tools
+
+The `cmd/tools/` directory contains standalone utilities for database maintenance and migration:
+
+| Tool                   | Usage                             |
+| ---------------------- | --------------------------------- |
+| `fix-pg-sequence`      | Reset PostgreSQL markers sequence |
+| `fix-sequence`         | Alternative sequence sync utility |
+| `add-internal-user-id` | Add internal user IDs to uploads  |
+| `cleanup-test-users`   | Remove test users from database   |
+| `import-api-keys`      | Import API keys from CSV          |
+| `migrate-to-postgres`  | Migrate from SQLite to PostgreSQL |
+| `migrate-users`        | Migrate user data                 |
+
+Run any tool with:
+```bash
+go run ./cmd/tools/fix-pg-sequence
+export DATABASE_URL="postgres://user:pass@localhost/db" && go run ./cmd/tools/fix-pg-sequence
 ```
 
 ### Cross-Compile
@@ -515,7 +591,7 @@ For deploying to production servers with CloudFront/CDN setup, see:
 - [Deployment Guide](docs/DEPLOYMENT.md) - Complete deployment procedures and troubleshooting
 - [GitHub Actions Guide](GITHUB_ACTIONS_GUIDE.md) - Automated CI/CD setup
 - [CloudFront Setup](docs/cloudfront-setup.md) - CDN configuration details
-- [Architecture Diagram](docs/Mermaid%20Chart%20-%20Create%20complex,%20visual%20diagrams%20with%20text.-2026-02-28-043816.mmd) - System overview (Mermaid)
+- [Architecture Diagram](docs/architecture-overview.mmd) - System overview (Mermaid)
 - [Spectral Data Flow](docs/spectral-data-flow.mmd) - Spectral upload/parse/store/render pipeline (Mermaid)
 
 **Important:** When using CloudFront, SSH and rsync must use the server's IP address directly, not the domain name.
@@ -524,7 +600,7 @@ For deploying to production servers with CloudFront/CDN setup, see:
 
 ## Performance Notes
 
-**DuckDB Performance:** For large imports, see [doc/DUCKDB_PERFORMANCE.md](doc/DUCKDB_PERFORMANCE.md) for checkpoint and Parquet optimization.
+**Analytics:** The platform uses DuckLake for analytics (in-memory DuckDB with a PostgreSQL catalog and Parquet data files), allowing multiple services to share analytics tables concurrently. Set `DUCKLAKE_PG_URL` and `DUCKLAKE_DATA_PATH` environment variables to configure.
 
 **PostgreSQL Tuning:** Use connection pooling and appropriate `work_mem` settings for large batch imports.
 
@@ -564,12 +640,12 @@ psql -h 127.0.0.1 -U postgres -d safecast -c "
 
 ### Useful Maintenance Scripts
 
-| Script | Purpose |
-|--------|---------|
-| `tools/reset_postgres_sequences.sh` | Reset all PostgreSQL sequences after migration |
-| `tools/reset_postgres_marker_sequence.sh` | Reset only the markers sequence |
-| `tools/refresh_track_stats.sh` | Refresh track statistics materialized view |
-| `tools/populate_usernames.sh` | Fetch usernames from Safecast API for uploads |
+| Script                                    | Purpose                                        |
+| ----------------------------------------- | ---------------------------------------------- |
+| `tools/reset_postgres_sequences.sh`       | Reset all PostgreSQL sequences after migration |
+| `tools/reset_postgres_marker_sequence.sh` | Reset only the markers sequence                |
+| `tools/refresh_track_stats.sh`            | Refresh track statistics materialized view     |
+| `tools/populate_usernames.sh`             | Fetch usernames from Safecast API for uploads  |
 
 ---
 

@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>User Administration - Safecast</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- favicon -->
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/images/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/images/favicon-16x16.png">
+  <link rel="manifest" href="/static/images/site.webmanifest">
+
+  <style>
+    :root {
+      --bg-primary: #f5f5f5;
+      --bg-card: white;
+      --text-primary: #333;
+      --text-secondary: #666;
+      --text-muted: #999;
+      --border-color: #ddd;
+      --link-color: #0066cc;
+      --shadow: 0 1px 3px rgba(0,0,0,0.1);
+      --th-bg: #424242;
+      --hover-bg: #f9f9f9;
+      --btn-border-radius: 8px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1a1a1a;
+        --bg-card: #2b2b2b;
+        --text-primary: #eee;
+        --text-secondary: #aaa;
+        --text-muted: #777;
+        --border-color: #444;
+        --link-color: #90caf9;
+        --shadow: 0 1px 3px rgba(255,255,255,0.1);
+        --th-bg: #616161;
+        --hover-bg: #333;
+        color-scheme: dark;
+      }
+    }
+    :root[data-theme='light'] {
+      --bg-primary: #f5f5f5;
+      --bg-card: white;
+      --text-primary: #333;
+      --text-secondary: #666;
+      --text-muted: #999;
+      --border-color: #ddd;
+      --link-color: #0066cc;
+      --shadow: 0 1px 3px rgba(0,0,0,0.1);
+      --th-bg: #424242;
+      --hover-bg: #f9f9f9;
+      color-scheme: light;
+    }
+    :root[data-theme='dark'] {
+      --bg-primary: #1a1a1a;
+      --bg-card: #2b2b2b;
+      --text-primary: #eee;
+      --text-secondary: #aaa;
+      --text-muted: #777;
+      --border-color: #444;
+      --link-color: #90caf9;
+      --shadow: 0 1px 3px rgba(255,255,255,0.1);
+      --th-bg: #616161;
+      --hover-bg: #333;
+      color-scheme: dark;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; margin: 20px; background: var(--bg-primary); color: var(--text-primary); }
+    h1 { color: var(--text-primary); }
+    .nav { background: var(--bg-card); padding: 15px; margin-bottom: 20px; border-radius: var(--btn-border-radius); box-shadow: var(--shadow); display: flex; align-items: center; justify-content: space-between; }
+    .nav-left { display: flex; align-items: center; gap: 15px; }
+    .nav a { color: var(--link-color); text-decoration: none; }
+    .nav a:hover { text-decoration: underline; }
+    .back-to-map-btn { background: #2196F3 !important; color: white !important; padding: 8px 16px; border-radius: var(--btn-border-radius); text-decoration: none !important; font-weight: 500; transition: background 0.2s; }
+    .back-to-map-btn:hover { background: #1976D2 !important; text-decoration: none !important; }
+    .summary { background: var(--bg-card); padding: 15px; margin-bottom: 20px; border-radius: var(--btn-border-radius); box-shadow: var(--shadow); }
+    table { border-collapse: collapse; width: 100%; background: var(--bg-card); box-shadow: var(--shadow); }
+    th { background: var(--th-bg); color: white; padding: 12px; text-align: left; font-weight: 600; }
+    td { padding: 6px 8px; border-bottom: 1px solid var(--border-color); }
+    tr:hover { background: var(--hover-bg); }
+    .empty { text-align: center; padding: 40px; color: var(--text-muted); font-style: italic; }
+    .checkbox-col { width: 40px; text-align: center; }
+    .sortable { cursor: pointer; user-select: none; position: relative; padding-right: 20px; }
+    .sortable:hover { background: rgba(255,255,255,0.1); }
+    .sortable::after { content: '⇅'; position: absolute; right: 8px; opacity: 0.5; }
+    .sortable.asc::after { content: '▲'; opacity: 1; }
+    .sortable.desc::after { content: '▼'; opacity: 1; }
+    .filter-input { width: 100%; padding: 4px 8px; border: 1px solid var(--border-color); border-radius: var(--btn-border-radius); background: var(--bg-card); color: var(--text-primary); font-size: 0.85em; box-sizing: border-box; }
+    .filter-row th { background: var(--bg-card); padding: 8px 12px; }
+    .delete-btn { background: #f44336; color: white; border: none; padding: 5px 10px; border-radius: var(--btn-border-radius); cursor: pointer; font-size: 0.85em; }
+    .delete-btn:hover { background: #d32f2f; }
+    .delete-selected-btn { background: #f44336; color: white; border: none; padding: 10px 20px; border-radius: var(--btn-border-radius); cursor: pointer; font-size: 1em; margin-left: 10px; }
+    .delete-selected-btn:hover { background: #d32f2f; }
+    .delete-selected-btn:disabled { background: #ccc; cursor: not-allowed; }
+    .add-user-btn { background: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: var(--btn-border-radius); cursor: pointer; font-size: 1em; margin-left: 10px; }
+    .add-user-btn:hover { background: #45a049; }
+    .badge { padding: 4px 8px; border-radius: var(--btn-border-radius); font-size: 0.75em; font-weight: 600; text-transform: uppercase; }
+    .badge-active { background: #4CAF50; color: white; }
+    .badge-inactive { background: #f44336; color: white; }
+    .badge-verified { background: #4CAF50; color: white; }
+    .badge-unverified { background: #ff9800; color: white; }
+    .badge-admin { background: #9c27b0; color: white; }
+    .badge-user { background: #607d8b; color: white; }
+    .btn-admin { background: #9c27b0; color: white; border: none; padding: 5px 10px; border-radius: var(--btn-border-radius); cursor: pointer; font-size: 0.85em; margin: 0 2px; }
+    .btn-admin:hover { background: #7b1fa2; }
+    .btn-remove-admin { background: #607d8b; color: white; border: none; padding: 5px 10px; border-radius: var(--btn-border-radius); cursor: pointer; font-size: 0.85em; margin: 0 2px; }
+    .btn-remove-admin:hover { background: #455a64; }
+    .username-cell { max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Modal styles */
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+    .modal-content { background-color: var(--bg-card); margin: 5% auto; padding: 0; border-radius: 8px; width: 90%; max-width: 600px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+    .modal-header { padding: 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+    .modal-header h2 { margin: 0; color: var(--text-primary); }
+    .modal-body { padding: 20px; }
+    .close { color: var(--text-muted); font-size: 28px; font-weight: bold; cursor: pointer; }
+    .close:hover { color: var(--text-primary); }
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; margin-bottom: 5px; color: var(--text-secondary); font-weight: 500; }
+    .form-group input, .form-group select { width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--btn-border-radius); background: var(--bg-card); color: var(--text-primary); font-size: 14px; }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--link-color); }
+    .form-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 20px; border-top: 1px solid var(--border-color); }
+    .btn-primary { background: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: var(--btn-border-radius); cursor: pointer; font-size: 14px; font-weight: 500; }
+    .btn-primary:hover { background: #45a049; }
+    .btn-secondary { background: var(--border-color); color: var(--text-primary); border: none; padding: 10px 20px; border-radius: var(--btn-border-radius); cursor: pointer; font-size: 14px; font-weight: 500; }
+    .btn-secondary:hover { opacity: 0.8; }
+    .btn-warning { background: #ff9800; color: white; border: none; padding: 5px 10px; border-radius: var(--btn-border-radius); cursor: pointer; font-size: 0.85em; margin: 0 2px; }
+    .btn-warning:hover { background: #fb8c00; }
+    .btn-edit { background: #2196F3; color: white; border: none; padding: 5px 10px; border-radius: var(--btn-border-radius); cursor: pointer; font-size: 0.85em; margin: 0 2px; }
+    .btn-edit:hover { background: #1976D2; }
+    .actions-cell { white-space: nowrap; }
+    .api-key-cell { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; font-size: 0.85em; }
+    .message { padding: 12px; margin-bottom: 15px; border-radius: var(--btn-border-radius); display: none; }
+    .message.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .message.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+    /* Pagination styles */
+    .pagination { display: flex; align-items: center; justify-content: space-between; background: var(--bg-card); padding: 15px; margin-top: 20px; border-radius: var(--btn-border-radius); box-shadow: var(--shadow); flex-wrap: wrap; gap: 10px; }
+    .pagination-info { color: var(--text-secondary); }
+    .pagination-controls { display: flex; align-items: center; gap: 5px; }
+    .pagination-btn { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); padding: 8px 12px; border-radius: var(--btn-border-radius); cursor: pointer; font-size: 14px; }
+    .pagination-btn:hover:not(:disabled) { background: var(--hover-bg); }
+    .pagination-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .pagination-btn.active { background: #2196F3; color: white; border-color: #2196F3; }
+    .page-size-select { padding: 8px; border: 1px solid var(--border-color); border-radius: var(--btn-border-radius); background: var(--bg-card); color: var(--text-primary); }
+    .search-btn { background: #2196F3; color: white; border: none; padding: 5px 12px; border-radius: var(--btn-border-radius); cursor: pointer; margin-left: 5px; }
+    .search-btn:hover { background: #1976D2; }
+    .clear-search-btn { background: var(--border-color); color: var(--text-primary); border: none; padding: 5px 12px; border-radius: var(--btn-border-radius); cursor: pointer; margin-left: 5px; }
+    .clear-search-btn:hover { opacity: 0.8; }
+  </style>
+</head>
+<body>
+  <h1>User Administration</h1>
+
+  <div class="nav">
+    <div class="nav-left">
+      <button class="add-user-btn" onclick="openAddUserModal()">Add User</button>
+      <button class="delete-selected-btn" id="deleteSelectedBtn" onclick="deleteSelectedUsers()" style="display:none;">Delete Selected</button>
+    </div>
+    <a href="/" class="back-to-map-btn">Back to Map</a>
+  </div>
+
+  <div class="summary" id="summary">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+      <div style="display: flex; align-items: center; gap: 15px;">
+        <span><strong>Total Users:</strong> <span id="totalUsers">0</span> | <strong>Showing:</strong> <span id="showingUsers">0</span></span>
+        <span>
+          <span>Show</span>
+          <select class="page-size-select" id="pageSizeTop" onchange="changePageSizeTop()">
+            <option value="25">25</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+            <option value="200">200</option>
+          </select>
+          <span>per page</span>
+        </span>
+      </div>
+      <div id="paginationTop" class="pagination-controls" style="display: none;"></div>
+      <div style="display: flex; align-items: center;">
+        <label for="searchInput"><strong>Search:</strong></label>
+        <input type="text" id="searchInput" placeholder="Search email, username, ID..." autocomplete="off" style="margin-left: 5px; padding: 6px 10px; border-radius: var(--btn-border-radius); border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); width: 250px;" onkeyup="handleSearchKeyup(event)">
+        <button class="search-btn" onclick="doSearch()">Search</button>
+        <button class="clear-search-btn" onclick="clearSearch()" id="clearSearchBtn" style="display: none;">Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="loadingIndicator" class="empty">Loading users...</div>
+  <div id="emptyState" class="empty" style="display: none;">
+    <h3>No users found</h3>
+    <p>Click "Add User" to create your first user</p>
+  </div>
+
+  <table id="usersTable" style="display: none;">
+    <thead>
+      <tr>
+        <th class="checkbox-col"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"></th>
+        <th class="sortable" onclick="sortTable(1)" data-type="number">ID</th>
+        <th class="sortable" onclick="sortTable(2)" data-type="text">Email</th>
+        <th class="sortable" onclick="sortTable(3)" data-type="text">Username</th>
+        <th class="sortable" onclick="sortTable(4)" data-type="text">External ID</th>
+        <th class="sortable" onclick="sortTable(5)" data-type="text">API Key</th>
+        <th class="sortable" onclick="sortTable(6)" data-type="text">Status</th>
+        <th class="sortable" onclick="sortTable(7)" data-type="text">Admin</th>
+        <th class="sortable" onclick="sortTable(8)" data-type="text">Email Verified</th>
+        <th class="sortable" onclick="sortTable(9)" data-type="date">Created</th>
+        <th class="sortable" onclick="sortTable(10)" data-type="date">Last Login</th>
+        <th>Actions</th>
+      </tr>
+      <tr class="filter-row">
+        <th></th>
+        <th><input type="text" class="filter-input" placeholder="ID..." onkeyup="filterTable()"></th>
+        <th><input type="text" class="filter-input" placeholder="Email..." onkeyup="filterTable()"></th>
+        <th><input type="text" class="filter-input" placeholder="Username..." onkeyup="filterTable()"></th>
+        <th><input type="text" class="filter-input" placeholder="External ID..." onkeyup="filterTable()"></th>
+        <th><input type="text" class="filter-input" placeholder="API Key..." onkeyup="filterTable()"></th>
+        <th><input type="text" class="filter-input" placeholder="Status..." onkeyup="filterTable()"></th>
+        <th><input type="text" class="filter-input" placeholder="Admin..." onkeyup="filterTable()"></th>
+        <th><input type="text" class="filter-input" placeholder="Verified..." onkeyup="filterTable()"></th>
+        <th><input type="text" class="filter-input" placeholder="Created..." onkeyup="filterTable()"></th>
+        <th><input type="text" class="filter-input" placeholder="Last Login..." onkeyup="filterTable()"></th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="usersTableBody">
+    </tbody>
+  </table>
+
+  <div id="pagination" class="pagination" style="display: none;">
+    <div class="pagination-info">
+      <span>Show</span>
+      <select class="page-size-select" id="pageSize" onchange="changePageSize()">
+        <option value="25">25</option>
+        <option value="50" selected>50</option>
+        <option value="100">100</option>
+        <option value="200">200</option>
+      </select>
+      <span>per page</span>
+    </div>
+    <div class="pagination-controls" id="paginationControls">
+    </div>
+  </div>
+
+  <!-- Add/Edit User Modal -->
+  <div id="userModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modalTitle">Add User</h2>
+        <span class="close" onclick="closeUserModal()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div class="message" id="modalMessage"></div>
+        <form id="userForm" onsubmit="saveUser(event)">
+          <input type="hidden" id="userId">
+
+          <div class="form-group">
+            <label for="userEmail">Email *</label>
+            <input type="email" id="userEmail" required>
+          </div>
+
+          <div class="form-group">
+            <label for="userUsername">Username</label>
+            <input type="text" id="userUsername" maxlength="50">
+          </div>
+
+          <div class="form-group">
+            <label for="userPassword">Password *</label>
+            <input type="password" id="userPassword" minlength="8">
+            <small style="color: var(--text-muted);">Leave blank when editing to keep existing password</small>
+          </div>
+
+          <div class="form-group">
+            <label for="userStatus">Status</label>
+            <select id="userStatus">
+              <option value="true">Active</option>
+              <option value="false">Inactive</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="userIsAdmin">Admin</label>
+            <select id="userIsAdmin">
+              <option value="false">No - Regular User</option>
+              <option value="true">Yes - Admin</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="userEmailVerified">Email Verified</label>
+            <select id="userEmailVerified">
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="userExternalId">External ID</label>
+            <input type="text" id="userExternalId">
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn-secondary" onclick="closeUserModal()">Cancel</button>
+            <button type="submit" class="btn-primary">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const adminPassword = urlParams.get('password');
+    let isAuthenticated = false;
+
+    // Pagination state
+    let currentPage = 1;
+    let pageSize = 50;
+    let totalUsers = 0;
+    let currentSearch = '';
+    let allUsers = []; // Users on current page
+
+    // Helper function to add password parameter if needed
+    function addPasswordParam(url) {
+      if (adminPassword) {
+        const separator = url.includes('?') ? '&' : '?';
+        return url + separator + 'password=' + encodeURIComponent(adminPassword);
+      }
+      return url;
+    }
+
+    // Check authentication on page load
+    window.addEventListener('DOMContentLoaded', async function() {
+      // Check if user is authenticated via session
+      try {
+        const response = await fetch('/api/user/profile');
+        if (response.ok) {
+          const user = await response.json();
+          if (user.is_admin) {
+            isAuthenticated = true;
+          }
+        }
+      } catch (e) {
+        // Session auth failed, check if password provided
+      }
+
+      // If not authenticated via session and no password, redirect
+      if (!isAuthenticated && !adminPassword) {
+        alert('Access denied. Admin privileges required.');
+        window.location.href = '/';
+        return;
+      }
+
+      syncPageSizeSelects();
+      loadUsers();
+    });
+
+    async function loadUsers() {
+      const loadingIndicator = document.getElementById('loadingIndicator');
+      const emptyState = document.getElementById('emptyState');
+      const usersTable = document.getElementById('usersTable');
+      const pagination = document.getElementById('pagination');
+
+      loadingIndicator.style.display = 'block';
+      emptyState.style.display = 'none';
+      usersTable.style.display = 'none';
+      pagination.style.display = 'none';
+
+      const offset = (currentPage - 1) * pageSize;
+
+      try {
+        let url = `/api/admin/users?limit=${pageSize}&offset=${offset}`;
+        if (adminPassword) {
+          url += `&password=${encodeURIComponent(adminPassword)}`;
+        }
+        if (currentSearch) {
+          url += `&search=${encodeURIComponent(currentSearch)}`;
+        }
+
+        const response = await fetch(url);
+        if (!response.ok) {
+          if (response.status === 403) {
+            alert('Access denied. Admin privileges required.');
+            window.location.href = '/';
+            return;
+          }
+          throw new Error('Failed to load users');
+        }
+
+        const data = await response.json();
+        allUsers = data.users || [];
+        totalUsers = data.total || 0;
+
+        loadingIndicator.style.display = 'none';
+
+        if (totalUsers === 0) {
+          emptyState.style.display = 'block';
+          document.getElementById('paginationTop').style.display = 'none';
+        } else {
+          usersTable.style.display = 'table';
+          pagination.style.display = 'flex';
+          document.getElementById('paginationTop').style.display = 'flex';
+          renderUsers(allUsers);
+          updateStats();
+          renderPagination();
+        }
+      } catch (error) {
+        loadingIndicator.style.display = 'none';
+        alert('Error loading users: ' + error.message);
+      }
+    }
+
+    function renderUsers(users) {
+      const tbody = document.getElementById('usersTableBody');
+      tbody.innerHTML = '';
+
+      users.forEach(user => {
+        const tr = document.createElement('tr');
+        const adminBadge = user.is_admin
+          ? '<span class="badge badge-admin">Admin</span>'
+          : '<span class="badge badge-user">User</span>';
+        const adminButton = user.is_admin
+          ? `<button class="btn-remove-admin" onclick="toggleAdmin(${user.id}, false)">Remove Admin</button>`
+          : `<button class="btn-admin" onclick="toggleAdmin(${user.id}, true)">Make Admin</button>`;
+        tr.innerHTML = `
+          <td class="checkbox-col"><input type="checkbox" class="user-checkbox" value="${user.id}" onchange="updateDeleteButton()"></td>
+          <td>${user.id}</td>
+          <td>${user.email}</td>
+          <td class="username-cell" title="${user.username || ''}">${user.username || '<em>none</em>'}</td>
+          <td>${user.external_id || '<em>none</em>'}</td>
+          <td class="api-key-cell" title="${user.api_key || ''}">${user.api_key || '<em>none</em>'}</td>
+          <td><span class="badge ${user.is_active ? 'badge-active' : 'badge-inactive'}">${user.is_active ? 'Active' : 'Inactive'}</span></td>
+          <td>${adminBadge}</td>
+          <td><span class="badge ${user.email_verified ? 'badge-verified' : 'badge-unverified'}">${user.email_verified ? 'Verified' : 'Unverified'}</span></td>
+          <td>${formatDate(user.created_at)}</td>
+          <td>${user.last_login_at ? formatDate(user.last_login_at) : 'Never'}</td>
+          <td class="actions-cell">
+            ${adminButton}
+            <button class="btn-edit" onclick="editUser(${user.id})">Edit</button>
+            <button class="btn-warning" onclick="resetUserPassword(${user.id})">Reset Password</button>
+            <button class="delete-btn" onclick="deleteUser(${user.id})">Delete</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // Reset select all checkbox
+      document.getElementById('selectAll').checked = false;
+      updateDeleteButton();
+    }
+
+    function updateStats() {
+      document.getElementById('totalUsers').textContent = totalUsers;
+      document.getElementById('showingUsers').textContent = allUsers.length;
+    }
+
+    function renderPagination() {
+      const totalPages = Math.ceil(totalUsers / pageSize);
+
+      // Render to both top and bottom pagination controls
+      renderPaginationControls(document.getElementById('paginationControls'), totalPages);
+      renderPaginationControls(document.getElementById('paginationTop'), totalPages);
+    }
+
+    function renderPaginationControls(controls, totalPages) {
+      controls.innerHTML = '';
+
+      // First/Previous buttons
+      const firstBtn = document.createElement('button');
+      firstBtn.className = 'pagination-btn';
+      firstBtn.textContent = 'First';
+      firstBtn.disabled = currentPage === 1;
+      firstBtn.onclick = () => goToPage(1);
+      controls.appendChild(firstBtn);
+
+      const prevBtn = document.createElement('button');
+      prevBtn.className = 'pagination-btn';
+      prevBtn.textContent = 'Prev';
+      prevBtn.disabled = currentPage === 1;
+      prevBtn.onclick = () => goToPage(currentPage - 1);
+      controls.appendChild(prevBtn);
+
+      // Page numbers
+      const startPage = Math.max(1, currentPage - 2);
+      const endPage = Math.min(totalPages, currentPage + 2);
+
+      if (startPage > 1) {
+        const ellipsis = document.createElement('span');
+        ellipsis.textContent = '...';
+        ellipsis.style.padding = '0 5px';
+        controls.appendChild(ellipsis);
+      }
+
+      for (let i = startPage; i <= endPage; i++) {
+        const pageBtn = document.createElement('button');
+        pageBtn.className = 'pagination-btn' + (i === currentPage ? ' active' : '');
+        pageBtn.textContent = i;
+        pageBtn.onclick = () => goToPage(i);
+        controls.appendChild(pageBtn);
+      }
+
+      if (endPage < totalPages) {
+        const ellipsis = document.createElement('span');
+        ellipsis.textContent = '...';
+        ellipsis.style.padding = '0 5px';
+        controls.appendChild(ellipsis);
+      }
+
+      // Next/Last buttons
+      const nextBtn = document.createElement('button');
+      nextBtn.className = 'pagination-btn';
+      nextBtn.textContent = 'Next';
+      nextBtn.disabled = currentPage === totalPages || totalPages === 0;
+      nextBtn.onclick = () => goToPage(currentPage + 1);
+      controls.appendChild(nextBtn);
+
+      const lastBtn = document.createElement('button');
+      lastBtn.className = 'pagination-btn';
+      lastBtn.textContent = 'Last';
+      lastBtn.disabled = currentPage === totalPages || totalPages === 0;
+      lastBtn.onclick = () => goToPage(totalPages);
+      controls.appendChild(lastBtn);
+
+      // Page info
+      const pageInfo = document.createElement('span');
+      pageInfo.style.marginLeft = '15px';
+      pageInfo.style.color = 'var(--text-secondary)';
+      const startItem = (currentPage - 1) * pageSize + 1;
+      const endItem = Math.min(currentPage * pageSize, totalUsers);
+      pageInfo.textContent = `${startItem}-${endItem} of ${totalUsers}`;
+      controls.appendChild(pageInfo);
+    }
+
+    function goToPage(page) {
+      currentPage = page;
+      loadUsers();
+    }
+
+    function changePageSize() {
+      pageSize = parseInt(document.getElementById('pageSize').value);
+      document.getElementById('pageSizeTop').value = pageSize;
+      currentPage = 1;
+      loadUsers();
+    }
+
+    function changePageSizeTop() {
+      pageSize = parseInt(document.getElementById('pageSizeTop').value);
+      document.getElementById('pageSize').value = pageSize;
+      currentPage = 1;
+      loadUsers();
+    }
+
+    function syncPageSizeSelects() {
+      document.getElementById('pageSize').value = pageSize;
+      document.getElementById('pageSizeTop').value = pageSize;
+    }
+
+    function formatDate(timestamp) {
+      if (!timestamp) return 'N/A';
+      const date = new Date(timestamp * 1000);
+      return date.toISOString().split('T')[0];
+    }
+
+    // Sorting functionality (client-side for current page)
+    let sortDirection = {};
+    function sortTable(columnIndex) {
+      const table = document.getElementById('usersTable');
+      const tbody = document.getElementById('usersTableBody');
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+      const header = table.querySelector('thead tr:first-child th:nth-child(' + (columnIndex + 1) + ')');
+      const dataType = header.getAttribute('data-type');
+
+      const currentDir = sortDirection[columnIndex] || 'none';
+      sortDirection[columnIndex] = currentDir === 'asc' ? 'desc' : 'asc';
+
+      table.querySelectorAll('.sortable').forEach(h => h.classList.remove('asc', 'desc'));
+      header.classList.add(sortDirection[columnIndex]);
+
+      rows.sort((a, b) => {
+        let aVal = a.cells[columnIndex].textContent.trim();
+        let bVal = b.cells[columnIndex].textContent.trim();
+
+        if (dataType === 'number') {
+          aVal = parseInt(aVal) || 0;
+          bVal = parseInt(bVal) || 0;
+          return sortDirection[columnIndex] === 'asc' ? aVal - bVal : bVal - aVal;
+        }
+
+        if (dataType === 'date') {
+          if (aVal === 'Never') aVal = new Date(0).toISOString();
+          if (bVal === 'Never') bVal = new Date(0).toISOString();
+          aVal = new Date(aVal).getTime();
+          bVal = new Date(bVal).getTime();
+          return sortDirection[columnIndex] === 'asc' ? aVal - bVal : bVal - aVal;
+        }
+
+        if (sortDirection[columnIndex] === 'asc') {
+          return aVal.localeCompare(bVal);
+        } else {
+          return bVal.localeCompare(aVal);
+        }
+      });
+
+      rows.forEach(row => tbody.appendChild(row));
+    }
+
+    // Column filtering (client-side for current page)
+    function filterTable() {
+      const table = document.getElementById('usersTable');
+      const tbody = document.getElementById('usersTableBody');
+      const filters = table.querySelectorAll('.filter-input');
+      const rows = tbody.querySelectorAll('tr');
+
+      rows.forEach(row => {
+        let show = true;
+        filters.forEach((filter, index) => {
+          const filterValue = filter.value.toLowerCase();
+          if (filterValue) {
+            const cellIndex = index + 1;
+            const cell = row.cells[cellIndex];
+            if (cell) {
+              const cellText = cell.textContent.toLowerCase();
+              if (!cellText.includes(filterValue)) {
+                show = false;
+              }
+            }
+          }
+        });
+        row.style.display = show ? '' : 'none';
+      });
+    }
+
+    // Search functionality
+    function handleSearchKeyup(event) {
+      if (event.key === 'Enter') {
+        doSearch();
+      }
+    }
+
+    function doSearch() {
+      const searchTerm = document.getElementById('searchInput').value.trim();
+      currentSearch = searchTerm;
+      currentPage = 1;
+      document.getElementById('clearSearchBtn').style.display = searchTerm ? 'inline-block' : 'none';
+      loadUsers();
+    }
+
+    function clearSearch() {
+      document.getElementById('searchInput').value = '';
+      currentSearch = '';
+      currentPage = 1;
+      document.getElementById('clearSearchBtn').style.display = 'none';
+      loadUsers();
+    }
+
+    function toggleSelectAll(checkbox) {
+      const checkboxes = document.querySelectorAll('.user-checkbox');
+      checkboxes.forEach(cb => { cb.checked = checkbox.checked; });
+      updateDeleteButton();
+    }
+
+    function updateDeleteButton() {
+      const selected = document.querySelectorAll('.user-checkbox:checked');
+      document.getElementById('deleteSelectedBtn').style.display = selected.length > 0 ? '' : 'none';
+    }
+
+    async function deleteSelectedUsers() {
+      const selected = Array.from(document.querySelectorAll('.user-checkbox:checked'));
+      if (selected.length === 0) return;
+      if (!confirm(`Delete ${selected.length} selected user(s)? This cannot be undone.`)) return;
+
+      const ids = selected.map(cb => cb.value);
+      let errors = [];
+      for (const id of ids) {
+        try {
+          const response = await fetch(addPasswordParam(`/api/admin/users/${id}`), {
+            method: 'DELETE'
+          });
+          if (!response.ok) {
+            const error = await response.json();
+            errors.push(error.error || `Failed to delete user ${id}`);
+          }
+        } catch (err) {
+          errors.push(`Network error for user ${id}`);
+        }
+      }
+      if (errors.length > 0) {
+        alert('Some errors occurred:\n' + errors.join('\n'));
+      }
+      loadUsers();
+    }
+
+    async function toggleAdmin(userId, makeAdmin) {
+      const action = makeAdmin ? 'grant admin privileges to' : 'remove admin privileges from';
+      if (!confirm(`Are you sure you want to ${action} this user?`)) return;
+
+      try {
+        const response = await fetch(addPasswordParam(`/api/admin/users/${userId}`), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_admin: makeAdmin })
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to update user');
+        }
+
+        loadUsers();
+      } catch (error) {
+        alert('Error: ' + error.message);
+      }
+    }
+
+    function openAddUserModal() {
+      document.getElementById('modalTitle').textContent = 'Add User';
+      document.getElementById('userForm').reset();
+      document.getElementById('userId').value = '';
+      document.getElementById('userPassword').required = true;
+      document.getElementById('userStatus').value = 'true';
+      document.getElementById('userIsAdmin').value = 'false';
+      document.getElementById('userEmailVerified').value = 'false';
+      document.getElementById('modalMessage').style.display = 'none';
+      document.getElementById('userModal').style.display = 'block';
+    }
+
+    function editUser(userId) {
+      const user = allUsers.find(u => u.id === userId);
+      if (!user) return;
+
+      document.getElementById('modalTitle').textContent = 'Edit User';
+      document.getElementById('userId').value = user.id;
+      document.getElementById('userEmail').value = user.email;
+      document.getElementById('userUsername').value = user.username || '';
+      document.getElementById('userPassword').value = '';
+      document.getElementById('userPassword').required = false;
+      document.getElementById('userStatus').value = user.is_active.toString();
+      document.getElementById('userIsAdmin').value = (user.is_admin || false).toString();
+      document.getElementById('userEmailVerified').value = user.email_verified.toString();
+      document.getElementById('userExternalId').value = user.external_id || '';
+      document.getElementById('modalMessage').style.display = 'none';
+      document.getElementById('userModal').style.display = 'block';
+    }
+
+    function closeUserModal() {
+      document.getElementById('userModal').style.display = 'none';
+    }
+
+    async function saveUser(event) {
+      event.preventDefault();
+
+      const userId = document.getElementById('userId').value;
+      const userData = {
+        email: document.getElementById('userEmail').value,
+        username: document.getElementById('userUsername').value || null,
+        password: document.getElementById('userPassword').value || null,
+        is_active: document.getElementById('userStatus').value === 'true',
+        is_admin: document.getElementById('userIsAdmin').value === 'true',
+        email_verified: document.getElementById('userEmailVerified').value === 'true',
+        external_id: document.getElementById('userExternalId').value || null
+      };
+
+      try {
+        let response;
+        if (userId) {
+          // Edit user
+          if (!userData.password) delete userData.password;
+          response = await fetch(addPasswordParam(`/api/admin/users/${userId}`), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(userData)
+          });
+        } else {
+          // Add user
+          if (!userData.password) {
+            alert('Password is required for new users');
+            return;
+          }
+          response = await fetch(addPasswordParam(`/api/admin/users/create`), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(userData)
+          });
+        }
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to save user');
+        }
+
+        closeUserModal();
+        loadUsers();
+      } catch (error) {
+        const msgEl = document.getElementById('modalMessage');
+        msgEl.textContent = error.message;
+        msgEl.className = 'message error';
+        msgEl.style.display = 'block';
+      }
+    }
+
+    async function resetUserPassword(userId) {
+      if (!confirm('Send password reset email to this user?')) return;
+
+      try {
+        const response = await fetch(addPasswordParam(`/api/admin/users/${userId}/reset-password`), {
+          method: 'POST'
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to reset password');
+        }
+
+        alert('Password reset email sent successfully');
+      } catch (error) {
+        alert('Error: ' + error.message);
+      }
+    }
+
+    function deleteUser(userId) {
+      if (!confirm('Delete this user? This cannot be undone.')) return;
+
+      fetch(addPasswordParam(`/api/admin/users/${userId}`), {
+        method: 'DELETE'
+      })
+      .then(response => {
+        if (!response.ok) {
+          return response.json().then(err => { throw new Error(err.error || 'Failed to delete user'); });
+        }
+        loadUsers();
+      })
+      .catch(error => {
+        alert('Error: ' + error.message);
+      });
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+      const modal = document.getElementById('userModal');
+      if (event.target == modal) {
+        closeUserModal();
+      }
+    }
+  </script>
+</body>
+</html>

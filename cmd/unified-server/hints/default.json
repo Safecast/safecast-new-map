@@ -1,0 +1,302 @@
+{
+  "model": "default",
+  "display_name": "Default (Unknown Model)",
+  "capabilities": ["basic_tool_use"],
+  "system_prompt": "You are an AI assistant with access to the Safecast radiation monitoring database. Provide factual, scientific responses.",
+  "tools": {
+    "query_radiation": {
+      "description": "Find radiation measurements near a geographic location.",
+      "examples": [
+        {
+          "user_query": "What's the radiation level at this location?",
+          "tool_call": {
+            "name": "query_radiation",
+            "arguments": {
+              "lat": 35.6762,
+              "lon": 139.6503,
+              "radius_m": 5000,
+              "limit": 10
+            }
+          }
+        }
+      ],
+      "output_hints": "Present results in a markdown table. Include map links for coordinates.",
+      "formatting_rules": {
+        "coordinates": "Use [lat°N, lon°E](https://simplemap.safecast.org/?lat=LAT&lon=LON&zoom=15) format",
+        "units": "CPM = counts per minute, µSv/h = microsieverts per hour"
+      }
+    },
+    "search_area": {
+      "description": "Find radiation measurements within a geographic bounding box.",
+      "examples": [
+        {
+          "user_query": "Show radiation data in the Tokyo area",
+          "tool_call": {
+            "name": "search_area",
+            "arguments": {
+              "min_lat": 35.5,
+              "max_lat": 35.8,
+              "min_lon": 139.5,
+              "max_lon": 139.9,
+              "limit": 50
+            }
+          }
+        }
+      ],
+      "output_hints": "Summarize findings by location. Use map links for all coordinates."
+    },
+    "list_tracks": {
+      "description": "List available radiation measurement tracks, optionally filtered by date.",
+      "examples": [
+        {
+          "user_query": "What tracks are available from 2024?",
+          "tool_call": {
+            "name": "list_tracks",
+            "arguments": {
+              "year": 2024,
+              "limit": 20
+            }
+          }
+        }
+      ],
+      "output_hints": "List tracks with their date ranges and marker counts."
+    },
+    "get_track": {
+      "description": "Retrieve all measurements from a specific track/journey.",
+      "examples": [
+        {
+          "user_query": "Get all measurements from track 2024-01-15-fukushima",
+          "tool_call": {
+            "name": "get_track",
+            "arguments": {
+              "track_id": "2024-01-15-fukushima"
+            }
+          }
+        }
+      ],
+      "output_hints": "Present as a table with dose rates, locations, and timestamps."
+    },
+    "device_history": {
+      "description": "Get historical measurements from a specific monitoring device.",
+      "examples": [
+        {
+          "user_query": "Show the last 7 days from device SC-12345",
+          "tool_call": {
+            "name": "device_history",
+            "arguments": {
+              "device_id": "SC-12345",
+              "days": 7
+            }
+          }
+        }
+      ],
+      "output_hints": "Show time series data with values and units."
+    },
+    "get_spectrum": {
+      "description": "Retrieve gamma spectrum data for a specific measurement point.",
+      "examples": [
+        {
+          "user_query": "Get the gamma spectrum for marker 12345",
+          "tool_call": {
+            "name": "get_spectrum",
+            "arguments": {
+              "marker_id": 12345
+            }
+          }
+        }
+      ],
+      "output_hints": "Include energy range, device info, and channel count."
+    },
+    "list_spectra": {
+      "description": "Browse available gamma spectroscopy records.",
+      "examples": [
+        {
+          "user_query": "What spectra are available?",
+          "tool_call": {
+            "name": "list_spectra",
+            "arguments": {
+              "limit": 20
+            }
+          }
+        }
+      ],
+      "output_hints": "List with marker IDs, device models, and dates."
+    },
+    "radiation_info": {
+      "description": "Get reference information about radiation units, safety levels, and terminology.",
+      "examples": [
+        {
+          "user_query": "What does 0.5 µSv/h mean? Is that dangerous?",
+          "tool_call": {
+            "name": "radiation_info",
+            "arguments": {
+              "topic": "safety_levels"
+            }
+          }
+        }
+      ],
+      "output_hints": "Present reference content clearly with context."
+    },
+    "list_sensors": {
+      "description": "List real-time radiation monitoring sensors.",
+      "examples": [
+        {
+          "user_query": "What sensors are active in Japan?",
+          "tool_call": {
+            "name": "list_sensors",
+            "arguments": {
+              "country": "JP",
+              "limit": 50
+            }
+          }
+        }
+      ],
+      "output_hints": "Include sensor status, location, and last reading."
+    },
+    "sensor_current": {
+      "description": "Get current real-time readings from fixed sensors.",
+      "examples": [
+        {
+          "user_query": "What are the current sensor readings near Tokyo?",
+          "tool_call": {
+            "name": "sensor_current",
+            "arguments": {
+              "min_lat": 35.5,
+              "max_lat": 35.8,
+              "min_lon": 139.5,
+              "max_lon": 139.9
+            }
+          }
+        }
+      ],
+      "output_hints": "Show latest readings with timestamps and sensor names."
+    },
+    "sensor_history": {
+      "description": "Get historical data from a real-time sensor.",
+      "examples": [
+        {
+          "user_query": "Show the last 24 hours from sensor SC-98765",
+          "tool_call": {
+            "name": "sensor_history",
+            "arguments": {
+              "device_id": "SC-98765",
+              "hours": 24
+            }
+          }
+        }
+      ],
+      "output_hints": "Present as time series with values and units."
+    },
+    "query_analytics": {
+      "description": "Query aggregated analytics data from DuckDB.",
+      "examples": [
+        {
+          "user_query": "What's the average radiation level in Fukushima prefecture?",
+          "tool_call": {
+            "name": "query_analytics",
+            "arguments": {
+              "query": "average_by_prefecture"
+            }
+          }
+        }
+      ],
+      "output_hints": "Summarize statistical findings clearly."
+    },
+    "radiation_stats": {
+      "description": "Get overall database statistics.",
+      "examples": [
+        {
+          "user_query": "How much data is in the Safecast database?",
+          "tool_call": {
+            "name": "radiation_stats",
+            "arguments": {}
+          }
+        }
+      ],
+      "output_hints": "Present counts and coverage information."
+    },
+    "query_extreme_readings": {
+      "description": "Find unusually high or low radiation measurements.",
+      "examples": [
+        {
+          "user_query": "What are the highest radiation readings recorded?",
+          "tool_call": {
+            "name": "query_extreme_readings",
+            "arguments": {
+              "type": "highest",
+              "limit": 10
+            }
+          }
+        }
+      ],
+      "output_hints": "Include context about why readings may be elevated."
+    },
+    "top_uploaders": {
+      "description": "Get statistics on top data contributors.",
+      "examples": [
+        {
+          "user_query": "Who are the top data contributors?",
+          "tool_call": {
+            "name": "top_uploaders",
+            "arguments": {
+              "limit": 10
+            }
+          }
+        }
+      ],
+      "output_hints": "List contributors with their upload counts."
+    },
+    "search_tracks_by_location": {
+      "description": "Find tracks that pass through a geographic area.",
+      "examples": [
+        {
+          "user_query": "What tracks have been recorded near Chernobyl?",
+          "tool_call": {
+            "name": "search_tracks_by_location",
+            "arguments": {
+              "lat": 51.39,
+              "lon": 30.10,
+              "radius_km": 50
+            }
+          }
+        }
+      ],
+      "output_hints": "List tracks with dates and coverage areas."
+    },
+    "db_info": {
+      "description": "Get information about database structure and available data.",
+      "examples": [
+        {
+          "user_query": "What data is available in the database?",
+          "tool_call": {
+            "name": "db_info",
+            "arguments": {}
+          }
+        }
+      ],
+      "output_hints": "Summarize tables and data types available."
+    },
+    "query_duckdb_logs": {
+      "description": "Query analytics logs from DuckDB.",
+      "examples": [
+        {
+          "user_query": "Show recent analytics queries",
+          "tool_call": {
+            "name": "query_duckdb_logs",
+            "arguments": {
+              "limit": 10
+            }
+          }
+        }
+      ],
+      "output_hints": "Present log entries with timestamps and query types."
+    }
+  },
+  "global_formatting_rules": {
+    "tone": "Scientific, objective, factual. Avoid personal pronouns.",
+    "coordinates": "Always use clickable map links",
+    "tables": "Use markdown tables for measurement lists",
+    "units": "Always specify units (µSv/h, CPM, CPS)",
+    "uncertainty": "Acknowledge measurement uncertainty when relevant"
+  }
+}

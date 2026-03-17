@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>MCP Analytics - Safecast Admin</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/images/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/images/favicon-16x16.png">
+  <link rel="manifest" href="/static/images/site.webmanifest">
+  <style>
+    :root {
+      --bg-primary: #f5f5f5;
+      --bg-card: white;
+      --text-primary: #333;
+      --text-secondary: #666;
+      --text-muted: #999;
+      --border-color: #ddd;
+      --link-color: #0066cc;
+      --shadow: 0 1px 3px rgba(0,0,0,0.1);
+      --th-bg: #424242;
+      --hover-bg: #f9f9f9;
+      --btn-border-radius: 8px;
+      --tab-active-bg: #2196F3;
+      --tab-active-text: white;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1a1a1a;
+        --bg-card: #2b2b2b;
+        --text-primary: #eee;
+        --text-secondary: #aaa;
+        --text-muted: #777;
+        --border-color: #444;
+        --link-color: #90caf9;
+        --shadow: 0 1px 3px rgba(255,255,255,0.1);
+        --th-bg: #616161;
+        --hover-bg: #333;
+        --tab-active-bg: #1976D2;
+        color-scheme: dark;
+      }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-primary); color: var(--text-primary); padding: 20px; }
+    h1 { margin-bottom: 15px; font-size: 1.6em; }
+
+    /* Admin tab bar */
+    .admin-tabs { display: flex; gap: 2px; margin-top: 10px; margin-bottom: 10px; background: var(--border-color); border-radius: 8px; overflow: hidden; }
+    .admin-tabs a, .admin-tabs span { padding: 10px 20px; text-decoration: none; color: var(--text-secondary); background: var(--bg-card); font-weight: 500; font-size: 0.95em; transition: background 0.2s; }
+    .admin-tabs a:hover { background: var(--hover-bg); color: var(--text-primary); }
+    .admin-tabs a.active { background: var(--tab-active-bg); color: var(--tab-active-text); }
+    .admin-tabs span.disabled { color: var(--text-muted); cursor: not-allowed; font-style: italic; }
+
+    /* Sub-tabs for table selection */
+    .sub-tabs { display: flex; gap: 0; margin-bottom: 15px; border-bottom: 2px solid var(--border-color); }
+    .sub-tabs button { padding: 8px 20px; border: none; background: none; color: var(--text-secondary); font-size: 0.95em; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; font-weight: 500; }
+    .sub-tabs button:hover { color: var(--text-primary); }
+    .sub-tabs button.active { color: var(--tab-active-bg); border-bottom-color: var(--tab-active-bg); }
+
+    /* Controls bar */
+    .controls { display: flex; gap: 10px; align-items: center; margin-bottom: 15px; flex-wrap: wrap; }
+    .controls input[type="text"] { padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--btn-border-radius); background: var(--bg-card); color: var(--text-primary); font-size: 0.95em; min-width: 250px; }
+    .controls button { padding: 8px 16px; border: 1px solid var(--border-color); border-radius: var(--btn-border-radius); background: var(--bg-card); color: var(--text-primary); cursor: pointer; font-size: 0.95em; }
+    .controls button:hover { background: var(--hover-bg); }
+    .controls .export-btn { background: #4CAF50; color: white; border-color: #4CAF50; }
+    .controls .export-btn:hover { background: #388E3C; }
+
+    /* Summary */
+    .summary { margin-bottom: 10px; color: var(--text-secondary); font-size: 0.9em; }
+
+    /* Data table */
+    .table-wrap { overflow-x: auto; background: var(--bg-card); border-radius: 8px; box-shadow: var(--shadow); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+    table { table-layout: fixed; }
+    th { background: var(--th-bg); color: white; padding: 10px 12px; text-align: left; white-space: nowrap; position: sticky; top: 0; overflow: hidden; text-overflow: ellipsis; position: relative; }
+    td { padding: 8px 12px; border-bottom: 1px solid var(--border-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .resize-handle { position: absolute; right: 0; top: 0; width: 5px; height: 100%; cursor: col-resize; background: transparent; z-index: 1; }
+    .resize-handle:hover, .resize-handle.active { background: rgba(255,255,255,0.3); }
+    td.wrap { white-space: normal; word-break: break-word; }
+    tr:hover { background: var(--hover-bg); }
+    .sortable { cursor: pointer; user-select: none; position: relative; padding-right: 20px; }
+    .sortable:hover { background: rgba(255,255,255,0.1); }
+    .sortable::after { content: '\21C5'; position: absolute; right: 4px; opacity: 0.5; }
+    .sortable.asc::after { content: '\25B2'; opacity: 1; }
+    .sortable.desc::after { content: '\25BC'; opacity: 1; }
+
+    /* Column filter row */
+    .filter-input { width: 100%; padding: 4px 8px; border: 1px solid var(--border-color); border-radius: var(--btn-border-radius); background: var(--bg-card); color: var(--text-primary); font-size: 0.85em; box-sizing: border-box; }
+    .filter-row th { background: var(--bg-card); padding: 4px 6px; position: sticky; top: 38px; }
+
+    /* Expandable cell */
+    td.expandable { cursor: pointer; }
+    td.expandable:hover { white-space: normal; overflow: visible; position: relative; z-index: 10; background: var(--bg-card); box-shadow: var(--shadow); }
+
+    /* Pagination */
+    .pagination { display: flex; gap: 5px; align-items: center; justify-content: center; margin-top: 15px; flex-wrap: wrap; }
+    .pagination button { padding: 6px 12px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-card); color: var(--text-primary); cursor: pointer; }
+    .pagination button:hover { background: var(--hover-bg); }
+    .pagination button.active { background: var(--tab-active-bg); color: white; border-color: var(--tab-active-bg); }
+    .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .pagination select { padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-card); color: var(--text-primary); }
+
+    .no-data { text-align: center; padding: 40px; color: var(--text-muted); }
+    .loading { text-align: center; padding: 40px; color: var(--text-muted); }
+    .checkbox-col { width: 40px; text-align: center; }
+    .controls .delete-btn { background: #f44336; color: white; border-color: #f44336; }
+    .controls .delete-btn:hover { background: #d32f2f; }
+    .controls .delete-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Modal for viewing full content */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
+    .modal-overlay.visible { display: flex; align-items: center; justify-content: center; }
+    .modal { background: var(--bg-card); border-radius: 12px; padding: 20px; max-width: 800px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+    .modal h3 { margin-bottom: 10px; }
+    .modal pre { white-space: pre-wrap; word-break: break-word; font-size: 0.9em; line-height: 1.5; background: var(--bg-primary); padding: 15px; border-radius: 8px; max-height: 60vh; overflow-y: auto; }
+    .modal button { margin-top: 15px; padding: 8px 20px; background: var(--tab-active-bg); color: white; border: none; border-radius: var(--btn-border-radius); cursor: pointer; }
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0; }
+    .page-header h1 { margin: 0; }
+    .back-to-map-btn { background: #2196F3 !important; color: white !important; padding: 8px 16px; border-radius: var(--btn-border-radius); text-decoration: none !important; font-weight: 500; transition: background 0.2s; }
+    .back-to-map-btn:hover { background: #1976D2 !important; text-decoration: none !important; }
+  </style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>MCP Analytics</h1>
+  <a href="/" class="back-to-map-btn">Back to Map</a>
+</div>
+
+<div class="admin-tabs" id="adminTabs"></div>
+
+<div class="sub-tabs">
+  <button class="active" onclick="switchTable('chat_questions')">Chat Questions</button>
+  <button onclick="switchTable('mcp_query_log')">Tool Usage</button>
+  <button onclick="switchTable('mcp_ai_query_log')">AI Query Log</button>
+</div>
+
+<div class="controls">
+  <input type="text" id="searchInput" placeholder="Search across all fields..." onkeydown="if(event.key==='Enter')doSearch()">
+  <button onclick="doSearch()">Search</button>
+  <button onclick="clearSearch()">Clear</button>
+  <button class="export-btn" onclick="exportCSV()">Export CSV</button>
+  <button class="delete-btn" id="deleteSelectedBtn" onclick="deleteSelected()" disabled>Delete Selected</button>
+  <button class="delete-btn" id="deleteAllBtn" onclick="deleteAll()">Delete All</button>
+  <span class="summary" id="summary"></span>
+</div>
+
+<div class="table-wrap">
+  <div class="loading" id="loading">Loading...</div>
+  <table id="dataTable" style="display:none">
+    <thead id="tableHead"></thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+  <div class="no-data" id="noData" style="display:none">No data found</div>
+</div>
+
+<div class="pagination" id="pagination"></div>
+
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3 id="modalTitle">Details</h3>
+    <pre id="modalContent"></pre>
+    <button onclick="closeModal()">Close</button>
+  </div>
+</div>
+
+<script>
+const PASSWORD = new URLSearchParams(window.location.search).get('password') || '';
+const AUTH_PARAM = PASSWORD ? '?password=' + encodeURIComponent(PASSWORD) : '';
+
+// Column display names
+const COLUMN_LABELS = {
+  id: 'ID', timestamp: 'Timestamp', question: 'Question', answer: 'Answer',
+  source: 'Source', model: 'Model', ip_address: 'IP', country: 'Country',
+  is_mobile: 'Mobile', os: 'OS', browser: 'Browser', user_agent: 'User Agent',
+  accept_language: 'Language', referer: 'Referer', session_id: 'Session',
+  history_length: 'History', cloudfront: 'CF', client_timestamp: 'Client Time',
+  tool_name: 'Tool', duration_ms: 'Duration (ms)', result_count: 'Results',
+  client: 'Client', user_id: 'User ID', user_email: 'Email',
+  generated_query: 'Query', commit_hash: 'Commit', error: 'Error'
+};
+
+// Columns that should be expandable (long text)
+const EXPANDABLE = new Set(['question', 'answer', 'generated_query', 'user_agent', 'accept_language', 'referer']);
+
+let currentTable = 'chat_questions';
+let currentSort = 'timestamp';
+let currentOrder = 'desc';
+let currentSearch = '';
+let currentOffset = 0;
+let currentLimit = 50;
+let totalRows = 0;
+let currentData = [];
+let currentColumns = [];
+
+const KEY_COLUMNS = {
+  'chat_questions': 'id',
+  'mcp_query_log': 'timestamp',
+  'mcp_ai_query_log': 'timestamp'
+};
+
+// Build admin tabs
+function buildAdminTabs() {
+  const tabs = [
+    { label: 'Users', href: '/admin/users' },
+    { label: 'Uploads', href: '/admin/uploads' },
+    { label: 'MCP Analytics', href: '/admin/mcp', active: true },
+    { label: 'Realtime', href: '/admin/realtime' },
+    { label: 'Translations', href: '/admin/translations' }
+  ];
+  const container = document.getElementById('adminTabs');
+  tabs.forEach(t => {
+    if (t.disabled) {
+      container.innerHTML += `<span class="disabled">${t.label}</span>`;
+    } else {
+      const href = t.href + (PASSWORD ? '?password=' + encodeURIComponent(PASSWORD) : '');
+      container.innerHTML += `<a href="${href}" class="${t.active ? 'active' : ''}">${t.label}</a>`;
+    }
+  });
+}
+
+function switchTable(table) {
+  currentTable = table;
+  currentOffset = 0;
+  currentSort = 'timestamp';
+  currentOrder = 'desc';
+  columnWidths = {};
+
+  // Update sub-tab active state
+  document.querySelectorAll('.sub-tabs button').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent === {
+      'chat_questions': 'Chat Questions',
+      'mcp_query_log': 'Tool Usage',
+      'mcp_ai_query_log': 'AI Query Log'
+    }[table]);
+  });
+
+  fetchData();
+}
+
+function doSearch() {
+  currentSearch = document.getElementById('searchInput').value.trim();
+  currentOffset = 0;
+  fetchData();
+}
+
+function clearSearch() {
+  document.getElementById('searchInput').value = '';
+  currentSearch = '';
+  currentOffset = 0;
+  fetchData();
+}
+
+function exportCSV() {
+  let url = '/api/admin/mcp/export?table=' + currentTable;
+  if (PASSWORD) url += '&password=' + encodeURIComponent(PASSWORD);
+  if (currentSearch) url += '&search=' + encodeURIComponent(currentSearch);
+  window.location.href = url;
+}
+
+function sortBy(col) {
+  if (resizing) return;
+  if (currentSort === col) {
+    currentOrder = currentOrder === 'desc' ? 'asc' : 'desc';
+  } else {
+    currentSort = col;
+    currentOrder = 'desc';
+  }
+  currentOffset = 0;
+  fetchData();
+}
+
+async function fetchData() {
+  const loading = document.getElementById('loading');
+  const table = document.getElementById('dataTable');
+  const noData = document.getElementById('noData');
+
+  loading.style.display = 'block';
+  table.style.display = 'none';
+  noData.style.display = 'none';
+
+  let url = `/api/admin/mcp/data?table=${currentTable}&limit=${currentLimit}&offset=${currentOffset}&sort=${currentSort}&order=${currentOrder}`;
+  if (PASSWORD) url += '&password=' + encodeURIComponent(PASSWORD);
+  if (currentSearch) url += '&search=' + encodeURIComponent(currentSearch);
+
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) {
+      if (resp.status === 401) {
+        loading.textContent = 'Unauthorized - please login as admin or provide password';
+        return;
+      }
+      // Try to parse error JSON
+      try {
+        const errJson = await resp.json();
+        if (errJson.error) {
+          loading.textContent = errJson.error;
+          return;
+        }
+      } catch {}
+      if (resp.status === 503) {
+        loading.textContent = 'DuckDB analytics not available. Ensure DUCKLAKE_PG_URL is configured and ducklake_catalog database exists.';
+        return;
+      }
+      throw new Error('HTTP ' + resp.status);
+    }
+
+    const json = await resp.json();
+    totalRows = json.total;
+    const columns = json.columns || [];
+    const data = json.data || [];
+
+    loading.style.display = 'none';
+
+    if (data.length === 0) {
+      noData.style.display = 'block';
+      document.getElementById('summary').textContent = 'No results';
+      document.getElementById('pagination').innerHTML = '';
+      return;
+    }
+
+    // Store current data for delete operations
+    currentData = data;
+    currentColumns = columns;
+
+    // Build header
+    const thead = document.getElementById('tableHead');
+    const keyCol = KEY_COLUMNS[currentTable];
+    let headerHTML = '<tr><th class="checkbox-col"><input type="checkbox" onchange="toggleAll(this)"></th>';
+    columns.forEach(col => {
+      const label = COLUMN_LABELS[col] || col;
+      const sortClass = currentSort === col ? (currentOrder === 'asc' ? 'sortable asc' : 'sortable desc') : 'sortable';
+      headerHTML += `<th class="${sortClass}" onclick="sortBy('${col}')">${label}<span class="resize-handle"></span></th>`;
+    });
+    headerHTML += '</tr>';
+    // Filter row
+    headerHTML += '<tr class="filter-row"><th></th>';
+    columns.forEach(col => {
+      const label = COLUMN_LABELS[col] || col;
+      headerHTML += `<th><input type="text" class="filter-input" placeholder="${label}..." onkeyup="filterTable()"></th>`;
+    });
+    headerHTML += '</tr>';
+    thead.innerHTML = headerHTML;
+
+    // Build body
+    const tbody = document.getElementById('tableBody');
+    let bodyHTML = '';
+    data.forEach((row, idx) => {
+      const keyVal = row[keyCol];
+      bodyHTML += `<tr><td class="checkbox-col"><input type="checkbox" class="row-cb" value="${keyVal}" onchange="updateDeleteBtn()"></td>`;
+      columns.forEach(col => {
+        let val = row[col];
+        if (val === null || val === undefined) val = '';
+        const strVal = String(val);
+        if (EXPANDABLE.has(col) && strVal.length > 60) {
+          const preview = strVal.substring(0, 60) + '...';
+          bodyHTML += `<td class="expandable" title="Click to expand" onclick="showModal('${COLUMN_LABELS[col] || col}', ${JSON.stringify(strVal).replace(/'/g, "&#39;")})">${escapeHtml(preview)}</td>`;
+        } else if (col === 'is_mobile' || col === 'cloudfront') {
+          bodyHTML += `<td>${val ? 'Yes' : (val === false ? 'No' : '')}</td>`;
+        } else if (col === 'timestamp' || col === 'client_timestamp') {
+          bodyHTML += `<td>${formatTimestamp(strVal)}</td>`;
+        } else {
+          bodyHTML += `<td>${escapeHtml(strVal)}</td>`;
+        }
+      });
+      bodyHTML += '</tr>';
+    });
+    tbody.innerHTML = bodyHTML;
+    table.style.display = 'table';
+    initColumnResize();
+    updateDeleteBtn();
+
+    // Summary
+    const page = Math.floor(currentOffset / currentLimit) + 1;
+    const totalPages = Math.ceil(totalRows / currentLimit);
+    document.getElementById('summary').textContent = `${totalRows} total rows | Page ${page} of ${totalPages}`;
+
+    // Pagination
+    buildPagination(totalPages, page);
+
+  } catch (err) {
+    loading.textContent = 'Error loading data: ' + err.message;
+  }
+}
+
+function buildPagination(totalPages, currentPage) {
+  const container = document.getElementById('pagination');
+  let html = '';
+
+  html += `<button ${currentPage <= 1 ? 'disabled' : ''} onclick="goToPage(1)">First</button>`;
+  html += `<button ${currentPage <= 1 ? 'disabled' : ''} onclick="goToPage(${currentPage - 1})">Prev</button>`;
+
+  // Page number buttons (show max 7)
+  let start = Math.max(1, currentPage - 3);
+  let end = Math.min(totalPages, start + 6);
+  start = Math.max(1, end - 6);
+
+  for (let i = start; i <= end; i++) {
+    html += `<button class="${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+  }
+
+  html += `<button ${currentPage >= totalPages ? 'disabled' : ''} onclick="goToPage(${currentPage + 1})">Next</button>`;
+  html += `<button ${currentPage >= totalPages ? 'disabled' : ''} onclick="goToPage(${totalPages})">Last</button>`;
+
+  html += ` <select onchange="changeLimit(this.value)">`;
+  [25, 50, 100, 200].forEach(n => {
+    html += `<option value="${n}" ${n === currentLimit ? 'selected' : ''}>${n} per page</option>`;
+  });
+  html += `</select>`;
+
+  container.innerHTML = html;
+}
+
+function goToPage(page) {
+  currentOffset = (page - 1) * currentLimit;
+  fetchData();
+}
+
+function changeLimit(val) {
+  currentLimit = parseInt(val);
+  currentOffset = 0;
+  fetchData();
+}
+
+function showModal(title, content) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalContent').textContent = content;
+  document.getElementById('modalOverlay').classList.add('visible');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('visible');
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function formatTimestamp(ts) {
+  if (!ts) return '';
+  try {
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return ts;
+    return d.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, ' UTC');
+  } catch { return ts; }
+}
+
+function toggleAll(master) {
+  document.querySelectorAll('.row-cb').forEach(cb => { cb.checked = master.checked; });
+  updateDeleteBtn();
+}
+
+function filterTable() {
+  const tbody = document.getElementById('tableBody');
+  const filters = document.querySelectorAll('.filter-input');
+  const rows = tbody.querySelectorAll('tr');
+  rows.forEach(row => {
+    let show = true;
+    filters.forEach((filter, index) => {
+      const val = filter.value.toLowerCase();
+      if (val) {
+        const cell = row.cells[index + 1]; // +1 for checkbox column
+        if (cell) {
+          if (!cell.textContent.toLowerCase().includes(val)) show = false;
+        }
+      }
+    });
+    row.style.display = show ? '' : 'none';
+  });
+}
+
+function updateDeleteBtn() {
+  const checked = document.querySelectorAll('.row-cb:checked').length;
+  const btn = document.getElementById('deleteSelectedBtn');
+  btn.disabled = checked === 0;
+  btn.textContent = checked > 0 ? `Delete Selected (${checked})` : 'Delete Selected';
+}
+
+async function deleteSelected() {
+  const checked = document.querySelectorAll('.row-cb:checked');
+  if (checked.length === 0) return;
+  if (!confirm(`Delete ${checked.length} selected row(s)?`)) return;
+
+  const ids = Array.from(checked).map(cb => cb.value).join(',');
+  let url = `/api/admin/mcp/delete?table=${currentTable}&ids=${encodeURIComponent(ids)}`;
+  if (PASSWORD) url += '&password=' + encodeURIComponent(PASSWORD);
+
+  try {
+    const resp = await fetch(url, { method: 'DELETE' });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const json = await resp.json();
+    alert(`Deleted ${json.deleted} row(s)`);
+    fetchData();
+  } catch (err) {
+    alert('Delete failed: ' + err.message);
+  }
+}
+
+async function deleteAll() {
+  const scope = currentSearch ? 'all filtered rows' : 'ALL rows';
+  if (!confirm(`Delete ${scope} from ${currentTable}? This cannot be undone.`)) return;
+
+  let url = `/api/admin/mcp/delete?table=${currentTable}&all=true`;
+  if (PASSWORD) url += '&password=' + encodeURIComponent(PASSWORD);
+  if (currentSearch) url += '&search=' + encodeURIComponent(currentSearch);
+
+  try {
+    const resp = await fetch(url, { method: 'DELETE' });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const json = await resp.json();
+    alert(`Deleted ${json.deleted} row(s)`);
+    fetchData();
+  } catch (err) {
+    alert('Delete failed: ' + err.message);
+  }
+}
+
+let columnWidths = {}; // Persist widths across re-renders, keyed by column index
+let resizing = false; // Suppress sort click after drag
+
+function initColumnResize() {
+  const table = document.getElementById('dataTable');
+  if (!table) return;
+  const headerRow = table.querySelector('thead tr:first-child');
+  if (!headerRow) return;
+  const ths = headerRow.querySelectorAll('th');
+
+  // Restore saved widths or capture initial computed widths
+  ths.forEach((th, i) => {
+    if (columnWidths[i]) {
+      th.style.width = columnWidths[i];
+    } else {
+      th.style.width = th.offsetWidth + 'px';
+    }
+  });
+
+  document.querySelectorAll('.resize-handle').forEach(handle => {
+    handle.addEventListener('mousedown', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      resizing = true;
+      const th = this.parentElement;
+      const colIndex = Array.from(th.parentElement.children).indexOf(th);
+      const startX = e.pageX;
+      const startWidth = th.offsetWidth;
+      this.classList.add('active');
+
+      const onMouseMove = (e) => {
+        const newWidth = Math.max(40, startWidth + (e.pageX - startX));
+        th.style.width = newWidth + 'px';
+        columnWidths[colIndex] = newWidth + 'px';
+      };
+      const onMouseUp = () => {
+        this.classList.remove('active');
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        // Delay resetting flag so the click event on th is suppressed
+        setTimeout(() => { resizing = false; }, 50);
+      };
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+  });
+}
+
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+  buildAdminTabs();
+  fetchData();
+});
+
+// Keyboard shortcut: Escape closes modal
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+</script>
+</body>
+</html>

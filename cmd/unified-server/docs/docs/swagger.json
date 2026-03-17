@@ -1,0 +1,791 @@
+{
+    "schemes": [
+        "https",
+        "http"
+    ],
+    "swagger": "2.0",
+    "info": {
+        "description": "REST access to the Safecast radiation monitoring dataset via simplemap.safecast.org — 200M+ measurements from citizen scientists worldwide. All data is CC0-licensed and read-only. Powered by PostgreSQL+PostGIS.",
+        "title": "Safecast Map API",
+        "contact": {
+            "name": "Safecast",
+            "url": "https://safecast.org"
+        },
+        "license": {
+            "name": "CC0 1.0 Universal",
+            "url": "https://creativecommons.org/publicdomain/zero/1.0/"
+        },
+        "version": "1.0"
+    },
+    "host": "simplemap.safecast.org",
+    "basePath": "/api",
+    "paths": {
+        "/area": {
+            "get": {
+                "description": "Returns historical bGeigie measurements inside the specified geographic rectangle. Falls back to Safecast REST API if no database is configured.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "historical"
+                ],
+                "summary": "Find radiation measurements within a bounding box",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "Southern boundary latitude (-90 to 90)",
+                        "name": "min_lat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Northern boundary latitude (-90 to 90)",
+                        "name": "max_lat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Western boundary longitude (-180 to 180)",
+                        "name": "min_lon",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Eastern boundary longitude (-180 to 180)",
+                        "name": "max_lon",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 100,
+                        "description": "Maximum number of results (1 to 10000)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Measurements with count, bbox, and source",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid or missing parameters",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/device/{id}/history": {
+            "get": {
+                "description": "Returns time-series radiation data from a bGeigie mobile device or fixed sensor. Queries both the markers table (bGeigie imports) and realtime_measurements table (fixed sensors).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "historical"
+                ],
+                "summary": "Get historical measurements from a device",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Device identifier",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 30,
+                        "description": "Days of history to retrieve (1 to 365)",
+                        "name": "days",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 200,
+                        "description": "Maximum number of results (1 to 10000)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Device measurements with period metadata",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/info/{topic}": {
+            "get": {
+                "description": "Returns static educational reference content about radiation units, safety levels, detector types, background levels, and isotopes.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reference"
+                ],
+                "summary": "Get radiation reference information",
+                "parameters": [
+                    {
+                        "enum": [
+                            "units",
+                            "dose_rates",
+                            "safety_levels",
+                            "detectors",
+                            "background_levels",
+                            "isotopes"
+                        ],
+                        "type": "string",
+                        "description": "Topic to retrieve",
+                        "name": "topic",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reference content for the requested topic",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid or missing topic",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/radiation": {
+            "get": {
+                "description": "Returns historical bGeigie measurements within a radius of the given coordinates, sorted by most recent. Uses PostGIS spatial index for fast queries. Falls back to Safecast REST API if no database is configured.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "historical"
+                ],
+                "summary": "Find radiation measurements near a location",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "Latitude in decimal degrees (-90 to 90)",
+                        "name": "lat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Longitude in decimal degrees (-180 to 180)",
+                        "name": "lon",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "default": 1500,
+                        "description": "Search radius in meters (25 to 50000)",
+                        "name": "radius_m",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 25,
+                        "description": "Maximum number of results (1 to 10000)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Radiation measurements with count, source, and query metadata",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/sensor/{id}/current": {
+            "get": {
+                "description": "Routes to current or history endpoint based on the path suffix. Use /current for the latest reading, /history for time-series data.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "realtime"
+                ],
+                "summary": "Get readings from a specific sensor",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Device identifier",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Start date for history (YYYY-MM-DD) — required for /history",
+                        "name": "start_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End date for history (YYYY-MM-DD, default: today)",
+                        "name": "end_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 25,
+                        "description": "Maximum number of results (1 to 1000)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Sensor readings",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Database unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/sensor/{id}/history": {
+            "get": {
+                "description": "Routes to current or history endpoint based on the path suffix. Use /current for the latest reading, /history for time-series data.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "realtime"
+                ],
+                "summary": "Get readings from a specific sensor",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Device identifier",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Start date for history (YYYY-MM-DD) — required for /history",
+                        "name": "start_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End date for history (YYYY-MM-DD, default: today)",
+                        "name": "end_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 25,
+                        "description": "Maximum number of results (1 to 1000)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Sensor readings",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Database unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/sensors": {
+            "get": {
+                "description": "Lists active fixed radiation sensors (Pointcast, Solarcast, bGeigieZen, etc.) with their location, type, and last reading timestamp. Requires database connection.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "realtime"
+                ],
+                "summary": "Discover active fixed sensors",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by sensor type (e.g. Pointcast, Solarcast, bGeigieZen)",
+                        "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "default": -90,
+                        "description": "Southern boundary latitude",
+                        "name": "min_lat",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "default": 90,
+                        "description": "Northern boundary latitude",
+                        "name": "max_lat",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "default": -180,
+                        "description": "Western boundary longitude",
+                        "name": "min_lon",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "default": 180,
+                        "description": "Eastern boundary longitude",
+                        "name": "max_lon",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Maximum number of sensors (1 to 1000)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Sensor list with locations and last reading times",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Database unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/spectra": {
+            "get": {
+                "description": "Returns spectroscopy metadata (filename, device model, energy range, location) without channel data. Use GET /api/spectrum/{marker_id} to fetch full channel data. Requires database connection.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "spectroscopy"
+                ],
+                "summary": "Browse gamma spectroscopy records",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "Southern boundary latitude (requires all 4 bbox params)",
+                        "name": "min_lat",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Northern boundary latitude (requires all 4 bbox params)",
+                        "name": "max_lat",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Western boundary longitude (requires all 4 bbox params)",
+                        "name": "min_lon",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Eastern boundary longitude (requires all 4 bbox params)",
+                        "name": "max_lon",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by file format (e.g. spe, csv)",
+                        "name": "source_format",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by detector model name (partial match)",
+                        "name": "device_model",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by track identifier",
+                        "name": "track_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Maximum number of results (1 to 500)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Spectroscopy records with metadata",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Database unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/spectrum/{marker_id}": {
+            "get": {
+                "description": "Returns complete gamma spectroscopy data including all channel counts for the specified measurement point. Use GET /api/spectra to find marker IDs.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "spectroscopy"
+                ],
+                "summary": "Get full spectroscopy channel data",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Marker/measurement identifier",
+                        "name": "marker_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Full spectroscopy channel data",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid marker_id",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Database unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/stats": {
+            "get": {
+                "description": "Returns aggregate radiation dose-rate statistics from the Safecast database grouped by time interval. Powered by DuckDB + PostgreSQL.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reference"
+                ],
+                "summary": "Get aggregate radiation statistics",
+                "parameters": [
+                    {
+                        "enum": [
+                            "year",
+                            "month",
+                            "overall"
+                        ],
+                        "type": "string",
+                        "default": "year",
+                        "description": "Aggregation interval: year, month, or overall",
+                        "name": "interval",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Statistics data with interval and source metadata",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid interval value",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Analytics engine unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/track/{id}": {
+            "get": {
+                "description": "Retrieves radiation measurements recorded during a specific bGeigie drive. Use GET /api/tracks to find track IDs first.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "historical"
+                ],
+                "summary": "Get all measurements from a specific track",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Track identifier (e.g. 8eh5m1)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Start marker ID for filtering",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "End marker ID for filtering",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 200,
+                        "description": "Maximum number of results (1 to 10000)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Measurements for the track",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tracks": {
+            "get": {
+                "description": "Lists bGeigie Import tracks (bulk radiation measurement drives). Each track represents measurements from a single bGeigie session. Can filter by year, month, and detector/device name.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "historical"
+                ],
+                "summary": "Browse bGeigie measurement tracks",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Filter by year (2000–2100)",
+                        "name": "year",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Filter by month (1–12, requires year)",
+                        "name": "month",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by detector/device name (e.g., 'bGeigieZen', 'bGeigie', 'Pointcast'). Partial match supported.",
+                        "name": "detector",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Maximum number of results (1 to 50000)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Track list with count and filter metadata",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "tags": [
+        {
+            "description": "Historical bGeigie mobile radiation measurements",
+            "name": "historical"
+        },
+        {
+            "description": "Real-time fixed sensor readings (Pointcast, Solarcast, bGeigieZen)",
+            "name": "realtime"
+        },
+        {
+            "description": "Gamma spectroscopy records",
+            "name": "spectroscopy"
+        },
+        {
+            "description": "Aggregate statistics and reference information",
+            "name": "reference"
+        }
+    ]
+}
