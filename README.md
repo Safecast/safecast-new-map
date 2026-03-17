@@ -197,6 +197,7 @@ Import from local file:
 - **Track list:** `/api/tracks`
 - **Statistics:** `/api/stats`
 - **Countries:** `/api/countries`
+- **Canonical docs (main app):** `/swagger/` (generated from Swaggo annotations)
 
 ### MCP Server & AI Integration
 
@@ -218,6 +219,16 @@ claude mcp add --transport http safecast https://simplemap.safecast.org/mcp-http
 ```
 
 **Swagger API docs:** [simplemap.safecast.org/docs/](https://simplemap.safecast.org/docs/)
+
+Regenerate documentation after API changes:
+
+```bash
+# Main app API docs
+swag init -g doc.go -o docs/api --parseDependency --parseInternal --parseDependencyLevel 2
+
+# MCP server API docs
+cd cmd/mcp-server && swag init -g rest.go
+```
 
 ---
 
