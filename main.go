@@ -22,11 +22,11 @@ import (
 	"encoding/json"
 	"encoding/xml"
 
-	"github.com/vmihailenco/msgpack/v5"
-	lru "github.com/hashicorp/golang-lru/v2"
 	"errors"
 	"flag"
 	"fmt"
+	lru "github.com/hashicorp/golang-lru/v2"
+	"github.com/vmihailenco/msgpack/v5"
 	"html"
 	"html/template"
 	"io"
@@ -53,12 +53,12 @@ import (
 
 	"golang.org/x/crypto/acme/autocert"
 
-	"safecast-new-map/pkg/api"
 	"safecast-new-map/pkg/auth"
 	"safecast-new-map/pkg/countryresolver"
 	"safecast-new-map/pkg/database"
 	"safecast-new-map/pkg/database/drivers"
 	"safecast-new-map/pkg/email"
+	"safecast-new-map/pkg/httpapi"
 	"safecast-new-map/pkg/jsonarchive"
 	"safecast-new-map/pkg/logger"
 	"safecast-new-map/pkg/mapimport"
@@ -66,7 +66,6 @@ import (
 	safecastrealtime "safecast-new-map/pkg/safecast-realtime"
 	"safecast-new-map/pkg/selfupgrade"
 	"safecast-new-map/pkg/spectrum"
-	"safecast-new-map/pkg/web"
 )
 
 // content bundles the UI and the license texts so single-file binaries still
@@ -384,11 +383,11 @@ func init() {
 	// working even when auxiliary files are skipped; relying on init avoids extra
 	// coordination primitives and mirrors Go's preference for simplicity.
 	drivers.Ready()
-	
+
 	// Initialize the tile cache to store precomputed clustered markers
 	// Using a cache size of 1000 entries which should be sufficient for most use cases
 	tileCache, _ = lru.New[string, []database.Marker](1000)
-	
+
 	// CLI usage grouping is also configured once during init so every entry point
 	// inherits the readable help layout without repeating boilerplate.
 	configureCLIUsage()
@@ -889,7 +888,7 @@ func processBGeigieZenFile(
 	skipped := 0
 	for sc.Scan() {
 		line := strings.TrimSpace(sc.Text())
-		
+
 		// Parse header lines (# comments at start of file)
 		if strings.HasPrefix(line, "#") {
 			// Extract format version: # format=1.0.3nano or # format=2.0.0CzechRad
@@ -912,7 +911,7 @@ func processBGeigieZenFile(
 			skipped++
 			continue
 		}
-		
+
 		// Accept all bGeigie format variants: $BNRDD, $BMRDD, $BNXRDD, $CZRDD, $CZRA1, etc.
 		if line == "" || !strings.HasPrefix(line, "$") {
 			skipped++
@@ -931,7 +930,7 @@ func processBGeigieZenFile(
 			skipped++
 			continue
 		}
-		
+
 		// Extract device ID from first data line (field 1): $BNRDD,0208,... or $CZRDD,0486,...
 		if deviceID == "" && len(p) >= 2 {
 			deviceID = strings.TrimSpace(p[1])
@@ -2351,7 +2350,7 @@ func parseRadiacodeCSV(trackID string, r io.Reader) ([]database.Marker, error) {
 	if err != nil {
 		return nil, fmt.Errorf("CSV read error: %v", err)
 	}
-	
+
 	// Extract device model from metadata line if present
 	// Format: "Track: 2025-12-04 16-57-03\tRC-103-012737\tEC"
 	deviceModel := ""
@@ -2370,7 +2369,7 @@ func parseRadiacodeCSV(trackID string, r io.Reader) ([]database.Marker, error) {
 	} else {
 		header = firstLine
 	}
-	
+
 	// Verify this is a Radiacode format
 	if len(header) < 7 || !strings.Contains(strings.ToLower(header[0]), "timestamp") {
 		return nil, fmt.Errorf("not a Radiacode CSV format")
@@ -2378,7 +2377,7 @@ func parseRadiacodeCSV(trackID string, r io.Reader) ([]database.Marker, error) {
 
 	markers := make([]database.Marker, 0, 4096)
 	rowN := 1
-	
+
 	for {
 		rec, err := cr.Read()
 		if err == io.EOF {
@@ -2398,7 +2397,7 @@ func parseRadiacodeCSV(trackID string, r io.Reader) ([]database.Marker, error) {
 
 		// Parse timestamp from Time column (index 1: "2025-12-04 21:57:06")
 		tsStr := strings.TrimSpace(rec[1])
-		
+
 		lat := parseFloat(rec[2])
 		lon := parseFloat(rec[3])
 		// rec[4] is Accuracy - we could store this but currently not used
@@ -2524,7 +2523,7 @@ func processCSVFile(
 	peek := make([]byte, 1024)
 	n, _ := file.Read(peek)
 	header := string(peek[:n])
-	
+
 	// Reset file pointer to beginning
 	if seeker, ok := file.(io.Seeker); ok {
 		seeker.Seek(0, 0)
@@ -3707,7 +3706,7 @@ func importShield(done <-chan struct{}, dbType string, logf func(string, ...any)
 			// Give uploads and map queries a healthy window to reach the worker
 			// goroutine instead of cancelling after one second when a TGZ import is
 			// active. We still cap the wait to avoid hiding client disconnects.
-			ctx, cancel := web.WithMinimumDeadline(r.Context(), 2*time.Minute)
+			ctx, cancel := httpapi.WithMinimumDeadline(r.Context(), 2*time.Minute)
 			defer cancel()
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
@@ -4203,7 +4202,7 @@ func processAndStoreMarkersWithContext(
 	tileCacheMu.Lock()
 	tileCache.Purge() // Clear all cached entries
 	tileCacheMu.Unlock()
-	
+
 	logT(trackID, "Store", "✔ stored (new %d markers)", len(allZoom))
 	return bbox, trackID, nil
 }
@@ -4311,16 +4310,16 @@ func progressHandler(w http.ResponseWriter, r *http.Request) {
 			// Send update if progress changed OR if complete
 			if percent != lastProgress || complete {
 				if errMsg != "" {
-					fmt.Fprintf(w, "data: {\"current\":%d,\"total\":%d,\"percent\":%d,\"complete\":true,\"error\":%q}\n\n", 
+					fmt.Fprintf(w, "data: {\"current\":%d,\"total\":%d,\"percent\":%d,\"complete\":true,\"error\":%q}\n\n",
 						current, total, percent, errMsg)
 				} else if complete && needsCoordinates {
-					fmt.Fprintf(w, "data: {\"current\":%d,\"total\":%d,\"percent\":100,\"complete\":true,\"redirectURL\":%q,\"needsCoordinates\":true,\"trackID\":%q,\"fileName\":%q}\n\n", 
+					fmt.Fprintf(w, "data: {\"current\":%d,\"total\":%d,\"percent\":100,\"complete\":true,\"redirectURL\":%q,\"needsCoordinates\":true,\"trackID\":%q,\"fileName\":%q}\n\n",
 						current, total, redirectURL, progTrackID, fileName)
 				} else if complete {
-					fmt.Fprintf(w, "data: {\"current\":%d,\"total\":%d,\"percent\":100,\"complete\":true,\"redirectURL\":%q}\n\n", 
+					fmt.Fprintf(w, "data: {\"current\":%d,\"total\":%d,\"percent\":100,\"complete\":true,\"redirectURL\":%q}\n\n",
 						current, total, redirectURL)
 				} else {
-					fmt.Fprintf(w, "data: {\"current\":%d,\"total\":%d,\"percent\":%d,\"complete\":false}\n\n", 
+					fmt.Fprintf(w, "data: {\"current\":%d,\"total\":%d,\"percent\":%d,\"complete\":false}\n\n",
 						current, total, percent)
 				}
 				flusher.Flush()
@@ -6222,7 +6221,7 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get search parameter
 	search := r.URL.Query().Get("search")
-	
+
 	// Get detector filter parameter
 	detectorFilter := r.URL.Query().Get("detector")
 
@@ -6647,7 +6646,7 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 		for _, track := range tracks {
 			firstDate := time.Unix(track.FirstDate, 0).Format("2006-01-02 15:04")
 			lastDate := time.Unix(track.LastDate, 0).Format("2006-01-02 15:04")
-			
+
 			// Format detector with link for filtering
 			detectorDisplay := "-"
 			if track.Detector != "" {
@@ -7419,9 +7418,9 @@ func generateTileCacheKey(zoom int, minLat, minLon, maxLat, maxLon float64, trac
 	for _, sr := range speedRanges {
 		speedStr += fmt.Sprintf("%.2f-%.2f,", sr.Min, sr.Max)
 	}
-	
+
 	// Format the key with all relevant parameters
-	return fmt.Sprintf("tile:%d:%.6f:%.6f:%.6f:%.6f:%s:%s:%s:%d:%d", 
+	return fmt.Sprintf("tile:%d:%.6f:%.6f:%.6f:%.6f:%s:%s:%s:%d:%d",
 		zoom, minLat, minLon, maxLat, maxLon, trackID, trackIDsParam, speedStr, dateFrom, dateTo)
 }
 
@@ -7513,16 +7512,16 @@ func getMarkersHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Generate cache key based on request parameters
 	cacheKey := generateTileCacheKey(zoom, minLat, minLon, maxLat, maxLon, trackID, trackIDsParam, sr, dateFrom, dateTo)
-	
+
 	// Check if clustered markers are already in cache
 	tileCacheMu.RLock()
 	cachedMarkers, found := tileCache.Get(cacheKey)
 	tileCacheMu.RUnlock()
-	
+
 	if found {
 		// Use cached markers if available
 		markers = cachedMarkers
-		
+
 		// Add realtime markers if enabled (these shouldn't be cached as they change frequently)
 		if *safecastRealtimeEnabled {
 			// We only touch realtime tables when the operator explicitly enables the feature.
@@ -7540,14 +7539,14 @@ func getMarkersHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Apply on-the-fly clustering based on requested zoom level (this is the expensive operation)
 		markers = clusterMarkersForZoom(markers, zoom)
-		
+
 		// Add to cache for future requests (but don't cache if there are too many markers to avoid memory issues)
 		if len(markers) < 10000 { // arbitrary limit to prevent cache bloat
 			tileCacheMu.Lock()
 			tileCache.Add(cacheKey, markers)
 			tileCacheMu.Unlock()
 		}
-		
+
 		// Add realtime markers if enabled
 		if *safecastRealtimeEnabled {
 			// We only touch realtime tables when the operator explicitly enables the feature.
@@ -8755,24 +8754,24 @@ func main() {
 	apiDocsArchiveFrequency = archiveFrequency.HumanInterval()
 
 	// Web server: handlers moved to pkg/web to keep main focused on wiring.
-	webConfig := web.Config{
-		Domain:                 *domain,
-		Port:                   *port,
-		DefaultLat:             *defaultLat,
-		DefaultLon:             *defaultLon,
-		DefaultZoom:            *defaultZoom,
-		DefaultLayer:           *defaultLayer,
-		AutoLocateDefault:      *autoLocateDefault,
-		SupportEmail:           *supportEmail,
-		CompileVersion:         CompileVersion,
-		DBType:                 *dbType,
-		AdminPassword:          *adminPassword,
-		APIDocsArchiveEnabled:  apiDocsArchiveEnabled,
-		APIDocsArchiveRoute:    apiDocsArchiveRoute,
+	webConfig := httpapi.WebConfig{
+		Domain:                  *domain,
+		Port:                    *port,
+		DefaultLat:              *defaultLat,
+		DefaultLon:              *defaultLon,
+		DefaultZoom:             *defaultZoom,
+		DefaultLayer:            *defaultLayer,
+		AutoLocateDefault:       *autoLocateDefault,
+		SupportEmail:            *supportEmail,
+		CompileVersion:          CompileVersion,
+		DBType:                  *dbType,
+		AdminPassword:           *adminPassword,
+		APIDocsArchiveEnabled:   apiDocsArchiveEnabled,
+		APIDocsArchiveRoute:     apiDocsArchiveRoute,
 		APIDocsArchiveFrequency: apiDocsArchiveFrequency,
-		DebugIPAllowlist:       debugIPAllowlist,
+		DebugIPAllowlist:        debugIPAllowlist,
 	}
-	webServer := web.NewServer(db, content, webConfig, log.Printf)
+	webServer := httpapi.NewWebServer(db, content, webConfig, log.Printf)
 	webServer.Register(http.DefaultServeMux)
 
 	// 4. Маршруты и статика
@@ -8785,12 +8784,12 @@ func main() {
 	// to avoid the map handler catching static file requests
 	http.Handle("/static/", http.StripPrefix("/static/",
 		http.FileServer(http.FS(staticFS))))
-	
+
 	// Serve JS files from the physical directory as a workaround
 	// This ensures the marker-worker.js file is accessible to the browser
 	// Access files from public_html root and let StripPrefix handle the path
 	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("public_html/"))))
-	
+
 	http.HandleFunc("/home", homeHandler)
 	http.HandleFunc("/", mapHandler)
 
@@ -9016,8 +9015,8 @@ func main() {
 
 	// API endpoints ship JSON/archives. Keeping registration close to other
 	// routes avoids surprises for operators scanning main() for handlers.
-	limiter := api.NewRateLimiter(time.Minute)
-	apiHandler := api.NewHandler(db, *dbType, archiveGen, limiter, log.Printf, archiveFrequency)
+	limiter := httpapi.NewRateLimiter(time.Minute)
+	apiHandler := httpapi.NewHandler(db, *dbType, archiveGen, limiter, log.Printf, archiveFrequency)
 	apiHandler.Register(http.DefaultServeMux)
 
 	// Selfupgrade runs in the background only when explicitly enabled so existing
