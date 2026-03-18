@@ -98,6 +98,182 @@ paths:
       summary: Get historical measurements from a device
       tags:
       - historical
+  /extreme:
+    get:
+      description: Find the highest or lowest radiation readings in the database with
+        full location details. Supports excluding anomalous sources.
+      parameters:
+      - default: highest
+        description: 'Direction: ''highest'' or ''lowest'''
+        in: query
+        name: direction
+        type: string
+      - default: 10
+        description: Number of results (1-100)
+        in: query
+        name: limit
+        type: integer
+      - default: -90
+        description: Southern boundary for geographic filter
+        in: query
+        name: min_lat
+        type: number
+      - default: 90
+        description: Northern boundary for geographic filter
+        in: query
+        name: max_lat
+        type: number
+      - default: -180
+        description: Western boundary for geographic filter
+        in: query
+        name: min_lon
+        type: number
+      - default: 180
+        description: Eastern boundary for geographic filter
+        in: query
+        name: max_lon
+        type: number
+      - description: Comma-separated device IDs to exclude (e.g., 'bGeigie-2113,bGeigie-456')
+        in: query
+        name: exclude_devices
+        type: string
+      - description: JSON array of bounding boxes to exclude (e.g., '[{\
+        in: query
+        name: exclude_areas
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Extreme readings with location details
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Find extreme radiation readings
+      tags:
+      - analytics
+  /gpt/area:
+    get:
+      description: Returns compact historical readings for a bounding box, capped
+        to 5 results for GPT usage.
+      parameters:
+      - description: Southern latitude boundary
+        in: query
+        name: min_lat
+        required: true
+        type: number
+      - description: Northern latitude boundary
+        in: query
+        name: max_lat
+        required: true
+        type: number
+      - description: Western longitude boundary
+        in: query
+        name: min_lon
+        required: true
+        type: number
+      - description: Eastern longitude boundary
+        in: query
+        name: max_lon
+        required: true
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Compact reading list
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "405":
+          description: Method not allowed
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Find area readings (GPT compact)
+      tags:
+      - historical
+  /gpt/radiation:
+    get:
+      description: Returns compact fields optimized for LLM Actions. Results are capped
+        to 5 and include source metadata.
+      parameters:
+      - description: Latitude in decimal degrees (-90 to 90)
+        in: query
+        name: lat
+        required: true
+        type: number
+      - description: Longitude in decimal degrees (-180 to 180)
+        in: query
+        name: lon
+        required: true
+        type: number
+      - description: Search radius in meters
+        in: query
+        name: radius_m
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Compact reading list
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "405":
+          description: Method not allowed
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Find nearby radiation readings (GPT compact)
+      tags:
+      - historical
+  /gpt/stats:
+    get:
+      description: Proxies the aggregate statistics endpoint for GPT Actions.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Aggregate statistics
+          schema:
+            additionalProperties: true
+            type: object
+        "405":
+          description: Method not allowed
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get aggregate statistics (GPT compact)
+      tags:
+      - reference
   /info/{topic}:
     get:
       description: Returns static educational reference content about radiation units,

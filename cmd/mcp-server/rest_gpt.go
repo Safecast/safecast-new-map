@@ -33,6 +33,19 @@ func (h *RESTHandler) RegisterGPT(mux *http.ServeMux) {
 	mux.HandleFunc("/api/gpt/stats", h.handleGPTStats)
 }
 
+// handleGPTRadiation handles GET /api/gpt/radiation.
+//
+// @Summary     Find nearby radiation readings (GPT compact)
+// @Description Returns compact fields optimized for LLM Actions. Results are capped to 5 and include source metadata.
+// @Tags        historical
+// @Produce     json
+// @Param       lat      query  number  true   "Latitude in decimal degrees (-90 to 90)"
+// @Param       lon      query  number  true   "Longitude in decimal degrees (-180 to 180)"
+// @Param       radius_m query  number  false  "Search radius in meters"
+// @Success     200      {object} map[string]interface{} "Compact reading list"
+// @Failure     400      {object} map[string]string "Invalid parameters"
+// @Failure     405      {object} map[string]string "Method not allowed"
+// @Router      /gpt/radiation [get]
 func (h *RESTHandler) handleGPTRadiation(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "GET only", http.StatusMethodNotAllowed)
@@ -66,6 +79,20 @@ func (h *RESTHandler) handleGPTRadiation(w http.ResponseWriter, r *http.Request)
 	writeGPT(w, result)
 }
 
+// handleGPTArea handles GET /api/gpt/area.
+//
+// @Summary     Find area readings (GPT compact)
+// @Description Returns compact historical readings for a bounding box, capped to 5 results for GPT usage.
+// @Tags        historical
+// @Produce     json
+// @Param       min_lat query  number  true   "Southern latitude boundary"
+// @Param       max_lat query  number  true   "Northern latitude boundary"
+// @Param       min_lon query  number  true   "Western longitude boundary"
+// @Param       max_lon query  number  true   "Eastern longitude boundary"
+// @Success     200     {object} map[string]interface{} "Compact reading list"
+// @Failure     400     {object} map[string]string "Invalid parameters"
+// @Failure     405     {object} map[string]string "Method not allowed"
+// @Router      /gpt/area [get]
 func (h *RESTHandler) handleGPTArea(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "GET only", http.StatusMethodNotAllowed)
@@ -91,6 +118,15 @@ func (h *RESTHandler) handleGPTArea(w http.ResponseWriter, r *http.Request) {
 	writeGPT(w, result)
 }
 
+// handleGPTStats handles GET /api/gpt/stats.
+//
+// @Summary     Get aggregate statistics (GPT compact)
+// @Description Proxies the aggregate statistics endpoint for GPT Actions.
+// @Tags        reference
+// @Produce     json
+// @Success     200 {object} map[string]interface{} "Aggregate statistics"
+// @Failure     405 {object} map[string]string "Method not allowed"
+// @Router      /gpt/stats [get]
 func (h *RESTHandler) handleGPTStats(w http.ResponseWriter, r *http.Request) {
 	// Stats responses are already small; just proxy through.
 	h.handleStats(w, r)
