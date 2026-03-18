@@ -85,8 +85,8 @@ CODE=$(curl -s -o /tmp/smoke_body -w "%{http_code}" "$BASE/licenses/mit")
 check "GET /licenses/mit"       200 "$CODE"
 CODE=$(curl -s -o /tmp/smoke_body -w "%{http_code}" "$BASE/licenses/cc0")
 check "GET /licenses/cc0"       200 "$CODE"
-CODE=$(curl -s -o /tmp/smoke_body -w "%{http_code}" "$BASE/api/docs")
-check "GET /api/docs"           200 "$CODE"
+CODE=$(curl -s -o /tmp/smoke_body -w "%{http_code}" "$BASE/swagger/")
+check "GET /swagger/"           200 "$CODE"
 
 section "API overview & data"
 CODE=$(curl -s -o /tmp/smoke_body -w "%{http_code}" "$BASE/api")

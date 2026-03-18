@@ -68,7 +68,7 @@ MCP_BASE=http://localhost:3333 ./test/smoke_test.sh http://localhost:8765 test12
 | Category | Endpoints |
 |---|---|
 | Pages | `GET /`, `/home` |
-| Utilities | `/qrpng`, `/licenses/mit`, `/licenses/cc0`, `/api/docs` |
+| Utilities | `/qrpng`, `/licenses/mit`, `/licenses/cc0`, `/swagger/` |
 | API data | `/api`, `/api/tracks`, `/api/countries`, `/api/latest` |
 | Shorten | `POST /api/shorten` (preview + bad requests) |
 | Spectrum | `/api/markers/spectra`, `/api/track-info/{id}` |
