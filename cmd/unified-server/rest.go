@@ -29,7 +29,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	httpSwagger "github.com/swaggo/http-swagger"
-	_ "safecast-new-map/cmd/mcp-server/docs"
+	_ "safecast-new-map/cmd/unified-server/docs"
 )
 
 //go:embed static/favicon.ico
@@ -138,6 +138,15 @@ func (h *RESTHandler) Register(mux *http.ServeMux) {
 				};
 
 				document.body.appendChild(btn);
+
+				// Add small route switcher so users can jump between the two Swagger UIs.
+				const existing = document.getElementById('safecast-doc-nav');
+				if (existing) existing.remove();
+				const nav = document.createElement('div');
+				nav.id = 'safecast-doc-nav';
+				nav.style.cssText = 'position:fixed;top:8px;right:12px;z-index:9999;background:#111827;color:#fff;padding:8px 12px;border-radius:8px;font:12px/1.3 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.25)';
+				nav.innerHTML = 'Viewing: <strong>MCP API</strong> &nbsp;|&nbsp; <a href="/swagger/" style="color:#93c5fd;text-decoration:none">Go to Map API docs</a>';
+				document.body.appendChild(nav);
 			}`,
 		}),
 	))

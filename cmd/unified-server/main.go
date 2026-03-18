@@ -26,6 +26,7 @@ import (
 	"flag"
 	"fmt"
 	lru "github.com/hashicorp/golang-lru/v2"
+	httpSwagger "github.com/swaggo/http-swagger"
 	"github.com/vmihailenco/msgpack/v5"
 	"html"
 	"html/template"
@@ -53,6 +54,7 @@ import (
 
 	"golang.org/x/crypto/acme/autocert"
 
+	_ "safecast-new-map/cmd/unified-server/docs/api"
 	"safecast-new-map/pkg/auth"
 	"safecast-new-map/pkg/countryresolver"
 	"safecast-new-map/pkg/database"
@@ -4353,7 +4355,16 @@ func enqueueArchiveImport(fh *multipart.FileHeader, trackID string, db *database
 	return nil
 }
 
-// progressHandler streams upload progress via Server-Sent Events
+// progressHandler streams upload progress via Server-Sent Events.
+//
+// @Summary     Stream upload progress
+// @Description Streams upload progress events for a previously submitted upload track ID.
+// @Tags        map
+// @Produce     text/event-stream
+// @Param       trackid query string true "Upload tracking ID returned by /upload"
+// @Success     200 {string} string "SSE stream"
+// @Failure     400 {string} string "Missing trackid"
+// @Router      /upload/progress [get]
 func progressHandler(w http.ResponseWriter, r *http.Request) {
 	trackID := r.URL.Query().Get("trackid")
 	if trackID == "" {
@@ -4457,6 +4468,17 @@ func newBytesFile(data []byte) *bytesFile {
 	return &bytesFile{Reader: bytes.NewReader(data)}
 }
 
+// uploadHandler accepts multipart uploads and starts async processing.
+//
+// @Summary     Upload radiation files
+// @Description Accepts one or more files in multipart form field `files[]` and returns a track ID for async progress polling.
+// @Tags        map
+// @Accept      mpfd
+// @Produce     json
+// @Success     200 {object} map[string]interface{} "Upload accepted"
+// @Failure     400 {string} string "Invalid upload"
+// @Failure     500 {string} string "Server error"
+// @Router      /upload [post]
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	// Prevent CloudFront from caching upload responses (user-specific, dynamic)
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
@@ -5094,6 +5116,19 @@ func checkAdminAuth(w http.ResponseWriter, r *http.Request) (bool, string) {
 // adminUploadsHandler lists all file uploads with metadata.
 // GET /api/admin/uploads?password=xxx&limit=100
 // adminUploadsHandler lists all file uploads with metadata and search functionality
+//
+// @Summary     Admin uploads dashboard data
+// @Description Returns paginated upload records for admin users.
+// @Tags        admin
+// @Produce     html
+// @Param       limit query int false "Page size"
+// @Param       page query int false "Page number"
+// @Param       user_id query string false "Filter by internal user ID"
+// @Param       search query string false "Free-text search"
+// @Success     200 {string} string "HTML admin page"
+// @Failure     401 {string} string "Unauthorized"
+// @Failure     503 {string} string "Database unavailable"
+// @Router      /api/admin/uploads [get]
 func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 	// Prevent CloudFront from caching this dynamic admin page
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
@@ -5291,11 +5326,36 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		<a href="/" class="back-to-map-btn">Back to Map</a>
 	</div>
 	<div class="admin-tabs">
-		<a href="/admin/users` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">Users</a>
-		<a href="/admin/uploads` + func() string { if password != "" { return "?password=" + password }; return "" }() + `" class="active">Uploads</a>
-		<a href="/admin/mcp` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">MCP Analytics</a>
-		<a href="/admin/realtime` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">Realtime</a>
-		<a href="/admin/translations` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">Translations</a>
+		<a href="/admin/users` + func() string {
+		if password != "" {
+			return "?password=" + password
+		}
+		return ""
+	}() + `">Users</a>
+		<a href="/admin/uploads` + func() string {
+		if password != "" {
+			return "?password=" + password
+		}
+		return ""
+	}() + `" class="active">Uploads</a>
+		<a href="/admin/mcp` + func() string {
+		if password != "" {
+			return "?password=" + password
+		}
+		return ""
+	}() + `">MCP Analytics</a>
+		<a href="/admin/realtime` + func() string {
+		if password != "" {
+			return "?password=" + password
+		}
+		return ""
+	}() + `">Realtime</a>
+		<a href="/admin/translations` + func() string {
+		if password != "" {
+			return "?password=" + password
+		}
+		return ""
+	}() + `">Translations</a>
 	</div>
 	<div class="nav">
 		<div class="nav-left">
@@ -5897,6 +5957,18 @@ func formatFileSize(bytes int64) string {
 // adminDeleteTrackHandler deletes a track and all associated data.
 // POST /api/admin/delete
 // Body: {"password": "xxx", "trackID": "abc123"} (password optional if session-authenticated)
+//
+// @Summary     Admin delete single track
+// @Description Deletes a track and associated marker data.
+// @Tags        admin
+// @Accept      json
+// @Produce     json
+// @Param       body body object true "Delete request payload"
+// @Success     200 {object} map[string]interface{} "Delete result"
+// @Failure     400 {string} string "Invalid request"
+// @Failure     401 {string} string "Unauthorized"
+// @Failure     503 {string} string "Database unavailable"
+// @Router      /api/admin/delete [post]
 func adminDeleteTrackHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -5964,6 +6036,18 @@ func adminDeleteTrackHandler(w http.ResponseWriter, r *http.Request) {
 // adminDeleteMultipleTracksHandler deletes multiple tracks and all associated data.
 // POST /api/admin/delete-multiple
 // Body: {"password": "xxx", "trackIDs": ["abc123", "def456"]} (password optional if session-authenticated)
+//
+// @Summary     Admin delete multiple tracks
+// @Description Deletes multiple tracks in one request.
+// @Tags        admin
+// @Accept      json
+// @Produce     json
+// @Param       body body object true "Bulk delete request payload"
+// @Success     200 {object} map[string]interface{} "Delete result"
+// @Failure     400 {string} string "Invalid request"
+// @Failure     401 {string} string "Unauthorized"
+// @Failure     503 {string} string "Database unavailable"
+// @Router      /api/admin/delete-multiple [post]
 func adminDeleteMultipleTracksHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -6047,6 +6131,16 @@ func adminDeleteMultipleTracksHandler(w http.ResponseWriter, r *http.Request) {
 // POST /api/admin/import-from-safecast?password=xxx
 // Body: {"start_date": "2025-01-01", "end_date": "2025-01-31"}
 // Streams progress updates via Server-Sent Events
+//
+// @Summary     Admin import from Safecast API
+// @Description Triggers a date-ranged Safecast import and streams progress updates.
+// @Tags        admin
+// @Accept      json
+// @Produce     text/event-stream
+// @Success     200 {string} string "Streaming progress"
+// @Failure     401 {string} string "Unauthorized"
+// @Failure     503 {string} string "Database unavailable"
+// @Router      /api/admin/import-from-safecast [post]
 func adminImportFromSafecastHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -6325,6 +6419,19 @@ func adminImportFromSafecastHandler(w http.ResponseWriter, r *http.Request) {
 
 // adminTracksHandler lists all tracks in the system with statistics.
 // GET /api/admin/tracks?password=xxx&limit=1000
+//
+// @Summary     Admin tracks dashboard data
+// @Description Returns paginated track statistics for admin users.
+// @Tags        admin
+// @Produce     html
+// @Param       limit query int false "Page size"
+// @Param       page query int false "Page number"
+// @Param       search query string false "Free-text search"
+// @Param       detector query string false "Detector filter"
+// @Success     200 {string} string "HTML admin page"
+// @Failure     401 {string} string "Unauthorized"
+// @Failure     503 {string} string "Database unavailable"
+// @Router      /api/admin/tracks [get]
 func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 	// Prevent CloudFront from caching this dynamic admin page
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
@@ -6624,11 +6731,36 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 		<a href="/" class="back-to-map-btn">Back to Map</a>
 	</div>
 	<div class="admin-tabs">
-		<a href="/admin/users` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">Users</a>
-		<a href="/admin/uploads` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">Uploads</a>
-		<a href="/admin/mcp` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">MCP Analytics</a>
-		<a href="/admin/realtime` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">Realtime</a>
-		<a href="/admin/translations` + func() string { if password != "" { return "?password=" + password }; return "" }() + `">Translations</a>
+		<a href="/admin/users` + func() string {
+		if password != "" {
+			return "?password=" + password
+		}
+		return ""
+	}() + `">Users</a>
+		<a href="/admin/uploads` + func() string {
+		if password != "" {
+			return "?password=" + password
+		}
+		return ""
+	}() + `">Uploads</a>
+		<a href="/admin/mcp` + func() string {
+		if password != "" {
+			return "?password=" + password
+		}
+		return ""
+	}() + `">MCP Analytics</a>
+		<a href="/admin/realtime` + func() string {
+		if password != "" {
+			return "?password=" + password
+		}
+		return ""
+	}() + `">Realtime</a>
+		<a href="/admin/translations` + func() string {
+		if password != "" {
+			return "?password=" + password
+		}
+		return ""
+	}() + `">Translations</a>
 	</div>
 	<div class="nav">
 		<div class="nav-left">
@@ -7055,6 +7187,15 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 
 // adminBackfillHandler backfills the uploads table with existing spectrum data.
 // POST /api/admin/backfill?password=xxx
+//
+// @Summary     Admin backfill uploads from spectra
+// @Description Backfills upload records from existing spectra entries.
+// @Tags        admin
+// @Produce     json
+// @Success     200 {object} map[string]interface{} "Backfill result"
+// @Failure     401 {string} string "Unauthorized"
+// @Failure     503 {string} string "Database unavailable"
+// @Router      /api/admin/backfill [post]
 func adminBackfillHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -7172,6 +7313,15 @@ var countryBackfillRunning sync.Mutex
 // have coordinates but no country assigned.  The work runs in the background;
 // the endpoint returns immediately so the caller is not blocked.
 // POST /api/admin/backfill-countries?password=xxx
+//
+// @Summary     Admin backfill marker countries
+// @Description Starts background country backfill for markers with coordinates.
+// @Tags        admin
+// @Produce     json
+// @Success     200 {object} map[string]interface{} "Backfill status"
+// @Failure     401 {string} string "Unauthorized"
+// @Failure     503 {string} string "Database unavailable"
+// @Router      /api/admin/backfill-countries [post]
 func adminBackfillCountriesHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -7222,6 +7372,15 @@ func adminBackfillCountriesHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // adminCacheHandler provides administrative access to cache management functions
+//
+// @Summary     Admin cache operations
+// @Description Performs cache operations such as clear/stats via action query parameter.
+// @Tags        admin
+// @Produce     json
+// @Param       action query string false "Cache action (e.g. clear, stats)"
+// @Success     200 {object} map[string]interface{} "Cache operation result"
+// @Failure     401 {string} string "Unauthorized"
+// @Router      /api/admin/cache [post]
 func adminCacheHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -7389,8 +7548,16 @@ func backfillCountries() {
 // =====================
 // WEB  — страница трека
 // =====================
-// trackHandler — страница одного трека.
-// Теперь НЕ загружает маркеры в HTML: JS сам запросит нужный зум.
+// trackHandler serves the single-track map page.
+//
+// @Summary     Render map page for one track
+// @Description Serves the HTML map page for a specific track ID.
+// @Tags        web
+// @Produce     html
+// @Param       id path string true "Track ID"
+// @Success     200 {string} string "HTML page"
+// @Failure     400 {string} string "Track ID missing"
+// @Router      /trackid/{id} [get]
 func trackHandler(w http.ResponseWriter, r *http.Request) {
 	lang := getPreferredLanguage(r)
 
@@ -7478,8 +7645,16 @@ func trackHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Track page %s rendered.", trackID)
 }
 
-// tracksHandler displays multiple tracks on the map
-// /tracks/<track1,track2,track3>
+// tracksHandler serves the multi-track map page.
+//
+// @Summary     Render map page for multiple tracks
+// @Description Serves the HTML map page with multiple track IDs from a comma-separated path segment.
+// @Tags        web
+// @Produce     html
+// @Param       ids path string true "Comma-separated track IDs"
+// @Success     200 {string} string "HTML page"
+// @Failure     400 {string} string "Track IDs missing"
+// @Router      /tracks/{ids} [get]
 func tracksHandler(w http.ResponseWriter, r *http.Request) {
 	lang := getPreferredLanguage(r)
 
@@ -7581,8 +7756,25 @@ func generateTileCacheKey(zoom int, minLat, minLon, maxLat, maxLon float64, trac
 		zoom, minLat, minLon, maxLat, maxLon, trackID, trackIDsParam, speedStr, dateFrom, dateTo)
 }
 
-// getMarkersHandler — берёт маркеры в заданном окне и фильтрах
-// +НОВОЕ: dateFrom/dateTo (UNIX-seconds) диапазон времени.
+// getMarkersHandler returns markers for the requested map viewport.
+//
+// @Summary     Get markers for viewport
+// @Description Returns filtered markers for map bounds and optional track/speed/time filters.
+// @Tags        map
+// @Produce     json
+// @Param       zoom     query int    false "Requested map zoom"
+// @Param       minLat   query number true  "Minimum latitude"
+// @Param       minLon   query number true  "Minimum longitude"
+// @Param       maxLat   query number true  "Maximum latitude"
+// @Param       maxLon   query number true  "Maximum longitude"
+// @Param       trackID  query string false "Single track ID filter"
+// @Param       trackIDs query string false "Comma-separated track IDs filter"
+// @Param       speeds   query string false "Comma-separated speed categories"
+// @Param       dateFrom query int    false "Start unix timestamp (seconds)"
+// @Param       dateTo   query int    false "End unix timestamp (seconds)"
+// @Success     200 {array} map[string]interface{} "Markers"
+// @Failure     500 {string} string "Server error"
+// @Router      /get_markers [get]
 func getMarkersHandler(w http.ResponseWriter, r *http.Request) {
 	// Use the request context so map tiles cancel promptly when the browser closes,
 	// freeing the serialized DuckDB lane for ongoing imports.
@@ -7918,6 +8110,22 @@ func streamMultipleTracks(ctx context.Context, trackIDs []string, zoom int, minL
 // streamMarkersHandler streams markers via Server-Sent Events or MessagePack binary.
 // Markers are emitted as soon as they are read and aggregated.
 // Use ?format=msgpack for binary encoding (~60% smaller, faster parsing).
+//
+// @Summary     Stream markers for viewport
+// @Description Streams map markers as SSE by default, or MessagePack when requested via query/header.
+// @Tags        map
+// @Produce     text/event-stream
+// @Param       zoom     query int    false "Requested map zoom"
+// @Param       minLat   query number true  "Minimum latitude"
+// @Param       minLon   query number true  "Minimum longitude"
+// @Param       maxLat   query number true  "Maximum latitude"
+// @Param       maxLon   query number true  "Maximum longitude"
+// @Param       trackID  query string false "Single track ID filter"
+// @Param       trackIDs query string false "Comma-separated track IDs filter"
+// @Param       format   query string false "Set to msgpack for binary stream"
+// @Success     200 {string} string "Streaming response"
+// @Failure     500 {string} string "Streaming unsupported"
+// @Router      /stream_markers [get]
 func streamMarkersHandler(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	zoom, _ := strconv.Atoi(q.Get("zoom"))
@@ -8558,6 +8766,17 @@ func collectRealtimeMeasurements(input <-chan realtimeMeasurementPayload, now ti
 // realtimeHistoryHandler returns one year of realtime measurements for a device.
 // The handler keeps the response lightweight so the frontend can draw Grafana-style
 // charts without shipping a dedicated dashboard backend.
+//
+// @Summary     Get realtime device history
+// @Description Returns aggregated realtime history and summary ranges for a device.
+// @Tags        map
+// @Produce     json
+// @Param       device query string true "Realtime device ID"
+// @Success     200 {object} map[string]interface{} "Realtime history payload"
+// @Failure     400 {string} string "Missing device"
+// @Failure     404 {string} string "Realtime feature disabled"
+// @Failure     500 {string} string "Server error"
+// @Router      /realtime_history [get]
 func realtimeHistoryHandler(w http.ResponseWriter, r *http.Request) {
 	if !*safecastRealtimeEnabled {
 		http.NotFound(w, r)
@@ -8949,6 +9168,24 @@ func main() {
 	// This ensures the marker-worker.js file is accessible to the browser
 	// Access files from public_html root and let StripPrefix handle the path
 	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("public_html/"))))
+	http.Handle("/swagger/", httpSwagger.Handler(
+		httpSwagger.URL("/swagger/doc.json"),
+		httpSwagger.InstanceName("unifiedapi"),
+		httpSwagger.UIConfig(map[string]string{
+			"onComplete": `function() {
+				document.title = 'Safecast Map API Docs';
+
+				const existing = document.getElementById('safecast-doc-nav');
+				if (existing) existing.remove();
+
+				const nav = document.createElement('div');
+				nav.id = 'safecast-doc-nav';
+				nav.style.cssText = 'position:fixed;top:8px;right:12px;z-index:9999;background:#111827;color:#fff;padding:8px 12px;border-radius:8px;font:12px/1.3 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.25)';
+				nav.innerHTML = 'Viewing: <strong>Map API</strong> &nbsp;|&nbsp; <a href="/docs/" style="color:#93c5fd;text-decoration:none">Go to MCP API docs</a>';
+				document.body.appendChild(nav);
+			}`,
+		}),
+	))
 
 	http.HandleFunc("/home", homeHandler)
 	http.HandleFunc("/", mapHandler)

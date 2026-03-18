@@ -16,6 +16,20 @@ var translationColumns = []string{
 
 // adminTranslationsDataHandler returns JSON data for the admin translations page.
 // GET /api/admin/translations?limit=50&offset=0&sort=key&order=asc&search=...&lang=...
+//
+// @Summary     Admin translations list
+// @Description Returns paginated translation rows for admin editing.
+// @Tags        admin
+// @Produce     json
+// @Param       limit query int false "Page size"
+// @Param       offset query int false "Offset"
+// @Param       sort query string false "Sort column"
+// @Param       order query string false "Sort order"
+// @Param       search query string false "Search term"
+// @Param       lang query string false "Language code filter"
+// @Success     200 {object} map[string]interface{} "Translation rows"
+// @Failure     503 {string} string "Database unavailable"
+// @Router      /api/admin/translations [get]
 func adminTranslationsDataHandler(w http.ResponseWriter, r *http.Request) {
 	if db == nil {
 		http.Error(w, "Database not available", http.StatusServiceUnavailable)
@@ -136,6 +150,17 @@ func adminTranslationsDataHandler(w http.ResponseWriter, r *http.Request) {
 
 // adminTranslationUpdateHandler updates a single translation.
 // PUT /api/admin/translations/{id}
+//
+// @Summary     Admin translation update
+// @Description Updates translation value by translation row ID.
+// @Tags        admin
+// @Accept      json
+// @Produce     json
+// @Param       id path int true "Translation row ID"
+// @Success     200 {object} map[string]string "Update result"
+// @Failure     400 {string} string "Invalid request"
+// @Failure     503 {string} string "Database unavailable"
+// @Router      /api/admin/translations/{id} [put]
 func adminTranslationUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	if db == nil {
 		http.Error(w, "Database not available", http.StatusServiceUnavailable)
@@ -176,6 +201,16 @@ func adminTranslationUpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 // adminTranslationCreateHandler creates a new translation.
 // POST /api/admin/translations
+//
+// @Summary     Admin translation create
+// @Description Creates a translation row or updates existing key/language pair.
+// @Tags        admin
+// @Accept      json
+// @Produce     json
+// @Success     201 {object} map[string]string "Create result"
+// @Failure     400 {string} string "Invalid request"
+// @Failure     503 {string} string "Database unavailable"
+// @Router      /api/admin/translations [post]
 func adminTranslationCreateHandler(w http.ResponseWriter, r *http.Request) {
 	if db == nil {
 		http.Error(w, "Database not available", http.StatusServiceUnavailable)
@@ -214,6 +249,16 @@ func adminTranslationCreateHandler(w http.ResponseWriter, r *http.Request) {
 
 // adminTranslationDeleteHandler deletes a translation.
 // DELETE /api/admin/translations/{id}
+//
+// @Summary     Admin translation delete
+// @Description Deletes translation row by ID.
+// @Tags        admin
+// @Produce     json
+// @Param       id path int true "Translation row ID"
+// @Success     200 {object} map[string]string "Delete result"
+// @Failure     400 {string} string "Invalid request"
+// @Failure     503 {string} string "Database unavailable"
+// @Router      /api/admin/translations/{id} [delete]
 func adminTranslationDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	if db == nil {
 		http.Error(w, "Database not available", http.StatusServiceUnavailable)
@@ -245,6 +290,14 @@ func adminTranslationDeleteHandler(w http.ResponseWriter, r *http.Request) {
 
 // adminTranslationsReloadHandler reloads translations from DB into memory.
 // POST /api/admin/translations/reload
+//
+// @Summary     Admin translations reload
+// @Description Reloads in-memory translations from database.
+// @Tags        admin
+// @Produce     json
+// @Success     200 {object} map[string]string "Reload result"
+// @Failure     500 {string} string "Reload failed"
+// @Router      /api/admin/translations/reload [post]
 func adminTranslationsReloadHandler(w http.ResponseWriter, r *http.Request) {
 	if loadTranslationsFromDB() {
 		w.Header().Set("Content-Type", "application/json")
