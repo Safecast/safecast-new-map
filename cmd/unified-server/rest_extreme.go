@@ -23,7 +23,7 @@ import (
 // @Success 200 {object} map[string]interface{} "Extreme readings with location details"
 // @Failure 400 {object} map[string]string "Invalid parameters"
 // @Failure 500 {object} map[string]string "Server error"
-// @Router /api/extreme [get]
+// @Router /extreme [get]
 func handleRESTExtremeReadings(w http.ResponseWriter, r *http.Request) {
 	direction := r.URL.Query().Get("direction")
 	if direction == "" {
