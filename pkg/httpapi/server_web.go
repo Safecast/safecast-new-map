@@ -55,10 +55,9 @@ func NewWebServer(db *database.Database, content fs.FS, cfg WebConfig, logf func
 	}
 }
 
-// Register installs all web routes onto mux: docs, licenses, geoip, short redirects,
+// Register installs all web routes onto mux: licenses, geoip, short redirects,
 // spectrum, track-info, markers/spectra, update-coordinates, tracks/bounds, and qrpng.
 func (s *Server) Register(mux *http.ServeMux) {
-	mux.HandleFunc("/api/docs", s.apiDocs)
 	mux.HandleFunc("/licenses/", s.license)
 	mux.HandleFunc("/api/geoip", s.gzipWrap(s.geoIP))
 	mux.HandleFunc("/s/", s.shortRedirect)
