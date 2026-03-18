@@ -199,6 +199,12 @@ Import from local file:
 - **Countries:** `/api/countries`
 - **Canonical docs (main app):** `/swagger/` (generated from Swaggo annotations)
 
+### API Documentation Routes
+
+- **Map/API app docs:** `/swagger/` (main map and app endpoints)
+- **MCP REST docs:** `/docs/` (MCP REST endpoints used by AI integrations)
+- Both routes are served by the unified server and include cross-links in the UI.
+
 ### MCP Server & AI Integration
 
 The unified server includes an MCP (Model Context Protocol) server with a Claude-powered web chat interface, all in a single binary.
@@ -254,7 +260,7 @@ Regenerate documentation after API changes:
 
 ```bash
 # Main app API docs
-swag init -g doc.go -o docs/api --parseDependency --parseInternal --parseDependencyLevel 2
+(cd cmd/unified-server && swag init -g doc.go -o docs/api --parseDependency --parseInternal --parseDependencyLevel 2 --instanceName unifiedapi)
 
 # MCP server API docs
 cd cmd/mcp-server && swag init -g rest.go
