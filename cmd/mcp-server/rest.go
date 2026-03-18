@@ -226,7 +226,7 @@ func serveSwaggerTheme(w http.ResponseWriter, r *http.Request) {
 }
 
 // swaggerThemeCSS overrides Swagger UI defaults to match the simplemap admin theme.
-// Colour values mirror those in admin-users.html and api-usage.html from safecast-new-map.
+// Colour values mirror those in admin users and map UI styles.
 const swaggerThemeCSS = `
 /* ── Safecast Swagger theme — matches simplemap admin pages ── */
 
