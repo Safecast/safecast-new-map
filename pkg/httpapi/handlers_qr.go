@@ -8,7 +8,16 @@ import (
 	"safecast-new-map/pkg/qrlogoext"
 )
 
-// qrPng writes a QR code PNG to the response. URL from query "u", else Referer, else current page; truncated to 4096 chars.
+// qrPng renders a QR code PNG.
+//
+// @Summary     Generate QR PNG
+// @Description Returns a QR image for query parameter `u`, referer, or current URL.
+// @Tags        web
+// @Produce     image/png
+// @Param       u query string false "Target URL to encode"
+// @Success     200 {file} file "QR PNG"
+// @Failure     500 {string} string "QR generation failed"
+// @Router      /qrpng [get]
 func (s *Server) qrPng(w http.ResponseWriter, r *http.Request) {
 	u := r.URL.Query().Get("u")
 	if u == "" {

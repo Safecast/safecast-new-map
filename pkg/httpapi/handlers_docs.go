@@ -11,7 +11,15 @@ import (
 	"time"
 )
 
-// apiDocs serves the API usage HTML page with placeholders (base URL, archive route, etc.) replaced from config.
+// apiDocs serves the API usage HTML page.
+//
+// @Summary     Render API documentation page
+// @Description Serves the HTML API docs landing page with runtime placeholders resolved.
+// @Tags        web
+// @Produce     html
+// @Success     200 {string} string "HTML page"
+// @Failure     404 {string} string "Page not found"
+// @Router      /api/docs [get]
 func (s *Server) apiDocs(w http.ResponseWriter, r *http.Request) {
 	b, err := fs.ReadFile(s.Content, "public_html/api-usage.html")
 	if err != nil {
@@ -53,7 +61,16 @@ func (s *Server) apiDocs(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(page))
 }
 
-// license serves plain-text license files from the embedded FS (LICENSE for mit, LICENSE.CC0 for cc0).
+// license serves plain-text license files.
+//
+// @Summary     Download project license text
+// @Description Returns embedded license content for supported license codes.
+// @Tags        web
+// @Param       code path string true "License code: mit or cc0"
+// @Success     200 {string} string "License text"
+// @Failure     404 {string} string "License not found"
+// @Failure     405 {string} string "Method not allowed"
+// @Router      /licenses/{code} [get]
 func (s *Server) license(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		w.Header().Set("Allow", "GET, HEAD")
