@@ -11,7 +11,20 @@ import (
 	"safecast-new-map/pkg/database"
 )
 
-// markersWithSpectra returns markers that have spectral data, optionally filtered by bounding box (minLat, maxLat, minLon, maxLon). Omitted params default to world bounds.
+// markersWithSpectra returns markers that have spectral data.
+//
+// @Summary     List markers with spectra
+// @Description Returns markers that contain spectroscopy data, optionally filtered by bounding box.
+// @Tags        web
+// @Produce     json
+// @Param       minLat query number false "Minimum latitude"
+// @Param       maxLat query number false "Maximum latitude"
+// @Param       minLon query number false "Minimum longitude"
+// @Param       maxLon query number false "Maximum longitude"
+// @Success     200 {array} map[string]interface{} "Markers"
+// @Failure     500 {object} map[string]string "Server error"
+// @Failure     503 {object} map[string]string "Database unavailable"
+// @Router      /api/markers/spectra [get]
 func (s *Server) markersWithSpectra(w http.ResponseWriter, r *http.Request) {
 	if !requireMethod(w, r, http.MethodGet) {
 		return
@@ -50,7 +63,20 @@ func (s *Server) markersWithSpectra(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, markers)
 }
 
-// updateCoordinates sets lat/lon for all markers in a track (admin-only). Body: JSON with trackID, lat, lon.
+// updateCoordinates sets lat/lon for all markers in a track (admin-only).
+//
+// @Summary     Update coordinates for a track
+// @Description Admin-only endpoint that updates all marker coordinates for a track.
+// @Tags        admin
+// @Accept      json
+// @Produce     json
+// @Param       body body object true "trackID, lat, lon"
+// @Success     200 {object} map[string]interface{} "Update result"
+// @Failure     400 {object} map[string]string "Invalid request"
+// @Failure     401 {object} map[string]string "Unauthorized"
+// @Failure     500 {object} map[string]string "Server error"
+// @Failure     503 {object} map[string]string "Database unavailable"
+// @Router      /api/update-coordinates [post]
 func (s *Server) updateCoordinates(w http.ResponseWriter, r *http.Request) {
 	if !requireMethod(w, r, http.MethodPost) {
 		return

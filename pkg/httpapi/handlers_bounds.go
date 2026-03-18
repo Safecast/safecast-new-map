@@ -7,7 +7,18 @@ import (
 	"strings"
 )
 
-// apiTracksBounds returns JSON with status, bounds (minLat, minLon, maxLat, maxLon), and trackIDs. 404 if no valid tracks.
+// apiTracksBounds returns merged geographic bounds for track IDs.
+//
+// @Summary     Get combined bounds for tracks
+// @Description Returns a combined min/max lat/lon bounding box for the provided track IDs.
+// @Tags        web
+// @Produce     json
+// @Param       trackIDs query string true "Comma-separated track IDs"
+// @Success     200 {object} map[string]interface{} "Bounds payload"
+// @Failure     400 {object} map[string]string "Invalid request"
+// @Failure     404 {object} map[string]string "No valid tracks found"
+// @Failure     503 {object} map[string]string "Database unavailable"
+// @Router      /api/tracks/bounds [get]
 func (s *Server) apiTracksBounds(w http.ResponseWriter, r *http.Request) {
 	if !requireMethod(w, r, http.MethodGet) {
 		return

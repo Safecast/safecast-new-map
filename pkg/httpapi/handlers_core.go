@@ -129,9 +129,19 @@ func (h *Handler) acquirePermit(w http.ResponseWriter, r *http.Request, kind Req
 	return permit, true
 }
 
-// handleShorten issues or finalizes short URLs for the current map view. We
-// keep the logic explicit instead of clever so operators can audit it easily,
-// following the proverb "Clear is better than clever".
+// handleShorten issues or finalizes short URLs for the current map view.
+//
+// @Summary     Create or preview short URL
+// @Description Creates or previews a short link for same-host URLs.
+// @Tags        core
+// @Accept      json
+// @Produce     json
+// @Param       body body object true "Short link request body"
+// @Success     200 {object} map[string]interface{} "Short link response"
+// @Failure     400 {string} string "Invalid payload"
+// @Failure     405 {string} string "Method not allowed"
+// @Failure     503 {string} string "Database unavailable"
+// @Router      /api/shorten [post]
 func (h *Handler) handleShorten(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
@@ -272,8 +282,15 @@ func clientIP(r *http.Request) string {
 	return "unknown"
 }
 
-// handleOverview publishes machine-readable docs so developers understand
-// which endpoints to call and how to iterate through data sets.
+// handleOverview returns API overview metadata.
+//
+// @Summary     Get API overview
+// @Description Returns endpoint index, disclaimers, and dataset summary counts.
+// @Tags        core
+// @Produce     json
+// @Success     200 {object} map[string]interface{} "Overview payload"
+// @Failure     500 {string} string "Server error"
+// @Router      /api [get]
 func (h *Handler) handleOverview(w http.ResponseWriter, r *http.Request) {
 	permit, ok := h.acquirePermit(w, r, RequestGeneral)
 	if !ok {
@@ -374,9 +391,20 @@ func (h *Handler) handleOverview(w http.ResponseWriter, r *http.Request) {
 	writeJSONBytes(w, data)
 }
 
-// handleLatestNearby exposes the /api/latest endpoint. We keep validation
-// explicit so operators can reason about boundary conditions without guessing
-// defaults, following "Clear is better than clever".
+// handleLatestNearby exposes the /api/latest endpoint.
+//
+// @Summary     Get latest nearby measurements
+// @Description Returns newest measurements near a coordinate within a radius.
+// @Tags        core
+// @Produce     json
+// @Param       lat query number true "Latitude"
+// @Param       lon query number true "Longitude"
+// @Param       radius_m query number false "Radius in meters"
+// @Param       limit query int false "Maximum results"
+// @Success     200 {object} map[string]interface{} "Nearby measurements"
+// @Failure     400 {string} string "Invalid parameters"
+// @Failure     503 {string} string "Database unavailable"
+// @Router      /api/latest [get]
 func (h *Handler) handleLatestNearby(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", http.MethodGet)
@@ -498,7 +526,15 @@ func (h *Handler) handleLatestNearby(w http.ResponseWriter, r *http.Request) {
 	writeJSONBytes(w, data)
 }
 
-// handleTracksList exposes paginated track summaries.
+// handleTracksList exposes track summaries.
+//
+// @Summary     List track summaries
+// @Description Returns all track summaries sorted for browsing.
+// @Tags        core
+// @Produce     json
+// @Success     200 {object} map[string]interface{} "Track list payload"
+// @Failure     500 {string} string "Server error"
+// @Router      /api/tracks [get]
 func (h *Handler) handleTracksList(w http.ResponseWriter, r *http.Request) {
 	permit, ok := h.acquirePermit(w, r, RequestGeneral)
 	if !ok {
@@ -520,7 +556,16 @@ func (h *Handler) handleTracksList(w http.ResponseWriter, r *http.Request) {
 	writeJSONBytes(w, data)
 }
 
-// handleTrackData streams markers from a single track using ID ranges.
+// handleTrackData returns marker data for a single track.
+//
+// @Summary     Get track marker data
+// @Description Returns full track marker JSON for a track ID path segment.
+// @Tags        core
+// @Produce     json
+// @Param       id path string true "Track ID"
+// @Success     200 {object} map[string]interface{} "Track marker payload"
+// @Failure     404 {string} string "Track not found"
+// @Router      /api/track/{id} [get]
 func (h *Handler) handleTrackData(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	if !strings.HasPrefix(path, "/api/track/") {
@@ -554,8 +599,17 @@ func (h *Handler) handleTrackData(w http.ResponseWriter, r *http.Request) {
 	h.serveTrackData(w, r, decoded)
 }
 
-// handleTrackDataByIndex resolves a numeric track number and reuses the
-// standard track handler so consumers can iterate sequentially.
+// handleTrackDataByIndex resolves a numeric track number.
+//
+// @Summary     Get track marker data by index
+// @Description Resolves a one-based track index to a track ID, then returns track marker JSON.
+// @Tags        core
+// @Produce     json
+// @Param       index path int true "One-based track index"
+// @Success     200 {object} map[string]interface{} "Track marker payload"
+// @Failure     400 {string} string "Invalid index"
+// @Failure     404 {string} string "Track not found"
+// @Router      /api/tracks/index/{index} [get]
 func (h *Handler) handleTrackDataByIndex(w http.ResponseWriter, r *http.Request) {
 	permit, ok := h.acquirePermit(w, r, RequestHeavy)
 	if !ok {
@@ -595,6 +649,15 @@ func (h *Handler) handleTrackDataByIndex(w http.ResponseWriter, r *http.Request)
 }
 
 // handleTracksByYear lists tracks that contain markers within a specific year.
+//
+// @Summary     List tracks by year
+// @Description Returns track summaries for tracks that contain measurements in a given year.
+// @Tags        core
+// @Produce     json
+// @Param       year path int true "Year"
+// @Success     200 {object} map[string]interface{} "Track list payload"
+// @Failure     400 {string} string "Invalid year"
+// @Router      /api/tracks/years/{year} [get]
 func (h *Handler) handleTracksByYear(w http.ResponseWriter, r *http.Request) {
 	permit, ok := h.acquirePermit(w, r, RequestGeneral)
 	if !ok {
@@ -633,6 +696,16 @@ func (h *Handler) handleTracksByYear(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleTracksByMonth narrows track summaries to a calendar month.
+//
+// @Summary     List tracks by month
+// @Description Returns track summaries for tracks that contain measurements in a given calendar month.
+// @Tags        core
+// @Produce     json
+// @Param       year path int true "Year"
+// @Param       month path int true "Month (1-12)"
+// @Success     200 {object} map[string]interface{} "Track list payload"
+// @Failure     400 {string} string "Invalid year or month"
+// @Router      /api/tracks/months/{year}/{month} [get]
 func (h *Handler) handleTracksByMonth(w http.ResponseWriter, r *http.Request) {
 	permit, ok := h.acquirePermit(w, r, RequestGeneral)
 	if !ok {
@@ -706,7 +779,15 @@ const (
 	archiveThrottleTick = 200 * time.Millisecond
 )
 
-// handleArchiveDownload streams the configured tgz bundle of JSON tracks produced by the generator.
+// handleArchiveDownload streams the configured tgz bundle of JSON tracks.
+//
+// @Summary     Download JSON archive bundle
+// @Description Streams the generated TGZ archive of JSON track exports.
+// @Tags        core
+// @Produce     application/gzip
+// @Success     200 {file} file "Archive tarball"
+// @Failure     503 {string} string "Archive unavailable"
+// @Router      /api/json/weekly.tgz [get]
 func (h *Handler) handleArchiveDownload(w http.ResponseWriter, r *http.Request) {
 	if h.Archive == nil {
 		http.Error(w, "archive disabled", http.StatusServiceUnavailable)
@@ -1313,7 +1394,16 @@ func parseFloatDefault(v string, def float64) float64 {
 	return f
 }
 
-// handleCountries serves GET /api/countries with per-country measurement statistics.
+// handleCountries serves per-country measurement statistics.
+//
+// @Summary     List country statistics
+// @Description Returns per-country measurement counts and average dose-rate metadata.
+// @Tags        core
+// @Produce     json
+// @Success     200 {object} map[string]interface{} "Country stats payload"
+// @Failure     405 {string} string "Method not allowed"
+// @Failure     503 {string} string "Database unavailable"
+// @Router      /api/countries [get]
 func (h *Handler) handleCountries(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", http.MethodGet)

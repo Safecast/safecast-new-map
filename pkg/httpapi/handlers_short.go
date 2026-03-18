@@ -7,7 +7,15 @@ import (
 	"time"
 )
 
-// shortRedirect looks up the short code from the path, fetches the target URL from the DB, and issues a 302 redirect. 404 if unknown.
+// shortRedirect resolves and redirects a short code.
+//
+// @Summary     Resolve short URL code
+// @Description Looks up a short code and redirects to its stored target URL.
+// @Tags        web
+// @Success     302 {string} string "Redirect"
+// @Failure     404 {string} string "Code not found"
+// @Failure     502 {string} string "Invalid redirect target"
+// @Router      /s/{code} [get]
 func (s *Server) shortRedirect(w http.ResponseWriter, r *http.Request) {
 	code := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/s/"))
 	if code == "" {

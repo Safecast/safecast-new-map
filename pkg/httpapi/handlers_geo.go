@@ -59,7 +59,16 @@ func geoIPLookup(ctx context.Context, ip string) (float64, float64, error) {
 	return payload.Latitude, payload.Longitude, nil
 }
 
-// geoIP returns JSON with lat/lon for the request's IP. If AutoLocateDefault is false or lookup fails, returns 204 No Content.
+// geoIP returns JSON with lat/lon for the request's IP.
+//
+// @Summary     Resolve client GeoIP coordinates
+// @Description Returns approximate latitude/longitude for the request IP when auto-locate is enabled.
+// @Tags        web
+// @Produce     json
+// @Success     200 {object} map[string]float64 "Latitude/longitude payload"
+// @Success     204 {string} string "No location available"
+// @Failure     405 {string} string "Method not allowed"
+// @Router      /api/geoip [get]
 func (s *Server) geoIP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		w.Header().Set("Allow", "GET, HEAD")
