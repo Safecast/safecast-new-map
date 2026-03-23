@@ -199,9 +199,11 @@ func (m *Manager) AdminUpdateUserHandler(w http.ResponseWriter, r *http.Request)
 	var req struct {
 		Email         *string `json:"email"`
 		Username      *string `json:"username"`
+		Password      *string `json:"password"`
 		IsActive      *bool   `json:"is_active"`
 		IsAdmin       *bool   `json:"is_admin"`
 		EmailVerified *bool   `json:"email_verified"`
+		ExternalID    *string `json:"external_id"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -249,6 +251,22 @@ func (m *Manager) AdminUpdateUserHandler(w http.ResponseWriter, r *http.Request)
 
 	if req.EmailVerified != nil {
 		targetUser.EmailVerified = *req.EmailVerified
+	}
+
+	if req.ExternalID != nil {
+		targetUser.ExternalID = *req.ExternalID
+	}
+
+	// Update password if provided
+	if req.Password != nil && *req.Password != "" {
+		if err := ValidatePassword(*req.Password); err != nil {
+			writeJSON(w, map[string]string{"error": err.Error()}, http.StatusBadRequest)
+			return
+		}
+		if err := UpdateUserPassword(r.Context(), m.DB, m.DBDriver, targetUserID, *req.Password); err != nil {
+			writeJSON(w, map[string]string{"error": "Failed to update password"}, http.StatusInternalServerError)
+			return
+		}
 	}
 
 	// Update user in database
