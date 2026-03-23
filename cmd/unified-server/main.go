@@ -9163,41 +9163,6 @@ func main() {
 			}
 		}))
 
-		// Admin user management API endpoints
-		http.HandleFunc("/api/admin/users/create", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
-			if !checkAdminAccess(w, r) {
-				return
-			}
-			authManager.AdminCreateUserHandler(w, r)
-		}))
-		http.HandleFunc("/api/admin/users/", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
-			if !checkAdminAccess(w, r) {
-				return
-			}
-			// Route to appropriate handler based on path suffix and method
-			path := r.URL.Path
-			if strings.HasSuffix(path, "/reset-password") {
-				authManager.AdminResetUserPasswordHandler(w, r)
-			} else if strings.HasSuffix(path, "/regenerate-api-key") {
-				authManager.AdminRegenerateAPIKeyHandler(w, r)
-			} else {
-				switch r.Method {
-				case http.MethodPut, http.MethodPatch:
-					authManager.AdminUpdateUserHandler(w, r)
-				case http.MethodDelete:
-					authManager.AdminDeleteUserHandler(w, r)
-				default:
-					http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-				}
-			}
-		}))
-		http.HandleFunc("/api/admin/users", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
-			if !checkAdminAccess(w, r) {
-				return
-			}
-			authManager.AdminListUsersHandler(w, r)
-		}))
-
 	}
 
 	// Upload endpoint - protected with auth if required
