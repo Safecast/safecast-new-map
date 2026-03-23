@@ -1,0 +1,5 @@
+In the UI of the map we lost the posiblityy for the admin to edit the user information. I think it happened when we intergrated the MCP server in it. Can you restore that functionality? Hint maybe Github history can help you.
+
+---
+
+Did you commit and pushed, so I can check?
