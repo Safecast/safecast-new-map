@@ -9,6 +9,7 @@ on:
 
 jobs:
   test:
+    if: github.server_url == 'https://github.com'
     runs-on: ubuntu-latest
 
     steps:
