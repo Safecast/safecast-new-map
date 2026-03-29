@@ -59,3 +59,7 @@ All seems fine. Please make a commit and push the code.
 ---
 
 can you push the code also to Codeberg and Github at the same time? (we migrated today)..
+
+---
+
+https://codeberg.org/Safecast/safecast-new-map
