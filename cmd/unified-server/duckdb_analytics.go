@@ -111,12 +111,11 @@ func createDuckDBSchema() error {
 	tables := []string{
 		`CREATE TABLE IF NOT EXISTS mcp_query_log (
 			tool_name VARCHAR,
-			timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			duration_ms BIGINT,
+			params JSON,
 			result_count INTEGER,
-			client VARCHAR,
-			user_id VARCHAR,
-			user_email VARCHAR
+			duration_ms DOUBLE,
+			client_info VARCHAR,
+			created_at TIMESTAMPTZ DEFAULT now()
 		)`,
 		`CREATE TABLE IF NOT EXISTS mcp_ai_query_log (
 			user_id VARCHAR,

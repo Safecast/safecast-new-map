@@ -177,11 +177,12 @@ const COLUMN_LABELS = {
   history_length: 'History', cloudfront: 'CF', client_timestamp: 'Client Time',
   tool_name: 'Tool', duration_ms: 'Duration (ms)', result_count: 'Results',
   client: 'Client', user_id: 'User ID', user_email: 'Email',
+  created_at: 'Timestamp', client_info: 'Client', params: 'Params',
   generated_query: 'Query', commit_hash: 'Commit', error: 'Error'
 };
 
 // Columns that should be expandable (long text)
-const EXPANDABLE = new Set(['question', 'answer', 'generated_query', 'user_agent', 'accept_language', 'referer']);
+const EXPANDABLE = new Set(['question', 'answer', 'generated_query', 'user_agent', 'accept_language', 'referer', 'params']);
 
 let currentTable = 'chat_questions';
 let currentSort = 'timestamp';
@@ -195,7 +196,7 @@ let currentColumns = [];
 
 const KEY_COLUMNS = {
   'chat_questions': 'id',
-  'mcp_query_log': 'timestamp',
+  'mcp_query_log': 'created_at',
   'mcp_ai_query_log': 'timestamp'
 };
 
@@ -357,7 +358,7 @@ async function fetchData() {
           bodyHTML += `<td class="expandable" title="Click to expand" onclick="showModal('${COLUMN_LABELS[col] || col}', ${JSON.stringify(strVal).replace(/'/g, "&#39;")})">${escapeHtml(preview)}</td>`;
         } else if (col === 'is_mobile' || col === 'cloudfront') {
           bodyHTML += `<td>${val ? 'Yes' : (val === false ? 'No' : '')}</td>`;
-        } else if (col === 'timestamp' || col === 'client_timestamp') {
+        } else if (col === 'timestamp' || col === 'client_timestamp' || col === 'created_at') {
           bodyHTML += `<td>${formatTimestamp(strVal)}</td>`;
         } else {
           bodyHTML += `<td>${escapeHtml(strVal)}</td>`;

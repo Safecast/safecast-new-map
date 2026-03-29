@@ -36,7 +36,12 @@ func adminMCPDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	sortCol := r.URL.Query().Get("sort")
 	if !isValidColumn(sortCol, columns) {
-		sortCol = "timestamp"
+		// Default sort column: use "created_at" for mcp_query_log, "timestamp" for others
+		if tableName == "mcp_query_log" {
+			sortCol = "created_at"
+		} else {
+			sortCol = "timestamp"
+		}
 	}
 	order := strings.ToUpper(r.URL.Query().Get("order"))
 	if order != "ASC" {
@@ -76,7 +81,7 @@ func adminMCPDataHandler(w http.ResponseWriter, r *http.Request) {
 	// Fetch data — use LEFT() to work around DuckLake Go driver bug where large
 	// inlined VARCHAR values are truncated to a single byte on read.
 	// LEFT(col, 100000) forces DuckDB to materialize a new string that the driver reads correctly.
-	longTextCols := map[string]bool{"question": true, "answer": true, "generated_query": true, "user_agent": true}
+	longTextCols := map[string]bool{"question": true, "answer": true, "generated_query": true, "user_agent": true, "params": true}
 	castCols := make([]string, len(columns))
 	for i, col := range columns {
 		if longTextCols[col] {
@@ -161,7 +166,7 @@ func adminMCPExportHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Use LEFT() workaround for long text columns (same DuckLake driver bug as data handler)
-	exportLongTextCols := map[string]bool{"question": true, "answer": true, "generated_query": true, "user_agent": true}
+	exportLongTextCols := map[string]bool{"question": true, "answer": true, "generated_query": true, "user_agent": true, "params": true}
 	exportCastCols := make([]string, len(columns))
 	for i, col := range columns {
 		if exportLongTextCols[col] {
@@ -171,7 +176,11 @@ func adminMCPExportHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	colList := strings.Join(exportCastCols, ", ")
-	query := fmt.Sprintf("SELECT %s FROM %s %s ORDER BY timestamp DESC", colList, tableName, whereSQL)
+	orderCol := "timestamp"
+	if tableName == "mcp_query_log" {
+		orderCol = "created_at"
+	}
+	query := fmt.Sprintf("SELECT %s FROM %s %s ORDER BY %s DESC", colList, tableName, whereSQL, orderCol)
 
 	rows, err := duckDB.Query(query)
 	if err != nil {
@@ -220,8 +229,8 @@ var mcpTableColumns = map[string][]string{
 		"session_id", "history_length", "cloudfront", "client_timestamp",
 	},
 	"mcp_query_log": {
-		"tool_name", "timestamp", "duration_ms", "result_count",
-		"client", "user_id", "user_email",
+		"tool_name", "created_at", "duration_ms", "result_count",
+		"client_info", "params",
 	},
 	"mcp_ai_query_log": {
 		"user_id", "user_email", "session_id", "timestamp",
@@ -318,7 +327,7 @@ func adminMCPDeleteHandler(w http.ResponseWriter, r *http.Request) {
 // mcpTableKeyColumn maps each table to its primary key / unique identifier column
 var mcpTableKeyColumn = map[string]string{
 	"chat_questions":   "id",
-	"mcp_query_log":    "timestamp",
+	"mcp_query_log":    "created_at",
 	"mcp_ai_query_log": "timestamp",
 }
 
