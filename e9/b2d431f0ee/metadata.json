@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.5.1",
+  "checkpoint_id": "e9b2d431f0ee",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 4,
+  "files_touched": [
+    "cmd/unified-server/admin_mcp.go",
+    "cmd/unified-server/duckdb_analytics.go",
+    "cmd/unified-server/public_html/admin-mcp.html"
+  ],
+  "sessions": [
+    {
+      "metadata": "/e9/b2d431f0ee/0/metadata.json",
+      "transcript": "/e9/b2d431f0ee/0/full.jsonl",
+      "content_hash": "/e9/b2d431f0ee/0/content_hash.txt",
+      "prompt": "/e9/b2d431f0ee/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 165,
+    "cache_creation_tokens": 87616,
+    "cache_read_tokens": 8549156,
+    "output_tokens": 27294,
+    "api_call_count": 133
+  }
+}
