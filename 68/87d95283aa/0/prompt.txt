@@ -63,3 +63,7 @@ can you push the code also to Codeberg and Github at the same time? (we migrated
 ---
 
 https://codeberg.org/Safecast/safecast-new-map
+
+---
+
+Seems on Codeberg we have to setup actions too. Not sure how to do that. , For the moment only actions of Github should be active till we figured out how to use actions on Codeberg..
