@@ -126,3 +126,7 @@ Just wondering why we are doing this. Yesetrday we pushed the code without any i
 ---
 
 For CodeBerg,, skip the PR just merge the branch into tthe main?
+
+---
+
+BTW.. Did you docemnt the chnages to the tools and did you make it clear in the AI hints of the MCP server that the AI bot can get the new values like max value for track and all the measurement of that tack content easy?
