@@ -148,7 +148,16 @@ func getTrackStatsDB(ctx context.Context, trackID string, fromID, toID int) (*mc
 		"to_marker":   nilIfZero(toID),
 		"statistics":  statsRow,
 		"top10_peaks": peaks,
-		"_ai_hint":    "Statistics are in µSv/h. Present all data in a purely scientific, factual manner. NEVER use personal pronouns or exclamations. Format responses as objective statements.",
+		"_ai_hint": "STATS INTERPRETATION (all values in µSv/h): " +
+			"min_value = lowest single reading on the track. " +
+			"max_value = highest single reading — use this to answer 'what was the peak?' questions. " +
+			"mean_value = arithmetic average. median = middle value (robust to outliers). " +
+			"p95/p99 = 95th/99th percentile — values this high or higher occurred in only 5%/1% of readings. " +
+			"stddev = spread; high stddev relative to mean indicates localised hotspots. " +
+			"top10_peaks = the 10 highest individual readings with coordinates — link each location as " +
+			"https://simplemap.safecast.org/?lat=LAT&lon=LON&zoom=16 so the user can inspect it on the map. " +
+			"If more detail is needed (e.g. all readings above a threshold), call get_track again without stats_only and use limit up to 10000. " +
+			"Present findings as objective factual statements only — no personal pronouns, no exclamations.",
 		"_ai_generated_note": aiGeneratedNote,
 	}
 	return jsonResult(result)
@@ -252,7 +261,14 @@ func getTrackStatsAPI(ctx context.Context, trackIDStr string, fromID, toID int) 
 			"stddev":     stddev,
 		},
 		"top10_peaks":        top10,
-		"_ai_hint":           "Statistics are in µSv/h. Present all data in a purely scientific, factual manner. NEVER use personal pronouns or exclamations.",
+		"_ai_hint": "STATS INTERPRETATION (all values in µSv/h): " +
+			"min_value = lowest reading. max_value = peak reading on the entire track. " +
+			"mean_value = average. median = middle value (robust to outliers). " +
+			"p95/p99 = 95th/99th percentile — values this high or higher in only 5%/1% of readings. " +
+			"top10_peaks = 10 highest individual readings with coordinates — link each as " +
+			"https://simplemap.safecast.org/?lat=LAT&lon=LON&zoom=16 for map inspection. " +
+			"For all individual readings (up to 10000), call get_track again without stats_only. " +
+			"Present as objective factual statements — no personal pronouns, no exclamations.",
 		"_ai_generated_note": aiGeneratedNote,
 	}
 	return jsonResult(result)
@@ -369,7 +385,13 @@ func getTrackDB(ctx context.Context, trackID string, fromID, toID, limit int) (*
 		"from_marker":     nilIfZero(fromID),
 		"to_marker":       nilIfZero(toID),
 		"measurements":    measurements,
-		"_ai_hint": "CRITICAL INSTRUCTIONS: (1) The .unit. field indicates measurement units - CPM means .counts per minute. NOT .counts per second.. Always interpret and report CPM values as counts per minute. (2) Present all data in a purely scientific, factual manner. NEVER use personal pronouns (I, we, I.ll, I.m, you, your), exclamations (!, Perfect, Great, Excellent), or conversational phrases. Format responses as objective statements: .Latest reading: X CPM at location Y. NOT .I found a reading of X CPM. or .Perfect! The sensor shows..... State only objective facts and measurements.",
+		"_ai_hint": "INSTRUCTIONS: (1) All doserate values are in µSv/h. " +
+			"(2) 'count' is the number of measurements returned; 'total_available' is the full track size. " +
+			"If total_available > count, only a partial view was returned — call get_track with stats_only=true " +
+			"to get min/max/mean/percentiles/top-10 peaks for the ENTIRE track without hitting the limit. " +
+			"To retrieve all individual readings use limit=10000. " +
+			"(3) Link every location as https://simplemap.safecast.org/?lat=LAT&lon=LON&zoom=16. " +
+			"(4) Present as objective factual statements — no personal pronouns, no exclamations.",
 		"_ai_generated_note": aiGeneratedNote,
 	}
 
@@ -418,7 +440,13 @@ func getTrackAPI(ctx context.Context, trackIDStr string, fromID, toID, limit int
 		"from_marker":     nilIfZero(fromID),
 		"to_marker":       nilIfZero(toID),
 		"measurements":    normalized,
-		"_ai_hint": "CRITICAL INSTRUCTIONS: (1) The .unit. field indicates measurement units - CPM means .counts per minute. NOT .counts per second.. Always interpret and report CPM values as counts per minute. (2) Present all data in a purely scientific, factual manner. NEVER use personal pronouns (I, we, I.ll, I.m, you, your), exclamations (!, Perfect, Great, Excellent), or conversational phrases. Format responses as objective statements: .Latest reading: X CPM at location Y. NOT .I found a reading of X CPM. or .Perfect! The sensor shows..... State only objective facts and measurements.",
+		"_ai_hint": "INSTRUCTIONS: (1) All doserate values are in µSv/h. " +
+			"(2) 'count' is measurements returned; 'total_available' is the full track size. " +
+			"If total_available > count, the track is larger than the limit — call get_track with " +
+			"stats_only=true to get min/max/mean/percentiles/top-10 peaks for the entire track, " +
+			"or use limit=10000 to retrieve up to 10000 individual readings. " +
+			"(3) Link every location as https://simplemap.safecast.org/?lat=LAT&lon=LON&zoom=16. " +
+			"(4) Present as objective factual statements — no personal pronouns, no exclamations.",
 		"_ai_generated_note": aiGeneratedNote,
 	}
 
