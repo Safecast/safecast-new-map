@@ -102,3 +102,11 @@ I like all three sugestions to be implemented.:
 Improve the get_track description to make it clearer it can be called directly with a known track ID
 Add statistics (min/max/mean/percentiles) to the response so the model doesn't need to load all 6k rows just to get a summary
 Add a stats_only flag to return just aggregates without all individual measurements
+
+---
+
+Can you a fork, commit, push, PR and merge?
+
+---
+
+Both to GiHub adn Codeberg.:)
