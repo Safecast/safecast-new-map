@@ -11,20 +11,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Create package-lock.json for setup-node cache
-        run: echo '{}' > package-lock.json
-
-      - name: Crawl DeepWiki Documentation
+      - name: Ping DeepWiki to trigger indexing
         id: deepwiki
-        uses: erayack/deepwiki-action@v1
-        with:
-          repository: ${{ github.repository }}
-          max_concurrency: '3'
-          request_timeout: '30000'
-          retry_attempts: '3'
+        run: |
+          REPO="${{ github.repository }}"
+          DEEPWIKI_URL="https://deepwiki.com/${REPO}"
+          echo "deepwiki_url=${DEEPWIKI_URL}" >> "$GITHUB_OUTPUT"
+
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            --max-time 30 \
+            --retry 3 \
+            --retry-delay 5 \
+            "${DEEPWIKI_URL}")
+
+          if [ "$HTTP_STATUS" -eq 200 ] || [ "$HTTP_STATUS" -eq 302 ]; then
+            echo "repo_exists=true" >> "$GITHUB_OUTPUT"
+            echo "DeepWiki page reachable (HTTP ${HTTP_STATUS}): ${DEEPWIKI_URL}"
+          else
+            echo "repo_exists=false" >> "$GITHUB_OUTPUT"
+            echo "DeepWiki returned HTTP ${HTTP_STATUS} for ${DEEPWIKI_URL} — may not be indexed yet"
+          fi
 
       - name: Check results
         run: |
