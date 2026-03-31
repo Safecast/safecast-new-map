@@ -1,0 +1,23 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "19644dc4d92a",
+  "strategy": "manual-commit",
+  "branch": "feat/get-track-ai-hints",
+  "checkpoints_count": 6,
+  "files_touched": null,
+  "sessions": [
+    {
+      "metadata": "/19/644dc4d92a/0/metadata.json",
+      "transcript": "/19/644dc4d92a/0/full.jsonl",
+      "content_hash": "/19/644dc4d92a/0/content_hash.txt",
+      "prompt": "/19/644dc4d92a/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 73,
+    "cache_creation_tokens": 43991,
+    "cache_read_tokens": 1952182,
+    "output_tokens": 16387,
+    "api_call_count": 51
+  }
+}
