@@ -1,0 +1,22 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "19644dc4d92a",
+  "session_id": "7ece1b4d-18d9-491b-bb1a-1ab532681015",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-31T13:49:54.568123045Z",
+  "branch": "feat/get-track-ai-hints",
+  "checkpoints_count": 6,
+  "files_touched": [],
+  "agent": "Claude Code",
+  "turn_id": "98213c14402c",
+  "token_usage": {
+    "input_tokens": 73,
+    "cache_creation_tokens": 43991,
+    "cache_read_tokens": 1952182,
+    "output_tokens": 16387,
+    "api_call_count": 51
+  },
+  "session_metrics": {
+    "turn_count": 8
+  }
+}
