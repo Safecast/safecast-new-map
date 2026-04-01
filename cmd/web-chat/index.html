@@ -282,6 +282,66 @@
     #send:hover:not(:disabled) { background: var(--green-dk); }
     #send:disabled { opacity: .4; cursor: not-allowed; }
     #send svg { fill: #fff; }
+    
+    /* ── Data Table & Export ── */
+    .data-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin: 12px 0;
+      overflow: hidden;
+    }
+    .data-header {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .data-header .meta { font-size: 12px; color: var(--muted); }
+    .data-table-container {
+      overflow-x: auto;
+      max-height: 400px;
+    }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .data-table th {
+      text-align: left;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+    }
+    .data-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .data-table tr:hover { background: rgba(255, 255, 255, 0.02); }
+    
+    .export-btn {
+      background: var(--green);
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: background .15s;
+    }
+    .export-btn:hover { background: var(--green-dk); }
+    .export-btn svg { width: 12px; height: 12px; fill: #fff; }
+    .export-btn.loading { opacity: 0.7; cursor: wait; }
+
   </style>
 </head>
 <body>
@@ -428,6 +488,154 @@
     return html;
   }
 
+  // Handle data-aware JSON responses
+  function renderDataPreview(data, container) {
+    const card = document.createElement('div');
+    card.className = 'data-card';
+    
+    const header = document.createElement('div');
+    header.className = 'data-header';
+    
+    let metaText = `Showing ${data.summary.rows_shown} of ${data.summary.rows_total} rows`;
+    if (data.summary.region) metaText += ` in ${data.summary.region}`;
+    
+    header.innerHTML = `<div class="meta">${metaText}</div>`;
+    
+    if (data.export_available) {
+      const btnGroup = document.createElement('div');
+      btnGroup.className = 'export-group';
+      btnGroup.style.display = 'flex';
+      btnGroup.style.gap = '8px';
+      
+      const formats = ['CSV', 'Excel', 'JSON'];
+      formats.forEach(f => {
+        const btn = document.createElement('button');
+        btn.className = 'export-btn';
+        btn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> ${f}`;
+        const formatId = f.toLowerCase();
+        btn.onclick = () => {
+             const expConfig = Object.assign({}, data.suggested_export || { limit: 'full' });
+             expConfig.format = formatId;
+             triggerExport(expConfig, btn);
+        };
+        btnGroup.appendChild(btn);
+      });
+      header.appendChild(btnGroup);
+    }
+    
+    const tableContainer = document.createElement('div');
+    tableContainer.className = 'data-table-container';
+    
+    const table = document.createElement('table');
+    table.className = 'data-table';
+    
+    if (data.table && data.table.length > 0) {
+      const keys = Object.keys(data.table[0]);
+      
+      // Header
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      keys.forEach(k => {
+        const th = document.createElement('th');
+        th.textContent = k.charAt(0).toUpperCase() + k.slice(1).replace('_', ' ');
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+      
+      // Body
+      const tbody = document.createElement('tbody');
+      data.table.forEach(row => {
+        const tr = document.createElement('tr');
+        keys.forEach(k => {
+          const td = document.createElement('td');
+          let val = row[k];
+          if (typeof val === 'object' && val !== null) {
+              val = JSON.stringify(val);
+          }
+          // If it looks like a coordinate or map link, make it clickable
+          if (k === 'device_id' && row.lat && row.lon) {
+              td.innerHTML = `<a href="https://simplemap.safecast.org/?lat=${row.lat}&lon=${row.lon}&zoom=15" target="_blank">${val}</a>`;
+          } else if (typeof val === 'string' && val.includes('https://simplemap.safecast.org')) {
+              td.innerHTML = markdownToHTML(val);
+          } else {
+              td.textContent = val;
+          }
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+    }
+    
+    tableContainer.appendChild(table);
+    card.appendChild(header);
+    card.appendChild(tableContainer);
+    container.appendChild(card);
+  }
+
+  function handleExportRequest(data, container) {
+    const status = document.createElement('div');
+    status.style.padding = '10px';
+    status.style.fontSize = '13px';
+    status.style.color = 'var(--muted)';
+    status.innerHTML = `<em>Preparing export of ${data.estimated_rows} rows (${data.mode})...</em>`;
+    container.appendChild(status);
+    
+    // Automatically trigger if sync and smallish
+    if (data.mode === 'sync' || data.estimated_rows < 50000) {
+        triggerExport(data.export_config, null, status);
+    } else {
+        const btn = document.createElement('button');
+        btn.className = 'export-btn';
+        btn.style.marginTop = '10px';
+        btn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> Confirm Download`;
+        btn.onclick = () => triggerExport(data.export_config, btn, status);
+        container.appendChild(btn);
+    }
+  }
+
+  async function triggerExport(config, btn, statusEl) {
+    if (btn) {
+        btn.disabled = true;
+        btn.classList.add('loading');
+        btn.innerHTML = 'Exporting...';
+    }
+    if (statusEl) statusEl.innerHTML = `<em>Fetching dataset... this may take a moment.</em>`;
+
+    try {
+        const response = await fetch('/export', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(config)
+        });
+
+        if (!response.ok) throw new Error('Export failed: ' + response.statusText);
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `safecast_export_${new Date().toISOString().slice(0,10)}.${config.format || 'csv'}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        if (statusEl) statusEl.innerHTML = `<span style="color:var(--green)">✓ Export complete. Download started.</span>`;
+    } catch (err) {
+        console.error(err);
+        if (statusEl) statusEl.innerHTML = `<span style="color:var(--err)">✗ Export failed: ${err.message}</span>`;
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.classList.remove('loading');
+            btn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> Export CSV`;
+        }
+    }
+  }
+
+
   function addMessage(role, text, cls) {
     if (introEl) introEl.style.display = 'none';
 
@@ -449,9 +657,28 @@
     bubble.className = `bubble ${cls || ''}`;
     // User messages are plain text, bot messages support markdown
     if (role === 'bot') {
-      bubble.innerHTML = markdownToHTML(text);
+      // Try to parse as data-aware JSON first
+      let isDataAware = false;
+      try {
+          const trimmed = text.trim();
+          if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+              const data = JSON.parse(trimmed);
+              if (data.type === 'data_preview') {
+                  renderDataPreview(data, bubble);
+                  isDataAware = true;
+              } else if (data.type === 'export_request') {
+                  handleExportRequest(data, bubble);
+                  isDataAware = true;
+              }
+          }
+      } catch (e) { /* fallback to markdown */ }
+
+      if (!isDataAware) {
+          bubble.innerHTML = markdownToHTML(text);
+      }
 
       // Add copy button for bot messages
+
       const copyBtn = document.createElement('button');
       copyBtn.className = 'copy-btn';
       copyBtn.textContent = 'Copy';

@@ -4,15 +4,18 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"sort"
 
 	mcpclient "github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/xuri/excelize/v2"
 )
 
 //go:embed index.html
@@ -109,60 +112,132 @@ func truncateHistory(messages []anthropicMessage, maxTokens int) []anthropicMess
 	return messages
 }
 
-const systemPrompt = `Safecast radiation monitoring assistant with REAL-TIME sensor data and historical archives.
+const systemPrompt = `You are a data-aware AI assistant embedded inside a radiation map interface (Safecast-like system). Your role is not just to answer questions, but to help users explore, filter, and export structured datasets efficiently.
 
-**Tool Selection**
-- Current/live data: sensor_current (returns actual CPM readings), list_sensors (metadata/discovery only)
-- Time-series from fixed sensors: sensor_history
-- Extreme readings with locations: query_extreme_readings
+You must follow these rules strictly:
+
+-------------------------------------
+1. UNDERSTAND USER INTENT
+-------------------------------------
+
+Classify every query into one of three types:
+
+A) Informational (e.g., “Is radiation high in Tokyo?”)
+→ Respond normally with explanation
+
+B) Data preview (e.g., “show radiation readings in Tokyo last 24h”)
+→ Fetch structured data and return:
+   - a preview (max 20–50 rows)
+   - dataset metadata (total rows, time range, region)
+
+C) Data export (e.g., “download csv”, “export full dataset”)
+→ Skip preview and trigger export mode
+
+If unclear, default to B (preview mode).
+
+-------------------------------------
+2. NEVER DUMP FULL DATA IN CHAT
+-------------------------------------
+
+You MUST NOT output large datasets directly in chat. Always limit preview to 50 rows max and indicate total dataset size.
+
+-------------------------------------
+3. ALWAYS OFFER EXPORT WHEN RELEVANT
+-------------------------------------
+
+If:
+- dataset > 50 rows OR
+- user asks for data OR
+- query involves filters (time, location, sensors)
+
+Then include: EXPORT_AVAILABLE = true
+
+-------------------------------------
+4. EXPORT CONFIGURATION MODEL
+-------------------------------------
+
+When export is triggered, construct a structured export request:
+
+{
+  "format": "csv | xlsx | json",
+  "limit": "preview | sample | full | custom",
+  "time_range": "1h | 24h | 7d | custom",
+  "bbox": [minLat, minLon, maxLat, maxLon],
+  "region": "...",
+  "columns": ["device_id", "cpm", "usvh", "timestamp", "lat", "lon"],
+  "aggregation": "none | hourly | daily"
+}
+
+Defaults:
+- format: csv
+- limit: full
+- columns: all
+- region: current map view
+
+-------------------------------------
+5. HANDLE LARGE DATASETS INTELLIGENTLY
+-------------------------------------
+
+Estimate dataset size before exporting.
+- rows < 5,000 → allow instant export
+- 5,000–50,000 → allow but warn briefly
+- > 50,000 → mark as ASYNC export
+- > 200,000 → require user confirmation or suggest filters
+
+For large datasets, respond: “This dataset is large. I’ll prepare it for download.”
+
+-------------------------------------
+6. RESPONSE FORMAT (STRICT)
+-------------------------------------
+
+When returning data preview, use this JSON format (start of block):
+{
+  "type": "data_preview",
+  "summary": {
+    "rows_total": 12453,
+    "rows_shown": 50,
+    "time_range": "last 24h",
+    "region": "Tokyo"
+  },
+  "table": [...50 rows max...],
+  "export_available": true,
+  "suggested_export": {
+    "format": "csv",
+    "limit": "full"
+  }
+}
+
+When triggering export, use this JSON format (start of block):
+{
+  "type": "export_request",
+  "export_config": {...},
+  "estimated_rows": 12453,
+  "mode": "sync | async"
+}
+
+-------------------------------------
+7. BEHAVIORAL RULES
+-------------------------------------
+
+- Prefer structured JSON over plain text when handling data
+- Always respect map bounds if available
+- Never hallucinate data — rely on backend queries
+- Be concise, functional, and tool-like
+- Optimize for data scientists, not casual users
+
+-------------------------------------
+8. TOOL SELECTION (LEGACY)
+-------------------------------------
+- Current/live data: sensor_current
+- Time-series: sensor_history
+- Extreme readings: query_extreme_readings
 - Statistics: radiation_stats
 - Historical surveys: query_radiation, search_area, list_tracks
-- NEVER use query_radiation for current data (historical only)
-- NEVER use radiation_stats for specific extreme location queries
-- NEVER use list_sensors when the user wants radiation readings — use sensor_current instead
-
-**Device type names** (exact values in the database):
-- bGeigieZen → "geigiecast-zen" (IDs like geigiecast-zen:65002)
-- bGeigie → "geigiecast" (IDs like geigiecast:62007) — MOBILE only
-- Pointcast → "pointcast" (IDs like pointcast:10042)
-- Solarcast → "solarcast"
-- Notehub/Radnote/Blues → "notehub" (IDs like note:dev:867648049123019)
-- nGeigie → "ngeigie" (IDs like ngeigie:101)
-- Direct TCP → "device-tcp" (IDs like safecast:3474557222)
-
-**Data Types**
-- Real-time fixed stations: geigiecast-zen, pointcast, solarcast, notehub, ngeigie, device-tcp → sensor_current or sensor_history
-- Mobile surveys only: geigiecast → query_radiation, list_tracks, device_history
-- CPM → µSv/h: multiply by ~0.0069 (LND 7318)
-- NEVER use device_history for any fixed sensor type — use sensor_current instead
-
-**"Latest readings" at a location: ALWAYS do BOTH steps**
-1. Call query_radiation (historical mobile data)
-2. Call sensor_current with geographic bounds (fixed real-time sensors)
-Report both results. Only say "no real-time data" after sensor_current returns empty results.
-
-**Looking up a specific fixed sensor by device ID** (any non-geigiecast type):
-- Use sensor_current with device_id parameter, NOT device_history
-- Note: notehub device IDs contain colons, e.g. "note:dev:867648049123019" — pass the full string as device_id
-- device_history is ONLY for mobile bGeigie (geigiecast) devices
-
-**Radius Selection** (query_radiation, sensor_current):
-Address: 1000-2000m | District: 5000-10000m | Village/Town: 25-50km | City: 50km | Metro: 75-100km
-When in doubt, use a LARGER radius — it is better to return too many results than to miss nearby sensors due to geocoding imprecision. Always state radius used.
-
-**Formatting**
-- Hide "_ai_generated_note" field (internal use only)
-- **CRITICAL: ALL devices/coords MUST be clickable map links:**
-  * Devices: [pointcast:10042](https://simplemap.safecast.org/?lat=LAT&lon=LON&zoom=15)
-  * Tracks: [track_id](https://simplemap.safecast.org/?lat=LAT&lon=LON&zoom=12)
-  * Coords: [37.72°N, 140.48°E](https://simplemap.safecast.org/?lat=37.72&lon=140.48&zoom=15)
-  * NEVER plain device names or "Visit: https://..." text
-- Sensor/track data: ALWAYS use markdown tables (not lists)
-- Table columns: Device ID, Type, Location, Reading, Timestamp
+- CPM -> µSv/h: multiply by ~0.0069 (LND 7318)
 - Timestamp: ALWAYS display in UTC — convert from any timezone, format as "2026-03-03 22:14 UTC"
-- Concise coords: "37.48°N, 140.48°E"
 
-Be concise. Ask for clarification if location unclear.`
+Concise and tool-like. Ask for clarification if location unclear.`
+
 
 // ── Anthropic API types ────────────────────────────────────────────────────
 
@@ -475,12 +550,217 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 	}
 }
 
+// ── Export handler ─────────────────────────────────────────────────────────
+
+func handleExport(mcpURL string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		var exportReq struct {
+			Format       string         `json:"format"`
+			Limit        string         `json:"limit"`
+			TimeRange    string         `json:"time_range"`
+			Bbox         []float64      `json:"bbox"`
+			Region       string         `json:"region"`
+			Columns      []string       `json:"columns"`
+			Aggregation  string         `json:"aggregation"`
+			SuggestedTool string         `json:"suggested_tool"`
+		}
+
+		if err := json.NewDecoder(r.Body).Decode(&exportReq); err != nil {
+			http.Error(w, "Invalid request", http.StatusBadRequest)
+			return
+		}
+
+		ctx := r.Context()
+		mc, err := mcpclient.NewStreamableHttpClient(mcpURL)
+		if err != nil {
+			http.Error(w, "MCP connect error", http.StatusInternalServerError)
+			return
+		}
+		defer mc.Close()
+
+		if _, err := mc.Initialize(ctx, mcp.InitializeRequest{
+			Params: mcp.InitializeParams{
+				ProtocolVersion: mcp.LATEST_PROTOCOL_VERSION,
+				ClientInfo:      mcp.Implementation{Name: "safecast-export", Version: "1.0.0"},
+			},
+		}); err != nil {
+			http.Error(w, "MCP init error", http.StatusInternalServerError)
+			return
+		}
+
+		toolName := "query_radiation"
+		if exportReq.SuggestedTool != "" {
+			toolName = exportReq.SuggestedTool
+		}
+
+		limit := 10000
+		if exportReq.Limit == "full" {
+			limit = 100000
+		}
+
+		args := map[string]any{
+			"limit": limit,
+		}
+		if len(exportReq.Bbox) == 4 {
+			args["min_lat"] = exportReq.Bbox[0]
+			args["min_lon"] = exportReq.Bbox[1]
+			args["max_lat"] = exportReq.Bbox[2]
+			args["max_lon"] = exportReq.Bbox[3]
+			
+			centerLat := (exportReq.Bbox[0] + exportReq.Bbox[2]) / 2
+			centerLon := (exportReq.Bbox[1] + exportReq.Bbox[3]) / 2
+			args["lat"] = centerLat
+			args["lon"] = centerLon
+			args["radius_m"] = 50000 
+		}
+
+		callReq := mcp.CallToolRequest{}
+		callReq.Params.Name = toolName
+		callReq.Params.Arguments = args
+
+		toolResult, err := mc.CallTool(ctx, callReq)
+		if err != nil {
+			http.Error(w, "Tool call failed: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		var resultText string
+		for _, c := range toolResult.Content {
+			if tc, ok := c.(mcp.TextContent); ok {
+				resultText += tc.Text
+			}
+		}
+
+		var data map[string]any
+		if err := json.Unmarshal([]byte(resultText), &data); err != nil {
+			http.Error(w, "Parse tool result failed", http.StatusInternalServerError)
+			return
+		}
+
+		switch exportReq.Format {
+		case "json":
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Content-Disposition", "attachment; filename=safecast_export.json")
+			json.NewEncoder(w).Encode(data)
+		case "excel", "xlsx":
+			w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+			w.Header().Set("Content-Disposition", "attachment; filename=safecast_export.xlsx")
+
+			var rows []any
+			if m, ok := data["measurements"].([]any); ok {
+				rows = m
+			} else if r, ok := data["readings"].([]any); ok {
+				rows = r
+			}
+
+			if len(rows) > 0 {
+				f := excelize.NewFile()
+				defer func() {
+					if err := f.Close(); err != nil {
+						fmt.Println(err)
+					}
+				}()
+				
+				f.SetSheetName("Sheet1", "Data")
+				
+				firstRow, _ := rows[0].(map[string]any)
+				var headers []string
+				for k := range firstRow {
+					headers = append(headers, k)
+				}
+				sort.Strings(headers)
+				
+				// Write Headers
+				for i, h := range headers {
+					cell, _ := excelize.CoordinatesToCellName(i+1, 1)
+					f.SetCellValue("Data", cell, h)
+				}
+
+				// Write Rows
+				for rowIdx, r := range rows {
+					rowMap, _ := r.(map[string]any)
+					for colIdx, h := range headers {
+						val := rowMap[h]
+						cell, _ := excelize.CoordinatesToCellName(colIdx+1, rowIdx+2)
+						if m, ok := val.(map[string]any); ok {
+							b, _ := json.Marshal(m)
+							f.SetCellValue("Data", cell, string(b))
+						} else {
+							f.SetCellValue("Data", cell, val)
+						}
+					}
+				}
+				f.Write(w)
+			} else {
+				// Empty sheet
+				f := excelize.NewFile()
+				f.Write(w)
+			}
+		case "csv":
+			w.Header().Set("Content-Type", "text/csv")
+			w.Header().Set("Content-Disposition", "attachment; filename=safecast_export.csv")
+			
+			var rows []any
+			if m, ok := data["measurements"].([]any); ok {
+				rows = m
+			} else if r, ok := data["readings"].([]any); ok {
+				rows = r
+			}
+
+			if len(rows) > 0 {
+				writer := csv.NewWriter(w)
+				firstRow, _ := rows[0].(map[string]any)
+				var headers []string
+				for k := range firstRow {
+					headers = append(headers, k)
+				}
+				sort.Strings(headers)
+				writer.Write(headers)
+
+				for _, r := range rows {
+					row, _ := r.(map[string]any)
+					var line []string
+					for _, h := range headers {
+						val := row[h]
+						if m, ok := val.(map[string]any); ok {
+							b, _ := json.Marshal(m)
+							line = append(line, string(b))
+						} else {
+							line = append(line, fmt.Sprintf("%v", val))
+						}
+					}
+					writer.Write(line)
+				}
+				writer.Flush()
+			} else {
+				fmt.Fprint(w, "No data available")
+			}
+		default:
+			http.Error(w, "Unsupported format", http.StatusBadRequest)
+		}
+	}
+}
+
 // ── Main ───────────────────────────────────────────────────────────────────
+
 
 func main() {
 	apiKey := os.Getenv("ANTHROPIC_API_KEY")
 	if apiKey == "" {
-		log.Fatal("ANTHROPIC_API_KEY is required")
+		log.Println("WARNING: ANTHROPIC_API_KEY is not set. Chat features will error.")
 	}
 	model := os.Getenv("CLAUDE_MODEL")
 	if model == "" {
@@ -505,6 +785,8 @@ func main() {
 		w.Write(logoPNG)
 	})
 	http.HandleFunc("/chat", handleChat(mcpURL, apiKey, model))
+	http.HandleFunc("/export", handleExport(mcpURL))
+
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, "ok")
