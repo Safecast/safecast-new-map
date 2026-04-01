@@ -1,0 +1,25 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "51060609be3e",
+  "strategy": "manual-commit",
+  "branch": "feat/rag-semantic-cache",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "local-server-config.sh"
+  ],
+  "sessions": [
+    {
+      "metadata": "/51/060609be3e/0/metadata.json",
+      "transcript": "/51/060609be3e/0/full.jsonl",
+      "content_hash": "/51/060609be3e/0/content_hash.txt",
+      "prompt": "/51/060609be3e/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 93,
+    "cache_creation_tokens": 56262,
+    "cache_read_tokens": 1628369,
+    "output_tokens": 8349,
+    "api_call_count": 49
+  }
+}

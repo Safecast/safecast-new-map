@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "51060609be3e",
+  "session_id": "86c38a2b-dd7e-41b8-b11f-ea6dd10bffe2",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-01T04:58:46.056890876Z",
+  "branch": "feat/rag-semantic-cache",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "local-server-config.sh"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "25d0cf39db3d",
+  "token_usage": {
+    "input_tokens": 93,
+    "cache_creation_tokens": 56262,
+    "cache_read_tokens": 1628369,
+    "output_tokens": 8349,
+    "api_call_count": 49
+  },
+  "session_metrics": {
+    "turn_count": 4
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-01T04:58:45.087962899Z",
+    "agent_lines": 0,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 30,
+    "total_committed": 2,
+    "agent_percentage": 0
+  }
+}

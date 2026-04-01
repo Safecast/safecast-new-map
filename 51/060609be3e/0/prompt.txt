@@ -1,0 +1,14 @@
+can we make the defaul setting to be uSv/h  for radation units onthe map?
+
+---
+
+Why are the icons not yellow any more?
+
+---
+
+Like them to be yellow so thay stand out..
+
+---
+
+<ide_opened_file>The user opened the file /home/rob/Documents/Safecast/safecast-new-map/cmd/unified-server/static/index.html in the IDE. This may or may not be related to the current task.</ide_opened_file>
+Please commit and push
