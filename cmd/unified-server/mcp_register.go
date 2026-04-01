@@ -469,7 +469,7 @@ func RegisterMCP() {
 	log.Println("  Streamable HTTP endpoint: /mcp-http")
 	log.Printf("  Hints directory: %s", hintsDir)
 	log.Println("  REST API: /api/...")
-	log.Println("  Swagger UI: /docs/")
+	log.Println("  Swagger UI: /mcp-api/")
 	if apiKey != "" {
 		log.Printf("  Web Chat: http://localhost:%s/assistant/", mcpPort)
 	}
@@ -540,34 +540,37 @@ func instrumentMCP(
 	}
 }
 
-// registerSwaggerDocs registers the Swagger UI at /docs/
+// registerSwaggerDocs registers the Swagger UI at /mcp-api/
 func registerSwaggerDocs(mux *http.ServeMux) {
-	mux.HandleFunc("/docs/favicon.ico", serveFavicon)
-	mux.HandleFunc("/docs/favicon-16x16.png", serveFavicon16)
-	mux.HandleFunc("/docs/favicon-32x32.png", serveFavicon32)
-	mux.HandleFunc("/docs/swagger-theme.css", serveSwaggerTheme)
-	mux.Handle("/docs/", httpSwagger.Handler(
-		httpSwagger.URL("/docs/doc.json"),
-		httpSwagger.UIConfig(map[string]string{
-			"onComplete": `function() {
+	mapBaseForDocs := strings.TrimSpace(os.Getenv("MAP_BASE_URL"))
+	if mapBaseForDocs == "" {
+		if strings.TrimSpace(*domain) != "" {
+			mapBaseForDocs = "https://" + strings.TrimSpace(*domain)
+		} else {
+			mapBaseForDocs = fmt.Sprintf("http://localhost:%d", *port)
+		}
+	}
+	mapDocsURL := strings.TrimRight(mapBaseForDocs, "/") + "/map-api/"
+	mcpAPINavScript := fmt.Sprintf(`function() {
 				document.title = 'Safecast MCP Docs';
+				const otherDocsURL = %q;
 				const swaggerLogo = document.querySelector('.topbar-wrapper .link');
 				if (swaggerLogo) { swaggerLogo.remove(); }
 				const logoImgs = document.querySelectorAll('.topbar-wrapper img');
 				logoImgs.forEach(img => img.remove());
 				const link16 = document.createElement('link');
 				link16.rel = 'icon'; link16.type = 'image/png'; link16.sizes = '16x16';
-				link16.href = '/docs/favicon-16x16.png';
+				link16.href = '/mcp-api/favicon-16x16.png';
 				document.head.appendChild(link16);
 				const link32 = document.createElement('link');
 				link32.rel = 'icon'; link32.type = 'image/png'; link32.sizes = '32x32';
-				link32.href = '/docs/favicon-32x32.png';
+				link32.href = '/mcp-api/favicon-32x32.png';
 				document.head.appendChild(link32);
 				const linkICO = document.createElement('link');
-				linkICO.rel = 'shortcut icon'; linkICO.href = '/docs/favicon.ico';
+				linkICO.rel = 'shortcut icon'; linkICO.href = '/mcp-api/favicon.ico';
 				document.head.appendChild(linkICO);
 				const style = document.createElement('link');
-				style.rel = 'stylesheet'; style.href = '/docs/swagger-theme.css';
+				style.rel = 'stylesheet'; style.href = '/mcp-api/swagger-theme.css';
 				document.head.appendChild(style);
 				const btn = document.createElement('button');
 				btn.id = 'dark-mode-toggle'; btn.textContent = '🌙 Dark Mode';
@@ -580,7 +583,22 @@ func registerSwaggerDocs(mux *http.ServeMux) {
 					localStorage.setItem('darkMode', nowDark);
 				};
 				document.body.appendChild(btn);
-			}`,
+				const existing = document.getElementById('safecast-doc-nav');
+				if (existing) existing.remove();
+				const nav = document.createElement('div');
+				nav.id = 'safecast-doc-nav';
+				nav.style.cssText = 'position:fixed;top:8px;right:12px;z-index:9999;background:#111827;color:#fff;padding:8px 12px;border-radius:8px;font:12px/1.3 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.25);max-width:420px';
+				nav.innerHTML = 'This is the API documentation for the <strong>MCP API</strong>. &nbsp;|&nbsp; <a href="' + otherDocsURL + '" style="color:#93c5fd;text-decoration:none">Open Map API docs</a>';
+				document.body.appendChild(nav);
+			}`, mapDocsURL)
+	mux.HandleFunc("/mcp-api/favicon.ico", serveFavicon)
+	mux.HandleFunc("/mcp-api/favicon-16x16.png", serveFavicon16)
+	mux.HandleFunc("/mcp-api/favicon-32x32.png", serveFavicon32)
+	mux.HandleFunc("/mcp-api/swagger-theme.css", serveSwaggerTheme)
+	mux.Handle("/mcp-api/", httpSwagger.Handler(
+		httpSwagger.URL("/mcp-api/doc.json"),
+		httpSwagger.UIConfig(map[string]string{
+			"onComplete": mcpAPINavScript,
 		}),
 	))
 }

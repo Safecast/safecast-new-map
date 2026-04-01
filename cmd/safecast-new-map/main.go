@@ -8870,8 +8870,8 @@ func main() {
 	// This ensures the marker-worker.js file is accessible to the browser
 	// Access files from public_html root and let StripPrefix handle the path
 	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("public_html/"))))
-	http.Handle("/swagger/", httpSwagger.Handler(
-		httpSwagger.URL("/swagger/doc.json"),
+	http.Handle("/map-api/", httpSwagger.Handler(
+		httpSwagger.URL("/map-api/doc.json"),
 	))
 
 	http.HandleFunc("/home", homeHandler)

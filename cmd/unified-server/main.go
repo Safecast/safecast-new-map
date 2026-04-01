@@ -9168,22 +9168,33 @@ func main() {
 	// This ensures the marker-worker.js file is accessible to the browser
 	// Access files from public_html root and let StripPrefix handle the path
 	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("public_html/"))))
-	http.Handle("/swagger/", httpSwagger.Handler(
-		httpSwagger.URL("/swagger/doc.json"),
-		httpSwagger.InstanceName("unifiedapi"),
-		httpSwagger.UIConfig(map[string]string{
-			"onComplete": `function() {
+	mcpPortForDocs := strings.TrimSpace(os.Getenv("MCP_PORT"))
+	if mcpPortForDocs == "" {
+		mcpPortForDocs = "3333"
+	}
+	mcpBaseForDocs := strings.TrimSpace(os.Getenv("MCP_BASE_URL"))
+	if mcpBaseForDocs == "" {
+		mcpBaseForDocs = fmt.Sprintf("http://localhost:%s", mcpPortForDocs)
+	}
+	mcpDocsURL := strings.TrimRight(mcpBaseForDocs, "/") + "/mcp-api/"
+	mapAPINavScript := fmt.Sprintf(`function() {
 				document.title = 'Safecast Map API Docs';
+				const otherDocsURL = %q;
 
 				const existing = document.getElementById('safecast-doc-nav');
 				if (existing) existing.remove();
 
 				const nav = document.createElement('div');
 				nav.id = 'safecast-doc-nav';
-				nav.style.cssText = 'position:fixed;top:8px;right:12px;z-index:9999;background:#111827;color:#fff;padding:8px 12px;border-radius:8px;font:12px/1.3 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.25)';
-				nav.innerHTML = 'Viewing: <strong>Map API</strong> &nbsp;|&nbsp; <a href="/docs/" style="color:#93c5fd;text-decoration:none">Go to MCP API docs</a>';
+				nav.style.cssText = 'position:fixed;top:8px;right:12px;z-index:9999;background:#111827;color:#fff;padding:8px 12px;border-radius:8px;font:12px/1.3 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.25);max-width:420px';
+				nav.innerHTML = 'This is the API documentation for the <strong>Map API</strong>. &nbsp;|&nbsp; <a href="' + otherDocsURL + '" style="color:#93c5fd;text-decoration:none">Open MCP API docs</a>';
 				document.body.appendChild(nav);
-			}`,
+			}`, mcpDocsURL)
+	http.Handle("/map-api/", httpSwagger.Handler(
+		httpSwagger.URL("/map-api/doc.json"),
+		httpSwagger.InstanceName("unifiedapi"),
+		httpSwagger.UIConfig(map[string]string{
+			"onComplete": mapAPINavScript,
 		}),
 	))
 
