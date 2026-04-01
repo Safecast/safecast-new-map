@@ -30,17 +30,7 @@ Nginx (routes by path)
     ├─ /mcp              → MCP Server (port 3333)
     ├─ /mcp-api/         → MCP Server (port 3333) — Swagger UI
     ├─ /assistant/       → Web-chat (port 3334)
-    ├─ /api/radiation    → MCP Server (port 3333)
-    ├─ /api/area         → MCP Server (port 3333)
-    ├─ /api/sensors      → MCP Server (port 3333)
-    ├─ /api/sensor/      → MCP Server (port 3333)
-    ├─ /api/device/      → MCP Server (port 3333)
-    ├─ /api/spectra      → MCP Server (port 3333)
-    ├─ /api/stats        → MCP Server (port 3333)
-    ├─ /api/extreme      → MCP Server (port 3333)
-    ├─ /api/info/        → MCP Server (port 3333)
-    ├─ /api/gpt/         → MCP Server (port 3333)
-    ├─ /api/track/       → MCP Server (port 3333)
+    ├─ /api/* (selected MCP REST routes) → MCP Server (port 3333)
     └─ /                 → Map Server (port 8765) — everything else
                            including /api/auth/, /api/user/,
                            /api/admin/, /api/spectrum/, /api/markers/
@@ -211,7 +201,7 @@ aws cloudfront get-distribution-config --id E12FYIQ8RRXOJ1 > /tmp/cf.json
   aws cloudfront create-invalidation --distribution-id E12FYIQ8RRXOJ1 --paths "/*"
   ```
 
-- **Swagger Documentation (source of truth):** The MCP server's API docs at `/mcp-api/` are generated from Swaggo annotations in `cmd/mcp-server/rest.go` and `cmd/mcp-server/rest_*.go`:
+- **Swagger Documentation (source of truth):** The MCP server's API docs at `/mcp-api/` are generated from Swaggo annotations in `cmd/mcp-server/rest.go` and `cmd/mcp-server/rest_*.go`. The map/unified API docs at `/map-api/` are generated from annotations in `cmd/unified-server/`, `pkg/httpapi/`, and `pkg/auth/`.
   - Host: `simplemap.safecast.org`
   - Base Path: `/api`
 
