@@ -93,3 +93,7 @@ Still working?
 ---
 
 Still I can not change the width of the coloms on the http://localhost:8765/admin/uploads as I can on the http://localhost:8765/admin/realtime page.?
+
+---
+
+Worked.. Please commit and psuh the code..
