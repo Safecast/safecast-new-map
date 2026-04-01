@@ -36,6 +36,15 @@ type RegisterConfig struct {
 	AdminDeleteMultipleTracksHandler http.HandlerFunc
 	AdminImportFromSafecastHandler   http.HandlerFunc
 	AdminCacheHandler                http.HandlerFunc
+	AdminMCPDataHandler              http.HandlerFunc
+	AdminMCPExportHandler            http.HandlerFunc
+	AdminMCPDeleteHandler            http.HandlerFunc
+	AdminRealtimeDataHandler         http.HandlerFunc
+	AdminRealtimeExportHandler       http.HandlerFunc
+	AdminRealtimeDeleteHandler       http.HandlerFunc
+	AdminTranslationsReloadHandler   http.HandlerFunc
+	AdminTranslationByIDHandler      http.HandlerFunc
+	AdminTranslationsHandler         http.HandlerFunc
 
 	Logf func(string, ...any)
 }
@@ -130,6 +139,28 @@ func registerAuthAndAdminRoutes(mux *http.ServeMux, cfg RegisterConfig) {
 	registerOptional("/api/admin/delete-multiple", cfg.AdminDeleteMultipleTracksHandler)
 	registerOptional("/api/admin/import-from-safecast", cfg.AdminImportFromSafecastHandler)
 	registerOptional("/api/admin/cache", cfg.AdminCacheHandler)
+
+	registerOptionalAdmin := func(path string, handler http.HandlerFunc) {
+		if handler == nil {
+			return
+		}
+		registerOptional(path, func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminAccess(w, r, cfg.AdminPassword) {
+				return
+			}
+			handler(w, r)
+		})
+	}
+
+	registerOptionalAdmin("/api/admin/mcp/data", cfg.AdminMCPDataHandler)
+	registerOptionalAdmin("/api/admin/mcp/export", cfg.AdminMCPExportHandler)
+	registerOptionalAdmin("/api/admin/mcp/delete", cfg.AdminMCPDeleteHandler)
+	registerOptionalAdmin("/api/admin/realtime/data", cfg.AdminRealtimeDataHandler)
+	registerOptionalAdmin("/api/admin/realtime/export", cfg.AdminRealtimeExportHandler)
+	registerOptionalAdmin("/api/admin/realtime/delete", cfg.AdminRealtimeDeleteHandler)
+	registerOptionalAdmin("/api/admin/translations/reload", cfg.AdminTranslationsReloadHandler)
+	registerOptionalAdmin("/api/admin/translations/", cfg.AdminTranslationByIDHandler)
+	registerOptionalAdmin("/api/admin/translations", cfg.AdminTranslationsHandler)
 }
 
 // checkAdminAccess returns true if the request is from an admin user or carries the admin password.
