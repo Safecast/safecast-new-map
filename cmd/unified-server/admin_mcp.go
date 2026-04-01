@@ -112,8 +112,8 @@ func adminMCPDataHandler(w http.ResponseWriter, r *http.Request) {
 	var dataQuery string
 	if tableName == "chat_questions" {
 		castCols = append(castCols,
-			"COALESCE(SUM(CASE WHEN f.score > 0 THEN 1 ELSE 0 END), 0) AS thumbs_up",
-			"COALESCE(SUM(CASE WHEN f.score < 0 THEN 1 ELSE 0 END), 0) AS thumbs_down",
+			"COALESCE(f.thumbs_up, 0) AS thumbs_up",
+			"COALESCE(f.thumbs_down, 0) AS thumbs_down",
 		)
 		colList := strings.Join(castCols, ", ")
 		// Rewrite WHERE to use q. prefix for chat_questions columns
@@ -121,8 +121,16 @@ func adminMCPDataHandler(w http.ResponseWriter, r *http.Request) {
 		if whereForJoin != "" {
 			whereForJoin = strings.ReplaceAll(whereForJoin, "CAST(", "CAST(q.")
 		}
-		dataQuery = fmt.Sprintf(
-			"SELECT %s FROM chat_questions q LEFT JOIN chat_feedback f ON f.chat_id = q.id %s GROUP BY q.id ORDER BY q.%s %s LIMIT %d OFFSET %d",
+		dataQuery = fmt.Sprintf(`
+			SELECT %s
+			FROM chat_questions q
+			LEFT JOIN (
+				SELECT chat_id,
+				       SUM(CASE WHEN score > 0 THEN 1 ELSE 0 END) AS thumbs_up,
+				       SUM(CASE WHEN score < 0 THEN 1 ELSE 0 END) AS thumbs_down
+				FROM chat_feedback GROUP BY chat_id
+			) f ON f.chat_id = q.id
+			%s ORDER BY q.%s %s LIMIT %d OFFSET %d`,
 			colList, whereForJoin, sortCol, order, limit, offset)
 	} else {
 		colList := strings.Join(castCols, ", ")
