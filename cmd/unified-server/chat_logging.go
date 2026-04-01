@@ -63,7 +63,9 @@ func logChatQuestion(r *http.Request, question, source, model, sessionID string,
 
 // logChatQuestionWithAnswer inserts a complete chat_questions row including the answer.
 // DuckLake UPDATE silently corrupts large string values, so we do a single INSERT with all fields.
-func logChatQuestionWithAnswer(r *http.Request, question, source, model, sessionID string, historyLen int, clientTimestamp string, answer string) {
+// chatID must be the same value sent to the frontend as chat_id in the "done" event so that
+// feedback votes (POST /api/feedback) can be joined back to this row.
+func logChatQuestionWithAnswer(r *http.Request, question, source, model, sessionID string, historyLen int, clientTimestamp string, answer string, chatID int64) {
 	if !duckDBAvailable() {
 		return
 	}
@@ -93,7 +95,7 @@ func logChatQuestionWithAnswer(r *http.Request, question, source, model, session
 		clientTS = clientTimestamp
 	}
 
-	id := time.Now().UnixNano()
+	id := chatID
 
 	_, err := duckDB.Exec(`
 		INSERT INTO chat_questions (
