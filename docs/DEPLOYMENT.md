@@ -346,6 +346,60 @@ Rules are saved in `/etc/iptables/rules.v4` and restored automatically on reboot
 
 > **Background:** In March 2026 the BSI (via Hetzner abuse) flagged port 5432 as publicly accessible. The root cause was `listen_addresses` including the public IP. Both the config and firewall were fixed and the rules persisted.
 
+## Database Migrations
+
+### Running Migrations on Production
+
+Migration SQL files are in `migrations/`. Run them directly via SSH:
+
+```bash
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 \
+  "psql -h 127.0.0.1 -U postgres -d safecast -f -" < migrations/your_migration.sql
+```
+
+Or for inline changes:
+```bash
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 \
+  "psql -h 127.0.0.1 -U postgres -d safecast -c 'ALTER TABLE uploads ADD COLUMN IF NOT EXISTS comment VARCHAR;'"
+```
+
+### Columns Added Since Initial Import (Apr 2026)
+
+The following columns were added to the `uploads` table after the initial Safecast API import and must be migrated manually on any fresh production database:
+
+| Column | Migration file | Notes |
+|--------|---------------|-------|
+| `name` | `add_upload_metadata.sql` | Display name; back-filled from `filename` |
+| `notes` | `add_upload_metadata.sql` | Admin-only internal notes |
+| `comment` | *(inline)* | User comment from old Safecast API |
+
+After adding `name`/`comment`, back-fill from the old Safecast API (see below).
+
+### Back-filling Metadata from the Old Safecast API
+
+The admin Uploads page has an **"Import Safecast API Metadata"** button that fetches `name` and `comment` for all `safecast-api` tracks from `api.safecast.org`. For new imports this is automatic; the button is only needed as a one-time backfill for rows that existed before the columns were added.
+
+#### ⚠️ CloudFront timeout
+
+The button makes a synchronous browser request. CloudFront cuts connections after ~60 seconds, which only processes ~1,000 tracks before the request is killed. For a full backfill (~47k tracks, ~15 min), **run directly on the server via SSH** to bypass CloudFront:
+
+```bash
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 \
+  "curl -s -X POST 'http://localhost:8765/api/admin/tracks/import-safecast' \
+   -H 'Content-Type: application/json' \
+   -d '{\"password\":\"ADMIN_PASSWORD\"}' \
+   --max-time 1800"
+```
+
+Expected response: `{"ok":true,"total":46380,"updated":46380}`
+
+The admin password is in the systemd service file:
+```bash
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl cat safecast-new-map | grep admin-password"
+```
+
+**Note:** Many tracks have no comment in the old API (the uploader never wrote one) — this is normal. Only tracks where the uploader provided a description will have a non-empty `comment`.
+
 ## Related Documentation
 
 - [CloudFront Setup Guide](cloudfront-setup.md) - Initial CloudFront configuration
