@@ -183,17 +183,19 @@ func RecordFeedback(chatID int64, score int) error {
 	if score != 1 && score != -1 {
 		return fmt.Errorf("score must be +1 or -1")
 	}
-	if _, err := duckDB.Exec(
-		`UPDATE qa_embeddings SET feedback_score = feedback_score + ? WHERE chat_id = ?`,
-		score, chatID,
-	); err != nil {
-		return fmt.Errorf("update feedback: %w", err)
-	}
+	// Always record in chat_feedback — this is what the admin page reads.
 	if _, err := duckDB.Exec(
 		`INSERT INTO chat_feedback (chat_id, score) VALUES (?, ?)`,
 		chatID, score,
 	); err != nil {
-		log.Printf("chat_feedback insert error: %v", err)
+		return fmt.Errorf("chat_feedback insert: %w", err)
+	}
+	// Best-effort update of semantic cache score (may have no matching row).
+	if _, err := duckDB.Exec(
+		`UPDATE qa_embeddings SET feedback_score = feedback_score + ? WHERE chat_id = ?`,
+		score, chatID,
+	); err != nil {
+		log.Printf("qa_embeddings feedback update (non-fatal): %v", err)
 	}
 	if score > 0 {
 		go extractLocationKnowledge(chatID)
