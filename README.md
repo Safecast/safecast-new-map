@@ -190,19 +190,11 @@ Import from local file:
 ./safecast-new-map -import-tgz-file /path/to/archive.tgz
 ```
 
-### API Endpoints
+### API Documentation (Single Source of Truth)
 
-- **Track data:** `/api/track/{id}.json`
-- **Archives:** `/api/json/weekly.tgz` (also daily, monthly, yearly)
-- **Track list:** `/api/tracks`
-- **Statistics:** `/api/stats`
-- **Countries:** `/api/countries`
-- **Canonical docs (main app):** `/map-api/` (generated from Swaggo annotations)
-
-### API Documentation Routes
-
-- **Map/API app docs:** `/map-api/` (main map and app endpoints)
-- **MCP REST docs:** `/mcp-api/` (MCP REST endpoints used by AI integrations)
+- **Map/API app docs:** `/map-api/` (generated from Swaggo annotations)
+- **MCP REST docs:** `/mcp-api/` (generated from Swaggo annotations)
+- Endpoint contracts should be maintained in route annotations, not duplicated in markdown endpoint lists.
 - Both routes are served by the unified server and include cross-links in the UI.
 
 ### MCP Server & AI Integration
@@ -259,12 +251,14 @@ claude mcp add --transport http safecast https://simplemap.safecast.org/mcp-http
 Regenerate documentation after API changes:
 
 ```bash
-# Main app API docs
+# Main app API docs (canonical map docs for both binaries)
 (cd cmd/unified-server && swag init -g doc.go -o docs/api --parseDependency --parseInternal --parseDependencyLevel 2 --instanceName unifiedapi)
 
 # MCP server API docs
 cd cmd/mcp-server && swag init -g rest.go
 ```
+
+CI verifies generated output is committed for `cmd/unified-server/docs/api` and `cmd/mcp-server/docs`.
 
 ---
 
