@@ -3,6 +3,9 @@
 The Safecast AI assistant uses a lightweight Retrieval-Augmented Generation (RAG) system
 with a semantic cache layer built entirely in Go — no external embedding API required.
 
+> **Mermaid diagram:** [rag-semantic-cache.mmd](rag-semantic-cache.mmd)
+> Render with any Mermaid-compatible viewer (VS Code extension, GitHub, mermaid.live).
+
 ## Architecture Diagram
 
 ```
