@@ -197,12 +197,12 @@ Import from local file:
 - **Track list:** `/api/tracks`
 - **Statistics:** `/api/stats`
 - **Countries:** `/api/countries`
-- **Canonical docs (main app):** `/swagger/` (generated from Swaggo annotations)
+- **Canonical docs (main app):** `/map-api/` (generated from Swaggo annotations)
 
 ### API Documentation Routes
 
-- **Map/API app docs:** `/swagger/` (main map and app endpoints)
-- **MCP REST docs:** `/docs/` (MCP REST endpoints used by AI integrations)
+- **Map/API app docs:** `/map-api/` (main map and app endpoints)
+- **MCP REST docs:** `/mcp-api/` (MCP REST endpoints used by AI integrations)
 - Both routes are served by the unified server and include cross-links in the UI.
 
 ### MCP Server & AI Integration
@@ -214,7 +214,7 @@ The unified server includes an MCP (Model Context Protocol) server with a Claude
 | Unified Server (Map + MCP) | `cmd/unified-server/` | 8765 | `/`, `/mcp-http`, `/assistant/` |
 | MCP Server                 | `cmd/unified-server/` | 8765 | `/mcp-http`, `/mcp/sse`         |
 | Web Chat                   | `cmd/unified-server/` | 8765 | `/assistant/`                   |
-| REST API + Swagger         | `cmd/unified-server/` | 8765 | `/api/`, `/docs/`               |
+| REST API + Swagger         | `cmd/unified-server/` | 8765 | `/api/`, `/map-api/`            |
 
 **Build:**
 ```bash
@@ -254,7 +254,7 @@ claude mcp add --transport http safecast https://simplemap.safecast.org/mcp-http
 
 **Web Chat:** Open `http://localhost:8765/assistant/` in your browser.
 
-**Swagger API docs:** [simplemap.safecast.org/docs/](https://simplemap.safecast.org/docs/)
+**Swagger API docs:** [simplemap.safecast.org/map-api/](https://simplemap.safecast.org/map-api/)
 
 Regenerate documentation after API changes:
 
