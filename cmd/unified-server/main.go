@@ -10078,8 +10078,6 @@ func main() {
 		}))
 
 		// MCP analytics API endpoints
-		http.HandleFunc("/api/feedback", feedbackHandler)
-
 		http.HandleFunc("/api/admin/mcp/data", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
 			if !checkAdminAccess(w, r) {
 				return

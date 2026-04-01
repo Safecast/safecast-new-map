@@ -393,32 +393,6 @@ var mcpTableKeyColumn = map[string]string{
 	"mcp_ai_query_log": "timestamp",
 }
 
-// feedbackHandler stores a thumbs up/down rating for a chat message.
-// POST /api/feedback {"chat_id": <int>, "score": 1|-1}
-func feedbackHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	var body struct {
-		ChatID int `json:"chat_id"`
-		Score  int `json:"score"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.ChatID == 0 || (body.Score != 1 && body.Score != -1) {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
-		return
-	}
-	if duckDBAvailable() {
-		if _, err := duckDB.Exec(
-			"INSERT INTO chat_feedback (chat_id, score) VALUES (?, ?)",
-			body.ChatID, body.Score,
-		); err != nil {
-			log.Printf("feedback insert error: %v", err)
-		}
-	}
-	w.WriteHeader(http.StatusNoContent)
-}
-
 func escapeLike(s string) string {
 	s = strings.ReplaceAll(s, "'", "''")
 	s = strings.ReplaceAll(s, "%", "")
