@@ -124,3 +124,7 @@ Still it can not find the spikes?
 
 That works now. On the chat on the map no icons? 
 The assist page has the rag feedback icons, but the chat windo on the map not. Can you fix that?
+
+---
+
+Seems still erros on Codeberg?
