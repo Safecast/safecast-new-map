@@ -292,7 +292,7 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 				if isCloudFront {
 					flushBuffer(w, buffer)
 				}
-				logChatQuestionWithAnswer(chatReqRef, chatQuestion, chatSource, chatModel, "", chatHistory, chatClientTS, cachedAnswer)
+				logChatQuestionWithAnswer(chatReqRef, chatQuestion, chatSource, chatModel, "", chatHistory, chatClientTS, cachedAnswer, embeddingChatID)
 				return
 			}
 		}
@@ -413,7 +413,7 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 		}
 
 		finalAnswer := strings.TrimSpace(answerText.String())
-		logChatQuestionWithAnswer(chatReqRef, chatQuestion, chatSource, chatModel, "", chatHistory, chatClientTS, finalAnswer)
+		logChatQuestionWithAnswer(chatReqRef, chatQuestion, chatSource, chatModel, "", chatHistory, chatClientTS, finalAnswer, embeddingChatID)
 
 		// 3. Async: store Q&A + embedding in semantic cache for future lookups.
 		if len(embedding) > 0 && finalAnswer != "" {
