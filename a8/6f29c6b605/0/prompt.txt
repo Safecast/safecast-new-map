@@ -1,0 +1,95 @@
+2026/04/01 10:56:38 [safecast-fetcher] normal mode: stopped after 5 pages
+2026/04/01 10:56:38 [safecast-fetcher] poll: found 0 new approved imports
+2026/04/01 10:56:43 realtime fetch: devices 1570
+2026/04/01 10:56:43 realtime sample: id=geigiecast:61099 name="" lat=22.318070 lon=114.157710 val=53.000000 unit=lnd_7318u
+2026/04/01 10:56:44 realtime poll: devices 128 stored 361 next=5m0s
+2026/04/01 10:56:44 realtime summary: ??:1 avg=0.09 Canada (CA):3 avg=0.07 Georgia (GE):1 avg=0.09 Germany (DE):1 avg=0.10 Italy (IT):1 avg=0.10 Japan (JP):30 avg=0.20 Peru (PE):3 avg=0.09 Switzerland (CH):1 avg=0.12 Taiwan (TW):2 avg=0.12 Ukraine (UA):65 avg=0.18 United States of America (US):20 avg=0.11 added=128 removed=0
+2026/04/01 10:57:22 ❌ track registry backfill failed: backfill tracks: timeout: context deadline exceeded
+
+---
+
+Needs a rebuild?
+
+---
+
+Is tis corrcet?
+
+---
+
+I forgot how to pull the track from https://api.safecast.org/en-US/bgeigie_imports/32558 with comment dat into the uploads?
+
+---
+
+both options
+
+---
+
+rob@rob-GS66-Stealth-10UG:~$ curl -X POST "http://localhost:8765/api/admin/import-by-id?password=test123" \
+  -H "Content-Type: application/json" \
+  -d '{"id": 32558}'
+Unauthorized
+rob@rob-GS66-Stealth-10UG:~$
+
+---
+
+rob@rob-GS66-Stealth-10UG:~$ curl -X POST "http://localhost:8765/api/admin/import-by-id?password=admin123"   -H "Content-Type: application/json"   -d '{"id": 32558}'
+import failed: import failed: record upload: ERROR: column "comment" of relation "uploads" does not exist (SQLSTATE 42703)
+rob@rob-GS66-Stealth-10UG:~$
+
+---
+
+Ido not see the comment?
+
+---
+
+can we add the comment to the table coloms too
+
+---
+
+Nice.. How to pull the comment data from the other uploads?
+
+---
+
+rob@rob-GS66-Stealth-10UG:~$ curl -s -X POST "http://localhost:8765/api/admin/tracks/import-safecast?password=admin123" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+unauthorized
+rob@rob-GS66-Stealth-10UG:~$
+
+---
+
+Seems to run.. I can imagine it can take a while?
+
+---
+
+Yes.. Can we resume if it stops?
+
+---
+
+Need to new comment?
+
+---
+
+While this is going I like to fix the icons for the rag feedback. Currently it seems we lost them
+
+---
+
+That is on the asssiant page , I assume you could figure that out..
+
+---
+
+Seems all the metadat is ther!!! Can we make the global search also for the meta field?
+
+---
+
+I though we use Postgres? Not SQLite?
+
+---
+
+Great!!
+But I noticed that tbale in the uploads is not (like other tables) with variable colomn width. Can you fix that?
+Still working?
+
+---
+
+Still I can not change the width of the coloms on the http://localhost:8765/admin/uploads as I can on the http://localhost:8765/admin/realtime page.?
