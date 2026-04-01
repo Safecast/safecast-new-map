@@ -699,11 +699,10 @@ body, html {
           transform: translateY(-1px);
         }
 
-        /* Dedicated download container lives under the back button so
-           track view controls remain grouped for quick access. */
+        /* Dedicated download container, shown only in track view. */
         .download-track-container {
           position: absolute;
-          top: 225px; /* keep consistent spacing below the back button */
+          top: 185px; /* moved up since back button is now in the slider */
           right: 20px;
           z-index: 1000;
           display: none;
@@ -822,6 +821,23 @@ body, html {
           color: var(--modal-text);
         }
         .slider-reset-btn:hover{ background: var(--control-bg-hover); }
+
+        /* Compact back button at top of slider, only visible in track view */
+        .slider-back-btn{
+          display:none; /* shown only in track view */
+          width:100%;
+          margin-bottom:4px;
+          padding:3px 4px;
+          font-size:14px;
+          line-height:1;
+          border:none;
+          background:#e65100;
+          border-radius:3px;
+          cursor:pointer;
+          color:#ffffff;
+          text-align:center;
+        }
+        .slider-back-btn:hover{ background:#bf360c; }
 
         .loading-overlay{
           position:absolute;
@@ -4005,9 +4021,7 @@ document.addEventListener('DOMContentLoaded', function () {
   if (match) {
     currentTrackID = match[1];
     isTrackView = true;
-    // NEW: show back button immediately
-    var backBox = document.querySelector('.back-to-all-container');
-    if (backBox) backBox.style.display = 'block';
+    sessionStorage.removeItem('dateRangeState'); // clear stale filter from previous session
 
     // Fetch bounds for single track
     fetch('/api/tracks/bounds?trackIDs=' + encodeURIComponent(currentTrackID))
@@ -4036,8 +4050,7 @@ document.addEventListener('DOMContentLoaded', function () {
     currentTrackIDs = trackIDsParam.split(',').map(function(id) { return id.trim(); }).filter(function(id) { return id.length > 0; });
     if (currentTrackIDs.length > 0) {
       isTrackView = true;
-      var backBox = document.querySelector('.back-to-all-container');
-      if (backBox) backBox.style.display = 'block';
+      sessionStorage.removeItem('dateRangeState'); // clear stale filter from previous session
 
       // Fetch combined bounds for all tracks
       fetch('/api/tracks/bounds?trackIDs=' + encodeURIComponent(currentTrackIDs.join(',')))
@@ -4415,8 +4428,6 @@ document.addEventListener('DOMContentLoaded', function () {
  */
 function createDateRangeSlider(){
 
-  if (isTrackView) return;   // no date control in single-track mode
-
   let sliderBox, yearSlider, monthSlider;
   let mode  = 'year';                // 'year' | 'month'
   let initY = false, initM = false;  // lazy init flags
@@ -4431,6 +4442,7 @@ function createDateRangeSlider(){
       sliderBox = L.DomUtil.create('div','leaflet-control-layers date-slider-box');
       sliderBox.style.display = 'none'; // hidden until needed
       sliderBox.innerHTML = `
+        <button id="btnBack" class="slider-back-btn" title="${translate('back_to_all_tracks')}">&#8592;</button>
         <div class="slider-toggle">
           <button id="btnYear"  class="active">Y</button>
           <button id="btnMonth">M</button>
@@ -4457,11 +4469,21 @@ function createDateRangeSlider(){
   const btnY = sliderBox.querySelector('#btnYear');
   const btnM = sliderBox.querySelector('#btnMonth');
   const btnReset = sliderBox.querySelector('#btnReset');
+  const btnBack = sliderBox.querySelector('#btnBack');
   const lblMin = () => sliderBox.querySelector('#lblMin');
   const lblMax = () => sliderBox.querySelector('#lblMax');
 
   btnY.onclick = () => switchMode('year');
   btnM.onclick = () => switchMode('month');
+
+  // Show back button only in track view
+  if (isTrackView && btnBack) {
+    btnBack.style.display = 'block';
+    btnBack.onclick = () => {
+      var params = (typeof getCurrentUrlParams === 'function') ? getCurrentUrlParams() : '';
+      window.location.href = '/' + params;
+    };
+  }
 
   // Show/hide the whole control (called from updateMarkers())
   window.__setDateSliderVisibility = (show)=>{
@@ -5012,9 +5034,8 @@ function updateMarkers(){
   if (!homeOverlayDismissed && !isTrackView && shouldShowHomeOverlay()) {
     return;
   }
-  
+
   const loadingEl = document.getElementById('loadingOverlay');
-  if (loadingEl) loadingEl.style.display='block';
 
   if (markerStreamSource) markerStreamSource.close();
   if (window.markerStreamSources) {
@@ -5068,14 +5089,17 @@ function updateMarkers(){
     // Viewport and filters unchanged in global view - skip full redraw
     return;
   }
-  
+
   // In track view, only reload if filters changed or this is the first load
   // We load ALL markers at once, so viewport changes don't require reloading
   if ((currentTrackID || currentTrackIDs) && !filterChanged && Object.keys(circleMarkers).length > 0) {
     // Track view: markers already loaded and filters unchanged - skip reload
     return;
   }
-  
+
+  // Show spinner only when we are actually going to fetch data
+  if (loadingEl) loadingEl.style.display='block';
+
   lastViewportKey = newViewportKey;
   lastFilterState = newFilterState;  // Track filter state to detect future changes
 
@@ -5486,8 +5510,7 @@ function renderCachedMarker(m, tracks, minTs, maxTs, savedRange, zoom) {
   const isLive = m.speed < 0;
   if (!isLive && m.trackID) tracks.add(m.trackID);
 
-  // In single-track view, show all markers regardless of date filter
-  if (!isTrackView && savedRange && (m.date < savedRange[0] || m.date > savedRange[1])) return;
+  if (savedRange && (m.date < savedRange[0] || m.date > savedRange[1])) return;
 
   // Show spectrum markers independently from speed filter if spectrum toggle is on
   if (m.hasSpectrum) {
@@ -5562,7 +5585,9 @@ function setupMarkerStream(es, tracks, minTs, maxTs, savedRange, tileIndex, cach
     if (onDone) onDone();
     const dateSpanMonths = (isFinite(minTs) && isFinite(maxTs))
                             ? monthsApart(minTs, maxTs) : 0;
-    const needSlider = !isTrackView && tracks.size > 1 && dateSpanMonths > 1;
+    const needSlider = isTrackView
+      ? (isFinite(minTs) && isFinite(maxTs))
+      : (tracks.size > 1 && dateSpanMonths > 1);
     if (window.__setDateSliderVisibility){
       window.__setDateSliderVisibility(needSlider);
     }
@@ -5618,8 +5643,7 @@ function setupMarkerStream(es, tracks, minTs, maxTs, savedRange, tileIndex, cach
       markerBounds.maxLon = Math.max(markerBounds.maxLon, m.lon);
       markerBounds.hasData = true;
     }
-    // In single-track view, show all markers regardless of date filter
-    if (!isTrackView && savedRange && (m.date < savedRange[0] || m.date > savedRange[1])) return;
+    if (savedRange && (m.date < savedRange[0] || m.date > savedRange[1])) return;
 
     // Show spectrum markers independently from speed filter if spectrum toggle is on
     if (m.hasSpectrum) {

@@ -11,7 +11,7 @@ permissions:
 # ---------- PORTABLE: Unified server without CGO (no DuckDB analytics) ----------
 jobs:
   build_portable:
-    if: contains(toJson(github.event.head_commit.message), 'stable release') || github.event_name == 'workflow_dispatch'
+    if: github.server_url == 'https://github.com' && (contains(toJson(github.event.head_commit.message), 'stable release') || github.event_name == 'workflow_dispatch')
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -96,7 +96,7 @@ jobs:
 
 # ---------- DUCKDB: Unified server with DuckDB analytics (Linux/amd64 + macOS) ----------
   build_duckdb:
-    if: contains(toJson(github.event.head_commit.message), 'stable release') || github.event_name == 'workflow_dispatch'
+    if: github.server_url == 'https://github.com' && (contains(toJson(github.event.head_commit.message), 'stable release') || github.event_name == 'workflow_dispatch')
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -175,6 +175,7 @@ jobs:
           path: dist/
 
   release:
+    if: github.server_url == 'https://github.com'
     needs: [build_portable, build_duckdb]
     runs-on: ubuntu-24.04
     steps:
