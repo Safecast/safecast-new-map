@@ -276,7 +276,7 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 		var answerText strings.Builder
 
 		// Assign a stable ID for this exchange (used by both chat_questions and qa_embeddings).
-		embeddingChatID := time.Now().UnixNano()
+		embeddingChatID := time.Now().UnixMilli() // UnixNano exceeds JS MAX_SAFE_INTEGER
 
 		// --- Semantic cache + RAG layer (requires OPENAI_API_KEY) ---
 		embedding, embErr := getEmbedding(ctx, chatReq.Message)
