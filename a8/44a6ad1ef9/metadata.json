@@ -1,0 +1,25 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "a844a6ad1ef9",
+  "strategy": "manual-commit",
+  "branch": "feat/import-metadata-btn-on-uploads-page",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "cmd/unified-server/main.go"
+  ],
+  "sessions": [
+    {
+      "metadata": "/a8/44a6ad1ef9/0/metadata.json",
+      "transcript": "/a8/44a6ad1ef9/0/full.jsonl",
+      "content_hash": "/a8/44a6ad1ef9/0/content_hash.txt",
+      "prompt": "/a8/44a6ad1ef9/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 457,
+    "cache_creation_tokens": 330251,
+    "cache_read_tokens": 28151217,
+    "output_tokens": 76220,
+    "api_call_count": 337
+  }
+}
