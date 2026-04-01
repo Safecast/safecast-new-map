@@ -1,0 +1,36 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "fae07d745ca5",
+  "strategy": "manual-commit",
+  "branch": "feat/rag-semantic-cache",
+  "checkpoints_count": 19,
+  "files_touched": [
+    ".claude/settings.json",
+    "cmd/unified-server/duckdb_analytics.go",
+    "cmd/unified-server/main.go",
+    "cmd/unified-server/mcp_register.go",
+    "cmd/unified-server/static/index.html",
+    "cmd/unified-server/tool_get_track.go",
+    "local-server-config.sh",
+    "mcp-server",
+    "migrations/add_upload_metadata.sql",
+    "migrations/fix_markers_sequence.sql",
+    "pkg/database/uploads.go",
+    "pkg/httpapi/register.go"
+  ],
+  "sessions": [
+    {
+      "metadata": "/fa/e07d745ca5/0/metadata.json",
+      "transcript": "/fa/e07d745ca5/0/full.jsonl",
+      "content_hash": "/fa/e07d745ca5/0/content_hash.txt",
+      "prompt": "/fa/e07d745ca5/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 233,
+    "cache_creation_tokens": 287031,
+    "cache_read_tokens": 17131224,
+    "output_tokens": 107742,
+    "api_call_count": 183
+  }
+}
