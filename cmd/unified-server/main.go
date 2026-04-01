@@ -5401,7 +5401,9 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		<div class="nav-left">
 			<button class="view-selected-btn" id="viewSelectedBtn" onclick="viewSelected()" disabled>View Selected on Map</button>
 			<button class="delete-selected-btn" id="deleteSelectedBtn" onclick="deleteSelected()" disabled>Delete Selected</button>
+			<button class="import-btn" onclick="importSafecastMeta()" id="importSafecastBtn" style="margin-left:10px;">Import Safecast API Metadata</button>
 		</div>
+		<div id="importMetaStatus" style="font-size:0.85em;color:var(--text-secondary);margin-top:4px;"></div>
 	</div>
 	<div class="import-form">
 		<h3>Import from Safecast API</h3>
@@ -6019,6 +6021,37 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 
 		function closeEditUpload() {
 			document.getElementById('editUploadModal').classList.remove('open');
+		}
+
+		function importSafecastMeta() {
+			if (!confirm('Fetch track names and comments from the old Safecast API for all imported tracks? This may take a minute.')) return;
+			const password = new URLSearchParams(window.location.search).get('password');
+			const btn = document.getElementById('importSafecastBtn');
+			const status = document.getElementById('importMetaStatus');
+			btn.disabled = true;
+			btn.textContent = 'Importing…';
+			status.textContent = 'Fetching metadata from api.safecast.org…';
+			fetch('/api/admin/tracks/import-safecast', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ password })
+			})
+			.then(r => r.json())
+			.then(data => {
+				btn.disabled = false;
+				btn.textContent = 'Import Safecast API Metadata';
+				if (data.ok) {
+					status.textContent = 'Done: ' + data.updated + ' track(s) updated.';
+					setTimeout(() => window.location.reload(), 1500);
+				} else {
+					status.textContent = 'Error: ' + (data.error || 'unknown');
+				}
+			})
+			.catch(err => {
+				btn.disabled = false;
+				btn.textContent = 'Import Safecast API Metadata';
+				status.textContent = 'Error: ' + err;
+			});
 		}
 
 		async function saveEditUpload() {
