@@ -24,6 +24,8 @@ type Upload struct {
 	Username       string `json:"username,omitempty"`       // Username from source (fetched from API)
 	InternalUserID string `json:"internalUserID,omitempty"` // Internal user ID from users table (for authenticated uploads)
 	Detector       string `json:"detector,omitempty"`       // Detector info from track_statistics
+	Name           string `json:"name,omitempty"`           // Display name (admin-editable)
+	Notes          string `json:"notes,omitempty"`          // Admin notes
 }
 
 // InsertUpload records a file upload in the uploads table.
@@ -153,7 +155,8 @@ func (db *Database) GetUploadsPaginated(ctx context.Context, limit int, offset i
 		       COALESCE(EXTRACT(EPOCH FROM u.recording_date)::BIGINT, 0) as recording_date,
 		       u.source, u.source_id, u.source_url, u.user_id, u.username,
 		       COALESCE(u.detector, '') as detector, u.internal_user_id,
-		       usr.username as internal_username, usr.email as internal_email
+		       usr.username as internal_username, usr.email as internal_email,
+		       COALESCE(u.name, '') as name, COALESCE(u.notes, '') as notes
 		FROM uploads u
 		LEFT JOIN users usr ON u.internal_user_id = usr.id::text`
 	} else {
@@ -162,7 +165,8 @@ func (db *Database) GetUploadsPaginated(ctx context.Context, limit int, offset i
 		       COALESCE(u.recording_date, 0) as recording_date,
 		       u.source, u.source_id, u.source_url, u.user_id, u.username,
 		       COALESCE(u.detector, '') as detector, u.internal_user_id,
-		       usr.username as internal_username, usr.email as internal_email
+		       usr.username as internal_username, usr.email as internal_email,
+		       COALESCE(u.name, '') as name, COALESCE(u.notes, '') as notes
 		FROM uploads u
 		LEFT JOIN users usr ON u.internal_user_id = CAST(usr.id AS TEXT)`
 	}
@@ -217,11 +221,12 @@ func (db *Database) GetUploadsPaginated(ctx context.Context, limit int, offset i
 	for rows.Next() {
 		var u Upload
 		var source, sourceID, sourceURL, userID, username, detector, internalUserID, internalUsername, internalEmail *string
+		var name, notes *string
 		err := rows.Scan(
 			&u.ID, &u.Filename, &u.FileType, &u.TrackID,
 			&u.FileSize, &u.UploadIP, &u.CreatedAt, &u.RecordingDate,
 			&source, &sourceID, &sourceURL, &userID, &username, &detector, &internalUserID,
-			&internalUsername, &internalEmail,
+			&internalUsername, &internalEmail, &name, &notes,
 		)
 		if err != nil {
 			continue
@@ -250,6 +255,12 @@ func (db *Database) GetUploadsPaginated(ctx context.Context, limit int, offset i
 		// If we have an internal user, prefer their username over the external one
 		if internalUsername != nil && *internalUsername != "" {
 			u.Username = *internalUsername
+		}
+		if name != nil {
+			u.Name = *name
+		}
+		if notes != nil {
+			u.Notes = *notes
 		}
 		uploads = append(uploads, u)
 	}

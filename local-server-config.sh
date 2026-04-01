@@ -3,6 +3,10 @@
 # Based on production settings from simplemap.safecast.org
 # Adapted for local development on localhost:8765
 
+# ANTHROPIC_API_KEY can be set in the environment or hardcoded here for local dev
+: "${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY must be set}"
+export ANTHROPIC_API_KEY
+
 ./safecast-new-map \
   -port 8765 \
   -safecast-fetcher \
