@@ -12,6 +12,21 @@ import (
 
 // adminMCPDataHandler returns JSON data for MCP analytics tables.
 // GET /api/admin/mcp/data?table=chat_questions&limit=50&offset=0&sort=timestamp&order=desc&search=...
+//
+// @Summary     Admin MCP analytics data
+// @Description Returns paginated MCP analytics rows for a selected table. For table=mcp_query_log, the columns are tool_name, created_at, duration_ms, result_count, client_info, and params.
+// @Tags        admin
+// @Produce     json
+// @Param       table query string true "Analytics table name" Enums(chat_questions,mcp_query_log,mcp_ai_query_log)
+// @Param       limit query int false "Page size"
+// @Param       offset query int false "Offset"
+// @Param       sort query string false "Sort column (for mcp_query_log, default is created_at)"
+// @Param       order query string false "Sort order: asc or desc"
+// @Param       search query string false "Search term"
+// @Success     200 {object} map[string]interface{} "Analytics rows"
+// @Failure     400 {string} string "Invalid table"
+// @Failure     503 {string} string "Analytics unavailable"
+// @Router      /api/admin/mcp/data [get]
 func adminMCPDataHandler(w http.ResponseWriter, r *http.Request) {
 	if !duckDBAvailable() {
 		http.Error(w, "Analytics not available", http.StatusServiceUnavailable)
@@ -138,6 +153,17 @@ func adminMCPDataHandler(w http.ResponseWriter, r *http.Request) {
 
 // adminMCPExportHandler exports MCP analytics data as CSV.
 // GET /api/admin/mcp/export?table=chat_questions&search=...
+//
+// @Summary     Admin MCP analytics export
+// @Description Exports MCP analytics rows as CSV for a selected table. For table=mcp_query_log, rows are ordered by created_at descending.
+// @Tags        admin
+// @Produce     text/csv
+// @Param       table query string true "Analytics table name" Enums(chat_questions,mcp_query_log,mcp_ai_query_log)
+// @Param       search query string false "Search term"
+// @Success     200 {file} file "CSV export"
+// @Failure     400 {string} string "Invalid table"
+// @Failure     503 {string} string "Analytics unavailable"
+// @Router      /api/admin/mcp/export [get]
 func adminMCPExportHandler(w http.ResponseWriter, r *http.Request) {
 	if !duckDBAvailable() {
 		http.Error(w, "Analytics not available", http.StatusServiceUnavailable)
@@ -251,6 +277,20 @@ func isValidColumn(col string, validCols []string) bool {
 // adminMCPDeleteHandler deletes rows from MCP analytics tables.
 // DELETE /api/admin/mcp/delete?table=chat_questions&ids=123,456,789
 // DELETE /api/admin/mcp/delete?table=chat_questions&all=true&search=...
+//
+// @Summary     Admin MCP analytics delete
+// @Description Deletes selected or filtered MCP analytics rows. For table=mcp_query_log, ids map to created_at values.
+// @Tags        admin
+// @Produce     json
+// @Param       table query string true "Analytics table name" Enums(chat_questions,mcp_query_log,mcp_ai_query_log)
+// @Param       ids query string false "Comma-separated row IDs"
+// @Param       all query boolean false "Delete all filtered rows"
+// @Param       search query string false "Search term when all=true"
+// @Success     200 {object} map[string]interface{} "Delete result"
+// @Failure     400 {string} string "Invalid request"
+// @Failure     503 {string} string "Analytics unavailable"
+// @Router      /api/admin/mcp/delete [delete]
+// @Router      /api/admin/mcp/delete [post]
 func adminMCPDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete && r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)

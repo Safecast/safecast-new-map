@@ -190,13 +190,12 @@ Import from local file:
 ./safecast-new-map -import-tgz-file /path/to/archive.tgz
 ```
 
-### API Endpoints
+### API Documentation (Single Source of Truth)
 
-- **Track data:** `/api/track/{id}.json`
-- **Archives:** `/api/json/weekly.tgz` (also daily, monthly, yearly)
-- **Track list:** `/api/tracks`
-- **Statistics:** `/api/stats`
-- **Countries:** `/api/countries`
+- **Map/API app docs:** `/map-api/` (generated from Swaggo annotations)
+- **MCP REST docs:** `/mcp-api/` (generated from Swaggo annotations)
+- Endpoint contracts should be maintained in route annotations, not duplicated in markdown endpoint lists.
+- Both routes are served by the unified server and include cross-links in the UI.
 
 ### MCP Server & AI Integration
 
@@ -207,7 +206,7 @@ The unified server includes an MCP (Model Context Protocol) server with a Claude
 | Unified Server (Map + MCP) | `cmd/unified-server/` | 8765 | `/`, `/mcp-http`, `/assistant/` |
 | MCP Server                 | `cmd/unified-server/` | 8765 | `/mcp-http`, `/mcp/sse`         |
 | Web Chat                   | `cmd/unified-server/` | 8765 | `/assistant/`                   |
-| REST API + Swagger         | `cmd/unified-server/` | 8765 | `/api/`, `/docs/`               |
+| REST API + Swagger         | `cmd/unified-server/` | 8765 | `/api/`, `/map-api/`            |
 
 **Build:**
 ```bash
@@ -247,7 +246,19 @@ claude mcp add --transport http safecast https://simplemap.safecast.org/mcp-http
 
 **Web Chat:** Open `http://localhost:8765/assistant/` in your browser.
 
-**Swagger API docs:** [simplemap.safecast.org/docs/](https://simplemap.safecast.org/docs/)
+**Swagger API docs:** [simplemap.safecast.org/map-api/](https://simplemap.safecast.org/map-api/)
+
+Regenerate documentation after API changes:
+
+```bash
+# Main app API docs (canonical map docs for both binaries)
+(cd cmd/unified-server && swag init -g doc.go -o docs/api --parseDependency --parseInternal --parseDependencyLevel 2 --instanceName unifiedapi)
+
+# MCP server API docs
+cd cmd/mcp-server && swag init -g rest.go
+```
+
+CI verifies generated output is committed for `cmd/unified-server/docs/api` and `cmd/mcp-server/docs`.
 
 ---
 

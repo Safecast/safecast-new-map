@@ -84,7 +84,7 @@ func (h *RESTHandler) handleTracks(w http.ResponseWriter, r *http.Request) {
 // handleTrack handles GET /api/track/{id}
 //
 // @Summary     Get all measurements from a specific track
-// @Description Retrieves radiation measurements recorded during a specific bGeigie drive. Use GET /api/tracks to find track IDs first.
+// @Description Retrieves radiation measurements recorded during a specific bGeigie drive. The path ID can be used directly from a simplemap track URL (for example /trackid/{id}). This REST endpoint returns measurement rows; statistical-only summaries (min/max/percentiles/top peaks) are available via the MCP get_track tool with stats_only=true.
 // @Tags        historical
 // @Produce     json
 // @Param       id    path    string  true  "Track identifier (e.g. 8eh5m1)"

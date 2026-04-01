@@ -25,6 +25,19 @@ const latestPerDeviceCTE = `WITH latest AS (
 
 // adminRealtimeDataHandler returns JSON data for the latest reading per device.
 // GET /api/admin/realtime/data?limit=50&offset=0&sort=fetched_at&order=desc&search=...
+//
+// @Summary     Admin realtime device data
+// @Description Returns paginated latest realtime device readings.
+// @Tags        admin
+// @Produce     json
+// @Param       limit query int false "Page size"
+// @Param       offset query int false "Offset"
+// @Param       sort query string false "Sort column"
+// @Param       order query string false "Sort order: asc or desc"
+// @Param       search query string false "Search term"
+// @Success     200 {object} map[string]interface{} "Realtime rows"
+// @Failure     503 {string} string "Database unavailable"
+// @Router      /api/admin/realtime/data [get]
 func adminRealtimeDataHandler(w http.ResponseWriter, r *http.Request) {
 	if db == nil {
 		http.Error(w, "Database not available", http.StatusServiceUnavailable)
@@ -114,6 +127,15 @@ func adminRealtimeDataHandler(w http.ResponseWriter, r *http.Request) {
 
 // adminRealtimeExportHandler exports the latest reading per device as CSV.
 // GET /api/admin/realtime/export?search=...
+//
+// @Summary     Admin realtime export
+// @Description Exports latest realtime device readings as CSV.
+// @Tags        admin
+// @Produce     text/csv
+// @Param       search query string false "Search term"
+// @Success     200 {file} file "CSV export"
+// @Failure     503 {string} string "Database unavailable"
+// @Router      /api/admin/realtime/export [get]
 func adminRealtimeExportHandler(w http.ResponseWriter, r *http.Request) {
 	if db == nil {
 		http.Error(w, "Database not available", http.StatusServiceUnavailable)
@@ -168,6 +190,19 @@ func adminRealtimeExportHandler(w http.ResponseWriter, r *http.Request) {
 // adminRealtimeDeleteHandler deletes rows from realtime_measurements.
 // DELETE /api/admin/realtime/delete?ids=123,456,789
 // DELETE /api/admin/realtime/delete?all=true&search=...
+//
+// @Summary     Admin realtime delete
+// @Description Deletes selected or filtered realtime measurements.
+// @Tags        admin
+// @Produce     json
+// @Param       ids query string false "Comma-separated row IDs"
+// @Param       all query boolean false "Delete all filtered rows"
+// @Param       search query string false "Search term when all=true"
+// @Success     200 {object} map[string]interface{} "Delete result"
+// @Failure     400 {string} string "Invalid request"
+// @Failure     503 {string} string "Database unavailable"
+// @Router      /api/admin/realtime/delete [delete]
+// @Router      /api/admin/realtime/delete [post]
 func adminRealtimeDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete && r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)

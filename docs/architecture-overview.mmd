@@ -15,7 +15,7 @@ flowchart TB
   end
  subgraph MCP["MCP Server — cmd/mcp-server (port 3333)"]
         MCPTools["16 MCP Tools\n(radiation, sensors, tracks, spectra)"]
-        REST_MCP["REST API + Swagger\n/api/radiation /api/sensors /docs/"]
+        REST_MCP["REST API + Swagger\n/api/radiation /api/sensors /mcp-api/"]
         DuckLake["DuckLake\n(analytics: PG catalog + Parquet)"]
   end
  subgraph MapServer["Map Server — safecast-new-map.go (port 8765)"]

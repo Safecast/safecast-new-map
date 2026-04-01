@@ -13,6 +13,676 @@ info:
   title: Safecast Map API
   version: "1.0"
 paths:
+  /api/admin/backfill:
+    post:
+      description: Backfills upload records from existing spectra entries.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Backfill result
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin backfill uploads from spectra
+      tags:
+      - admin
+  /api/admin/backfill-countries:
+    post:
+      description: Starts background country backfill for markers with coordinates.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Backfill status
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin backfill marker countries
+      tags:
+      - admin
+  /api/admin/cache:
+    post:
+      description: Performs cache operations such as clear/stats via action query
+        parameter.
+      parameters:
+      - description: Cache action (e.g. clear, stats)
+        in: query
+        name: action
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Cache operation result
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+      summary: Admin cache operations
+      tags:
+      - admin
+  /api/admin/delete:
+    post:
+      consumes:
+      - application/json
+      description: Deletes a track and associated marker data.
+      parameters:
+      - description: Delete request payload
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Delete result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin delete single track
+      tags:
+      - admin
+  /api/admin/delete-multiple:
+    post:
+      consumes:
+      - application/json
+      description: Deletes multiple tracks in one request.
+      parameters:
+      - description: Bulk delete request payload
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Delete result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin delete multiple tracks
+      tags:
+      - admin
+  /api/admin/import-from-safecast:
+    post:
+      consumes:
+      - application/json
+      description: Triggers a date-ranged Safecast import and streams progress updates.
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: Streaming progress
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin import from Safecast API
+      tags:
+      - admin
+  /api/admin/mcp/data:
+    get:
+      description: Returns paginated MCP analytics rows for a selected table.
+      parameters:
+      - description: Analytics table name
+        in: query
+        name: table
+        required: true
+        type: string
+      - description: Page size
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      - description: Sort column
+        in: query
+        name: sort
+        type: string
+      - description: 'Sort order: asc or desc'
+        in: query
+        name: order
+        type: string
+      - description: Search term
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Analytics rows
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid table
+          schema:
+            type: string
+        "503":
+          description: Analytics unavailable
+          schema:
+            type: string
+      summary: Admin MCP analytics data
+      tags:
+      - admin
+  /api/admin/mcp/delete:
+    delete:
+      description: Deletes selected or filtered MCP analytics rows.
+      parameters:
+      - description: Analytics table name
+        in: query
+        name: table
+        required: true
+        type: string
+      - description: Comma-separated row IDs
+        in: query
+        name: ids
+        type: string
+      - description: Delete all filtered rows
+        in: query
+        name: all
+        type: boolean
+      - description: Search term when all=true
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Delete result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "503":
+          description: Analytics unavailable
+          schema:
+            type: string
+      summary: Admin MCP analytics delete
+      tags:
+      - admin
+    post:
+      description: Deletes selected or filtered MCP analytics rows.
+      parameters:
+      - description: Analytics table name
+        in: query
+        name: table
+        required: true
+        type: string
+      - description: Comma-separated row IDs
+        in: query
+        name: ids
+        type: string
+      - description: Delete all filtered rows
+        in: query
+        name: all
+        type: boolean
+      - description: Search term when all=true
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Delete result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "503":
+          description: Analytics unavailable
+          schema:
+            type: string
+      summary: Admin MCP analytics delete
+      tags:
+      - admin
+  /api/admin/mcp/export:
+    get:
+      description: Exports MCP analytics rows as CSV for a selected table.
+      parameters:
+      - description: Analytics table name
+        in: query
+        name: table
+        required: true
+        type: string
+      - description: Search term
+        in: query
+        name: search
+        type: string
+      produces:
+      - text/csv
+      responses:
+        "200":
+          description: CSV export
+          schema:
+            type: file
+        "400":
+          description: Invalid table
+          schema:
+            type: string
+        "503":
+          description: Analytics unavailable
+          schema:
+            type: string
+      summary: Admin MCP analytics export
+      tags:
+      - admin
+  /api/admin/realtime/data:
+    get:
+      description: Returns paginated latest realtime device readings.
+      parameters:
+      - description: Page size
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      - description: Sort column
+        in: query
+        name: sort
+        type: string
+      - description: 'Sort order: asc or desc'
+        in: query
+        name: order
+        type: string
+      - description: Search term
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Realtime rows
+          schema:
+            additionalProperties: true
+            type: object
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin realtime device data
+      tags:
+      - admin
+  /api/admin/realtime/delete:
+    delete:
+      description: Deletes selected or filtered realtime measurements.
+      parameters:
+      - description: Comma-separated row IDs
+        in: query
+        name: ids
+        type: string
+      - description: Delete all filtered rows
+        in: query
+        name: all
+        type: boolean
+      - description: Search term when all=true
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Delete result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin realtime delete
+      tags:
+      - admin
+    post:
+      description: Deletes selected or filtered realtime measurements.
+      parameters:
+      - description: Comma-separated row IDs
+        in: query
+        name: ids
+        type: string
+      - description: Delete all filtered rows
+        in: query
+        name: all
+        type: boolean
+      - description: Search term when all=true
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Delete result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin realtime delete
+      tags:
+      - admin
+  /api/admin/realtime/export:
+    get:
+      description: Exports latest realtime device readings as CSV.
+      parameters:
+      - description: Search term
+        in: query
+        name: search
+        type: string
+      produces:
+      - text/csv
+      responses:
+        "200":
+          description: CSV export
+          schema:
+            type: file
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin realtime export
+      tags:
+      - admin
+  /api/admin/tracks:
+    get:
+      description: Returns paginated track statistics for admin users.
+      parameters:
+      - description: Page size
+        in: query
+        name: limit
+        type: integer
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Free-text search
+        in: query
+        name: search
+        type: string
+      - description: Detector filter
+        in: query
+        name: detector
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: HTML admin page
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin tracks dashboard data
+      tags:
+      - admin
+  /api/admin/translations:
+    get:
+      description: Returns paginated translation rows for admin editing.
+      parameters:
+      - description: Page size
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      - description: Sort column
+        in: query
+        name: sort
+        type: string
+      - description: Sort order
+        in: query
+        name: order
+        type: string
+      - description: Search term
+        in: query
+        name: search
+        type: string
+      - description: Language code filter
+        in: query
+        name: lang
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Translation rows
+          schema:
+            additionalProperties: true
+            type: object
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin translations list
+      tags:
+      - admin
+    post:
+      consumes:
+      - application/json
+      description: Creates a translation row or updates existing key/language pair.
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Create result
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin translation create
+      tags:
+      - admin
+  /api/admin/translations/{id}:
+    delete:
+      description: Deletes translation row by ID.
+      parameters:
+      - description: Translation row ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Delete result
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin translation delete
+      tags:
+      - admin
+    put:
+      consumes:
+      - application/json
+      description: Updates translation value by translation row ID.
+      parameters:
+      - description: Translation row ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Update result
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin translation update
+      tags:
+      - admin
+  /api/admin/translations/reload:
+    post:
+      description: Reloads in-memory translations from database.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Reload result
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Reload failed
+          schema:
+            type: string
+      summary: Admin translations reload
+      tags:
+      - admin
+  /api/admin/uploads:
+    get:
+      description: Returns paginated upload records for admin users.
+      parameters:
+      - description: Page size
+        in: query
+        name: limit
+        type: integer
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Filter by internal user ID
+        in: query
+        name: user_id
+        type: string
+      - description: Free-text search
+        in: query
+        name: search
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: HTML admin page
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin uploads dashboard data
+      tags:
+      - admin
   /area:
     get:
       description: Returns historical bGeigie measurements inside the specified geographic
@@ -98,6 +768,248 @@ paths:
       summary: Get historical measurements from a device
       tags:
       - historical
+  /extreme:
+    get:
+      description: Find the highest or lowest radiation readings in the database with
+        full location details. Supports excluding anomalous sources.
+      parameters:
+      - default: highest
+        description: 'Direction: ''highest'' or ''lowest'''
+        in: query
+        name: direction
+        type: string
+      - default: 10
+        description: Number of results (1-100)
+        in: query
+        name: limit
+        type: integer
+      - default: -90
+        description: Southern boundary for geographic filter
+        in: query
+        name: min_lat
+        type: number
+      - default: 90
+        description: Northern boundary for geographic filter
+        in: query
+        name: max_lat
+        type: number
+      - default: -180
+        description: Western boundary for geographic filter
+        in: query
+        name: min_lon
+        type: number
+      - default: 180
+        description: Eastern boundary for geographic filter
+        in: query
+        name: max_lon
+        type: number
+      - description: Comma-separated device IDs to exclude (e.g., 'bGeigie-2113,bGeigie-456')
+        in: query
+        name: exclude_devices
+        type: string
+      - description: JSON array of bounding boxes to exclude (e.g., '[{\
+        in: query
+        name: exclude_areas
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Extreme readings with location details
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Find extreme radiation readings
+      tags:
+      - analytics
+  /get_markers:
+    get:
+      description: Returns filtered markers for map bounds and optional track/speed/time
+        filters.
+      parameters:
+      - description: Requested map zoom
+        in: query
+        name: zoom
+        type: integer
+      - description: Minimum latitude
+        in: query
+        name: minLat
+        required: true
+        type: number
+      - description: Minimum longitude
+        in: query
+        name: minLon
+        required: true
+        type: number
+      - description: Maximum latitude
+        in: query
+        name: maxLat
+        required: true
+        type: number
+      - description: Maximum longitude
+        in: query
+        name: maxLon
+        required: true
+        type: number
+      - description: Single track ID filter
+        in: query
+        name: trackID
+        type: string
+      - description: Comma-separated track IDs filter
+        in: query
+        name: trackIDs
+        type: string
+      - description: Comma-separated speed categories
+        in: query
+        name: speeds
+        type: string
+      - description: Start unix timestamp (seconds)
+        in: query
+        name: dateFrom
+        type: integer
+      - description: End unix timestamp (seconds)
+        in: query
+        name: dateTo
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Markers
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+        "500":
+          description: Server error
+          schema:
+            type: string
+      summary: Get markers for viewport
+      tags:
+      - map
+  /gpt/area:
+    get:
+      description: Returns compact historical readings for a bounding box, capped
+        to 5 results for GPT usage.
+      parameters:
+      - description: Southern latitude boundary
+        in: query
+        name: min_lat
+        required: true
+        type: number
+      - description: Northern latitude boundary
+        in: query
+        name: max_lat
+        required: true
+        type: number
+      - description: Western longitude boundary
+        in: query
+        name: min_lon
+        required: true
+        type: number
+      - description: Eastern longitude boundary
+        in: query
+        name: max_lon
+        required: true
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Compact reading list
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "405":
+          description: Method not allowed
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Find area readings (GPT compact)
+      tags:
+      - historical
+  /gpt/radiation:
+    get:
+      description: Returns compact fields optimized for LLM Actions. Results are capped
+        to 5 and include source metadata.
+      parameters:
+      - description: Latitude in decimal degrees (-90 to 90)
+        in: query
+        name: lat
+        required: true
+        type: number
+      - description: Longitude in decimal degrees (-180 to 180)
+        in: query
+        name: lon
+        required: true
+        type: number
+      - description: Search radius in meters
+        in: query
+        name: radius_m
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Compact reading list
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "405":
+          description: Method not allowed
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Find nearby radiation readings (GPT compact)
+      tags:
+      - historical
+  /gpt/stats:
+    get:
+      description: Proxies the aggregate statistics endpoint for GPT Actions.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Aggregate statistics
+          schema:
+            additionalProperties: true
+            type: object
+        "405":
+          description: Method not allowed
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get aggregate statistics (GPT compact)
+      tags:
+      - reference
   /info/{topic}:
     get:
       description: Returns static educational reference content about radiation units,
@@ -175,6 +1087,38 @@ paths:
       summary: Find radiation measurements near a location
       tags:
       - historical
+  /realtime_history:
+    get:
+      description: Returns aggregated realtime history and summary ranges for a device.
+      parameters:
+      - description: Realtime device ID
+        in: query
+        name: device
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Realtime history payload
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Missing device
+          schema:
+            type: string
+        "404":
+          description: Realtime feature disabled
+          schema:
+            type: string
+        "500":
+          description: Server error
+          schema:
+            type: string
+      summary: Get realtime device history
+      tags:
+      - map
   /sensor/{id}/current:
     get:
       description: Routes to current or history endpoint based on the path suffix.
@@ -458,6 +1402,61 @@ paths:
       summary: Get aggregate radiation statistics
       tags:
       - reference
+  /stream_markers:
+    get:
+      description: Streams map markers as SSE by default, or MessagePack when requested
+        via query/header.
+      parameters:
+      - description: Requested map zoom
+        in: query
+        name: zoom
+        type: integer
+      - description: Minimum latitude
+        in: query
+        name: minLat
+        required: true
+        type: number
+      - description: Minimum longitude
+        in: query
+        name: minLon
+        required: true
+        type: number
+      - description: Maximum latitude
+        in: query
+        name: maxLat
+        required: true
+        type: number
+      - description: Maximum longitude
+        in: query
+        name: maxLon
+        required: true
+        type: number
+      - description: Single track ID filter
+        in: query
+        name: trackID
+        type: string
+      - description: Comma-separated track IDs filter
+        in: query
+        name: trackIDs
+        type: string
+      - description: Set to msgpack for binary stream
+        in: query
+        name: format
+        type: string
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: Streaming response
+          schema:
+            type: string
+        "500":
+          description: Streaming unsupported
+          schema:
+            type: string
+      summary: Stream markers for viewport
+      tags:
+      - map
   /track/{id}:
     get:
       description: Retrieves radiation measurements recorded during a specific bGeigie
@@ -498,6 +1497,29 @@ paths:
       summary: Get all measurements from a specific track
       tags:
       - historical
+  /trackid/{id}:
+    get:
+      description: Serves the HTML map page for a specific track ID.
+      parameters:
+      - description: Track ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: HTML page
+          schema:
+            type: string
+        "400":
+          description: Track ID missing
+          schema:
+            type: string
+      summary: Render map page for one track
+      tags:
+      - web
   /tracks:
     get:
       description: Lists bGeigie Import tracks (bulk radiation measurement drives).
@@ -539,6 +1561,79 @@ paths:
       summary: Browse bGeigie measurement tracks
       tags:
       - historical
+  /tracks/{ids}:
+    get:
+      description: Serves the HTML map page with multiple track IDs from a comma-separated
+        path segment.
+      parameters:
+      - description: Comma-separated track IDs
+        in: path
+        name: ids
+        required: true
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: HTML page
+          schema:
+            type: string
+        "400":
+          description: Track IDs missing
+          schema:
+            type: string
+      summary: Render map page for multiple tracks
+      tags:
+      - web
+  /upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Accepts one or more files in multipart form field `files[]` and
+        returns a track ID for async progress polling.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Upload accepted
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid upload
+          schema:
+            type: string
+        "500":
+          description: Server error
+          schema:
+            type: string
+      summary: Upload radiation files
+      tags:
+      - map
+  /upload/progress:
+    get:
+      description: Streams upload progress events for a previously submitted upload
+        track ID.
+      parameters:
+      - description: Upload tracking ID returned by /upload
+        in: query
+        name: trackid
+        required: true
+        type: string
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: SSE stream
+          schema:
+            type: string
+        "400":
+          description: Missing trackid
+          schema:
+            type: string
+      summary: Stream upload progress
+      tags:
+      - map
 schemes:
 - https
 - http
