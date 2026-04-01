@@ -60,6 +60,919 @@ paths:
       summary: Get API overview
       tags:
       - core
+  /api/admin/backfill:
+    post:
+      description: Backfills upload records from existing spectra entries.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Backfill result
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin backfill uploads from spectra
+      tags:
+      - admin
+  /api/admin/backfill-countries:
+    post:
+      description: Starts background country backfill for markers with coordinates.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Backfill status
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin backfill marker countries
+      tags:
+      - admin
+  /api/admin/cache:
+    post:
+      description: Performs cache operations such as clear/stats via action query
+        parameter.
+      parameters:
+      - description: Cache action (e.g. clear, stats)
+        in: query
+        name: action
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Cache operation result
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+      summary: Admin cache operations
+      tags:
+      - admin
+  /api/admin/delete:
+    post:
+      consumes:
+      - application/json
+      description: Deletes a track and associated marker data.
+      parameters:
+      - description: Delete request payload
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Delete result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin delete single track
+      tags:
+      - admin
+  /api/admin/delete-multiple:
+    post:
+      consumes:
+      - application/json
+      description: Deletes multiple tracks in one request.
+      parameters:
+      - description: Bulk delete request payload
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Delete result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin delete multiple tracks
+      tags:
+      - admin
+  /api/admin/import-from-safecast:
+    post:
+      consumes:
+      - application/json
+      description: Triggers a date-ranged Safecast import and streams progress updates.
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: Streaming progress
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin import from Safecast API
+      tags:
+      - admin
+  /api/admin/mcp/data:
+    get:
+      description: Returns paginated MCP analytics rows for a selected table.
+      parameters:
+      - description: Analytics table name
+        in: query
+        name: table
+        required: true
+        type: string
+      - description: Page size
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      - description: Sort column
+        in: query
+        name: sort
+        type: string
+      - description: 'Sort order: asc or desc'
+        in: query
+        name: order
+        type: string
+      - description: Search term
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Analytics rows
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid table
+          schema:
+            type: string
+        "503":
+          description: Analytics unavailable
+          schema:
+            type: string
+      summary: Admin MCP analytics data
+      tags:
+      - admin
+  /api/admin/mcp/delete:
+    delete:
+      description: Deletes selected or filtered MCP analytics rows.
+      parameters:
+      - description: Analytics table name
+        in: query
+        name: table
+        required: true
+        type: string
+      - description: Comma-separated row IDs
+        in: query
+        name: ids
+        type: string
+      - description: Delete all filtered rows
+        in: query
+        name: all
+        type: boolean
+      - description: Search term when all=true
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Delete result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "503":
+          description: Analytics unavailable
+          schema:
+            type: string
+      summary: Admin MCP analytics delete
+      tags:
+      - admin
+    post:
+      description: Deletes selected or filtered MCP analytics rows.
+      parameters:
+      - description: Analytics table name
+        in: query
+        name: table
+        required: true
+        type: string
+      - description: Comma-separated row IDs
+        in: query
+        name: ids
+        type: string
+      - description: Delete all filtered rows
+        in: query
+        name: all
+        type: boolean
+      - description: Search term when all=true
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Delete result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "503":
+          description: Analytics unavailable
+          schema:
+            type: string
+      summary: Admin MCP analytics delete
+      tags:
+      - admin
+  /api/admin/mcp/export:
+    get:
+      description: Exports MCP analytics rows as CSV for a selected table.
+      parameters:
+      - description: Analytics table name
+        in: query
+        name: table
+        required: true
+        type: string
+      - description: Search term
+        in: query
+        name: search
+        type: string
+      produces:
+      - text/csv
+      responses:
+        "200":
+          description: CSV export
+          schema:
+            type: file
+        "400":
+          description: Invalid table
+          schema:
+            type: string
+        "503":
+          description: Analytics unavailable
+          schema:
+            type: string
+      summary: Admin MCP analytics export
+      tags:
+      - admin
+  /api/admin/realtime/data:
+    get:
+      description: Returns paginated latest realtime device readings.
+      parameters:
+      - description: Page size
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      - description: Sort column
+        in: query
+        name: sort
+        type: string
+      - description: 'Sort order: asc or desc'
+        in: query
+        name: order
+        type: string
+      - description: Search term
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Realtime rows
+          schema:
+            additionalProperties: true
+            type: object
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin realtime device data
+      tags:
+      - admin
+  /api/admin/realtime/delete:
+    delete:
+      description: Deletes selected or filtered realtime measurements.
+      parameters:
+      - description: Comma-separated row IDs
+        in: query
+        name: ids
+        type: string
+      - description: Delete all filtered rows
+        in: query
+        name: all
+        type: boolean
+      - description: Search term when all=true
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Delete result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin realtime delete
+      tags:
+      - admin
+    post:
+      description: Deletes selected or filtered realtime measurements.
+      parameters:
+      - description: Comma-separated row IDs
+        in: query
+        name: ids
+        type: string
+      - description: Delete all filtered rows
+        in: query
+        name: all
+        type: boolean
+      - description: Search term when all=true
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Delete result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin realtime delete
+      tags:
+      - admin
+  /api/admin/realtime/export:
+    get:
+      description: Exports latest realtime device readings as CSV.
+      parameters:
+      - description: Search term
+        in: query
+        name: search
+        type: string
+      produces:
+      - text/csv
+      responses:
+        "200":
+          description: CSV export
+          schema:
+            type: file
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin realtime export
+      tags:
+      - admin
+  /api/admin/tracks:
+    get:
+      description: Returns paginated track statistics for admin users.
+      parameters:
+      - description: Page size
+        in: query
+        name: limit
+        type: integer
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Free-text search
+        in: query
+        name: search
+        type: string
+      - description: Detector filter
+        in: query
+        name: detector
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: HTML admin page
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin tracks dashboard data
+      tags:
+      - admin
+  /api/admin/translations:
+    get:
+      description: Returns paginated translation rows for admin editing.
+      parameters:
+      - description: Page size
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      - description: Sort column
+        in: query
+        name: sort
+        type: string
+      - description: Sort order
+        in: query
+        name: order
+        type: string
+      - description: Search term
+        in: query
+        name: search
+        type: string
+      - description: Language code filter
+        in: query
+        name: lang
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Translation rows
+          schema:
+            additionalProperties: true
+            type: object
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin translations list
+      tags:
+      - admin
+    post:
+      consumes:
+      - application/json
+      description: Creates a translation row or updates existing key/language pair.
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Create result
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin translation create
+      tags:
+      - admin
+  /api/admin/translations/{id}:
+    delete:
+      description: Deletes translation row by ID.
+      parameters:
+      - description: Translation row ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Delete result
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin translation delete
+      tags:
+      - admin
+    put:
+      consumes:
+      - application/json
+      description: Updates translation value by translation row ID.
+      parameters:
+      - description: Translation row ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Update result
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin translation update
+      tags:
+      - admin
+  /api/admin/translations/reload:
+    post:
+      description: Reloads in-memory translations from database.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Reload result
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Reload failed
+          schema:
+            type: string
+      summary: Admin translations reload
+      tags:
+      - admin
+  /api/admin/uploads:
+    get:
+      description: Returns paginated upload records for admin users.
+      parameters:
+      - description: Page size
+        in: query
+        name: limit
+        type: integer
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Filter by internal user ID
+        in: query
+        name: user_id
+        type: string
+      - description: Free-text search
+        in: query
+        name: search
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: HTML admin page
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin uploads dashboard data
+      tags:
+      - admin
+  /api/admin/users:
+    get:
+      description: Returns paginated user list for admin users.
+      parameters:
+      - description: Page size
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      - description: Search term
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User rows
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Admin list users
+      tags:
+      - admin
+  /api/admin/users/{id}:
+    delete:
+      description: Deletes user by ID.
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Delete result
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid user ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Admin delete user
+      tags:
+      - admin
+    patch:
+      consumes:
+      - application/json
+      description: Updates user fields by user ID.
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Update result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: User not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Admin update user
+      tags:
+      - admin
+    put:
+      consumes:
+      - application/json
+      description: Updates user fields by user ID.
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Update result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: User not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Admin update user
+      tags:
+      - admin
+  /api/admin/users/{id}/regenerate-api-key:
+    post:
+      description: Regenerates API key for a user.
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Regenerate result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Admin regenerate API key
+      tags:
+      - admin
+  /api/admin/users/{id}/reset-password:
+    post:
+      description: Sends password reset/setup email for a user.
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Reset result
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Admin reset user password
+      tags:
+      - admin
+  /api/admin/users/create:
+    post:
+      consumes:
+      - application/json
+      description: Creates a user account as admin.
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Create result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Duplicate user
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Admin create user
+      tags:
+      - admin
   /api/auth/forgot-password:
     post:
       consumes:
@@ -285,24 +1198,6 @@ paths:
       summary: List country statistics
       tags:
       - core
-  /api/docs:
-    get:
-      description: Serves the HTML API docs landing page with runtime placeholders
-        resolved.
-      produces:
-      - text/html
-      responses:
-        "200":
-          description: HTML page
-          schema:
-            type: string
-        "404":
-          description: Page not found
-          schema:
-            type: string
-      summary: Render API documentation page
-      tags:
-      - web
   /api/geoip:
     get:
       description: Returns approximate latitude/longitude for the request IP when
@@ -834,6 +1729,37 @@ paths:
           schema:
             type: string
       summary: Get current user profile
+      tags:
+      - auth
+  /api/user/uploads:
+    get:
+      description: Returns paginated uploads for the authenticated user.
+      parameters:
+      - description: Page size
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Upload rows
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: List current user uploads
       tags:
       - auth
   /area:
