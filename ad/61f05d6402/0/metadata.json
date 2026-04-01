@@ -1,0 +1,22 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "ad61f05d6402",
+  "session_id": "86c38a2b-dd7e-41b8-b11f-ea6dd10bffe2",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-01T11:23:34.268920311Z",
+  "branch": "fix/feedback-chat-id-mismatch",
+  "checkpoints_count": 1,
+  "files_touched": [],
+  "agent": "Claude Code",
+  "turn_id": "34b0c23f56e7",
+  "token_usage": {
+    "input_tokens": 351,
+    "cache_creation_tokens": 259292,
+    "cache_read_tokens": 21680425,
+    "output_tokens": 56405,
+    "api_call_count": 245
+  },
+  "session_metrics": {
+    "turn_count": 30
+  }
+}
