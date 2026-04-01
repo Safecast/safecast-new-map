@@ -10517,7 +10517,10 @@ function selectHomeSearchResult(result, query) {
         let accumulated = '';
         let chatID = 0;
         let isCached = false;
+        let finished = false;
         function finish(success) {
+          if (finished) return;
+          finished = true;
           botBubble.classList.remove('ai-thinking');
           busy = false;
           sendBtn.disabled = false;
