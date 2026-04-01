@@ -13,13 +13,21 @@ import (
 
 var duckDB *sql.DB
 
-func initDuckDB() error {
+func initDuckDB() (retErr error) {
 	// Open in-memory DuckDB — all persistent data lives in DuckLake (PostgreSQL + Parquet)
 	var err error
 	duckDB, err = sql.Open("duckdb", "")
 	if err != nil {
 		return fmt.Errorf("failed to open duckdb: %w", err)
 	}
+
+	// If anything below fails, close and nil out duckDB so downstream nil-guards work.
+	defer func() {
+		if retErr != nil {
+			duckDB.Close()
+			duckDB = nil
+		}
+	}()
 
 	duckDB.SetMaxOpenConns(1)
 	duckDB.SetMaxIdleConns(1)
