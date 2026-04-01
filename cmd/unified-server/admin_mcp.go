@@ -97,17 +97,38 @@ func adminMCPDataHandler(w http.ResponseWriter, r *http.Request) {
 	// inlined VARCHAR values are truncated to a single byte on read.
 	// LEFT(col, 100000) forces DuckDB to materialize a new string that the driver reads correctly.
 	longTextCols := map[string]bool{"question": true, "answer": true, "generated_query": true, "user_agent": true, "params": true}
-	castCols := make([]string, len(columns))
-	for i, col := range columns {
-		if longTextCols[col] {
-			castCols[i] = fmt.Sprintf("LEFT(%s, 100000) AS %s", col, col)
+	virtualCols := map[string]bool{"thumbs_up": true, "thumbs_down": true}
+	castCols := make([]string, 0, len(columns))
+	for _, col := range columns {
+		if virtualCols[col] {
+			continue // added via JOIN below
+		} else if longTextCols[col] {
+			castCols = append(castCols, fmt.Sprintf("LEFT(q.%s, 100000) AS %s", col, col))
 		} else {
-			castCols[i] = col
+			castCols = append(castCols, "q."+col)
 		}
 	}
-	colList := strings.Join(castCols, ", ")
-	dataQuery := fmt.Sprintf("SELECT %s FROM %s %s ORDER BY %s %s LIMIT %d OFFSET %d",
-		colList, tableName, whereSQL, sortCol, order, limit, offset)
+
+	var dataQuery string
+	if tableName == "chat_questions" {
+		castCols = append(castCols,
+			"COALESCE(SUM(CASE WHEN f.score > 0 THEN 1 ELSE 0 END), 0) AS thumbs_up",
+			"COALESCE(SUM(CASE WHEN f.score < 0 THEN 1 ELSE 0 END), 0) AS thumbs_down",
+		)
+		colList := strings.Join(castCols, ", ")
+		// Rewrite WHERE to use q. prefix for chat_questions columns
+		whereForJoin := whereSQL
+		if whereForJoin != "" {
+			whereForJoin = strings.ReplaceAll(whereForJoin, "CAST(", "CAST(q.")
+		}
+		dataQuery = fmt.Sprintf(
+			"SELECT %s FROM chat_questions q LEFT JOIN chat_feedback f ON f.chat_id = q.id %s GROUP BY q.id ORDER BY q.%s %s LIMIT %d OFFSET %d",
+			colList, whereForJoin, sortCol, order, limit, offset)
+	} else {
+		colList := strings.Join(castCols, ", ")
+		dataQuery = fmt.Sprintf("SELECT %s FROM %s %s ORDER BY %s %s LIMIT %d OFFSET %d",
+			colList, tableName, whereSQL, sortCol, order, limit, offset)
+	}
 
 	rows, err := duckDB.Query(dataQuery)
 	if err != nil {
@@ -253,6 +274,7 @@ var mcpTableColumns = map[string][]string{
 		"ip_address", "country", "is_mobile", "os", "browser",
 		"user_agent", "accept_language", "referer",
 		"session_id", "history_length", "cloudfront", "client_timestamp",
+		"thumbs_up", "thumbs_down",
 	},
 	"mcp_query_log": {
 		"tool_name", "created_at", "duration_ms", "result_count",
@@ -369,6 +391,32 @@ var mcpTableKeyColumn = map[string]string{
 	"chat_questions":   "id",
 	"mcp_query_log":    "created_at",
 	"mcp_ai_query_log": "timestamp",
+}
+
+// feedbackHandler stores a thumbs up/down rating for a chat message.
+// POST /api/feedback {"chat_id": <int>, "score": 1|-1}
+func feedbackHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var body struct {
+		ChatID int `json:"chat_id"`
+		Score  int `json:"score"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.ChatID == 0 || (body.Score != 1 && body.Score != -1) {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+	if duckDBAvailable() {
+		if _, err := duckDB.Exec(
+			"INSERT INTO chat_feedback (chat_id, score) VALUES (?, ?)",
+			body.ChatID, body.Score,
+		); err != nil {
+			log.Printf("feedback insert error: %v", err)
+		}
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func escapeLike(s string) string {

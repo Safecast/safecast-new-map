@@ -133,6 +133,11 @@ func createDuckDBSchema() error {
 			commit_hash VARCHAR,
 			error VARCHAR
 		)`,
+		`CREATE TABLE IF NOT EXISTS chat_feedback (
+			chat_id    BIGINT,
+			score      INTEGER,
+			created_at TIMESTAMPTZ DEFAULT now()
+		)`,
 		`CREATE TABLE IF NOT EXISTS chat_questions (
 			id BIGINT,
 			timestamp TIMESTAMPTZ DEFAULT now(),

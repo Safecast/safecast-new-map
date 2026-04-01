@@ -178,7 +178,8 @@ const COLUMN_LABELS = {
   tool_name: 'Tool', duration_ms: 'Duration (ms)', result_count: 'Results',
   client: 'Client', user_id: 'User ID', user_email: 'Email',
   created_at: 'Timestamp', client_info: 'Client', params: 'Params',
-  generated_query: 'Query', commit_hash: 'Commit', error: 'Error'
+  generated_query: 'Query', commit_hash: 'Commit', error: 'Error',
+  thumbs_up: '👍', thumbs_down: '👎'
 };
 
 // Columns that should be expandable (long text)
@@ -356,6 +357,12 @@ async function fetchData() {
         if (EXPANDABLE.has(col) && strVal.length > 60) {
           const preview = strVal.substring(0, 60) + '...';
           bodyHTML += `<td class="expandable" title="Click to expand" onclick="showModal('${COLUMN_LABELS[col] || col}', ${JSON.stringify(strVal).replace(/'/g, "&#39;")})">${escapeHtml(preview)}</td>`;
+        } else if (col === 'thumbs_up') {
+          const n = parseInt(val) || 0;
+          bodyHTML += `<td style="color:${n > 0 ? '#4caf50' : 'inherit'};font-weight:${n > 0 ? '600' : 'normal'}">👍 ${n}</td>`;
+        } else if (col === 'thumbs_down') {
+          const n = parseInt(val) || 0;
+          bodyHTML += `<td style="color:${n > 0 ? '#e17055' : 'inherit'};font-weight:${n > 0 ? '600' : 'normal'}">👎 ${n}</td>`;
         } else if (col === 'is_mobile' || col === 'cloudfront') {
           bodyHTML += `<td>${val ? 'Yes' : (val === false ? 'No' : '')}</td>`;
         } else if (col === 'timestamp' || col === 'client_timestamp' || col === 'created_at') {
