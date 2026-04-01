@@ -1,5 +1,5 @@
 
-/* ── Safecast Swagger theme — matches simplemap admin pages ── */
+/* ── Safecast Map API Swagger theme — blue/navy palette ── */
 
 /* Hide Swagger logo and collapse the space */
 .swagger-ui .topbar-wrapper {
@@ -21,7 +21,7 @@
   left: -9999px !important;
   max-height: 0 !important;
 }
-/* Hide the info link that shows /mcp-api/doc.json */
+/* Hide the info link that shows doc.json URL */
 .swagger-ui .info .link,
 .swagger-ui .info a[href*="doc.json"] {
   display: none !important;
@@ -67,9 +67,9 @@ body,
   transition: background 0.3s, color 0.3s;
 }
 
-/* Top bar — matches --th-bg (#424242) from admin-users.html */
+/* Top bar — deep navy to signal Map API */
 .swagger-ui .topbar {
-  background: #424242 !important;
+  background: #1a3a5c !important;
   padding: 8px 0 !important;
 }
 .swagger-ui .topbar .download-url-wrapper input[type=text] {
@@ -88,7 +88,7 @@ body,
   color: #333 !important;
 }
 
-/* Operation blocks — card style matching --shadow and --btn-border-radius */
+/* Operation blocks — card style */
 .swagger-ui .opblock {
   border-radius: 8px !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
@@ -103,7 +103,7 @@ body,
   border-radius: 8px !important;
 }
 
-/* GET method colour — matches --link-color (#0066cc) */
+/* GET method colour — blue */
 .swagger-ui .opblock.opblock-get {
   border-color: #0066cc !important;
   background: #f0f6ff !important;
@@ -151,7 +151,7 @@ body,
 
 /* Parameter tables */
 .swagger-ui table thead tr th {
-  background: #424242 !important;
+  background: #1a3a5c !important;
   color: #fff !important;
   font-weight: 600 !important;
 }
@@ -194,7 +194,7 @@ body.dark-mode .swagger-ui .wrapper {
 }
 
 body.dark-mode .swagger-ui .topbar {
-  background: #616161 !important;
+  background: #2a4a6c !important;
 }
 
 body.dark-mode .swagger-ui .info .title,
@@ -230,7 +230,7 @@ body.dark-mode .swagger-ui .opblock-tag {
 }
 
 body.dark-mode .swagger-ui table thead tr th {
-  background: #616161 !important;
+  background: #2a4a6c !important;
 }
 body.dark-mode .swagger-ui table tbody tr:hover {
   background: #333 !important;
@@ -295,4 +295,3 @@ body.dark-mode .swagger-ui select {
   color: #eee !important;
   border-color: #444 !important;
 }
-
