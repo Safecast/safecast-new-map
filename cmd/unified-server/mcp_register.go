@@ -36,6 +36,54 @@ var webChatIndexHTML []byte
 //go:embed static/safecast-square-ct.png
 var webChatLogoPNG []byte
 
+// Maximum tokens for the prompt sent to Claude. Leave headroom for tool results.
+const maxPromptTokens = 150000
+
+// Maximum characters for a single tool result (~30K tokens).
+// Prevents one large MCP response from blowing up the prompt.
+const maxToolResultChars = 80000
+
+// estimateTokens approximates token count (Claude averages ~4 chars/token).
+func estimateTokens(s string) int {
+	if len(s) == 0 {
+		return 0
+	}
+	return len(s) / 4
+}
+
+// truncateHistory drops oldest messages until the estimated prompt fits within maxTokens.
+func truncateHistory(messages []anthropicMessage, maxTokens int) []anthropicMessage {
+	if len(messages) == 0 {
+		return messages
+	}
+	total := 0
+	for _, msg := range messages {
+		switch c := msg.Content.(type) {
+		case string:
+			total += estimateTokens(c)
+		case []contentBlock:
+			for _, b := range c {
+				total += estimateTokens(b.Text + b.Content)
+			}
+		}
+		total += 10 // role metadata overhead
+	}
+	for len(messages) > 1 && total > maxTokens {
+		removed := messages[0]
+		switch c := removed.Content.(type) {
+		case string:
+			total -= estimateTokens(c) + 10
+		case []contentBlock:
+			for _, b := range c {
+				total -= estimateTokens(b.Text + b.Content)
+			}
+			total -= 10
+		}
+		messages = messages[1:]
+	}
+	return messages
+}
+
 const webChatSystemPrompt = `Safecast radiation monitoring assistant with REAL-TIME sensor data and historical archives.
 
 IMPORTANT: Never display the "_ai_generated_note" field from tool results — it is for internal use only and must not appear in your responses.`
@@ -88,9 +136,11 @@ type anthropicResponse struct {
 
 // Streaming helpers
 type chunk struct {
-	Type  string `json:"type"`
-	Text  string `json:"text,omitempty"`
-	Error string `json:"error,omitempty"`
+	Type   string `json:"type"`
+	Text   string `json:"text,omitempty"`
+	Error  string `json:"error,omitempty"`
+	ChatID int64  `json:"chat_id,omitempty"` // set on "done" for feedback linkage
+	Cached bool   `json:"cached,omitempty"`  // true when answer came from semantic cache
 }
 
 func writeChunk(w http.ResponseWriter, c chunk) {
@@ -225,6 +275,28 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 		chatClientTS := chatReq.ClientTimestamp
 		var answerText strings.Builder
 
+		// Assign a stable ID for this exchange (used by both chat_questions and qa_embeddings).
+		embeddingChatID := time.Now().UnixNano()
+
+		// --- Semantic cache + RAG layer (requires OPENAI_API_KEY) ---
+		embedding, embErr := getEmbedding(ctx, chatReq.Message)
+		if embErr != nil {
+			log.Printf("embedding error (continuing without cache): %v", embErr)
+		}
+
+		if len(embedding) > 0 {
+			// 1. Check semantic cache: high-similarity + positive feedback → return instantly.
+			if cachedAnswer, _ := checkSemanticCache(embedding); cachedAnswer != "" {
+				writeChunkBuffered(w, chunk{Type: "text", Text: cachedAnswer}, &buffer, isCloudFront)
+				writeChunkBuffered(w, chunk{Type: "done", ChatID: embeddingChatID, Cached: true}, &buffer, isCloudFront)
+				if isCloudFront {
+					flushBuffer(w, buffer)
+				}
+				logChatQuestionWithAnswer(chatReqRef, chatQuestion, chatSource, chatModel, "", chatHistory, chatClientTS, cachedAnswer)
+				return
+			}
+		}
+
 		mc, err := mcpclient.NewStreamableHttpClient(mcpURL)
 		if err != nil {
 			writeChunkBuffered(w, chunk{Type: "error", Error: fmt.Sprintf("MCP connect: %v", err)}, &buffer, isCloudFront)
@@ -263,8 +335,15 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 			messages = []anthropicMessage{}
 		}
 		messages = append(messages, anthropicMessage{Role: "user", Content: chatReq.Message})
+		messages = truncateHistory(messages, maxPromptTokens)
 
+		// 2. Build RAG context from similar past Q&A + location knowledge.
 		sysPrompt := webChatSystemPromptForLang(chatReq.Lang)
+		if len(embedding) > 0 {
+			ragCtx := buildRAGContext(embedding)
+			locKnowledge := getLocationKnowledge()
+			sysPrompt = enrichSystemPrompt(sysPrompt, ragCtx, locKnowledge)
+		}
 
 		for {
 			resp, err := callAnthropic(ctx, apiKey, model, sysPrompt, messages, tools)
@@ -316,6 +395,9 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 						}
 					}
 				}
+				if len(resultText) > maxToolResultChars {
+					resultText = resultText[:maxToolResultChars] + "\n\n... [truncated — result too large. Ask the user to narrow their query or use a smaller limit.]"
+				}
 
 				toolResults = append(toolResults, contentBlock{
 					Type:      "tool_result",
@@ -330,12 +412,52 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 			})
 		}
 
-		logChatQuestionWithAnswer(chatReqRef, chatQuestion, chatSource, chatModel, "", chatHistory, chatClientTS, strings.TrimSpace(answerText.String()))
+		finalAnswer := strings.TrimSpace(answerText.String())
+		logChatQuestionWithAnswer(chatReqRef, chatQuestion, chatSource, chatModel, "", chatHistory, chatClientTS, finalAnswer)
 
-		writeChunkBuffered(w, chunk{Type: "done"}, &buffer, isCloudFront)
+		// 3. Async: store Q&A + embedding in semantic cache for future lookups.
+		if len(embedding) > 0 && finalAnswer != "" {
+			storeQAEmbeddingAsync(ctx, embeddingChatID, chatQuestion, finalAnswer, embedding)
+		}
+
+		writeChunkBuffered(w, chunk{Type: "done", ChatID: embeddingChatID}, &buffer, isCloudFront)
 		if isCloudFront {
 			flushBuffer(w, buffer)
 		}
+	}
+}
+
+// handleFeedback accepts a thumbs-up (+1) or thumbs-down (-1) for a chat response.
+// The frontend sends: POST /api/feedback {"chat_id": <int>, "score": 1|-1}
+func handleFeedback() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		var req struct {
+			ChatID int64 `json:"chat_id"`
+			Score  int   `json:"score"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ChatID == 0 {
+			http.Error(w, "invalid request: chat_id required", http.StatusBadRequest)
+			return
+		}
+		if err := RecordFeedback(req.ChatID, req.Score); err != nil {
+			log.Printf("feedback error: %v", err)
+			http.Error(w, "failed to record feedback", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"ok":true}`))
 	}
 }
 
@@ -438,6 +560,12 @@ func RegisterMCP() {
 		model = "claude-sonnet-4-5"
 	}
 	mcpURL := fmt.Sprintf("http://localhost:%s/mcp-http", mcpPort)
+
+	feedbackHandler := handleFeedback()
+	// Register feedback on both mux and main mux regardless of apiKey,
+	// so the endpoint is always reachable even if chat is reconfigured.
+	mux.HandleFunc("/api/feedback", feedbackHandler)
+	http.HandleFunc("/api/feedback", feedbackHandler)
 
 	if apiKey != "" {
 		chatHandler := handleWebChat(mcpURL, apiKey, model)

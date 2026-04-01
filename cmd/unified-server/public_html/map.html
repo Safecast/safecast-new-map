@@ -3772,14 +3772,14 @@ function saveSpeedFilterState(state) {
 /**
  * Load unit preference from localStorage.
  * Returns 'uR' for microRoentgen or 'uSv' for microSievert.
- * Default is 'uR' for backward compatibility.
+ * Default is 'uSv'.
  */
 function loadUnitPreference() {
   try {
     const stored = localStorage.getItem('unitPreference');
-    return (stored === 'uSv') ? 'uSv' : 'uR';
+    return (stored === 'uR') ? 'uR' : 'uSv';
   } catch (e) {
-    return 'uR';
+    return 'uSv';
   }
 }
 
