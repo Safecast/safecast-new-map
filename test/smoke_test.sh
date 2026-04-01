@@ -85,8 +85,8 @@ CODE=$(curl -s -o /tmp/smoke_body -w "%{http_code}" "$BASE/licenses/mit")
 check "GET /licenses/mit"       200 "$CODE"
 CODE=$(curl -s -o /tmp/smoke_body -w "%{http_code}" "$BASE/licenses/cc0")
 check "GET /licenses/cc0"       200 "$CODE"
-CODE=$(curl -s -o /tmp/smoke_body -w "%{http_code}" "$BASE/api/docs")
-check "GET /api/docs"           200 "$CODE"
+CODE=$(curl -s -o /tmp/smoke_body -w "%{http_code}" "$BASE/map-api/")
+check "GET /map-api/"           200 "$CODE"
 
 section "API overview & data"
 CODE=$(curl -s -o /tmp/smoke_body -w "%{http_code}" "$BASE/api")
@@ -218,8 +218,8 @@ check "GET /api/admin/users (admin pw)" 200 "$CODE"
 section "Swagger docs (MCP server - may be on different port)"
 MCP_BASE="${MCP_BASE:-}"
 if [ -n "$MCP_BASE" ]; then
-  CODE=$(curl -s -o /tmp/smoke_body -w "%{http_code}" "$MCP_BASE/docs/")
-  check "GET /docs/ (Swagger UI)" 200 "$CODE"
+  CODE=$(curl -s -o /tmp/smoke_body -w "%{http_code}" "$MCP_BASE/mcp-api/")
+  check "GET /mcp-api/ (Swagger UI)" 200 "$CODE"
   CODE=$(curl -s -o /tmp/smoke_body -w "%{http_code}" "$MCP_BASE/api/radiation?lat=35.6&lon=139.7")
   check "GET /api/radiation (MCP REST)" 200 "$CODE"
   CODE=$(curl -s -o /tmp/smoke_body -w "%{http_code}" "$MCP_BASE/api/stats")

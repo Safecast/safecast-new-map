@@ -11,7 +11,18 @@ import (
 	"time"
 )
 
-// spectrum returns spectrum JSON for the marker. Paths containing "/download" are handled by spectrumDownload.
+// spectrum returns spectrum JSON for the marker.
+//
+// @Summary     Get spectrum by marker ID
+// @Description Returns spectroscopy data for a marker. Download paths are delegated to the download handler.
+// @Tags        web
+// @Produce     json
+// @Param       markerID path int true "Marker ID"
+// @Success     200 {object} map[string]interface{} "Spectrum payload"
+// @Failure     400 {string} string "Invalid marker ID"
+// @Failure     404 {string} string "Spectrum not found"
+// @Failure     503 {string} string "Database unavailable"
+// @Router      /api/spectrum/{markerID} [get]
 func (s *Server) spectrum(w http.ResponseWriter, r *http.Request) {
 	if strings.Contains(r.URL.Path, "/download") {
 		s.spectrumDownload(w, r)
@@ -47,7 +58,19 @@ func (s *Server) spectrum(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(spectrum)
 }
 
-// spectrumDownload returns the spectrum as an attachment; format defaults to json. n42/spe return raw source when available.
+// spectrumDownload returns spectrum content as a downloadable attachment.
+//
+// @Summary     Download spectrum file
+// @Description Downloads a spectrum as json, csv, n42, or spe.
+// @Tags        web
+// @Produce     application/octet-stream
+// @Param       markerID path int true "Marker ID"
+// @Param       format query string false "Download format: json, csv, n42, spe"
+// @Success     200 {file} file "Spectrum file"
+// @Failure     400 {string} string "Invalid marker or format"
+// @Failure     404 {string} string "Spectrum or format data unavailable"
+// @Failure     503 {string} string "Database unavailable"
+// @Router      /api/spectrum/{markerID}/download [get]
 func (s *Server) spectrumDownload(w http.ResponseWriter, r *http.Request) {
 	if s.DB == nil || s.DB.DB == nil {
 		http.Error(w, "Database not available", http.StatusServiceUnavailable)

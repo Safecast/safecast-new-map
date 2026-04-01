@@ -145,6 +145,17 @@ func checkAdminAccess(w http.ResponseWriter, r *http.Request, adminPassword stri
 }
 
 // handleUserUploads returns the authenticated user's uploads (paginated) as JSON.
+//
+// @Summary     List current user uploads
+// @Description Returns paginated uploads for the authenticated user.
+// @Tags        auth
+// @Produce     json
+// @Param       limit query int false "Page size"
+// @Param       offset query int false "Offset"
+// @Success     200 {object} map[string]interface{} "Upload rows"
+// @Failure     401 {string} string "Unauthorized"
+// @Failure     503 {string} string "Database unavailable"
+// @Router      /api/user/uploads [get]
 func handleUserUploads(w http.ResponseWriter, r *http.Request, cfg RegisterConfig) {
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
 	w.Header().Set("Pragma", "no-cache")

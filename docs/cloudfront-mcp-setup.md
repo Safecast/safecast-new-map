@@ -28,19 +28,9 @@ origin-simplemap.safecast.org
 Nginx (routes by path)
     ├─ /mcp-http         → MCP Server (port 3333)
     ├─ /mcp              → MCP Server (port 3333)
-    ├─ /docs/            → MCP Server (port 3333) — Swagger UI
+    ├─ /mcp-api/         → MCP Server (port 3333) — Swagger UI
     ├─ /assistant/       → Web-chat (port 3334)
-    ├─ /api/radiation    → MCP Server (port 3333)
-    ├─ /api/area         → MCP Server (port 3333)
-    ├─ /api/sensors      → MCP Server (port 3333)
-    ├─ /api/sensor/      → MCP Server (port 3333)
-    ├─ /api/device/      → MCP Server (port 3333)
-    ├─ /api/spectra      → MCP Server (port 3333)
-    ├─ /api/stats        → MCP Server (port 3333)
-    ├─ /api/extreme      → MCP Server (port 3333)
-    ├─ /api/info/        → MCP Server (port 3333)
-    ├─ /api/gpt/         → MCP Server (port 3333)
-    ├─ /api/track/       → MCP Server (port 3333)
+    ├─ /api/* (selected MCP REST routes) → MCP Server (port 3333)
     └─ /                 → Map Server (port 8765) — everything else
                            including /api/auth/, /api/user/,
                            /api/admin/, /api/spectrum/, /api/markers/
@@ -82,7 +72,7 @@ server {
     location /mcp      { proxy_pass http://localhost:3333; proxy_http_version 1.1; ... }
 
     # Swagger UI
-    location /docs/ { proxy_pass http://localhost:3333/docs/; ... }
+    location /mcp-api/ { proxy_pass http://localhost:3333/mcp-api/; ... }
 
     # Web-chat assistant
     location /assistant/ { proxy_pass http://localhost:3334/; ... }
@@ -211,11 +201,11 @@ aws cloudfront get-distribution-config --id E12FYIQ8RRXOJ1 > /tmp/cf.json
   aws cloudfront create-invalidation --distribution-id E12FYIQ8RRXOJ1 --paths "/*"
   ```
 
-- **Swagger Documentation:** The MCP server's Swagger docs at `/docs/` are configured with:
+- **Swagger Documentation (source of truth):** The MCP server's API docs at `/mcp-api/` are generated from Swaggo annotations in `cmd/mcp-server/rest.go` and `cmd/mcp-server/rest_*.go`. The map/unified API docs at `/map-api/` are generated from annotations in `cmd/unified-server/`, `pkg/httpapi/`, and `pkg/auth/`.
   - Host: `simplemap.safecast.org`
   - Base Path: `/api`
 
-  If these values need updating, edit `cmd/mcp-server/rest.go` annotations, regenerate with `swag init -g rest.go` from inside `cmd/mcp-server/`, rebuild, and invalidate CloudFront cache for `/docs/*`.
+  If these values need updating, edit `cmd/mcp-server/rest.go` annotations, regenerate with `swag init -g rest.go` from inside `cmd/mcp-server/`, rebuild, and invalidate CloudFront cache for `/mcp-api/*`.
 
 - **Nginx routing pitfall:** Do NOT use a broad `location /api/` rule pointing to port 3333. This breaks map-server routes (`/api/auth/`, `/api/spectrum/`, etc.). Always use specific `location = /api/endpoint` or `location /api/prefix/` rules for MCP endpoints.
 

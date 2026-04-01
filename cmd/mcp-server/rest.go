@@ -24,8 +24,11 @@ package main
 import (
 	_ "embed"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	httpSwagger "github.com/swaggo/http-swagger"
@@ -44,7 +47,7 @@ var favicon32 []byte
 // RESTHandler wires all REST API routes onto a mux.
 type RESTHandler struct{}
 
-// Register attaches all /api/* routes and the /docs/ Swagger UI to mux.
+// Register attaches all /api/* routes and the /mcp-api/ Swagger UI to mux.
 func (h *RESTHandler) Register(mux *http.ServeMux) {
 	// Historical data
 	mux.HandleFunc("/api/radiation", h.handleRadiation)
@@ -69,76 +72,135 @@ func (h *RESTHandler) Register(mux *http.ServeMux) {
 	// GPT-optimised compact endpoints (for Custom GPT Actions)
 	h.RegisterGPT(mux)
 
-	// Favicon endpoints
-	mux.HandleFunc("/docs/favicon.ico", serveFavicon)
-	mux.HandleFunc("/docs/favicon-16x16.png", serveFavicon16)
-	mux.HandleFunc("/docs/favicon-32x32.png", serveFavicon32)
+	mapBaseForDocs := strings.TrimSpace(os.Getenv("MAP_BASE_URL"))
+	if mapBaseForDocs == "" {
+		mapBaseForDocs = "http://localhost:8765"
+	}
+	mapDocsURL := strings.TrimRight(mapBaseForDocs, "/") + "/map-api/"
+	mcpAPINavScript := fmt.Sprintf(`function() {
+				document.title = 'Safecast MCP API Docs';
+				const mapDocsURL = %q;
 
-	// Swagger UI — themed to match simplemap admin pages
-	mux.HandleFunc("/docs/swagger-theme.css", serveSwaggerTheme)
-	mux.Handle("/docs/", httpSwagger.Handler(
-		httpSwagger.URL("/docs/doc.json"),
-		httpSwagger.UIConfig(map[string]string{
-			"onComplete": `function() {
-				// Change page title
-				document.title = 'Safecast MCP Docs';
-
-				// Remove Swagger logo completely from DOM
-				const swaggerLogo = document.querySelector('.topbar-wrapper .link');
-				if (swaggerLogo) {
-					swaggerLogo.remove();
-				}
-				// Also remove any img tags in topbar as backup
-				const logoImgs = document.querySelectorAll('.topbar-wrapper img');
-				logoImgs.forEach(img => img.remove());
-
-				// Inject Safecast favicon
+				// ── Favicons ──
 				const link16 = document.createElement('link');
-				link16.rel = 'icon';
-				link16.type = 'image/png';
-				link16.sizes = '16x16';
-				link16.href = '/docs/favicon-16x16.png';
+				link16.rel = 'icon'; link16.type = 'image/png'; link16.sizes = '16x16';
+				link16.href = '/mcp-api/favicon-16x16.png';
 				document.head.appendChild(link16);
-
 				const link32 = document.createElement('link');
-				link32.rel = 'icon';
-				link32.type = 'image/png';
-				link32.sizes = '32x32';
-				link32.href = '/docs/favicon-32x32.png';
+				link32.rel = 'icon'; link32.type = 'image/png'; link32.sizes = '32x32';
+				link32.href = '/mcp-api/favicon-32x32.png';
 				document.head.appendChild(link32);
-
 				const linkICO = document.createElement('link');
-				linkICO.rel = 'shortcut icon';
-				linkICO.href = '/docs/favicon.ico';
+				linkICO.rel = 'shortcut icon'; linkICO.href = '/mcp-api/favicon.ico';
 				document.head.appendChild(linkICO);
 
-				// Inject custom CSS
+				// ── Theme CSS ──
 				const style = document.createElement('link');
-				style.rel = 'stylesheet';
-				style.href = '/docs/swagger-theme.css';
+				style.rel = 'stylesheet'; style.href = '/mcp-api/swagger-theme.css';
 				document.head.appendChild(style);
 
-				// Create dark mode toggle button
-				const btn = document.createElement('button');
-				btn.id = 'dark-mode-toggle';
-				btn.textContent = '🌙 Dark Mode';
+				// ── Remove Swagger logo ──
+				const swaggerLogo = document.querySelector('.topbar-wrapper .link');
+				if (swaggerLogo) swaggerLogo.remove();
+				document.querySelectorAll('.topbar-wrapper img').forEach(img => img.remove());
 
-				// Check localStorage for saved preference
-				const isDark = localStorage.getItem('darkMode') === 'true';
-				if (isDark) {
-					document.body.classList.add('dark-mode');
-					btn.textContent = '☀️ Light Mode';
+				// ── Inject "Switch to Map API" button into topbar ──
+				const topbar = document.querySelector('.swagger-ui .topbar');
+				if (topbar) {
+					const existingBtn = document.getElementById('safecast-switch-btn');
+					if (existingBtn) existingBtn.remove();
+					const switchBtn = document.createElement('a');
+					switchBtn.id = 'safecast-switch-btn';
+					switchBtn.href = mapDocsURL;
+					switchBtn.textContent = '\u2190 Switch to Map API';
+					switchBtn.style.cssText = 'display:inline-block;margin-left:auto;margin-right:16px;padding:6px 14px;background:#085e58;color:#fff;border-radius:6px;font:600 13px/1.4 -apple-system,BlinkMacSystemFont,sans-serif;text-decoration:none;border:1px solid rgba(255,255,255,0.25);white-space:nowrap;';
+					switchBtn.onmouseover = function() { this.style.background = '#064a45'; };
+					switchBtn.onmouseout  = function() { this.style.background = '#085e58'; };
+					const wrapper = topbar.querySelector('.topbar-wrapper');
+					if (wrapper) {
+						wrapper.style.display = 'flex';
+						wrapper.style.alignItems = 'center';
+						wrapper.style.width = '100%%';
+						wrapper.appendChild(switchBtn);
+					} else {
+						topbar.appendChild(switchBtn);
+					}
 				}
 
+				// ── Dark mode toggle ──
+				const btn = document.createElement('button');
+				btn.id = 'dark-mode-toggle';
+				btn.textContent = '\u{1F319} Dark Mode';
+				const isDark = localStorage.getItem('safecastMCPDarkMode') === 'true';
+				if (isDark) { document.body.classList.add('dark-mode'); btn.textContent = '\u2600\uFE0F Light Mode'; }
 				btn.onclick = function() {
 					document.body.classList.toggle('dark-mode');
 					const nowDark = document.body.classList.contains('dark-mode');
-					btn.textContent = nowDark ? '☀️ Light Mode' : '🌙 Dark Mode';
-					localStorage.setItem('darkMode', nowDark);
+					btn.textContent = nowDark ? '\u2600\uFE0F Light Mode' : '\u{1F319} Dark Mode';
+					localStorage.setItem('safecastMCPDarkMode', nowDark);
 				};
-
 				document.body.appendChild(btn);
-			}`,
+
+				// ── Preamble section (inserted before #swagger-ui) ──
+				const existing = document.getElementById('safecast-preamble');
+				if (existing) existing.remove();
+				const preamble = document.createElement('div');
+				preamble.id = 'safecast-preamble';
+				preamble.style.cssText = 'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#fff;border-bottom:3px solid #0d9488;padding:28px 32px 24px;line-height:1.6;';
+				preamble.innerHTML = '<div style="max-width:900px;margin:0 auto;">' +
+					'<h2 style="margin:0 0 6px;font-size:22px;color:#0f3d38;">Safecast MCP API</h2>' +
+					'<p style="margin:0 0 16px;font-size:15px;color:#555;">' +
+						'This API is designed for AI assistants and automated tools. It exposes the Safecast radiation dataset ' +
+						'as a set of callable functions (MCP tools) and standard REST endpoints, so that language models and ' +
+						'applications can query radiation data programmatically. If you want to ask questions about the data ' +
+						'in plain English instead, try the <a href="/assistant/" style="color:#0d9488;">AI web chat</a>.' +
+					'</p>' +
+					'<details style="margin-bottom:16px;">' +
+						'<summary style="cursor:pointer;font-weight:600;font-size:14px;color:#0f3d38;user-select:none;">For developers &mdash; transports &amp; tools overview</summary>' +
+						'<div style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;">' +
+							'<div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:12px;">' +
+								'<strong style="color:#0f3d38;">MCP Streamable HTTP</strong>' +
+								'<p style="margin:4px 0 0;font-size:13px;color:#555;">Primary MCP transport at <code>/mcp-http</code>. Compatible with Claude, GPT, and most MCP clients.</p>' +
+							'</div>' +
+							'<div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:12px;">' +
+								'<strong style="color:#0f3d38;">MCP SSE</strong>' +
+								'<p style="margin:4px 0 0;font-size:13px;color:#555;">Server-Sent Events transport at <code>/mcp/sse</code> for streaming-capable clients.</p>' +
+							'</div>' +
+							'<div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:12px;">' +
+								'<strong style="color:#0f3d38;">REST Endpoints</strong>' +
+								'<p style="margin:4px 0 0;font-size:13px;color:#555;">All MCP tools are also accessible as plain HTTP GET/POST calls under <code>/api/</code>.</p>' +
+							'</div>' +
+							'<div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:12px;">' +
+								'<strong style="color:#0f3d38;">AI Web Chat</strong>' +
+								'<p style="margin:4px 0 0;font-size:13px;color:#555;">Human-friendly interface at <code>/assistant/</code> for querying data with natural language.</p>' +
+							'</div>' +
+						'</div>' +
+						'<p style="margin:12px 0 0;font-size:13px;color:#777;">No authentication required. All data is CC0 licensed.</p>' +
+					'</details>' +
+					'<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">' +
+						'<a href="/assistant/" style="display:inline-block;padding:7px 16px;background:#0f3d38;color:#fff;border-radius:6px;font:600 13px/1.4 sans-serif;text-decoration:none;">Open AI Chat</a>' +
+						'<a href="' + mapDocsURL + '" style="display:inline-block;padding:7px 16px;background:#1a3a5c;color:#fff;border-radius:6px;font:600 13px/1.4 sans-serif;text-decoration:none;">\u2190 Switch to Map API</a>' +
+					'</div>' +
+				'</div>';
+				const swaggerUIEl = document.getElementById('swagger-ui');
+				if (swaggerUIEl) {
+					document.body.insertBefore(preamble, swaggerUIEl);
+				} else {
+					document.body.prepend(preamble);
+				}
+			}`, mapDocsURL)
+
+	// Favicon endpoints
+	mux.HandleFunc("/mcp-api/favicon.ico", serveFavicon)
+	mux.HandleFunc("/mcp-api/favicon-16x16.png", serveFavicon16)
+	mux.HandleFunc("/mcp-api/favicon-32x32.png", serveFavicon32)
+
+	// Swagger UI — teal theme for MCP API
+	mux.HandleFunc("/mcp-api/swagger-theme.css", serveSwaggerTheme)
+	mux.Handle("/mcp-api/", httpSwagger.Handler(
+		httpSwagger.URL("/mcp-api/doc.json"),
+		httpSwagger.UIConfig(map[string]string{
+			"onComplete": mcpAPINavScript,
 		}),
 	))
 }
@@ -217,7 +279,7 @@ func serveFavicon32(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(favicon32)
 }
 
-// serveSwaggerTheme serves the custom CSS that makes Swagger UI match simplemap's design.
+// serveSwaggerTheme serves the MCP API Swagger theme CSS (teal palette).
 func serveSwaggerTheme(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/css")
 	w.Header().Set("Cache-Control", "public, max-age=86400")
@@ -225,10 +287,9 @@ func serveSwaggerTheme(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(swaggerThemeCSS))
 }
 
-// swaggerThemeCSS overrides Swagger UI defaults to match the simplemap admin theme.
-// Colour values mirror those in admin-users.html and api-usage.html from safecast-new-map.
+// swaggerThemeCSS is the Swagger UI theme for the MCP API (teal palette).
 const swaggerThemeCSS = `
-/* ── Safecast Swagger theme — matches simplemap admin pages ── */
+/* ── Safecast MCP API Swagger theme — teal palette ── */
 
 /* Hide Swagger logo and collapse the space */
 .swagger-ui .topbar-wrapper {
@@ -250,7 +311,7 @@ const swaggerThemeCSS = `
   left: -9999px !important;
   max-height: 0 !important;
 }
-/* Hide the info link that shows /docs/doc.json */
+/* Hide the info link that shows /mcp-api/doc.json */
 .swagger-ui .info .link,
 .swagger-ui .info a[href*="doc.json"] {
   display: none !important;
@@ -264,7 +325,7 @@ const swaggerThemeCSS = `
   right: 20px;
   z-index: 10001;
   padding: 8px 16px;
-  background: #0066cc;
+  background: #0d9488;
   color: white;
   border: none;
   border-radius: 8px;
@@ -280,10 +341,10 @@ const swaggerThemeCSS = `
   display: none !important;
 }
 #dark-mode-toggle:hover {
-  background: #0055aa;
+  background: #0b7a70;
 }
 body.dark-mode #dark-mode-toggle {
-  background: #1565c0;
+  background: #0a6b62;
 }
 
 /* Font stack and base background (light mode) */
@@ -296,9 +357,9 @@ body,
   transition: background 0.3s, color 0.3s;
 }
 
-/* Top bar — matches --th-bg (#424242) from admin-users.html */
+/* Top bar — deep teal-dark to signal MCP API */
 .swagger-ui .topbar {
-  background: #424242 !important;
+  background: #0f3d38 !important;
   padding: 8px 0 !important;
 }
 .swagger-ui .topbar .download-url-wrapper input[type=text] {
@@ -332,13 +393,13 @@ body,
   border-radius: 8px !important;
 }
 
-/* GET method colour — matches --link-color (#0066cc) */
+/* GET method colour — teal */
 .swagger-ui .opblock.opblock-get {
-  border-color: #0066cc !important;
-  background: #f0f6ff !important;
+  border-color: #0d9488 !important;
+  background: #f0fdfa !important;
 }
 .swagger-ui .opblock.opblock-get .opblock-summary-method {
-  background: #0066cc !important;
+  background: #0d9488 !important;
   border-radius: 4px !important;
 }
 
@@ -346,7 +407,7 @@ body,
 .swagger-ui a,
 .swagger-ui .opblock-summary-path,
 .swagger-ui .info a {
-  color: #0066cc !important;
+  color: #0d9488 !important;
 }
 .swagger-ui a:hover {
   text-decoration: underline !important;
@@ -354,21 +415,21 @@ body,
 
 /* Buttons */
 .swagger-ui .btn.execute {
-  background: #0066cc !important;
-  border-color: #0066cc !important;
+  background: #0d9488 !important;
+  border-color: #0d9488 !important;
   border-radius: 8px !important;
   color: #fff !important;
 }
 .swagger-ui .btn.execute:hover {
-  background: #0055aa !important;
+  background: #0b7a70 !important;
 }
 .swagger-ui .btn.cancel {
   border-radius: 8px !important;
 }
 .swagger-ui .btn.authorize {
   border-radius: 8px !important;
-  color: #0066cc !important;
-  border-color: #0066cc !important;
+  color: #0d9488 !important;
+  border-color: #0d9488 !important;
 }
 
 /* Section headers */
@@ -380,7 +441,7 @@ body,
 
 /* Parameter tables */
 .swagger-ui table thead tr th {
-  background: #424242 !important;
+  background: #0f3d38 !important;
   color: #fff !important;
   font-weight: 600 !important;
 }
@@ -423,7 +484,7 @@ body.dark-mode .swagger-ui .wrapper {
 }
 
 body.dark-mode .swagger-ui .topbar {
-  background: #616161 !important;
+  background: #1a5048 !important;
 }
 
 body.dark-mode .swagger-ui .info .title,
@@ -440,17 +501,17 @@ body.dark-mode .swagger-ui .opblock {
 }
 
 body.dark-mode .swagger-ui .opblock.opblock-get {
-  background: #1a2940 !important;
-  border-color: #90caf9 !important;
+  background: #0f2924 !important;
+  border-color: #5eead4 !important;
 }
 body.dark-mode .swagger-ui .opblock.opblock-get .opblock-summary-method {
-  background: #1565c0 !important;
+  background: #0a6b62 !important;
 }
 
 body.dark-mode .swagger-ui a,
 body.dark-mode .swagger-ui .opblock-summary-path,
 body.dark-mode .swagger-ui .info a {
-  color: #90caf9 !important;
+  color: #5eead4 !important;
 }
 
 body.dark-mode .swagger-ui .opblock-tag {
@@ -459,7 +520,7 @@ body.dark-mode .swagger-ui .opblock-tag {
 }
 
 body.dark-mode .swagger-ui table thead tr th {
-  background: #616161 !important;
+  background: #1a5048 !important;
 }
 body.dark-mode .swagger-ui table tbody tr:hover {
   background: #333 !important;
@@ -489,12 +550,12 @@ body.dark-mode .swagger-ui select {
 }
 
 body.dark-mode .swagger-ui .btn.execute {
-  background: #1565c0 !important;
-  border-color: #1565c0 !important;
+  background: #0a6b62 !important;
+  border-color: #0a6b62 !important;
 }
 body.dark-mode .swagger-ui .btn.authorize {
-  color: #90caf9 !important;
-  border-color: #90caf9 !important;
+  color: #5eead4 !important;
+  border-color: #5eead4 !important;
 }
 
 body.dark-mode .swagger-ui .opblock-summary-description,

@@ -11,9 +11,40 @@ import (
 	"time"
 )
 
+// AdminCreateUserRequest describes the JSON body for admin user creation.
+type AdminCreateUserRequest struct {
+	Email                 string `json:"email" example:"user@example.com"`
+	Username              string `json:"username" example:"jane_doe"`
+	Password              string `json:"password,omitempty" example:"StrongPass123!"`
+	SendWelcomeEmail      bool   `json:"send_welcome_email" example:"true"`
+	RequiresPasswordSetup bool   `json:"requires_password_setup" example:"false"`
+}
+
+// AdminUpdateUserRequest describes the JSON body for admin user updates.
+type AdminUpdateUserRequest struct {
+	Email         *string `json:"email,omitempty" example:"updated@example.com"`
+	Username      *string `json:"username,omitempty" example:"updated_name"`
+	Password      *string `json:"password,omitempty" example:"NewStrongPass123!"`
+	IsActive      *bool   `json:"is_active,omitempty" example:"true"`
+	IsAdmin       *bool   `json:"is_admin,omitempty" example:"false"`
+	EmailVerified *bool   `json:"email_verified,omitempty" example:"true"`
+	ExternalID    *string `json:"external_id,omitempty" example:"auth0|abc123"`
+}
+
 // AdminListUsersHandler returns a list of users with pagination support (admin only).
 // Query parameters: limit, offset, search
 // Note: Authentication is handled by the route handler via password parameter check.
+//
+// @Summary     Admin list users
+// @Description Returns paginated user list for admin users.
+// @Tags        admin
+// @Produce     json
+// @Param       limit query int false "Page size"
+// @Param       offset query int false "Offset"
+// @Param       search query string false "Search term"
+// @Success     200 {object} map[string]interface{} "User rows"
+// @Failure     500 {object} map[string]string "Server error"
+// @Router      /api/admin/users [get]
 func (m *Manager) AdminListUsersHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -61,6 +92,18 @@ func (m *Manager) AdminListUsersHandler(w http.ResponseWriter, r *http.Request) 
 
 // AdminCreateUserHandler creates a new user (admin only).
 // Note: Authentication is handled by the route handler via password parameter check.
+//
+// @Summary     Admin create user
+// @Description Creates a user account as admin.
+// @Tags        admin
+// @Accept      json
+// @Produce     json
+// @Param       body body AdminCreateUserRequest true "Create-user payload"
+// @Success     201 {object} map[string]interface{} "Create result"
+// @Failure     400 {object} map[string]string "Invalid request"
+// @Failure     409 {object} map[string]string "Duplicate user"
+// @Failure     500 {object} map[string]string "Server error"
+// @Router      /api/admin/users/create [post]
 func (m *Manager) AdminCreateUserHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -69,10 +112,10 @@ func (m *Manager) AdminCreateUserHandler(w http.ResponseWriter, r *http.Request)
 
 	// Parse request
 	var req struct {
-		Email                string `json:"email"`
-		Username             string `json:"username"`
-		Password             string `json:"password"`
-		SendWelcomeEmail     bool   `json:"send_welcome_email"`
+		Email                 string `json:"email"`
+		Username              string `json:"username"`
+		Password              string `json:"password"`
+		SendWelcomeEmail      bool   `json:"send_welcome_email"`
 		RequiresPasswordSetup bool   `json:"requires_password_setup"`
 	}
 
@@ -176,6 +219,20 @@ func (m *Manager) AdminCreateUserHandler(w http.ResponseWriter, r *http.Request)
 
 // AdminUpdateUserHandler updates an existing user (admin only).
 // Note: Authentication is handled by the route handler via password parameter check.
+//
+// @Summary     Admin update user
+// @Description Updates user fields by user ID.
+// @Tags        admin
+// @Accept      json
+// @Produce     json
+// @Param       id path int true "User ID"
+// @Param       body body AdminUpdateUserRequest true "Update-user payload; fields are optional. Includes password and external_id."
+// @Success     200 {object} map[string]interface{} "Update result"
+// @Failure     400 {object} map[string]string "Invalid request"
+// @Failure     404 {object} map[string]string "User not found"
+// @Failure     500 {object} map[string]string "Server error"
+// @Router      /api/admin/users/{id} [put]
+// @Router      /api/admin/users/{id} [patch]
 func (m *Manager) AdminUpdateUserHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPut && r.Method != http.MethodPatch {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -287,6 +344,16 @@ func (m *Manager) AdminUpdateUserHandler(w http.ResponseWriter, r *http.Request)
 
 // AdminDeleteUserHandler deletes a user (admin only).
 // Note: Authentication is handled by the route handler via password parameter check.
+//
+// @Summary     Admin delete user
+// @Description Deletes user by ID.
+// @Tags        admin
+// @Produce     json
+// @Param       id path int true "User ID"
+// @Success     200 {object} map[string]string "Delete result"
+// @Failure     400 {object} map[string]string "Invalid user ID"
+// @Failure     500 {object} map[string]string "Server error"
+// @Router      /api/admin/users/{id} [delete]
 func (m *Manager) AdminDeleteUserHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -317,6 +384,16 @@ func (m *Manager) AdminDeleteUserHandler(w http.ResponseWriter, r *http.Request)
 
 // AdminResetUserPasswordHandler sends a password reset email to a user (admin only).
 // Note: Authentication is handled by the route handler via password parameter check.
+//
+// @Summary     Admin reset user password
+// @Description Sends password reset/setup email for a user.
+// @Tags        admin
+// @Produce     json
+// @Param       id path int true "User ID"
+// @Success     200 {object} map[string]string "Reset result"
+// @Failure     400 {object} map[string]string "Invalid request"
+// @Failure     500 {object} map[string]string "Server error"
+// @Router      /api/admin/users/{id}/reset-password [post]
 func (m *Manager) AdminResetUserPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -388,6 +465,16 @@ func (m *Manager) AdminResetUserPasswordHandler(w http.ResponseWriter, r *http.R
 // AdminRegenerateAPIKeyHandler regenerates an API key for a user (admin only).
 // POST /api/admin/users/{id}/regenerate-api-key
 // Note: Authentication is handled by the route handler via password parameter check.
+//
+// @Summary     Admin regenerate API key
+// @Description Regenerates API key for a user.
+// @Tags        admin
+// @Produce     json
+// @Param       id path int true "User ID"
+// @Success     200 {object} map[string]interface{} "Regenerate result"
+// @Failure     400 {object} map[string]string "Invalid request"
+// @Failure     500 {object} map[string]string "Server error"
+// @Router      /api/admin/users/{id}/regenerate-api-key [post]
 func (m *Manager) AdminRegenerateAPIKeyHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)

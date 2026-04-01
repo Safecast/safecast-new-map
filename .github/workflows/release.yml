@@ -225,6 +225,6 @@ jobs:
             - MCP: http://localhost:8765/mcp-http
             - AI Chat: http://localhost:8765/assistant/
             - REST API: http://localhost:8765/api/
-            - Swagger: http://localhost:8765/docs/
+            - Swagger: http://localhost:8765/map-api/
           prerelease: false
           files: dist-raw/**/*

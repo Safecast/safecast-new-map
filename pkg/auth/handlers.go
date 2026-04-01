@@ -21,7 +21,19 @@ const (
 )
 
 // RegisterHandler handles user registration requests.
-// POST /api/auth/register
+//
+// @Summary     Register a new user
+// @Description Creates a new user account and sends an email verification token when email is configured.
+// @Tags        auth
+// @Accept      json
+// @Produce     json
+// @Param       body body object true "Registration request"
+// @Success     201 {object} map[string]interface{} "Registration created"
+// @Failure     400 {object} map[string]interface{} "Invalid request"
+// @Failure     403 {object} map[string]interface{} "Registration disabled"
+// @Failure     409 {object} map[string]interface{} "Email already exists"
+// @Failure     500 {object} map[string]interface{} "Server error"
+// @Router      /api/auth/register [post]
 func (m *Manager) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -144,8 +156,19 @@ func (m *Manager) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // LoginHandler handles user login requests.
-// POST /api/auth/login
-// Accepts either password or API key for authentication
+//
+// @Summary     Login user
+// @Description Authenticates by email+password or email+API key and creates a session cookie.
+// @Tags        auth
+// @Accept      json
+// @Produce     json
+// @Param       body body object true "Login request"
+// @Success     200 {object} map[string]interface{} "Login success"
+// @Failure     400 {object} map[string]interface{} "Invalid request"
+// @Failure     401 {object} map[string]interface{} "Unauthorized"
+// @Failure     403 {object} map[string]interface{} "Account disabled"
+// @Failure     500 {object} map[string]interface{} "Server error"
+// @Router      /api/auth/login [post]
 func (m *Manager) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -269,7 +292,14 @@ func (m *Manager) LoginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // LogoutHandler handles user logout requests.
-// POST /api/auth/logout
+//
+// @Summary     Logout user
+// @Description Deletes active session and clears the session cookie.
+// @Tags        auth
+// @Produce     json
+// @Success     200 {object} map[string]interface{} "Logout success"
+// @Failure     405 {string} string "Method not allowed"
+// @Router      /api/auth/logout [post]
 func (m *Manager) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -311,7 +341,17 @@ func (m *Manager) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // ForgotPasswordHandler handles password reset requests.
-// POST /api/auth/forgot-password
+//
+// @Summary     Request password reset
+// @Description Generates a password reset token and sends reset email when account exists.
+// @Tags        auth
+// @Accept      json
+// @Produce     json
+// @Param       body body object true "Forgot-password request"
+// @Success     200 {object} map[string]interface{} "Request accepted"
+// @Failure     400 {object} map[string]interface{} "Invalid request"
+// @Failure     500 {object} map[string]interface{} "Server error"
+// @Router      /api/auth/forgot-password [post]
 func (m *Manager) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -381,7 +421,17 @@ func (m *Manager) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 // ResetPasswordHandler handles password reset with token.
-// POST /api/auth/reset-password
+//
+// @Summary     Reset password with token
+// @Description Resets account password using a valid reset token.
+// @Tags        auth
+// @Accept      json
+// @Produce     json
+// @Param       body body object true "Reset-password request"
+// @Success     200 {object} map[string]interface{} "Password reset success"
+// @Failure     400 {object} map[string]interface{} "Invalid token or request"
+// @Failure     500 {object} map[string]interface{} "Server error"
+// @Router      /api/auth/reset-password [post]
 func (m *Manager) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -449,7 +499,16 @@ func (m *Manager) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // VerifyEmailHandler handles email verification with token.
-// GET /api/auth/verify-email?token=xxx
+//
+// @Summary     Verify email address
+// @Description Verifies user email using a token and redirects to the map UI on success.
+// @Tags        auth
+// @Produce     json
+// @Param       token query string true "Verification token"
+// @Success     303 {string} string "Redirect to app"
+// @Failure     400 {object} map[string]interface{} "Invalid token"
+// @Failure     500 {object} map[string]interface{} "Server error"
+// @Router      /api/auth/verify-email [get]
 func (m *Manager) VerifyEmailHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -509,7 +568,14 @@ func (m *Manager) VerifyEmailHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // ProfileHandler returns the current user's profile.
-// GET /api/user/profile
+//
+// @Summary     Get current user profile
+// @Description Returns profile details for the authenticated user.
+// @Tags        auth
+// @Produce     json
+// @Success     200 {object} User "User profile"
+// @Failure     401 {string} string "Unauthorized"
+// @Router      /api/user/profile [get]
 func (m *Manager) ProfileHandler(w http.ResponseWriter, r *http.Request) {
 	// Prevent CloudFront from caching user-specific data
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
@@ -534,7 +600,18 @@ func (m *Manager) ProfileHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // ChangePasswordHandler allows a logged-in user to change their password.
-// POST /api/user/change-password
+//
+// @Summary     Change current user password
+// @Description Changes password for the authenticated user after validating current password.
+// @Tags        auth
+// @Accept      json
+// @Produce     json
+// @Param       body body object true "Change-password request"
+// @Success     200 {object} map[string]interface{} "Password changed"
+// @Failure     400 {object} map[string]interface{} "Invalid request"
+// @Failure     401 {object} map[string]interface{} "Unauthorized or wrong password"
+// @Failure     500 {object} map[string]interface{} "Server error"
+// @Router      /api/user/change-password [post]
 func (m *Manager) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)

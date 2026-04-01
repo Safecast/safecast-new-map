@@ -140,6 +140,261 @@
                 }
             }
         },
+        "/extreme": {
+            "get": {
+                "description": "Find the highest or lowest radiation readings in the database with full location details. Supports excluding anomalous sources.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "analytics"
+                ],
+                "summary": "Find extreme radiation readings",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "highest",
+                        "description": "Direction: 'highest' or 'lowest'",
+                        "name": "direction",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Number of results (1-100)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "default": -90,
+                        "description": "Southern boundary for geographic filter",
+                        "name": "min_lat",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "default": 90,
+                        "description": "Northern boundary for geographic filter",
+                        "name": "max_lat",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "default": -180,
+                        "description": "Western boundary for geographic filter",
+                        "name": "min_lon",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "default": 180,
+                        "description": "Eastern boundary for geographic filter",
+                        "name": "max_lon",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma-separated device IDs to exclude (e.g., 'bGeigie-2113,bGeigie-456')",
+                        "name": "exclude_devices",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "JSON array of bounding boxes to exclude (e.g., '[{\\",
+                        "name": "exclude_areas",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Extreme readings with location details",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/gpt/area": {
+            "get": {
+                "description": "Returns compact historical readings for a bounding box, capped to 5 results for GPT usage.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "historical"
+                ],
+                "summary": "Find area readings (GPT compact)",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "Southern latitude boundary",
+                        "name": "min_lat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Northern latitude boundary",
+                        "name": "max_lat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Western longitude boundary",
+                        "name": "min_lon",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Eastern longitude boundary",
+                        "name": "max_lon",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Compact reading list",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "405": {
+                        "description": "Method not allowed",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/gpt/radiation": {
+            "get": {
+                "description": "Returns compact fields optimized for LLM Actions. Results are capped to 5 and include source metadata.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "historical"
+                ],
+                "summary": "Find nearby radiation readings (GPT compact)",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "Latitude in decimal degrees (-90 to 90)",
+                        "name": "lat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Longitude in decimal degrees (-180 to 180)",
+                        "name": "lon",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Search radius in meters",
+                        "name": "radius_m",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Compact reading list",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "405": {
+                        "description": "Method not allowed",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/gpt/stats": {
+            "get": {
+                "description": "Proxies the aggregate statistics endpoint for GPT Actions.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reference"
+                ],
+                "summary": "Get aggregate statistics (GPT compact)",
+                "responses": {
+                    "200": {
+                        "description": "Aggregate statistics",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "405": {
+                        "description": "Method not allowed",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/info/{topic}": {
             "get": {
                 "description": "Returns static educational reference content about radiation units, safety levels, detector types, background levels, and isotopes.",
@@ -656,7 +911,7 @@
         },
         "/track/{id}": {
             "get": {
-                "description": "Retrieves radiation measurements recorded during a specific bGeigie drive. Use GET /api/tracks to find track IDs first.",
+                "description": "Retrieves radiation measurements recorded during a specific bGeigie drive. The path ID can be used directly from a simplemap track URL (for example /trackid/{id}). This REST endpoint returns measurement rows; statistical-only summaries (min/max/percentiles/top peaks) are available via the MCP get_track tool with stats_only=true.",
                 "produces": [
                     "application/json"
                 ],

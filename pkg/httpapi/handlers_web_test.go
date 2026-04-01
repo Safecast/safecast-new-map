@@ -24,7 +24,7 @@ const (
 	webTestShortTarget = "https://safecast.org/map?lat=35.6&lon=139.7"
 )
 
-// newTestServer builds a Server with a temporary SQLite DB and embedded mock content (api-usage, licenses).
+// newTestServer builds a Server with a temporary SQLite DB and embedded mock content.
 func newTestServer(t *testing.T) *Server {
 	t.Helper()
 	// Use temp file so all connections share the same database (SQLite :memory: is per-connection)
@@ -41,9 +41,8 @@ func newTestServer(t *testing.T) *Server {
 	seedTestDB(t, db)
 
 	content := fstest.MapFS{
-		"public_html/api-usage.html": {Data: []byte(`<html><body>__BASE_URL__ __API_ROOT__ __DISPLAY_HOST__ __ARCHIVE_ENABLED__ __ARCHIVE_ROUTE__ __ARCHIVE_FREQUENCY__</body></html>`), Mode: 0644},
-		"LICENSE":                    {Data: []byte("MIT License\nCopyright (c) 2015-present"), Mode: 0644},
-		"LICENSE.CC0":                {Data: []byte("CC0 1.0 Universal"), Mode: 0644},
+		"LICENSE":     {Data: []byte("MIT License\nCopyright (c) 2015-present"), Mode: 0644},
+		"LICENSE.CC0": {Data: []byte("CC0 1.0 Universal"), Mode: 0644},
 	}
 
 	return NewWebServer(db, content, WebConfig{
@@ -422,43 +421,6 @@ func TestRequestClientIP(t *testing.T) {
 			}
 		})
 	}
-}
-
-// --- Docs handler tests ---
-
-func TestApiDocs(t *testing.T) {
-	srv := newTestServer(t)
-
-	t.Run("returns HTML with placeholders replaced", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/api/docs", nil)
-		req.Host = "localhost:8765"
-		rec := httptest.NewRecorder()
-		srv.apiDocs(rec, req)
-		if rec.Code != http.StatusOK {
-			t.Errorf("got status %d, want 200", rec.Code)
-		}
-		body := rec.Body.String()
-		if strings.Contains(body, "__BASE_URL__") {
-			t.Error("__BASE_URL__ was not replaced")
-		}
-		if !strings.Contains(body, "http://localhost:8765") {
-			t.Error("expected base URL in body")
-		}
-	})
-
-	t.Run("X-Forwarded-Proto https", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/api/docs", nil)
-		req.Host = "example.com"
-		req.Header.Set("X-Forwarded-Proto", "https")
-		rec := httptest.NewRecorder()
-		srv.apiDocs(rec, req)
-		if rec.Code != http.StatusOK {
-			t.Errorf("got status %d, want 200", rec.Code)
-		}
-		if !strings.Contains(rec.Body.String(), "https://example.com") {
-			t.Error("expected https base URL")
-		}
-	})
 }
 
 func TestLicense(t *testing.T) {
