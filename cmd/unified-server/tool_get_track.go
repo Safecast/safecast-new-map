@@ -95,13 +95,13 @@ func getTrackDB(ctx context.Context, trackID string, fromID, toID, limit int) (*
 			FROM markers WHERE trackid = $1
 		),
 		peak AS (
-			SELECT lat AS peak_lat, lon AS peak_lon,
+			SELECT id AS peak_id, lat AS peak_lat, lon AS peak_lon,
 			       to_timestamp(date) AS peak_at
 			FROM markers WHERE trackid = $1
 			ORDER BY doserate DESC LIMIT 1
 		)
 		SELECT s.total, s.min_val, s.max_val, s.avg_val,
-		       p.peak_lat, p.peak_lon, p.peak_at
+		       p.peak_id, p.peak_lat, p.peak_lon, p.peak_at
 		FROM stats s, peak p`, trackID)
 
 	total := 0
@@ -121,6 +121,7 @@ func getTrackDB(ctx context.Context, trackID string, fromID, toID, limit int) (*
 			"max_µSv_h":  statsRow["max_val"],
 			"avg_µSv_h":  statsRow["avg_val"],
 			"peak_location": map[string]any{
+				"id":          statsRow["peak_id"],
 				"latitude":    statsRow["peak_lat"],
 				"longitude":   statsRow["peak_lon"],
 				"captured_at": statsRow["peak_at"],
@@ -130,6 +131,11 @@ func getTrackDB(ctx context.Context, trackID string, fromID, toID, limit int) (*
 
 	measurements := make([]map[string]any, len(rows))
 	var uploaderUsername, uploaderEmail any
+	peakInWindow := false
+	var peakID any
+	if statsRow != nil {
+		peakID = statsRow["peak_id"]
+	}
 	for i, r := range rows {
 		measurements[i] = map[string]any{
 			"id":    r["id"],
@@ -145,11 +151,45 @@ func getTrackDB(ctx context.Context, trackID string, fromID, toID, limit int) (*
 			"detector":    r["detector"],
 			"has_spectrum": r["has_spectrum"],
 		}
+		if peakID != nil && fmt.Sprintf("%v", r["id"]) == fmt.Sprintf("%v", peakID) {
+			measurements[i]["is_peak"] = true
+			peakInWindow = true
+		}
 
 		// Store uploader info from first row (all rows for same track have same uploader)
 		if i == 0 {
 			uploaderUsername = r["uploader_username"]
 			uploaderEmail = r["uploader_email"]
+		}
+	}
+
+	// If the peak measurement wasn't in the sampled window, fetch and prepend it
+	if !peakInWindow && statsRow != nil {
+		peakRow, err := queryRow(ctx, `
+			SELECT m.id, m.doserate AS value, 'µSv/h' AS unit,
+				to_timestamp(m.date) AS captured_at,
+				m.lat AS latitude, m.lon AS longitude,
+				m.device_id, m.altitude AS height, m.detector, m.has_spectrum
+			FROM markers m
+			WHERE m.trackid = $1
+			ORDER BY m.doserate DESC LIMIT 1`, trackID)
+		if err == nil && peakRow != nil {
+			peakMeasurement := map[string]any{
+				"id":    peakRow["id"],
+				"value": peakRow["value"],
+				"unit":  peakRow["unit"],
+				"captured_at": peakRow["captured_at"],
+				"location": map[string]any{
+					"latitude":  peakRow["latitude"],
+					"longitude": peakRow["longitude"],
+				},
+				"device_id":    peakRow["device_id"],
+				"height":       peakRow["height"],
+				"detector":     peakRow["detector"],
+				"has_spectrum": peakRow["has_spectrum"],
+				"is_peak":      true,
+			}
+			measurements = append([]map[string]any{peakMeasurement}, measurements...)
 		}
 	}
 
