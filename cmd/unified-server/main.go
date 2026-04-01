@@ -4986,8 +4986,11 @@ func formatUploadRow(upload database.Upload, password string) string {
 
 	// Format recording date
 	recordingDate := "-"
+	recordingDateISO := ""
 	if upload.RecordingDate > 0 {
-		recordingDate = time.Unix(upload.RecordingDate, 0).Format("2006-01-02 15:04:05")
+		t := time.Unix(upload.RecordingDate, 0)
+		recordingDate = t.Format("2006-01-02 15:04:05")
+		recordingDateISO = t.UTC().Format("2006-01-02")
 	}
 
 	// Format detector display
@@ -5033,6 +5036,18 @@ func formatUploadRow(upload database.Upload, password string) string {
 			password, upload.UserID, userText)
 	}
 
+	// HTML-escape data attributes to prevent breaking the attribute syntax
+	escapedFilename := template.HTMLEscapeString(upload.Filename)
+	escapedUsername := template.HTMLEscapeString(upload.Username)
+	escapedDetector := template.HTMLEscapeString(upload.Detector)
+	escapedNotes := template.HTMLEscapeString(upload.Notes)
+
+	// Build optional link to original Safecast import page
+	safecastLink := ""
+	if upload.Source == "safecast-api" && upload.SourceID != "" {
+		safecastLink = fmt.Sprintf(` <a href="https://api.safecast.org/en-US/bgeigie_imports/%s" target="_blank" title="View on Safecast" style="color:var(--link-color);font-size:0.8em;">↗ Safecast</a>`, upload.SourceID)
+	}
+
 	return fmt.Sprintf(`
 			<tr>
 				<td class="checkbox-col"><input type="checkbox" class="track-checkbox" value="%s" onchange="updateDeleteButton()"></td>
@@ -5047,7 +5062,10 @@ func formatUploadRow(upload database.Upload, password string) string {
 				<td>%s</td>
 				<td>%s</td>
 				<td class="datetime">%s</td>
-				<td><button class="delete-btn" onclick="deleteTrack('%s')">Delete</button></td>
+				<td>
+					<button class="edit-btn" onclick="openEditUpload(%d,'%s','%s','%s','%s','%s')">Edit</button>
+					<button class="delete-btn" onclick="deleteTrack('%s')">Delete</button>%s
+				</td>
 			</tr>`,
 		upload.TrackID,
 		upload.ID,
@@ -5061,7 +5079,9 @@ func formatUploadRow(upload database.Upload, password string) string {
 		userDisplay,
 		upload.UploadIP,
 		uploadTime,
+		upload.ID, escapedFilename, escapedUsername, escapedDetector, recordingDateISO, escapedNotes,
 		upload.TrackID,
+		safecastLink,
 	)
 }
 
@@ -5250,6 +5270,20 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		.datetime { color: var(--text-secondary); font-size: 0.9em; }
 		.delete-btn { background: #f44336; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 0.85em; }
 		.delete-btn:hover { background: #d32f2f; }
+		.edit-btn { background: #FF9800; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 0.85em; margin-right: 4px; }
+		.edit-btn:hover { background: #F57C00; }
+		.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+		.modal-overlay.open { display: flex; }
+		.modal { background: var(--bg-card); padding: 24px; border-radius: 8px; width: 480px; max-width: 95vw; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+		.modal h3 { margin: 0 0 16px; color: var(--text-primary); }
+		.modal label { display: block; margin-bottom: 4px; color: var(--text-secondary); font-size: 0.9em; font-weight: 500; }
+		.modal input, .modal textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 0.95em; box-sizing: border-box; margin-bottom: 12px; }
+		.modal textarea { min-height: 80px; resize: vertical; font-family: inherit; }
+		.modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+		.modal-save-btn { background: #4CAF50; color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer; font-size: 0.95em; font-weight: 500; }
+		.modal-save-btn:hover { background: #388E3C; }
+		.modal-cancel-btn { background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 8px 20px; border-radius: 4px; cursor: pointer; font-size: 0.95em; }
+		.modal-cancel-btn:hover { background: var(--hover-bg); }
 		.delete-selected-btn { background: #f44336; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer; font-size: 1em; margin-left: 10px; }
 		.delete-selected-btn:hover { background: #d32f2f; }
 		.delete-selected-btn:disabled { background: #ccc; cursor: not-allowed; }
@@ -5873,7 +5907,73 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 				btn.disabled = false;
 			}
 		}
+
+		let _editUploadID = 0;
+
+		function openEditUpload(id, filename, username, detector, recordingDate, notes) {
+			_editUploadID = id;
+			document.getElementById('editUploadFilename').value = filename;
+			document.getElementById('editUploadUsername').value = username;
+			document.getElementById('editUploadDetector').value = detector;
+			document.getElementById('editUploadRecordingDate').value = recordingDate;
+			document.getElementById('editUploadNotes').value = notes;
+			document.getElementById('editUploadModal').classList.add('open');
+		}
+
+		function closeEditUpload() {
+			document.getElementById('editUploadModal').classList.remove('open');
+		}
+
+		async function saveEditUpload() {
+			const password = new URLSearchParams(window.location.search).get('password');
+			const body = {
+				password: password,
+				upload_id: _editUploadID,
+				filename: document.getElementById('editUploadFilename').value,
+				username: document.getElementById('editUploadUsername').value,
+				detector: document.getElementById('editUploadDetector').value,
+				recording_date: document.getElementById('editUploadRecordingDate').value,
+				notes: document.getElementById('editUploadNotes').value
+			};
+			try {
+				const resp = await fetch('/api/admin/uploads/update', {
+					method: 'PUT',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(body)
+				});
+				if (!resp.ok) {
+					const text = await resp.text();
+					alert('Save failed: ' + text);
+					return;
+				}
+				closeEditUpload();
+				window.location.reload();
+			} catch (err) {
+				alert('Error: ' + err);
+			}
+		}
 	</script>
+
+	<!-- Edit Upload Modal -->
+	<div class="modal-overlay" id="editUploadModal" onclick="if(event.target===this)closeEditUpload()">
+		<div class="modal">
+			<h3>Edit Upload Metadata</h3>
+			<label>Filename</label>
+			<input type="text" id="editUploadFilename">
+			<label>Username</label>
+			<input type="text" id="editUploadUsername" placeholder="uploader username">
+			<label>Detector</label>
+			<input type="text" id="editUploadDetector" placeholder="e.g. LND7317">
+			<label>Recording Date</label>
+			<input type="date" id="editUploadRecordingDate">
+			<label>Notes</label>
+			<textarea id="editUploadNotes" placeholder="Admin notes..."></textarea>
+			<div class="modal-btns">
+				<button class="modal-cancel-btn" onclick="closeEditUpload()">Cancel</button>
+				<button class="modal-save-btn" onclick="saveEditUpload()">Save</button>
+			</div>
+		</div>
+	</div>
 </body>
 </html>`
 
@@ -6041,6 +6141,221 @@ func adminDeleteMultipleTracksHandler(w http.ResponseWriter, r *http.Request) {
 			"deleted": deleted,
 		})
 	}
+}
+
+// adminUpdateTrackHandler updates the editable metadata (name, username, notes) for a track.
+// PUT /api/admin/tracks/update
+// Body: {"password":"xxx","track_id":"abc","name":"...","username":"...","notes":"..."}
+func adminUpdateTrackHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if db == nil || db.DB == nil {
+		http.Error(w, "database not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	var req struct {
+		Password string `json:"password"`
+		TrackID  string `json:"track_id"`
+		Name     string `json:"name"`
+		Username string `json:"username"`
+		Notes    string `json:"notes"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.TrackID == "" {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	isSessionAdmin := false
+	if user, ok := auth.GetUserFromContext(r.Context()); ok && user.IsAdmin {
+		isSessionAdmin = true
+	}
+	if !isSessionAdmin {
+		if *adminPassword == "" {
+			http.Error(w, "admin disabled", http.StatusForbidden)
+			return
+		}
+		if req.Password != *adminPassword {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+	}
+
+	_, err := db.DB.ExecContext(r.Context(),
+		`UPDATE uploads SET name = $1, username = $2, notes = $3 WHERE track_id = $4`,
+		req.Name, req.Username, req.Notes, req.TrackID,
+	)
+	if err != nil {
+		log.Printf("adminUpdateTrack: %v", err)
+		http.Error(w, "update failed", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"ok":true}`))
+}
+
+// adminUpdateUploadHandler updates editable metadata for a single upload record.
+// PUT /api/admin/uploads/update
+// Body: {"password":"xxx","upload_id":123,"filename":"...","username":"...","detector":"...","recording_date":"YYYY-MM-DD","notes":"..."}
+func adminUpdateUploadHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if db == nil || db.DB == nil {
+		http.Error(w, "database not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	var req struct {
+		Password      string `json:"password"`
+		UploadID      int64  `json:"upload_id"`
+		Filename      string `json:"filename"`
+		Username      string `json:"username"`
+		Detector      string `json:"detector"`
+		RecordingDate string `json:"recording_date"` // "YYYY-MM-DD" or ""
+		Notes         string `json:"notes"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.UploadID == 0 {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	isSessionAdmin := false
+	if user, ok := auth.GetUserFromContext(r.Context()); ok && user.IsAdmin {
+		isSessionAdmin = true
+	}
+	if !isSessionAdmin {
+		if *adminPassword == "" {
+			http.Error(w, "admin disabled", http.StatusForbidden)
+			return
+		}
+		if req.Password != *adminPassword {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+	}
+
+	var err error
+	if req.RecordingDate != "" {
+		t, parseErr := time.Parse("2006-01-02", req.RecordingDate)
+		if parseErr != nil {
+			http.Error(w, "invalid recording_date format", http.StatusBadRequest)
+			return
+		}
+		_, err = db.DB.ExecContext(r.Context(),
+			`UPDATE uploads SET filename = $1, username = $2, detector = $3, notes = $4, recording_date = $5 WHERE id = $6`,
+			req.Filename, req.Username, req.Detector, req.Notes, t, req.UploadID,
+		)
+	} else {
+		_, err = db.DB.ExecContext(r.Context(),
+			`UPDATE uploads SET filename = $1, username = $2, detector = $3, notes = $4 WHERE id = $5`,
+			req.Filename, req.Username, req.Detector, req.Notes, req.UploadID,
+		)
+	}
+	if err != nil {
+		log.Printf("adminUpdateUpload: %v", err)
+		http.Error(w, "update failed", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"ok":true}`))
+}
+
+// adminImportSafecastMetadataHandler fetches name/metadata from the old Safecast API
+// for all uploads with source='safecast-api' and a non-empty source_id, then saves
+// the name field back to uploads.name.
+// POST /api/admin/tracks/import-safecast
+// Body: {"password":"xxx"}
+func adminImportSafecastMetadataHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if db == nil || db.DB == nil {
+		http.Error(w, "database not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	var req struct {
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	isSessionAdmin := false
+	if user, ok := auth.GetUserFromContext(r.Context()); ok && user.IsAdmin {
+		isSessionAdmin = true
+	}
+	if !isSessionAdmin {
+		if *adminPassword == "" {
+			http.Error(w, "admin disabled", http.StatusForbidden)
+			return
+		}
+		if req.Password != *adminPassword {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+	}
+
+	// Fetch all uploads from the Safecast API source that have a source_id
+	rows, err := db.DB.QueryContext(r.Context(),
+		`SELECT track_id, source_id FROM uploads WHERE source = 'safecast-api' AND source_id IS NOT NULL AND source_id != '' AND (name IS NULL OR name = '' OR name = filename OR notes IS NULL OR notes = '')`,
+	)
+	if err != nil {
+		http.Error(w, "query failed", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	type candidate struct {
+		TrackID  string
+		SourceID string
+	}
+	var candidates []candidate
+	for rows.Next() {
+		var c candidate
+		if err := rows.Scan(&c.TrackID, &c.SourceID); err == nil {
+			candidates = append(candidates, c)
+		}
+	}
+	rows.Close()
+
+	updated := 0
+	client := &http.Client{Timeout: 10 * time.Second}
+	for _, c := range candidates {
+		apiURL := "https://api.safecast.org/bgeigie_imports/" + c.SourceID + ".json"
+		resp, err := client.Get(apiURL)
+		if err != nil || resp.StatusCode != http.StatusOK {
+			if resp != nil {
+				resp.Body.Close()
+			}
+			continue
+		}
+		var meta struct {
+			Name    string `json:"name"`
+			Comment string `json:"comment"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&meta); err != nil || meta.Name == "" {
+			resp.Body.Close()
+			continue
+		}
+		resp.Body.Close()
+
+		if _, err := db.DB.ExecContext(r.Context(),
+			`UPDATE uploads SET name = $1, notes = $2 WHERE track_id = $3`,
+			meta.Name, meta.Comment, c.TrackID,
+		); err == nil {
+			updated++
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"ok": true, "updated": updated})
 }
 
 // adminImportFromSafecastHandler manually imports files from Safecast API for a date range.
@@ -6374,12 +6689,12 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 	var countArgs []interface{}
 	paramCount := 0
 
-	// Always exclude live tracks
+	// Always exclude live tracks (use ts. prefix since we now have a JOIN)
 	paramCount++
 	if *dbType == "pgx" {
-		whereConditions = append(whereConditions, fmt.Sprintf("trackID NOT LIKE $%d", paramCount))
+		whereConditions = append(whereConditions, fmt.Sprintf("ts.trackID NOT LIKE $%d", paramCount))
 	} else {
-		whereConditions = append(whereConditions, "trackID NOT LIKE ?")
+		whereConditions = append(whereConditions, "ts.trackID NOT LIKE ?")
 	}
 	countArgs = append(countArgs, "live:%")
 
@@ -6387,24 +6702,26 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 	if detectorFilter != "" {
 		paramCount++
 		if *dbType == "pgx" {
-			whereConditions = append(whereConditions, fmt.Sprintf("detector ILIKE $%d", paramCount))
+			whereConditions = append(whereConditions, fmt.Sprintf("ts.detector ILIKE $%d", paramCount))
 			countArgs = append(countArgs, "%"+detectorFilter+"%")
 		} else {
-			whereConditions = append(whereConditions, "detector LIKE ?")
+			whereConditions = append(whereConditions, "ts.detector LIKE ?")
 			countArgs = append(countArgs, "%"+detectorFilter+"%")
 		}
 	}
 
-	// Add search condition
+	// Add search condition (track ID, detector, name, username)
 	if search != "" {
 		paramCount++
 		if *dbType == "pgx" {
-			whereConditions = append(whereConditions, fmt.Sprintf("(trackID ILIKE $%d OR CAST(marker_count AS TEXT) ILIKE $%d OR CAST(spectra_count AS TEXT) ILIKE $%d OR COALESCE(detector, '') ILIKE $%d)", paramCount, paramCount, paramCount, paramCount))
+			whereConditions = append(whereConditions, fmt.Sprintf(
+				"(ts.trackID ILIKE $%d OR COALESCE(ts.detector,'') ILIKE $%d)",
+				paramCount, paramCount))
 			countArgs = append(countArgs, "%"+search+"%")
 		} else {
-			whereConditions = append(whereConditions, "(trackID LIKE ? OR CAST(marker_count AS TEXT) LIKE ? OR CAST(spectra_count AS TEXT) LIKE ? OR COALESCE(detector, '') LIKE ?)")
+			whereConditions = append(whereConditions, "(ts.trackID LIKE ? OR COALESCE(ts.detector,'') LIKE ?)")
 			searchPattern := "%" + search + "%"
-			for i := 0; i < 4; i++ {
+			for i := 0; i < 2; i++ {
 				countArgs = append(countArgs, searchPattern)
 			}
 		}
@@ -6417,7 +6734,7 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get total count for pagination
 	var totalCount int
-	countQuery := "SELECT COUNT(*) FROM track_statistics " + whereClause
+	countQuery := "SELECT COUNT(*) FROM track_statistics ts " + whereClause
 	err := db.DB.QueryRowContext(ctx, countQuery, countArgs...).Scan(&totalCount)
 	if err != nil {
 		log.Printf("Error counting tracks: %v", err)
@@ -6436,7 +6753,8 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 	copy(args, countArgs)
 	args = append(args, limit, offset)
 
-	// Query tracks using materialized view for performance
+	// Query tracks using materialized view for performance, joined with uploads for editable metadata.
+	// DISTINCT ON ensures one row per track even if multiple upload records exist.
 	var query string
 	if *dbType == "pgx" {
 		paramCount++
@@ -6444,17 +6762,34 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 		paramCount++
 		offsetParam := paramCount
 		query = `
-			SELECT trackID, marker_count, first_date, last_date, spectra_count, COALESCE(detector, '') as detector
-			FROM track_statistics
+			SELECT ts.trackID, ts.marker_count, ts.first_date, ts.last_date, ts.spectra_count,
+			       COALESCE(ts.detector, '') as detector,
+			       COALESCE(u.name, u.filename, '') as name,
+			       COALESCE(u.notes, '') as notes,
+			       COALESCE(u.username, '') as username,
+			       COALESCE(u.source, '') as source,
+			       COALESCE(u.source_id, '') as source_id
+			FROM track_statistics ts
+			LEFT JOIN LATERAL (
+			    SELECT filename, name, notes, username, source, source_id
+			    FROM uploads WHERE track_id = ts.trackID LIMIT 1
+			) u ON true
 			` + whereClause + `
-			ORDER BY last_date DESC
+			ORDER BY ts.last_date DESC
 			LIMIT $` + strconv.Itoa(limitParam) + ` OFFSET $` + strconv.Itoa(offsetParam)
 	} else {
 		query = `
-			SELECT trackID, marker_count, first_date, last_date, spectra_count, COALESCE(detector, '') as detector
-			FROM track_statistics
+			SELECT ts.trackID, ts.marker_count, ts.first_date, ts.last_date, ts.spectra_count,
+			       COALESCE(ts.detector, '') as detector,
+			       COALESCE(u.name, u.filename, '') as name,
+			       COALESCE(u.notes, '') as notes,
+			       COALESCE(u.username, '') as username,
+			       COALESCE(u.source, '') as source,
+			       COALESCE(u.source_id, '') as source_id
+			FROM track_statistics ts
+			LEFT JOIN uploads u ON u.track_id = ts.trackID
 			` + whereClause + `
-			ORDER BY last_date DESC
+			ORDER BY ts.last_date DESC
 			LIMIT ? OFFSET ?`
 	}
 
@@ -6473,12 +6808,18 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 		LastDate     int64  `json:"lastDate"`
 		SpectraCount int64  `json:"spectraCount"`
 		Detector     string `json:"detector"`
+		Name         string `json:"name"`
+		Notes        string `json:"notes"`
+		Username     string `json:"username"`
+		Source       string `json:"source"`
+		SourceID     string `json:"sourceID"`
 	}
 
 	var tracks []TrackInfo
 	for rows.Next() {
 		var t TrackInfo
-		if err := rows.Scan(&t.TrackID, &t.MarkerCount, &t.FirstDate, &t.LastDate, &t.SpectraCount, &t.Detector); err != nil {
+		if err := rows.Scan(&t.TrackID, &t.MarkerCount, &t.FirstDate, &t.LastDate, &t.SpectraCount, &t.Detector,
+			&t.Name, &t.Notes, &t.Username, &t.Source, &t.SourceID); err != nil {
 			log.Printf("Error scanning track row: %v", err)
 			continue
 		}
@@ -6594,6 +6935,23 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 		.datetime { color: var(--text-secondary); font-size: 0.9em; }
 		.delete-btn { background: #f44336; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 0.85em; }
 		.delete-btn:hover { background: #d32f2f; }
+		.edit-btn { background: #2196F3; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 0.85em; margin-right: 4px; }
+		.edit-btn:hover { background: #1976D2; }
+		.import-btn { background: #4caf50; color: white; border: none; padding: 8px 16px; border-radius: 3px; cursor: pointer; font-size: 0.9em; }
+		.import-btn:hover { background: #388e3c; }
+		.import-btn:disabled { background: #888; cursor: default; }
+		.modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; }
+		.modal-overlay.open { display:flex; }
+		.modal { background:var(--bg-card); border-radius:8px; padding:24px; width:480px; max-width:95vw; box-shadow:0 4px 24px rgba(0,0,0,0.3); }
+		.modal h3 { margin:0 0 16px; color:var(--text-primary); }
+		.modal label { display:block; margin-bottom:4px; font-size:0.85em; color:var(--text-secondary); }
+		.modal input, .modal textarea { width:100%; padding:8px; border:1px solid var(--border-color); border-radius:4px; background:var(--bg-primary); color:var(--text-primary); font-size:0.9em; margin-bottom:12px; box-sizing:border-box; }
+		.modal textarea { min-height:80px; resize:vertical; }
+		.modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:8px; }
+		.modal-save { background:#2196F3; color:white; border:none; padding:8px 20px; border-radius:4px; cursor:pointer; }
+		.modal-save:hover { background:#1976D2; }
+		.modal-cancel { background:var(--border-color); color:var(--text-primary); border:none; padding:8px 16px; border-radius:4px; cursor:pointer; }
+		#importStatus { margin-top:8px; font-size:0.85em; color:var(--text-secondary); }
 		.delete-selected-btn { background: #f44336; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer; font-size: 1em; margin-left: 10px; }
 		.delete-selected-btn:hover { background: #d32f2f; }
 		.delete-selected-btn:disabled { background: #ccc; cursor: not-allowed; }
@@ -6633,8 +6991,27 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 	<div class="nav">
 		<div class="nav-left">
 			<button class="backfill-btn" onclick="backfillUploads()">Backfill Upload Records</button>
+			<button class="import-btn" onclick="importSafecastMeta()" id="importSafecastBtn">Import Safecast API Metadata</button>
 			<button class="view-selected-btn" id="viewSelectedBtn" onclick="viewSelected()" disabled>View Selected on Map</button>
 			<button class="delete-selected-btn" id="deleteSelectedBtn" onclick="deleteSelected()" disabled>Delete Selected</button>
+		</div>
+	</div>
+	<div id="importStatus"></div>
+	<!-- Edit Track Modal -->
+	<div class="modal-overlay" id="editModal">
+		<div class="modal">
+			<h3>Edit Track Metadata</h3>
+			<input type="hidden" id="editTrackID">
+			<label>Name</label>
+			<input type="text" id="editName" placeholder="Display name">
+			<label>Uploader / Username</label>
+			<input type="text" id="editUsername" placeholder="Username">
+			<label>Admin Notes</label>
+			<textarea id="editNotes" placeholder="Internal notes (not shown to public)"></textarea>
+			<div class="modal-actions">
+				<button class="modal-cancel" onclick="closeEdit()">Cancel</button>
+				<button class="modal-save" onclick="saveEdit()">Save</button>
+			</div>
 		</div>
 	</div>
 	<div class="summary">
@@ -6780,20 +7157,22 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 			<tr>
 				<th class="checkbox-col"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"></th>
 				<th class="sortable" onclick="sortTable(1)" data-type="text">Track ID</th>
-				<th class="sortable" onclick="sortTable(2)" data-type="text">Detector</th>
-				<th class="sortable" onclick="sortTable(3)" data-type="number">Markers</th>
-				<th class="sortable" onclick="sortTable(4)" data-type="number">Spectra</th>
-				<th class="sortable" onclick="sortTable(5)" data-type="date">First Point</th>
-				<th class="sortable" onclick="sortTable(6)" data-type="date">Last Point</th>
+				<th class="sortable" onclick="sortTable(2)" data-type="text">Name</th>
+				<th class="sortable" onclick="sortTable(3)" data-type="text">Uploader</th>
+				<th class="sortable" onclick="sortTable(4)" data-type="text">Detector</th>
+				<th class="sortable" onclick="sortTable(5)" data-type="number">Markers</th>
+				<th class="sortable" onclick="sortTable(6)" data-type="number">Spectra</th>
+				<th class="sortable" onclick="sortTable(7)" data-type="date">Last Point</th>
 				<th>Actions</th>
 			</tr>
 			<tr class="filter-row">
 				<th></th>
 				<th><input type="text" class="filter-input" placeholder="Filter Track ID..." onkeyup="filterTable()"></th>
+				<th><input type="text" class="filter-input" placeholder="Filter Name..." onkeyup="filterTable()"></th>
+				<th><input type="text" class="filter-input" placeholder="Filter Uploader..." onkeyup="filterTable()"></th>
 				<th><input type="text" class="filter-input" placeholder="Filter Detector..." onkeyup="filterTable()"></th>
 				<th><input type="text" class="filter-input" placeholder="Min..." onkeyup="filterTable()"></th>
 				<th><input type="text" class="filter-input" placeholder="Min..." onkeyup="filterTable()"></th>
-				<th><input type="text" class="filter-input" placeholder="Filter date..." onkeyup="filterTable()"></th>
 				<th><input type="text" class="filter-input" placeholder="Filter date..." onkeyup="filterTable()"></th>
 				<th></th>
 			</tr>
@@ -6801,7 +7180,6 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 		<tbody id="tracksTableBody">`
 
 		for _, track := range tracks {
-			firstDate := time.Unix(track.FirstDate, 0).Format("2006-01-02 15:04")
 			lastDate := time.Unix(track.LastDate, 0).Format("2006-01-02 15:04")
 
 			// Format detector with link for filtering
@@ -6811,24 +7189,44 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 					password, url.QueryEscape(track.Detector), track.Detector)
 			}
 
+			nameDisplay := track.Name
+			if nameDisplay == "" {
+				nameDisplay = "-"
+			}
+			usernameDisplay := track.Username
+			if usernameDisplay == "" {
+				usernameDisplay = "-"
+			}
+
+			// Encode fields for data attributes (JS edit modal)
+			notesEsc := template.HTMLEscapeString(track.Notes)
+			nameEsc := template.HTMLEscapeString(track.Name)
+			usernameEsc := template.HTMLEscapeString(track.Username)
+
 			html += fmt.Sprintf(`
 			<tr>
 				<td class="checkbox-col"><input type="checkbox" class="track-checkbox" value="%s" onchange="updateDeleteButton()"></td>
 				<td class="trackid"><a href="/trackid/%s">%s</a></td>
+				<td>%s</td>
+				<td>%s</td>
 				<td class="detector">%s</td>
 				<td><span class="badge">%d points</span></td>
 				<td><span class="badge spectrum">%d spectra</span></td>
 				<td class="datetime">%s</td>
-				<td class="datetime">%s</td>
-				<td><button class="delete-btn" onclick="deleteTrack('%s')">Delete</button></td>
+				<td>
+					<button class="edit-btn" onclick="openEdit('%s','%s','%s','%s')">Edit</button>
+					<button class="delete-btn" onclick="deleteTrack('%s')">Delete</button>
+				</td>
 			</tr>`,
 				track.TrackID,
 				track.TrackID, track.TrackID,
+				nameDisplay,
+				usernameDisplay,
 				detectorDisplay,
 				track.MarkerCount,
 				track.SpectraCount,
-				firstDate,
 				lastDate,
+				track.TrackID, nameEsc, usernameEsc, notesEsc,
 				track.TrackID,
 			)
 		}
@@ -6964,6 +7362,81 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 				}
 			})
 			.catch(err => alert('Error: ' + err));
+		}
+
+		// ── Edit track metadata ──────────────────────────────────────
+		function openEdit(trackID, name, username, notes) {
+			document.getElementById('editTrackID').value  = trackID;
+			document.getElementById('editName').value     = name;
+			document.getElementById('editUsername').value = username;
+			document.getElementById('editNotes').value    = notes;
+			document.getElementById('editModal').classList.add('open');
+		}
+
+		function closeEdit() {
+			document.getElementById('editModal').classList.remove('open');
+		}
+
+		function saveEdit() {
+			const password  = new URLSearchParams(window.location.search).get('password');
+			const trackID   = document.getElementById('editTrackID').value;
+			const name      = document.getElementById('editName').value.trim();
+			const username  = document.getElementById('editUsername').value.trim();
+			const notes     = document.getElementById('editNotes').value.trim();
+
+			fetch('/api/admin/tracks/update', {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ password, track_id: trackID, name, username, notes })
+			})
+			.then(r => r.json())
+			.then(data => {
+				if (data.ok) {
+					closeEdit();
+					window.location.reload();
+				} else {
+					alert('Save failed: ' + (data.error || 'unknown error'));
+				}
+			})
+			.catch(err => alert('Error: ' + err));
+		}
+
+		// Close modal on overlay click
+		document.getElementById('editModal').addEventListener('click', function(e) {
+			if (e.target === this) closeEdit();
+		});
+
+		// ── Import Safecast API metadata ─────────────────────────────
+		function importSafecastMeta() {
+			if (!confirm('Fetch track names and metadata from the old Safecast API for all imported tracks? This may take a moment.')) return;
+			const password = new URLSearchParams(window.location.search).get('password');
+			const btn = document.getElementById('importSafecastBtn');
+			const status = document.getElementById('importStatus');
+			btn.disabled = true;
+			btn.textContent = 'Importing…';
+			status.textContent = 'Fetching metadata from api.safecast.org…';
+
+			fetch('/api/admin/tracks/import-safecast', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ password })
+			})
+			.then(r => r.json())
+			.then(data => {
+				btn.disabled = false;
+				btn.textContent = 'Import Safecast API Metadata';
+				if (data.ok) {
+					status.textContent = 'Done: ' + data.updated + ' track(s) updated.';
+					if (data.updated > 0) window.location.reload();
+				} else {
+					status.textContent = 'Error: ' + (data.error || 'unknown');
+				}
+			})
+			.catch(err => {
+				btn.disabled = false;
+				btn.textContent = 'Import Safecast API Metadata';
+				status.textContent = 'Error: ' + err;
+			});
 		}
 
 		// Sorting functionality
@@ -7115,12 +7588,13 @@ func adminBackfillHandler(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var spectrumID int64
 		var filename, sourceFormat, trackID string
-		var createdAt int64
+		var createdAtTime time.Time
 
-		if err := rows.Scan(&spectrumID, &filename, &sourceFormat, &trackID, &createdAt); err != nil {
+		if err := rows.Scan(&spectrumID, &filename, &sourceFormat, &trackID, &createdAtTime); err != nil {
 			log.Printf("Error scanning spectrum row: %v", err)
 			continue
 		}
+		createdAt := createdAtTime.Unix()
 
 		// Generate filename for legacy records that don't have one
 		if filename == "" {
@@ -9198,6 +9672,9 @@ func main() {
 		AdminDeleteTrackHandler:          adminDeleteTrackHandler,
 		AdminDeleteMultipleTracksHandler: adminDeleteMultipleTracksHandler,
 		AdminImportFromSafecastHandler:   adminImportFromSafecastHandler,
+		AdminUpdateTrackHandler:          adminUpdateTrackHandler,
+		AdminUpdateUploadHandler:         adminUpdateUploadHandler,
+		AdminImportSafecastMetaHandler:   adminImportSafecastMetadataHandler,
 		AdminCacheHandler:                adminCacheHandler,
 	})
 

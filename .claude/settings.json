@@ -1,4 +1,24 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(git push:*)",
+      "Bash(gh api:*)",
+      "Bash(gh auth:*)",
+      "Read(//usr/**)",
+      "Bash(dpkg -L tea-cli)",
+      "Bash(git commit:*)",
+      "Bash(grep -r \"ToolDef\\\\|mcp.NewTool\" /home/rob/Documents/Safecast/safecast-new-map/cmd/mcp-server/*.go)",
+      "Bash(find /home/rob/Documents/Safecast/safecast-new-map -name *.sql -o -name *schema* -o -name *migration*)",
+      "Bash(grep -E \"\\(\\\\.go|\\\\.html\\)$\")",
+      "Bash(grep -r \"HandleFunc.*admin\" /home/rob/Documents/Safecast/safecast-new-map/cmd/unified-server/*.go)",
+      "Bash(grep -r \"api/admin/uploads\" /home/rob/Documents/Safecast/safecast-new-map/cmd/unified-server/*.go)",
+      "Bash(grep -n \"NewClient\\\\|var client\" /home/rob/Documents/Safecast/safecast-new-map/cmd/unified-server/*.go)",
+      "Bash(grep -n \"AdminImportFromSafecastHandler\\\\|AdminTracksHandler\\\\|AdminDeleteTrackHandler\" /home/rob/Documents/Safecast/safecast-new-map/pkg/httpapi/*.go)"
+    ],
+    "deny": [
+      "Read(./.entire/metadata/**)"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {
@@ -81,10 +101,5 @@
     "1. Kill any running server: pkill -f safecast-new-map || true",
     "2. Rebuild: go build -o safecast-new-map .",
     "3. Restart the server: ./safecast-new-map -safecast-realtime -admin-password \"test123\" -safecast-fetcher -smtp-host \"smtp.gmail.com\" -smtp-port 587 -smtp-username \"oudendijk.biz@gmail.com\" -smtp-password \"xxxxxxx\" -smtp-from \"oudendijk.biz@gmail.com\" -session-secret \"YOUR_SESSION_SECRET\" -base-url \"http://localhost:8765\""
-  ],
-  "permissions": {
-    "deny": [
-      "Read(./.entire/metadata/**)"
-    ]
-  }
+  ]
 }
