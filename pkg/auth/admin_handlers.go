@@ -11,6 +11,26 @@ import (
 	"time"
 )
 
+// AdminCreateUserRequest describes the JSON body for admin user creation.
+type AdminCreateUserRequest struct {
+	Email                 string `json:"email" example:"user@example.com"`
+	Username              string `json:"username" example:"jane_doe"`
+	Password              string `json:"password,omitempty" example:"StrongPass123!"`
+	SendWelcomeEmail      bool   `json:"send_welcome_email" example:"true"`
+	RequiresPasswordSetup bool   `json:"requires_password_setup" example:"false"`
+}
+
+// AdminUpdateUserRequest describes the JSON body for admin user updates.
+type AdminUpdateUserRequest struct {
+	Email         *string `json:"email,omitempty" example:"updated@example.com"`
+	Username      *string `json:"username,omitempty" example:"updated_name"`
+	Password      *string `json:"password,omitempty" example:"NewStrongPass123!"`
+	IsActive      *bool   `json:"is_active,omitempty" example:"true"`
+	IsAdmin       *bool   `json:"is_admin,omitempty" example:"false"`
+	EmailVerified *bool   `json:"email_verified,omitempty" example:"true"`
+	ExternalID    *string `json:"external_id,omitempty" example:"auth0|abc123"`
+}
+
 // AdminListUsersHandler returns a list of users with pagination support (admin only).
 // Query parameters: limit, offset, search
 // Note: Authentication is handled by the route handler via password parameter check.
@@ -78,6 +98,7 @@ func (m *Manager) AdminListUsersHandler(w http.ResponseWriter, r *http.Request) 
 // @Tags        admin
 // @Accept      json
 // @Produce     json
+// @Param       body body AdminCreateUserRequest true "Create-user payload"
 // @Success     201 {object} map[string]interface{} "Create result"
 // @Failure     400 {object} map[string]string "Invalid request"
 // @Failure     409 {object} map[string]string "Duplicate user"
@@ -205,6 +226,7 @@ func (m *Manager) AdminCreateUserHandler(w http.ResponseWriter, r *http.Request)
 // @Accept      json
 // @Produce     json
 // @Param       id path int true "User ID"
+// @Param       body body AdminUpdateUserRequest true "Update-user payload; fields are optional. Includes password and external_id."
 // @Success     200 {object} map[string]interface{} "Update result"
 // @Failure     400 {object} map[string]string "Invalid request"
 // @Failure     404 {object} map[string]string "User not found"
