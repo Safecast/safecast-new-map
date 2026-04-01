@@ -1,0 +1,25 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "4155dabd634b",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "cmd/unified-server/public_html/map.html"
+  ],
+  "sessions": [
+    {
+      "metadata": "/41/55dabd634b/0/metadata.json",
+      "transcript": "/41/55dabd634b/0/full.jsonl",
+      "content_hash": "/41/55dabd634b/0/content_hash.txt",
+      "prompt": "/41/55dabd634b/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 246,
+    "cache_creation_tokens": 200557,
+    "cache_read_tokens": 9973336,
+    "output_tokens": 30924,
+    "api_call_count": 160
+  }
+}
