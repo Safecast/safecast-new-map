@@ -19,7 +19,8 @@ type SafecastImport struct {
 	UpdatedAt         time.Time `json:"updated_at"`
 	MeasurementsCount int       `json:"measurements_count"`
 	MD5Sum            string    `json:"md5sum"`
-	Name              string    `json:"name"` // Original filename
+	Name              string    `json:"name"`    // Original filename
+	Comment           string    `json:"comment"` // User-supplied description
 	Status            string    `json:"status"`
 }
 
@@ -39,6 +40,7 @@ type safecastImportRaw struct {
 	MeasurementsCount int           `json:"measurements_count"`
 	MD5Sum            string        `json:"md5sum"`
 	Name              string        `json:"name"`
+	Comment           string        `json:"comment"`
 	Status            string        `json:"status"`
 }
 
@@ -127,11 +129,56 @@ func (c *Client) FetchApprovedImports(ctx context.Context, uploadedAfter string,
 			MeasurementsCount: raw.MeasurementsCount,
 			MD5Sum:            raw.MD5Sum,
 			Name:              raw.Name,
+			Comment:           raw.Comment,
 			Status:            raw.Status,
 		})
 	}
 
 	return imports, nil
+}
+
+// FetchImportByID fetches a single bgeigie import by its numeric ID.
+func (c *Client) FetchImportByID(ctx context.Context, id int64) (*SafecastImport, error) {
+	u := fmt.Sprintf("%s/bgeigie_imports/%d.json", c.baseURL, id)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", u, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("execute request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, nil
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	var raw safecastImportRaw
+	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
+		return nil, fmt.Errorf("decode response: %w", err)
+	}
+
+	imp := SafecastImport{
+		ID:                raw.ID,
+		SourceURL:         raw.Source.URL,
+		UserID:            raw.UserID,
+		Approved:          raw.Approved,
+		CreatedAt:         raw.CreatedAt,
+		UpdatedAt:         raw.UpdatedAt,
+		MeasurementsCount: raw.MeasurementsCount,
+		MD5Sum:            raw.MD5Sum,
+		Name:              raw.Name,
+		Comment:           raw.Comment,
+		Status:            raw.Status,
+	}
+	return &imp, nil
 }
 
 // SafecastUser represents a user from api.safecast.org
