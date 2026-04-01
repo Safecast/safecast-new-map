@@ -9177,18 +9177,124 @@ func main() {
 		mcpBaseForDocs = fmt.Sprintf("http://localhost:%s", mcpPortForDocs)
 	}
 	mcpDocsURL := strings.TrimRight(mcpBaseForDocs, "/") + "/mcp-api/"
+
+	// Register Map API favicon and theme CSS endpoints
+	http.HandleFunc("/map-api/favicon.ico", serveFavicon)
+	http.HandleFunc("/map-api/favicon-16x16.png", serveFavicon16)
+	http.HandleFunc("/map-api/favicon-32x32.png", serveFavicon32)
+	http.HandleFunc("/map-api/swagger-theme.css", serveMapSwaggerTheme)
+
 	mapAPINavScript := fmt.Sprintf(`function() {
 				document.title = 'Safecast Map API Docs';
-				const otherDocsURL = %q;
+				const mcpDocsURL = %q;
 
-				const existing = document.getElementById('safecast-doc-nav');
+				// ── Favicons ──
+				const link16 = document.createElement('link');
+				link16.rel = 'icon'; link16.type = 'image/png'; link16.sizes = '16x16';
+				link16.href = '/map-api/favicon-16x16.png';
+				document.head.appendChild(link16);
+				const link32 = document.createElement('link');
+				link32.rel = 'icon'; link32.type = 'image/png'; link32.sizes = '32x32';
+				link32.href = '/map-api/favicon-32x32.png';
+				document.head.appendChild(link32);
+				const linkICO = document.createElement('link');
+				linkICO.rel = 'shortcut icon'; linkICO.href = '/map-api/favicon.ico';
+				document.head.appendChild(linkICO);
+
+				// ── Theme CSS ──
+				const style = document.createElement('link');
+				style.rel = 'stylesheet'; style.href = '/map-api/swagger-theme.css';
+				document.head.appendChild(style);
+
+				// ── Remove Swagger logo ──
+				const swaggerLogo = document.querySelector('.topbar-wrapper .link');
+				if (swaggerLogo) swaggerLogo.remove();
+				document.querySelectorAll('.topbar-wrapper img').forEach(img => img.remove());
+
+				// ── Inject "Switch to MCP API" button into topbar ──
+				const topbar = document.querySelector('.swagger-ui .topbar');
+				if (topbar) {
+					const existingBtn = document.getElementById('safecast-switch-btn');
+					if (existingBtn) existingBtn.remove();
+					const switchBtn = document.createElement('a');
+					switchBtn.id = 'safecast-switch-btn';
+					switchBtn.href = mcpDocsURL;
+					switchBtn.textContent = 'Switch to MCP API \u2192';
+					switchBtn.style.cssText = 'display:inline-block;margin-left:auto;margin-right:16px;padding:6px 14px;background:#0a4f8a;color:#fff;border-radius:6px;font:600 13px/1.4 -apple-system,BlinkMacSystemFont,sans-serif;text-decoration:none;border:1px solid rgba(255,255,255,0.25);white-space:nowrap;';
+					switchBtn.onmouseover = function() { this.style.background = '#083d6e'; };
+					switchBtn.onmouseout  = function() { this.style.background = '#0a4f8a'; };
+					const wrapper = topbar.querySelector('.topbar-wrapper');
+					if (wrapper) {
+						wrapper.style.display = 'flex';
+						wrapper.style.alignItems = 'center';
+						wrapper.style.width = '100%%';
+						wrapper.appendChild(switchBtn);
+					} else {
+						topbar.appendChild(switchBtn);
+					}
+				}
+
+				// ── Dark mode toggle ──
+				const btn = document.createElement('button');
+				btn.id = 'dark-mode-toggle';
+				btn.textContent = '\u{1F319} Dark Mode';
+				const isDark = localStorage.getItem('safecastMapDarkMode') === 'true';
+				if (isDark) { document.body.classList.add('dark-mode'); btn.textContent = '\u2600\uFE0F Light Mode'; }
+				btn.onclick = function() {
+					document.body.classList.toggle('dark-mode');
+					const nowDark = document.body.classList.contains('dark-mode');
+					btn.textContent = nowDark ? '\u2600\uFE0F Light Mode' : '\u{1F319} Dark Mode';
+					localStorage.setItem('safecastMapDarkMode', nowDark);
+				};
+				document.body.appendChild(btn);
+
+				// ── Preamble section (inserted before #swagger-ui) ──
+				const existing = document.getElementById('safecast-preamble');
 				if (existing) existing.remove();
-
-				const nav = document.createElement('div');
-				nav.id = 'safecast-doc-nav';
-				nav.style.cssText = 'position:fixed;top:8px;right:12px;z-index:9999;background:#111827;color:#fff;padding:8px 12px;border-radius:8px;font:12px/1.3 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.25);max-width:420px';
-				nav.innerHTML = 'This is the API documentation for the <strong>Map API</strong>. &nbsp;|&nbsp; <a href="' + otherDocsURL + '" style="color:#93c5fd;text-decoration:none">Open MCP API docs</a>';
-				document.body.appendChild(nav);
+				const preamble = document.createElement('div');
+				preamble.id = 'safecast-preamble';
+				preamble.style.cssText = 'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#fff;border-bottom:3px solid #0066cc;padding:28px 32px 24px;line-height:1.6;';
+				preamble.innerHTML = '<div style="max-width:900px;margin:0 auto;">' +
+					'<h2 style="margin:0 0 6px;font-size:22px;color:#1a3a5c;">Safecast Map API</h2>' +
+					'<p style="margin:0 0 16px;font-size:15px;color:#555;">' +
+						'Safecast has collected over 200 million radiation measurements from sensors carried by volunteers ' +
+						'and fixed monitoring stations around the world. This page is the technical interface that lets software ' +
+						'applications query, filter and download all of that data. You do not need an account or API key &mdash; ' +
+						'all data is <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" style="color:#0066cc;">CC0 licensed</a> and freely accessible.' +
+					'</p>' +
+					'<details style="margin-bottom:16px;">' +
+						'<summary style="cursor:pointer;font-weight:600;font-size:14px;color:#1a3a5c;user-select:none;">For developers &mdash; endpoint overview</summary>' +
+						'<div style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;">' +
+							'<div style="background:#f0f6ff;border:1px solid #c8ddf8;border-radius:8px;padding:12px;">' +
+								'<strong style="color:#1a3a5c;">Historical</strong>' +
+								'<p style="margin:4px 0 0;font-size:13px;color:#555;">bGeigie mobile track measurements from citizen scientists worldwide.</p>' +
+							'</div>' +
+							'<div style="background:#f0f6ff;border:1px solid #c8ddf8;border-radius:8px;padding:12px;">' +
+								'<strong style="color:#1a3a5c;">Realtime Sensors</strong>' +
+								'<p style="margin:4px 0 0;font-size:13px;color:#555;">Fixed Pointcast / Solarcast station readings &mdash; current &amp; history.</p>' +
+							'</div>' +
+							'<div style="background:#f0f6ff;border:1px solid #c8ddf8;border-radius:8px;padding:12px;">' +
+								'<strong style="color:#1a3a5c;">Spectroscopy</strong>' +
+								'<p style="margin:4px 0 0;font-size:13px;color:#555;">Gamma spectroscopy records linked to measurement markers.</p>' +
+							'</div>' +
+							'<div style="background:#f0f6ff;border:1px solid #c8ddf8;border-radius:8px;padding:12px;">' +
+								'<strong style="color:#1a3a5c;">Stats &amp; Reference</strong>' +
+								'<p style="margin:4px 0 0;font-size:13px;color:#555;">Aggregate stats, extreme readings, and dataset metadata.</p>' +
+							'</div>' +
+						'</div>' +
+						'<p style="margin:12px 0 0;font-size:13px;color:#777;">All endpoints return JSON. Base path: <code style="background:#f0f6ff;padding:1px 5px;border-radius:4px;">/api</code>. No authentication required.</p>' +
+					'</details>' +
+					'<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">' +
+						'<a href="/" style="display:inline-block;padding:7px 16px;background:#1a3a5c;color:#fff;border-radius:6px;font:600 13px/1.4 sans-serif;text-decoration:none;">\u2190 Back to Map</a>' +
+						'<a href="' + mcpDocsURL + '" style="display:inline-block;padding:7px 16px;background:#0d9488;color:#fff;border-radius:6px;font:600 13px/1.4 sans-serif;text-decoration:none;">Switch to MCP API \u2192</a>' +
+					'</div>' +
+				'</div>';
+				const swaggerUIEl = document.getElementById('swagger-ui');
+				if (swaggerUIEl) {
+					document.body.insertBefore(preamble, swaggerUIEl);
+				} else {
+					document.body.prepend(preamble);
+				}
 			}`, mcpDocsURL)
 	http.Handle("/map-api/", httpSwagger.Handler(
 		httpSwagger.URL("/map-api/doc.json"),

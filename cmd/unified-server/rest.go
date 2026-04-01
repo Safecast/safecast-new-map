@@ -226,18 +226,25 @@ func serveFavicon32(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(favicon32)
 }
 
-// serveSwaggerTheme serves the custom CSS that makes Swagger UI match simplemap's design.
+// serveSwaggerTheme serves the MCP API Swagger theme CSS (teal accent).
 func serveSwaggerTheme(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/css")
 	w.Header().Set("Cache-Control", "public, max-age=86400")
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte(swaggerThemeCSS))
+	_, _ = w.Write([]byte(mcpSwaggerThemeCSS))
 }
 
-// swaggerThemeCSS overrides Swagger UI defaults to match the simplemap admin theme.
-// Colour values mirror those in admin users and map UI styles.
-const swaggerThemeCSS = `
-/* ── Safecast Swagger theme — matches simplemap admin pages ── */
+// serveMapSwaggerTheme serves the Map API Swagger theme CSS (blue/navy accent).
+func serveMapSwaggerTheme(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/css")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(mapSwaggerThemeCSS))
+}
+
+// mapSwaggerThemeCSS is the Swagger UI theme for the Map REST API (blue/navy palette).
+const mapSwaggerThemeCSS = `
+/* ── Safecast Map API Swagger theme — blue/navy palette ── */
 
 /* Hide Swagger logo and collapse the space */
 .swagger-ui .topbar-wrapper {
@@ -305,9 +312,9 @@ body,
   transition: background 0.3s, color 0.3s;
 }
 
-/* Top bar — matches --th-bg (#424242) from admin-users.html */
+/* Top bar — deep navy to signal Map API */
 .swagger-ui .topbar {
-  background: #424242 !important;
+  background: #1a3a5c !important;
   padding: 8px 0 !important;
 }
 .swagger-ui .topbar .download-url-wrapper input[type=text] {
@@ -389,7 +396,7 @@ body,
 
 /* Parameter tables */
 .swagger-ui table thead tr th {
-  background: #424242 !important;
+  background: #1a3a5c !important;
   color: #fff !important;
   font-weight: 600 !important;
 }
@@ -432,7 +439,7 @@ body.dark-mode .swagger-ui .wrapper {
 }
 
 body.dark-mode .swagger-ui .topbar {
-  background: #616161 !important;
+  background: #2a4a6c !important;
 }
 
 body.dark-mode .swagger-ui .info .title,
@@ -468,7 +475,7 @@ body.dark-mode .swagger-ui .opblock-tag {
 }
 
 body.dark-mode .swagger-ui table thead tr th {
-  background: #616161 !important;
+  background: #2a4a6c !important;
 }
 body.dark-mode .swagger-ui table tbody tr:hover {
   background: #333 !important;
@@ -504,6 +511,306 @@ body.dark-mode .swagger-ui .btn.execute {
 body.dark-mode .swagger-ui .btn.authorize {
   color: #90caf9 !important;
   border-color: #90caf9 !important;
+}
+
+body.dark-mode .swagger-ui .opblock-summary-description,
+body.dark-mode .swagger-ui .parameter__name,
+body.dark-mode .swagger-ui .parameter__type,
+body.dark-mode .swagger-ui label {
+  color: #eee !important;
+}
+
+body.dark-mode .swagger-ui section.models {
+  background: #2b2b2b !important;
+  border-color: #444 !important;
+}
+
+body.dark-mode .swagger-ui .scheme-container {
+  background: #2b2b2b !important;
+  border-color: #444 !important;
+  box-shadow: none !important;
+}
+
+body.dark-mode .swagger-ui .schemes > label {
+  color: #eee !important;
+}
+
+body.dark-mode .swagger-ui select {
+  background: #2b2b2b !important;
+  color: #eee !important;
+  border-color: #444 !important;
+}
+`
+
+// mcpSwaggerThemeCSS is the Swagger UI theme for the MCP API (teal palette).
+const mcpSwaggerThemeCSS = `
+/* ── Safecast MCP API Swagger theme — teal palette ── */
+
+/* Hide Swagger logo and collapse the space */
+.swagger-ui .topbar-wrapper {
+  padding-left: 20px !important;
+}
+.swagger-ui .topbar-wrapper img,
+.swagger-ui .topbar-wrapper a,
+.swagger-ui .topbar-wrapper .link,
+.swagger-ui .topbar-wrapper svg,
+.swagger-ui .topbar-wrapper .svg-assets,
+.swagger-ui svg-assets,
+.svg-assets {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  position: absolute !important;
+  left: -9999px !important;
+  max-height: 0 !important;
+}
+/* Hide the info link that shows doc.json URL */
+.swagger-ui .info .link,
+.swagger-ui .info a[href*="doc.json"] {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* Dark mode toggle button */
+#dark-mode-toggle {
+  position: fixed;
+  top: 12px;
+  right: 20px;
+  z-index: 10001;
+  padding: 8px 16px;
+  background: #0d9488;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  transition: background 0.2s;
+}
+/* Hide any buttons that might show behind dark mode toggle */
+.swagger-ui .topbar .download-url-button {
+  display: none !important;
+}
+#dark-mode-toggle:hover {
+  background: #0b7a70;
+}
+body.dark-mode #dark-mode-toggle {
+  background: #0a6b62;
+}
+
+/* Font stack and base background (light mode) */
+body,
+.swagger-ui,
+.swagger-ui .wrapper {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Arial, sans-serif !important;
+  background: #f5f5f5 !important;
+  color: #333 !important;
+  transition: background 0.3s, color 0.3s;
+}
+
+/* Top bar — deep teal-dark to signal MCP API */
+.swagger-ui .topbar {
+  background: #0f3d38 !important;
+  padding: 8px 0 !important;
+}
+.swagger-ui .topbar .download-url-wrapper input[type=text] {
+  border-radius: 8px !important;
+}
+.swagger-ui .topbar-wrapper a span {
+  color: #fff !important;
+  font-weight: 600 !important;
+}
+
+/* Info block */
+.swagger-ui .info .title,
+.swagger-ui .info h1,
+.swagger-ui .info h2,
+.swagger-ui .info h3 {
+  color: #333 !important;
+}
+
+/* Operation blocks */
+.swagger-ui .opblock {
+  border-radius: 8px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  margin-bottom: 8px !important;
+  border: 1px solid #ddd !important;
+  background: #fff !important;
+}
+.swagger-ui .opblock .opblock-summary {
+  border-radius: 8px !important;
+}
+.swagger-ui .opblock.is-open {
+  border-radius: 8px !important;
+}
+
+/* GET method colour — teal */
+.swagger-ui .opblock.opblock-get {
+  border-color: #0d9488 !important;
+  background: #f0fdfa !important;
+}
+.swagger-ui .opblock.opblock-get .opblock-summary-method {
+  background: #0d9488 !important;
+  border-radius: 4px !important;
+}
+
+/* Accent links */
+.swagger-ui a,
+.swagger-ui .opblock-summary-path,
+.swagger-ui .info a {
+  color: #0d9488 !important;
+}
+.swagger-ui a:hover {
+  text-decoration: underline !important;
+}
+
+/* Buttons */
+.swagger-ui .btn.execute {
+  background: #0d9488 !important;
+  border-color: #0d9488 !important;
+  border-radius: 8px !important;
+  color: #fff !important;
+}
+.swagger-ui .btn.execute:hover {
+  background: #0b7a70 !important;
+}
+.swagger-ui .btn.cancel {
+  border-radius: 8px !important;
+}
+.swagger-ui .btn.authorize {
+  border-radius: 8px !important;
+  color: #0d9488 !important;
+  border-color: #0d9488 !important;
+}
+
+/* Section headers */
+.swagger-ui .opblock-tag {
+  border-bottom: 1px solid #ddd !important;
+  color: #333 !important;
+  font-weight: 600 !important;
+}
+
+/* Parameter tables */
+.swagger-ui table thead tr th {
+  background: #0f3d38 !important;
+  color: #fff !important;
+  font-weight: 600 !important;
+}
+.swagger-ui table tbody tr:hover {
+  background: #f9f9f9 !important;
+}
+
+/* Response blocks */
+.swagger-ui .responses-inner {
+  background: #fff !important;
+  border-radius: 8px !important;
+}
+
+/* Code blocks */
+.swagger-ui .microlight,
+.swagger-ui pre.microlight {
+  background: #f6f8fa !important;
+  border-radius: 8px !important;
+  border: 1px solid #ddd !important;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace !important;
+  font-size: 0.9rem !important;
+}
+
+/* Input fields */
+.swagger-ui input[type=text],
+.swagger-ui textarea,
+.swagger-ui select {
+  border-radius: 8px !important;
+  border: 1px solid #ddd !important;
+  background: #fff !important;
+  color: #333 !important;
+}
+
+/* ── Dark mode ── */
+body.dark-mode,
+body.dark-mode .swagger-ui,
+body.dark-mode .swagger-ui .wrapper {
+  background: #1a1a1a !important;
+  color: #eee !important;
+}
+
+body.dark-mode .swagger-ui .topbar {
+  background: #1a5048 !important;
+}
+
+body.dark-mode .swagger-ui .info .title,
+body.dark-mode .swagger-ui .info h1,
+body.dark-mode .swagger-ui .info h2,
+body.dark-mode .swagger-ui .info h3 {
+  color: #eee !important;
+}
+
+body.dark-mode .swagger-ui .opblock {
+  background: #2b2b2b !important;
+  border-color: #444 !important;
+  box-shadow: 0 1px 3px rgba(255, 255, 255, 0.07) !important;
+}
+
+body.dark-mode .swagger-ui .opblock.opblock-get {
+  background: #0f2924 !important;
+  border-color: #5eead4 !important;
+}
+body.dark-mode .swagger-ui .opblock.opblock-get .opblock-summary-method {
+  background: #0a6b62 !important;
+}
+
+body.dark-mode .swagger-ui a,
+body.dark-mode .swagger-ui .opblock-summary-path,
+body.dark-mode .swagger-ui .info a {
+  color: #5eead4 !important;
+}
+
+body.dark-mode .swagger-ui .opblock-tag {
+  border-bottom-color: #444 !important;
+  color: #eee !important;
+}
+
+body.dark-mode .swagger-ui table thead tr th {
+  background: #1a5048 !important;
+}
+body.dark-mode .swagger-ui table tbody tr:hover {
+  background: #333 !important;
+}
+body.dark-mode .swagger-ui table tbody tr td {
+  color: #eee !important;
+  border-bottom-color: #444 !important;
+}
+
+body.dark-mode .swagger-ui .responses-inner {
+  background: #2b2b2b !important;
+}
+
+body.dark-mode .swagger-ui .microlight,
+body.dark-mode .swagger-ui pre.microlight {
+  background: #161b22 !important;
+  border-color: #444 !important;
+  color: #e6edf3 !important;
+}
+
+body.dark-mode .swagger-ui input[type=text],
+body.dark-mode .swagger-ui textarea,
+body.dark-mode .swagger-ui select {
+  background: #2b2b2b !important;
+  border-color: #444 !important;
+  color: #eee !important;
+}
+
+body.dark-mode .swagger-ui .btn.execute {
+  background: #0a6b62 !important;
+  border-color: #0a6b62 !important;
+}
+body.dark-mode .swagger-ui .btn.authorize {
+  color: #5eead4 !important;
+  border-color: #5eead4 !important;
 }
 
 body.dark-mode .swagger-ui .opblock-summary-description,
