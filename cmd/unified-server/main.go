@@ -9414,26 +9414,6 @@ func main() {
 			w.Write(data)
 		}))
 
-		// MCP analytics API endpoints
-		http.HandleFunc("/api/admin/mcp/data", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
-			if !checkAdminAccess(w, r) {
-				return
-			}
-			adminMCPDataHandler(w, r)
-		}))
-		http.HandleFunc("/api/admin/mcp/export", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
-			if !checkAdminAccess(w, r) {
-				return
-			}
-			adminMCPExportHandler(w, r)
-		}))
-		http.HandleFunc("/api/admin/mcp/delete", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
-			if !checkAdminAccess(w, r) {
-				return
-			}
-			adminMCPDeleteHandler(w, r)
-		}))
-
 		// Serve admin Realtime page and API endpoints
 		http.HandleFunc("/admin/realtime", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
@@ -9452,25 +9432,6 @@ func main() {
 			w.Write(data)
 		}))
 
-		http.HandleFunc("/api/admin/realtime/data", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
-			if !checkAdminAccess(w, r) {
-				return
-			}
-			adminRealtimeDataHandler(w, r)
-		}))
-		http.HandleFunc("/api/admin/realtime/export", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
-			if !checkAdminAccess(w, r) {
-				return
-			}
-			adminRealtimeExportHandler(w, r)
-		}))
-		http.HandleFunc("/api/admin/realtime/delete", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
-			if !checkAdminAccess(w, r) {
-				return
-			}
-			adminRealtimeDeleteHandler(w, r)
-		}))
-
 		// Admin translations page and API
 		http.HandleFunc("/admin/translations", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
 			if !checkAdminAccess(w, r) {
@@ -9484,39 +9445,6 @@ func main() {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.Write(data)
 		}))
-		http.HandleFunc("/api/admin/translations/reload", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
-			if !checkAdminAccess(w, r) {
-				return
-			}
-			adminTranslationsReloadHandler(w, r)
-		}))
-		http.HandleFunc("/api/admin/translations/", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
-			if !checkAdminAccess(w, r) {
-				return
-			}
-			switch r.Method {
-			case http.MethodPut:
-				adminTranslationUpdateHandler(w, r)
-			case http.MethodDelete:
-				adminTranslationDeleteHandler(w, r)
-			default:
-				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			}
-		}))
-		http.HandleFunc("/api/admin/translations", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
-			if !checkAdminAccess(w, r) {
-				return
-			}
-			switch r.Method {
-			case http.MethodGet:
-				adminTranslationsDataHandler(w, r)
-			case http.MethodPost:
-				adminTranslationCreateHandler(w, r)
-			default:
-				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			}
-		}))
-
 	}
 
 	// Upload endpoint - protected with auth if required
@@ -9538,6 +9466,48 @@ func main() {
 	// routes avoids surprises for operators scanning main() for handlers.
 	limiter := httpapi.NewRateLimiter(time.Minute)
 	apiHandler := httpapi.NewHandler(db, *dbType, archiveGen, limiter, log.Printf, archiveFrequency)
+
+	// Keep MCP/realtime/translations admin APIs aligned with the legacy behavior:
+	// they are registered only when auth is configured.
+	var adminMCPDataAPIHandler http.HandlerFunc
+	var adminMCPExportAPIHandler http.HandlerFunc
+	var adminMCPDeleteAPIHandler http.HandlerFunc
+	var adminRealtimeDataAPIHandler http.HandlerFunc
+	var adminRealtimeExportAPIHandler http.HandlerFunc
+	var adminRealtimeDeleteAPIHandler http.HandlerFunc
+	var adminTranslationsReloadAPIHandler http.HandlerFunc
+	var adminTranslationByIDAPIHandler http.HandlerFunc
+	var adminTranslationsAPIHandler http.HandlerFunc
+	if authManager != nil {
+		adminMCPDataAPIHandler = adminMCPDataHandler
+		adminMCPExportAPIHandler = adminMCPExportHandler
+		adminMCPDeleteAPIHandler = adminMCPDeleteHandler
+		adminRealtimeDataAPIHandler = adminRealtimeDataHandler
+		adminRealtimeExportAPIHandler = adminRealtimeExportHandler
+		adminRealtimeDeleteAPIHandler = adminRealtimeDeleteHandler
+		adminTranslationsReloadAPIHandler = adminTranslationsReloadHandler
+		adminTranslationByIDAPIHandler = func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodPut:
+				adminTranslationUpdateHandler(w, r)
+			case http.MethodDelete:
+				adminTranslationDeleteHandler(w, r)
+			default:
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			}
+		}
+		adminTranslationsAPIHandler = func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodGet:
+				adminTranslationsDataHandler(w, r)
+			case http.MethodPost:
+				adminTranslationCreateHandler(w, r)
+			default:
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			}
+		}
+	}
+
 	httpapi.Register(http.DefaultServeMux, httpapi.RegisterConfig{
 		WebServer:                        webServer,
 		APIHandler:                       apiHandler,
@@ -9553,6 +9523,15 @@ func main() {
 		AdminDeleteMultipleTracksHandler: adminDeleteMultipleTracksHandler,
 		AdminImportFromSafecastHandler:   adminImportFromSafecastHandler,
 		AdminCacheHandler:                adminCacheHandler,
+		AdminMCPDataHandler:              adminMCPDataAPIHandler,
+		AdminMCPExportHandler:            adminMCPExportAPIHandler,
+		AdminMCPDeleteHandler:            adminMCPDeleteAPIHandler,
+		AdminRealtimeDataHandler:         adminRealtimeDataAPIHandler,
+		AdminRealtimeExportHandler:       adminRealtimeExportAPIHandler,
+		AdminRealtimeDeleteHandler:       adminRealtimeDeleteAPIHandler,
+		AdminTranslationsReloadHandler:   adminTranslationsReloadAPIHandler,
+		AdminTranslationByIDHandler:      adminTranslationByIDAPIHandler,
+		AdminTranslationsHandler:         adminTranslationsAPIHandler,
 	})
 
 	// Register MCP Server (AI assistant, REST API, Swagger) on port 3333
