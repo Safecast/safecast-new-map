@@ -54,7 +54,7 @@ import (
 
 	"golang.org/x/crypto/acme/autocert"
 
-	_ "safecast-new-map/docs/api"
+	_ "safecast-new-map/cmd/unified-server/docs/api"
 	"safecast-new-map/pkg/auth"
 	"safecast-new-map/pkg/countryresolver"
 	"safecast-new-map/pkg/database"
@@ -8872,6 +8872,7 @@ func main() {
 	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("public_html/"))))
 	http.Handle("/map-api/", httpSwagger.Handler(
 		httpSwagger.URL("/map-api/doc.json"),
+		httpSwagger.InstanceName("unifiedapi"),
 	))
 
 	http.HandleFunc("/home", homeHandler)
