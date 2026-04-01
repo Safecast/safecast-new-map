@@ -21,7 +21,7 @@
   left: -9999px !important;
   max-height: 0 !important;
 }
-/* Hide the info link that shows /docs/doc.json */
+/* Hide the info link that shows /mcp-api/doc.json */
 .swagger-ui .info .link,
 .swagger-ui .info a[href*="doc.json"] {
   display: none !important;

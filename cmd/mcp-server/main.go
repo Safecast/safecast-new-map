@@ -152,7 +152,7 @@ func main() {
 	log.Println("  Streamable HTTP endpoint: /mcp-http")
 	log.Printf("  Hints directory: %s", hintsDir)
 	log.Println("  REST API: /api/...")
-	log.Println("  Swagger UI: /docs/")
+	log.Println("  Swagger UI: /mcp-api/")
 
 	if err := http.ListenAndServe(listenAddr, mux); err != nil {
 		log.Fatal(err)

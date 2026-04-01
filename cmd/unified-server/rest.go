@@ -44,7 +44,7 @@ var favicon32 []byte
 // RESTHandler wires all REST API routes onto a mux.
 type RESTHandler struct{}
 
-// Register attaches all /api/* routes and the /docs/ Swagger UI to mux.
+// Register attaches all /api/* routes and the /mcp-api/ Swagger UI to mux.
 func (h *RESTHandler) Register(mux *http.ServeMux) {
 	// Historical data
 	mux.HandleFunc("/api/radiation", h.handleRadiation)
@@ -70,14 +70,14 @@ func (h *RESTHandler) Register(mux *http.ServeMux) {
 	h.RegisterGPT(mux)
 
 	// Favicon endpoints
-	mux.HandleFunc("/docs/favicon.ico", serveFavicon)
-	mux.HandleFunc("/docs/favicon-16x16.png", serveFavicon16)
-	mux.HandleFunc("/docs/favicon-32x32.png", serveFavicon32)
+	mux.HandleFunc("/mcp-api/favicon.ico", serveFavicon)
+	mux.HandleFunc("/mcp-api/favicon-16x16.png", serveFavicon16)
+	mux.HandleFunc("/mcp-api/favicon-32x32.png", serveFavicon32)
 
 	// Swagger UI — themed to match simplemap admin pages
-	mux.HandleFunc("/docs/swagger-theme.css", serveSwaggerTheme)
-	mux.Handle("/docs/", httpSwagger.Handler(
-		httpSwagger.URL("/docs/doc.json"),
+	mux.HandleFunc("/mcp-api/swagger-theme.css", serveSwaggerTheme)
+	mux.Handle("/mcp-api/", httpSwagger.Handler(
+		httpSwagger.URL("/mcp-api/doc.json"),
 		httpSwagger.UIConfig(map[string]string{
 			"onComplete": `function() {
 				// Change page title
@@ -97,25 +97,25 @@ func (h *RESTHandler) Register(mux *http.ServeMux) {
 				link16.rel = 'icon';
 				link16.type = 'image/png';
 				link16.sizes = '16x16';
-				link16.href = '/docs/favicon-16x16.png';
+				link16.href = '/mcp-api/favicon-16x16.png';
 				document.head.appendChild(link16);
 
 				const link32 = document.createElement('link');
 				link32.rel = 'icon';
 				link32.type = 'image/png';
 				link32.sizes = '32x32';
-				link32.href = '/docs/favicon-32x32.png';
+				link32.href = '/mcp-api/favicon-32x32.png';
 				document.head.appendChild(link32);
 
 				const linkICO = document.createElement('link');
 				linkICO.rel = 'shortcut icon';
-				linkICO.href = '/docs/favicon.ico';
+				linkICO.href = '/mcp-api/favicon.ico';
 				document.head.appendChild(linkICO);
 
 				// Inject custom CSS
 				const style = document.createElement('link');
 				style.rel = 'stylesheet';
-				style.href = '/docs/swagger-theme.css';
+				style.href = '/mcp-api/swagger-theme.css';
 				document.head.appendChild(style);
 
 				// Create dark mode toggle button
@@ -145,7 +145,7 @@ func (h *RESTHandler) Register(mux *http.ServeMux) {
 				const nav = document.createElement('div');
 				nav.id = 'safecast-doc-nav';
 				nav.style.cssText = 'position:fixed;top:8px;right:12px;z-index:9999;background:#111827;color:#fff;padding:8px 12px;border-radius:8px;font:12px/1.3 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.25)';
-				nav.innerHTML = 'Viewing: <strong>MCP API</strong> &nbsp;|&nbsp; <a href="/swagger/" style="color:#93c5fd;text-decoration:none">Go to Map API docs</a>';
+				nav.innerHTML = 'This is the API documentation for the <strong>MCP API</strong>. &nbsp;|&nbsp; <a href="/map-api/" style="color:#93c5fd;text-decoration:none">Open Map API docs</a>';
 				document.body.appendChild(nav);
 			}`,
 		}),
@@ -259,7 +259,7 @@ const swaggerThemeCSS = `
   left: -9999px !important;
   max-height: 0 !important;
 }
-/* Hide the info link that shows /docs/doc.json */
+/* Hide the info link that shows /mcp-api/doc.json */
 .swagger-ui .info .link,
 .swagger-ui .info a[href*="doc.json"] {
   display: none !important;
