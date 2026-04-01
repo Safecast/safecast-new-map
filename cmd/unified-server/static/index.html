@@ -139,10 +139,11 @@
       background: none;
       border: 1px solid var(--border);
       border-radius: 6px;
-      padding: 3px 8px;
+      padding: 4px 8px;
       font-size: 13px;
       cursor: pointer;
       color: var(--muted);
+      line-height: 0;
       transition: color .15s, border-color .15s, background .15s;
     }
     .feedback-btn:hover:not(:disabled) { color: var(--text); border-color: var(--muted); }
@@ -607,12 +608,12 @@
 
     const upBtn = document.createElement('button');
     upBtn.className = 'feedback-btn up';
-    upBtn.textContent = '👍';
+    upBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>';
     upBtn.title = 'Helpful';
 
     const downBtn = document.createElement('button');
     downBtn.className = 'feedback-btn down';
-    downBtn.textContent = '👎';
+    downBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>';
     downBtn.title = 'Not helpful';
 
     upBtn.onclick   = () => sendFeedback(chatID, 1,  upBtn, downBtn);

@@ -35,6 +35,7 @@ type RegisterConfig struct {
 	AdminDeleteTrackHandler          http.HandlerFunc
 	AdminDeleteMultipleTracksHandler http.HandlerFunc
 	AdminImportFromSafecastHandler   http.HandlerFunc
+	AdminImportByIDHandler           http.HandlerFunc
 	AdminUpdateTrackHandler          http.HandlerFunc
 	AdminUpdateUploadHandler         http.HandlerFunc
 	AdminImportSafecastMetaHandler   http.HandlerFunc
@@ -132,6 +133,7 @@ func registerAuthAndAdminRoutes(mux *http.ServeMux, cfg RegisterConfig) {
 	registerOptional("/api/admin/delete", cfg.AdminDeleteTrackHandler)
 	registerOptional("/api/admin/delete-multiple", cfg.AdminDeleteMultipleTracksHandler)
 	registerOptional("/api/admin/import-from-safecast", cfg.AdminImportFromSafecastHandler)
+	registerOptional("/api/admin/import-by-id", cfg.AdminImportByIDHandler)
 	registerOptional("/api/admin/tracks/update", cfg.AdminUpdateTrackHandler)
 	registerOptional("/api/admin/uploads/update", cfg.AdminUpdateUploadHandler)
 	registerOptional("/api/admin/tracks/import-safecast", cfg.AdminImportSafecastMetaHandler)

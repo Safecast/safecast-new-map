@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"time"
 )
 
 // =====================
@@ -393,7 +394,7 @@ FROM markers m
 WHERE m.trackID IS NOT NULL AND m.trackID <> ''
   AND NOT EXISTS (SELECT 1 FROM tracks t WHERE t.trackID = m.trackID);`
 
-	ctx, cancel := queueFriendlyContext(ctx, serializedWaitFloor)
+	ctx, cancel := queueFriendlyContext(ctx, 30*time.Minute)
 	defer cancel()
 
 	return db.withSerializedConnectionFor(ctx, WorkloadGeneral, func(ctx context.Context, conn *sql.DB) error {

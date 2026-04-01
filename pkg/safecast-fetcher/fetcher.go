@@ -202,7 +202,7 @@ func (f *Fetcher) poll(ctx context.Context) error {
 		}
 
 		// Import the file
-		result, err := ImportSafecastFile(ctx, content, filename, imp.ID, imp.SourceURL, fmt.Sprintf("%d", imp.UserID), username, f.db, f.dbType, f.importer)
+		result, err := ImportSafecastFile(ctx, content, filename, imp.ID, imp.SourceURL, fmt.Sprintf("%d", imp.UserID), username, imp.Comment, f.db, f.dbType, f.importer)
 		if err != nil {
 			f.logf("[safecast-fetcher] import #%d: import failed: %v", imp.ID, err)
 			errors++

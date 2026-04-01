@@ -5041,6 +5041,7 @@ func formatUploadRow(upload database.Upload, password string) string {
 	escapedUsername := template.HTMLEscapeString(upload.Username)
 	escapedDetector := template.HTMLEscapeString(upload.Detector)
 	escapedNotes := template.HTMLEscapeString(upload.Notes)
+	escapedComment := template.HTMLEscapeString(upload.Comment)
 
 	// Build optional link to original Safecast import page
 	safecastLink := ""
@@ -5062,8 +5063,9 @@ func formatUploadRow(upload database.Upload, password string) string {
 				<td>%s</td>
 				<td>%s</td>
 				<td class="datetime">%s</td>
+				<td class="comment" title="%s">%s</td>
 				<td>
-					<button class="edit-btn" onclick="openEditUpload(%d,'%s','%s','%s','%s','%s')">Edit</button>
+					<button class="edit-btn" onclick="openEditUpload(%d,'%s','%s','%s','%s','%s','%s')">Edit</button>
 					<button class="delete-btn" onclick="deleteTrack('%s')">Delete</button>%s
 				</td>
 			</tr>`,
@@ -5079,7 +5081,8 @@ func formatUploadRow(upload database.Upload, password string) string {
 		userDisplay,
 		upload.UploadIP,
 		uploadTime,
-		upload.ID, escapedFilename, escapedUsername, escapedDetector, recordingDateISO, escapedNotes,
+		escapedComment, truncateString(upload.Comment, 40),
+		upload.ID, escapedFilename, escapedUsername, escapedDetector, recordingDateISO, escapedNotes, escapedComment,
 		upload.TrackID,
 		safecastLink,
 	)
@@ -5259,15 +5262,18 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0; }
 		.page-header h1 { margin: 0; }
 		.summary { background: var(--bg-card); padding: 15px; margin-bottom: 20px; border-radius: 5px; box-shadow: var(--shadow); }
-		table { border-collapse: collapse; width: 100%; background: var(--bg-card); box-shadow: var(--shadow); }
-		th { background: var(--th-bg); color: white; padding: 12px; text-align: left; font-weight: 600; }
-		td { padding: 6px 8px; border-bottom: 1px solid var(--border-color); }
+		table { border-collapse: collapse; width: 100%; background: var(--bg-card); box-shadow: var(--shadow); table-layout: auto; }
+		th { background: var(--th-bg); color: white; padding: 12px; text-align: left; font-weight: 600; white-space: nowrap; position: relative; overflow: hidden; }
+		td { padding: 6px 8px; border-bottom: 1px solid var(--border-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+		.resize-handle { position: absolute; right: 0; top: 0; width: 5px; height: 100%; cursor: col-resize; background: transparent; z-index: 1; }
+		.resize-handle:hover, .resize-handle.active { background: rgba(255,255,255,0.3); }
 		tr:hover { background: var(--hover-bg); }
 		.empty { text-align: center; padding: 40px; color: var(--text-muted); font-style: italic; }
-		.trackid { font-family: monospace; color: var(--link-color); }
-		.filename { color: var(--text-primary); font-weight: 500; }
-		.filesize { color: var(--text-secondary); }
-		.datetime { color: var(--text-secondary); font-size: 0.9em; }
+		.trackid { font-family: monospace; color: var(--link-color); white-space: nowrap; }
+		.filename { color: var(--text-primary); font-weight: 500; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+		.filesize { color: var(--text-secondary); white-space: nowrap; }
+		.datetime { color: var(--text-secondary); font-size: 0.9em; white-space: nowrap; }
+		.comment { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); font-size: 0.9em; }
 		.delete-btn { background: #f44336; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 0.85em; }
 		.delete-btn:hover { background: #d32f2f; }
 		.edit-btn { background: #FF9800; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 0.85em; margin-right: 4px; }
@@ -5498,21 +5504,23 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		html += `<div class="empty">No uploads found. Upload a spectrum file (.n42 or .spe) to see it appear here.</div>`
 	} else {
 		html += `
+	<div style="overflow-x: auto;">
 	<table id="uploadsTable">
 		<thead>
 			<tr>
 				<th class="checkbox-col"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"></th>
-				<th class="sortable" onclick="sortTable(1)" data-type="number">ID</th>
-				<th class="sortable" onclick="sortTable(2)" data-type="text">Filename</th>
-				<th class="sortable" onclick="sortTable(3)" data-type="text">Type</th>
-				<th class="sortable" onclick="sortTable(4)" data-type="text">Track ID</th>
-				<th class="sortable" onclick="sortTable(5)" data-type="text">Detector</th>
-				<th class="sortable" onclick="sortTable(6)" data-type="date">Recording Date</th>
-				<th class="sortable" onclick="sortTable(7)" data-type="text">Size</th>
-				<th class="sortable" onclick="sortTable(8)" data-type="text">Source</th>
-				<th class="sortable" onclick="sortTable(9)" data-type="text">User</th>
-				<th class="sortable" onclick="sortTable(10)" data-type="text">Upload IP</th>
-				<th class="sortable" onclick="sortTable(11)" data-type="date">Upload Time</th>
+				<th class="sortable" onclick="sortTable(1)" data-type="number">ID<span class="resize-handle"></span></th>
+				<th class="sortable" onclick="sortTable(2)" data-type="text">Filename<span class="resize-handle"></span></th>
+				<th class="sortable" onclick="sortTable(3)" data-type="text">Type<span class="resize-handle"></span></th>
+				<th class="sortable" onclick="sortTable(4)" data-type="text">Track ID<span class="resize-handle"></span></th>
+				<th class="sortable" onclick="sortTable(5)" data-type="text">Detector<span class="resize-handle"></span></th>
+				<th class="sortable" onclick="sortTable(6)" data-type="date">Recording Date<span class="resize-handle"></span></th>
+				<th class="sortable" onclick="sortTable(7)" data-type="text">Size<span class="resize-handle"></span></th>
+				<th class="sortable" onclick="sortTable(8)" data-type="text">Source<span class="resize-handle"></span></th>
+				<th class="sortable" onclick="sortTable(9)" data-type="text">User<span class="resize-handle"></span></th>
+				<th class="sortable" onclick="sortTable(10)" data-type="text">Upload IP<span class="resize-handle"></span></th>
+				<th class="sortable" onclick="sortTable(11)" data-type="date">Upload Time<span class="resize-handle"></span></th>
+				<th class="sortable" onclick="sortTable(12)" data-type="text">Comment<span class="resize-handle"></span></th>
 				<th>Actions</th>
 			</tr>
 			<tr class="filter-row">
@@ -5528,6 +5536,7 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 				<th><input type="text" class="filter-input" placeholder="User..." onkeyup="filterTable()"></th>
 				<th><input type="text" class="filter-input" placeholder="IP..." onkeyup="filterTable()"></th>
 				<th><input type="text" class="filter-input" placeholder="Filter date..." onkeyup="filterTable()"></th>
+				<th><input type="text" class="filter-input" placeholder="Filter comment..." onkeyup="filterTable()"></th>
 				<th></th>
 			</tr>
 		</thead>
@@ -5581,11 +5590,38 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 
 		html += `
 		</tbody>
-	</table>`
+	</table>
+	</div>`
 	}
 
 	html += `
 	<script>
+		// Column resize handles
+		(function() {
+			let resizing = false;
+			document.querySelectorAll('#uploadsTable .resize-handle').forEach(handle => {
+				handle.addEventListener('mousedown', function(e) {
+					e.preventDefault(); e.stopPropagation();
+					resizing = true;
+					const th = this.parentElement;
+					const startX = e.pageX, startWidth = th.offsetWidth;
+					this.classList.add('active');
+					const onMove = e => { th.style.width = Math.max(40, startWidth + (e.pageX - startX)) + 'px'; };
+					const onUp = () => {
+						this.classList.remove('active');
+						document.removeEventListener('mousemove', onMove);
+						document.removeEventListener('mouseup', onUp);
+						setTimeout(() => { resizing = false; }, 50);
+					};
+					document.addEventListener('mousemove', onMove);
+					document.addEventListener('mouseup', onUp);
+				});
+			});
+			document.querySelectorAll('#uploadsTable .sortable').forEach(th => {
+				th.addEventListener('click', e => { if (resizing) e.stopImmediatePropagation(); });
+			});
+		})();
+
 		// Apply theme from sessionStorage to match map preference
 		(function() {
 			const media = window.matchMedia('(prefers-color-scheme: dark)');
@@ -5910,13 +5946,14 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 
 		let _editUploadID = 0;
 
-		function openEditUpload(id, filename, username, detector, recordingDate, notes) {
+		function openEditUpload(id, filename, username, detector, recordingDate, notes, comment) {
 			_editUploadID = id;
 			document.getElementById('editUploadFilename').value = filename;
 			document.getElementById('editUploadUsername').value = username;
 			document.getElementById('editUploadDetector').value = detector;
 			document.getElementById('editUploadRecordingDate').value = recordingDate;
 			document.getElementById('editUploadNotes').value = notes;
+			document.getElementById('editUploadComment').value = comment || '';
 			document.getElementById('editUploadModal').classList.add('open');
 		}
 
@@ -5933,7 +5970,8 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 				username: document.getElementById('editUploadUsername').value,
 				detector: document.getElementById('editUploadDetector').value,
 				recording_date: document.getElementById('editUploadRecordingDate').value,
-				notes: document.getElementById('editUploadNotes').value
+				notes: document.getElementById('editUploadNotes').value,
+				comment: document.getElementById('editUploadComment').value
 			};
 			try {
 				const resp = await fetch('/api/admin/uploads/update', {
@@ -5968,6 +6006,8 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 			<input type="date" id="editUploadRecordingDate">
 			<label>Notes</label>
 			<textarea id="editUploadNotes" placeholder="Admin notes..."></textarea>
+			<label>Comment</label>
+			<textarea id="editUploadComment" placeholder="User comment from Safecast API..."></textarea>
 			<div class="modal-btns">
 				<button class="modal-cancel-btn" onclick="closeEditUpload()">Cancel</button>
 				<button class="modal-save-btn" onclick="saveEditUpload()">Save</button>
@@ -5978,6 +6018,15 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 </html>`
 
 	fmt.Fprint(w, html)
+}
+
+// truncateString shortens s to at most n runes, appending "…" if truncated.
+func truncateString(s string, n int) string {
+	runes := []rune(s)
+	if len(runes) <= n {
+		return s
+	}
+	return string(runes[:n]) + "…"
 }
 
 // formatFileSize converts bytes to human-readable format
@@ -6217,6 +6266,7 @@ func adminUpdateUploadHandler(w http.ResponseWriter, r *http.Request) {
 		Detector      string `json:"detector"`
 		RecordingDate string `json:"recording_date"` // "YYYY-MM-DD" or ""
 		Notes         string `json:"notes"`
+		Comment       string `json:"comment"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.UploadID == 0 {
 		http.Error(w, "invalid request", http.StatusBadRequest)
@@ -6246,13 +6296,13 @@ func adminUpdateUploadHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		_, err = db.DB.ExecContext(r.Context(),
-			`UPDATE uploads SET filename = $1, username = $2, detector = $3, notes = $4, recording_date = $5 WHERE id = $6`,
-			req.Filename, req.Username, req.Detector, req.Notes, t, req.UploadID,
+			`UPDATE uploads SET filename = $1, username = $2, detector = $3, notes = $4, recording_date = $5, comment = $6 WHERE id = $7`,
+			req.Filename, req.Username, req.Detector, req.Notes, t, req.Comment, req.UploadID,
 		)
 	} else {
 		_, err = db.DB.ExecContext(r.Context(),
-			`UPDATE uploads SET filename = $1, username = $2, detector = $3, notes = $4 WHERE id = $5`,
-			req.Filename, req.Username, req.Detector, req.Notes, req.UploadID,
+			`UPDATE uploads SET filename = $1, username = $2, detector = $3, notes = $4, comment = $5 WHERE id = $6`,
+			req.Filename, req.Username, req.Detector, req.Notes, req.Comment, req.UploadID,
 		)
 	}
 	if err != nil {
@@ -6304,7 +6354,7 @@ func adminImportSafecastMetadataHandler(w http.ResponseWriter, r *http.Request) 
 
 	// Fetch all uploads from the Safecast API source that have a source_id
 	rows, err := db.DB.QueryContext(r.Context(),
-		`SELECT track_id, source_id FROM uploads WHERE source = 'safecast-api' AND source_id IS NOT NULL AND source_id != '' AND (name IS NULL OR name = '' OR name = filename OR notes IS NULL OR notes = '')`,
+		`SELECT track_id, source_id FROM uploads WHERE source = 'safecast-api' AND source_id IS NOT NULL AND source_id != '' AND (name IS NULL OR name = '' OR name = filename OR comment IS NULL OR comment = '')`,
 	)
 	if err != nil {
 		http.Error(w, "query failed", http.StatusInternalServerError)
@@ -6325,37 +6375,57 @@ func adminImportSafecastMetadataHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	rows.Close()
 
-	updated := 0
-	client := &http.Client{Timeout: 10 * time.Second}
-	for _, c := range candidates {
-		apiURL := "https://api.safecast.org/bgeigie_imports/" + c.SourceID + ".json"
-		resp, err := client.Get(apiURL)
-		if err != nil || resp.StatusCode != http.StatusOK {
-			if resp != nil {
-				resp.Body.Close()
-			}
-			continue
-		}
-		var meta struct {
-			Name    string `json:"name"`
-			Comment string `json:"comment"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&meta); err != nil || meta.Name == "" {
-			resp.Body.Close()
-			continue
-		}
-		resp.Body.Close()
+	const numWorkers = 16
+	type result struct{ updated bool }
+	jobs := make(chan candidate, len(candidates))
+	results := make(chan result, len(candidates))
 
-		if _, err := db.DB.ExecContext(r.Context(),
-			`UPDATE uploads SET name = $1, notes = $2 WHERE track_id = $3`,
-			meta.Name, meta.Comment, c.TrackID,
-		); err == nil {
+	httpClient := &http.Client{Timeout: 10 * time.Second}
+	for i := 0; i < numWorkers; i++ {
+		go func() {
+			for c := range jobs {
+				apiURL := "https://api.safecast.org/bgeigie_imports/" + c.SourceID + ".json"
+				resp, err := httpClient.Get(apiURL)
+				if err != nil || resp.StatusCode != http.StatusOK {
+					if resp != nil {
+						resp.Body.Close()
+					}
+					results <- result{}
+					continue
+				}
+				var meta struct {
+					Name    string `json:"name"`
+					Comment string `json:"comment"`
+				}
+				decodeErr := json.NewDecoder(resp.Body).Decode(&meta)
+				resp.Body.Close()
+				if decodeErr != nil || meta.Name == "" {
+					results <- result{}
+					continue
+				}
+				_, err = db.DB.ExecContext(r.Context(),
+					`UPDATE uploads SET name = $1, comment = $2 WHERE track_id = $3`,
+					meta.Name, meta.Comment, c.TrackID,
+				)
+				results <- result{updated: err == nil}
+			}
+		}()
+	}
+
+	for _, c := range candidates {
+		jobs <- c
+	}
+	close(jobs)
+
+	updated := 0
+	for range candidates {
+		if r := <-results; r.updated {
 			updated++
 		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{"ok": true, "updated": updated})
+	json.NewEncoder(w).Encode(map[string]any{"ok": true, "updated": updated, "total": len(candidates)})
 }
 
 // adminImportFromSafecastHandler manually imports files from Safecast API for a date range.
@@ -6593,6 +6663,7 @@ func adminImportFromSafecastHandler(w http.ResponseWriter, r *http.Request) {
 					imp.SourceURL,
 					fmt.Sprintf("%d", imp.UserID),
 					username,
+					imp.Comment,
 					db,
 					*dbType,
 					nil, // Use default importer
@@ -6636,6 +6707,122 @@ func adminImportFromSafecastHandler(w http.ResponseWriter, r *http.Request) {
 	// Send done event
 	fmt.Fprintf(w, "event: done\ndata: {\"status\": \"success\", \"imported\": %d, \"skipped\": %d, \"errors\": %d, \"total\": %d}\n\n", imported, skipped, errors, len(allImports))
 	flusher.Flush()
+}
+
+// adminImportByIDHandler imports a single track from the Safecast API by its bgeigie import ID.
+// POST /api/admin/import-by-id?password=xxx
+// Body: {"id": 32558}
+func adminImportByIDHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	isSessionAdmin := false
+	if user, ok := auth.GetUserFromContext(r.Context()); ok && user.IsAdmin {
+		isSessionAdmin = true
+	}
+	if !isSessionAdmin {
+		if *adminPassword == "" {
+			http.Error(w, "Admin endpoints are disabled - please login as admin", http.StatusForbidden)
+			return
+		}
+		if r.URL.Query().Get("password") != *adminPassword {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+	}
+
+	if db == nil || db.DB == nil {
+		http.Error(w, "Database not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	var req struct {
+		ID int64 `json:"id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	if req.ID <= 0 {
+		http.Error(w, "id must be a positive integer", http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+	client := safecastfetcher.NewClient()
+
+	imp, err := client.FetchImportByID(ctx, req.ID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("fetch import: %v", err), http.StatusBadGateway)
+		return
+	}
+	if imp == nil {
+		http.Error(w, fmt.Sprintf("import #%d not found", req.ID), http.StatusNotFound)
+		return
+	}
+
+	// Check for duplicate
+	exists, err := db.CheckImportExists(ctx, safecastfetcher.SourceTypeSafecastAPI, imp.ID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("check duplicate: %v", err), http.StatusInternalServerError)
+		return
+	}
+	if exists {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"skipped": true,
+			"message": fmt.Sprintf("import #%d already exists", imp.ID),
+		})
+		return
+	}
+
+	content, filename, err := safecastfetcher.DownloadLogFile(ctx, imp.SourceURL)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("download: %v", err), http.StatusBadGateway)
+		return
+	}
+
+	username := ""
+	if imp.UserID > 0 {
+		user, err := client.FetchUser(ctx, imp.UserID)
+		if err != nil {
+			log.Printf("[admin-import-by-id] warning: failed to fetch username for user %d: %v", imp.UserID, err)
+		} else if user != nil {
+			username = user.Name
+		}
+	}
+
+	result, err := safecastfetcher.ImportSafecastFile(
+		ctx,
+		content,
+		filename,
+		imp.ID,
+		imp.SourceURL,
+		fmt.Sprintf("%d", imp.UserID),
+		username,
+		imp.Comment,
+		db,
+		*dbType,
+		nil,
+	)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("import failed: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("[admin-import-by-id] import #%d: success (track %s, %d markers)", imp.ID, result.TrackID, result.MarkerCount)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"imported":     true,
+		"track_id":     result.TrackID,
+		"marker_count": result.MarkerCount,
+		"filename":     result.Filename,
+		"comment":      imp.Comment,
+	})
 }
 
 // adminTracksHandler lists all tracks in the system with statistics.
@@ -9268,6 +9455,7 @@ func main() {
 			sourceURL string,
 			userID string,
 			username string,
+			comment string,
 			db *database.Database,
 			dbType string,
 		) (trackID string, markerCount int, err error) {
@@ -9325,6 +9513,7 @@ func main() {
 				UserID:        userID,
 				Username:      username,
 				Detector:      detector,
+				Comment:       comment,
 			}
 
 			if _, err := db.InsertUpload(ctx, upload); err != nil {
@@ -9672,6 +9861,7 @@ func main() {
 		AdminDeleteTrackHandler:          adminDeleteTrackHandler,
 		AdminDeleteMultipleTracksHandler: adminDeleteMultipleTracksHandler,
 		AdminImportFromSafecastHandler:   adminImportFromSafecastHandler,
+		AdminImportByIDHandler:           adminImportByIDHandler,
 		AdminUpdateTrackHandler:          adminUpdateTrackHandler,
 		AdminUpdateUploadHandler:         adminUpdateUploadHandler,
 		AdminImportSafecastMetaHandler:   adminImportSafecastMetadataHandler,
