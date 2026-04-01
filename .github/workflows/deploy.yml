@@ -6,6 +6,12 @@ on:
   workflow_dispatch:
 
 jobs:
+  mirror-skip:
+    if: github.server_url != 'https://github.com'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "CI runs on GitHub only — skipping on mirror"
+
   deploy:
     if: github.server_url == 'https://github.com'
     runs-on: ubuntu-latest

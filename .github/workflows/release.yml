@@ -10,6 +10,12 @@ permissions:
 
 # ---------- PORTABLE: Unified server without CGO (no DuckDB analytics) ----------
 jobs:
+  mirror-skip:
+    if: github.server_url != 'https://github.com'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "CI runs on GitHub only — skipping on mirror"
+
   build_portable:
     if: github.server_url == 'https://github.com' && (contains(toJson(github.event.head_commit.message), 'stable release') || github.event_name == 'workflow_dispatch')
     runs-on: ${{ matrix.runner }}
