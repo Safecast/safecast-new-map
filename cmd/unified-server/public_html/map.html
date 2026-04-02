@@ -4037,6 +4037,10 @@ document.addEventListener('DOMContentLoaded', function () {
             map.fitBounds(trackBounds);
           }
         }
+        // Load RAG insights for this track in the sidebar.
+        if (typeof window.fetchTrackInsights === 'function') {
+          window.fetchTrackInsights(currentTrackID);
+        }
       })
       .catch(function(err) {
         console.error('Error fetching track bounds:', err);
@@ -10155,7 +10159,198 @@ function selectHomeSearchResult(result, query) {
       border-radius: 6px;
       align-self: center;
     }
+
+    /* ── Track Insights Sidebar ────────────────────────────────── */
+    #track-insights-panel {
+      position: fixed;
+      top: 10px;
+      right: -470px;
+      width: 450px;
+      height: calc(100% - 20px);
+      background: var(--modal-bg);
+      color: var(--modal-text);
+      box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
+      z-index: 2001;
+      display: flex;
+      flex-direction: column;
+      border-radius: 12px;
+      border: var(--modal-border);
+      font-family: var(--font-family-base);
+      margin-right: 10px;
+      transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    #track-insights-panel.open {
+      right: 10px;
+    }
+    .ti-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--modal-border);
+      flex-shrink: 0;
+    }
+    .ti-header-text h3 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--modal-text);
+    }
+    .ti-header-text span {
+      font-size: 11px;
+      color: var(--modal-text);
+      opacity: 0.7;
+      display: block;
+    }
+    #ti-close {
+      background: none;
+      border: none;
+      color: var(--modal-text);
+      opacity: 0.7;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px 6px;
+      line-height: 1;
+      border-radius: 6px;
+      transition: opacity 0.2s;
+    }
+    #ti-close:hover { opacity: 1; }
+    .ti-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .ti-loading {
+      text-align: center;
+      padding: 40px 0;
+      color: var(--modal-text);
+      opacity: 0.5;
+      font-size: 13px;
+    }
+    .ti-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--modal-text);
+      opacity: 0.5;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .ti-section-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--modal-text);
+      opacity: 0.5;
+      margin-bottom: 2px;
+    }
+    .ti-card {
+      background: var(--control-bg);
+      border: 1px solid var(--modal-border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .ti-card-question {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--modal-text);
+      line-height: 1.4;
+    }
+    .ti-card-answer {
+      font-size: 12px;
+      color: var(--modal-text);
+      line-height: 1.6;
+      max-height: 120px;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+      mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+    }
+    .ti-card-answer.expanded {
+      max-height: 2000px;
+      mask-image: none;
+      -webkit-mask-image: none;
+    }
+    /* Scale down markdown headings inside insight cards */
+    .ti-card-answer h1 { font-size: 14px !important; margin: 10px 0 4px !important; }
+    .ti-card-answer h2 { font-size: 13px !important; margin: 8px 0 4px !important; }
+    .ti-card-answer h3 { font-size: 12px !important; margin: 6px 0 3px !important; font-weight: 600; }
+    .ti-card-answer p  { margin: 0 0 6px 0; }
+    .ti-card-answer ul, .ti-card-answer ol { margin: 4px 0 6px 16px; padding: 0; }
+    .ti-card-answer li { margin: 2px 0; }
+    .ti-card-answer strong { font-weight: 600; }
+    .ti-card-footer {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 4px;
+      padding-top: 4px;
+      border-top: 1px solid var(--modal-border);
+    }
+    .ti-expand-btn {
+      font-size: 11px;
+      background: none;
+      border: none;
+      color: #4caf50;
+      cursor: pointer;
+      padding: 0;
+      margin-left: auto;
+    }
+    .ti-expand-btn:hover { text-decoration: underline; }
+    .ti-note-card {
+      background: var(--control-bg);
+      border: 1px solid var(--modal-border);
+      border-left: 3px solid #4caf50;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 12px;
+      color: var(--modal-text);
+      opacity: 0.9;
+      line-height: 1.5;
+    }
+    .ti-note-coords {
+      font-size: 10px;
+      color: var(--modal-text);
+      opacity: 0.5;
+      margin-top: 4px;
+    }
+    .ti-ask-btn {
+      flex-shrink: 0;
+      margin: 0 20px 20px;
+      background: #4caf50;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 11px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      width: calc(100% - 0px);
+    }
+    .ti-ask-btn:hover { background: #388e3c; }
   </style>
+
+  <!-- Track Insights Sidebar — shown automatically in single-track view -->
+  <div id="track-insights-panel">
+    <div class="ti-header">
+      <div class="ti-header-text">
+        <h3>Track Insights</h3>
+        <span>Cached AI knowledge for this area</span>
+      </div>
+      <button id="ti-close" title="Close" aria-label="Close insights panel">&times;</button>
+    </div>
+    <div class="ti-body" id="ti-body">
+      <div class="ti-loading">Loading insights&hellip;</div>
+    </div>
+    <button class="ti-ask-btn" id="ti-ask-btn">Ask AI about this track</button>
+  </div>
 
   <button id="safecast-ai-toggle" aria-label="{{translate "ai_open"}}">
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -10598,6 +10793,174 @@ function selectHomeSearchResult(result, query) {
           finish(false);
         });
       }
+
+      // Expose so the Track Insights sidebar can reuse the same renderer.
+      window.markdownToHTML = markdownToHTML;
+    })();
+  </script>
+
+  <!-- Track Insights Sidebar JS -->
+  <script>
+    (function () {
+      const panel   = document.getElementById('track-insights-panel');
+      const body    = document.getElementById('ti-body');
+      const closeBtn = document.getElementById('ti-close');
+      const askBtn  = document.getElementById('ti-ask-btn');
+
+      // Open / close helpers
+      function openPanel()  { panel.classList.add('open'); }
+      function closePanel() { panel.classList.remove('open'); }
+
+      closeBtn.addEventListener('click', closePanel);
+
+      // "Ask AI about this track" — pre-fills the AI chat and opens it.
+      askBtn.addEventListener('click', function () {
+        var trackID = (typeof currentTrackID !== 'undefined') ? currentTrackID : '';
+        var msg = trackID
+          ? 'Tell me about the radiation measurements on track ' + trackID
+          : 'Tell me about the radiation measurements on this track';
+
+        var aiMsg    = document.getElementById('ai-msg');
+        var aiPanel  = document.getElementById('safecast-ai-panel');
+        var aiToggle = document.getElementById('safecast-ai-toggle');
+        var aiForm   = document.getElementById('ai-form');
+
+        if (!aiMsg || !aiPanel || !aiForm) return;
+
+        // Open the AI panel if not already open.
+        if (!aiPanel.classList.contains('open')) {
+          aiToggle && aiToggle.click();
+        }
+
+        // Set the message text and trigger submit.
+        aiMsg.value = msg;
+        aiMsg.dispatchEvent(new Event('input')); // resize textarea
+        aiForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+      });
+
+      // Render a single insight card with formatted markdown answer.
+      function renderInsight(ins) {
+        var card = document.createElement('div');
+        card.className = 'ti-card';
+
+        var q = document.createElement('div');
+        q.className = 'ti-card-question';
+        q.textContent = ins.question;
+
+        var a = document.createElement('div');
+        a.className = 'ti-card-answer ai-bubble';
+        var render = window.markdownToHTML || function(t) { return t.replace(/</g,'&lt;'); };
+        a.innerHTML = render(ins.answer);
+
+        var footer = document.createElement('div');
+        footer.className = 'ti-card-footer';
+
+        var expandBtn = document.createElement('button');
+        expandBtn.className = 'ti-expand-btn';
+        expandBtn.textContent = 'Show more';
+        expandBtn.addEventListener('click', function () {
+          var expanded = a.classList.toggle('expanded');
+          expandBtn.textContent = expanded ? 'Show less' : 'Show more';
+        });
+
+        // Reuse the existing /api/feedback endpoint for thumbs.
+        var upBtn = document.createElement('button');
+        upBtn.className = 'ai-feedback-btn';
+        upBtn.title = 'Helpful';
+        upBtn.innerHTML = '&#128077;';
+
+        var downBtn = document.createElement('button');
+        downBtn.className = 'ai-feedback-btn';
+        downBtn.title = 'Not helpful';
+        downBtn.innerHTML = '&#128078;';
+
+        function vote(score) {
+          fetch('/api/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: ins.chat_id, score: score })
+          });
+          upBtn.disabled = true;
+          downBtn.disabled = true;
+          (score === 1 ? upBtn : downBtn).classList.add('active');
+        }
+        upBtn.addEventListener('click', function () { vote(1); });
+        downBtn.addEventListener('click', function () { vote(-1); });
+
+        footer.appendChild(upBtn);
+        footer.appendChild(downBtn);
+        footer.appendChild(expandBtn);
+
+        card.appendChild(q);
+        card.appendChild(a);
+        card.appendChild(footer);
+        return card;
+      }
+
+      // Render a location note card.
+      function renderNote(note) {
+        var card = document.createElement('div');
+        card.className = 'ti-note-card';
+
+        var text = document.createElement('div');
+        text.textContent = note.note;
+
+        var coords = document.createElement('div');
+        coords.className = 'ti-note-coords';
+        coords.textContent = note.lat.toFixed(4) + ', ' + note.lon.toFixed(4);
+
+        card.appendChild(text);
+        card.appendChild(coords);
+        return card;
+      }
+
+      // Fetch and render insights for the given track ID.
+      function fetchTrackInsights(trackID) {
+        if (!trackID) return;
+        body.innerHTML = '<div class="ti-loading">Loading insights&hellip;</div>';
+        openPanel();
+
+        fetch('/api/track/' + encodeURIComponent(trackID) + '/insights')
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            body.innerHTML = '';
+
+            var hasContent = false;
+
+            if (data.insights && data.insights.length > 0) {
+              hasContent = true;
+              var label = document.createElement('div');
+              label.className = 'ti-section-label';
+              label.textContent = 'Cached knowledge (' + data.insights.length + ')';
+              body.appendChild(label);
+              data.insights.forEach(function (ins) {
+                body.appendChild(renderInsight(ins));
+              });
+            }
+
+            if (data.location_notes && data.location_notes.length > 0) {
+              hasContent = true;
+              var label2 = document.createElement('div');
+              label2.className = 'ti-section-label';
+              label2.style.marginTop = '8px';
+              label2.textContent = 'Location notes (' + data.location_notes.length + ')';
+              body.appendChild(label2);
+              data.location_notes.forEach(function (n) {
+                body.appendChild(renderNote(n));
+              });
+            }
+
+            if (!hasContent) {
+              body.innerHTML = '<div class="ti-empty">No cached insights yet for this area.<br>Ask the AI a question to build up knowledge here.</div>';
+            }
+          })
+          .catch(function () {
+            body.innerHTML = '<div class="ti-empty">Could not load insights.</div>';
+          });
+      }
+
+      // Expose so the track-init code can call it after bounds are loaded.
+      window.fetchTrackInsights = fetchTrackInsights;
     })();
   </script>
 
