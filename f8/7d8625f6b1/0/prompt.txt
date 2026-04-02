@@ -165,3 +165,7 @@ can you commit/push/PR/ and merge to Github ad Codeberg?
 ---
 
 I check the produtcion server and it seems the cacahing messes things up? I get responces from other tacks when asking information about another one..
+
+---
+
+Still showing data from the wrong trach?
