@@ -124,13 +124,16 @@ func insightsByEmbedding(ctx context.Context, bounds database.Bounds, trackID st
 	}
 
 	// Partial sort: bring top-5 to the front.
+	// Primary: feedback_score descending (most-voted first).
+	// Tie-break: cosine similarity descending.
 	limit := 5
 	if len(candidates) < limit {
 		limit = len(candidates)
 	}
 	for i := 0; i < limit; i++ {
 		for j := i + 1; j < len(candidates); j++ {
-			if candidates[j].score > candidates[i].score {
+			iScore, jScore := candidates[i].e.FeedbackScore, candidates[j].e.FeedbackScore
+			if jScore > iScore || (jScore == iScore && candidates[j].score > candidates[i].score) {
 				candidates[i], candidates[j] = candidates[j], candidates[i]
 			}
 		}
