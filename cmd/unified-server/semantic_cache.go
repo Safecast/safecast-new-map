@@ -203,7 +203,10 @@ func RecordFeedback(chatID int64, score int) error {
 	return nil
 }
 
-var coordRegexp = regexp.MustCompile(`(-?\d{1,3}\.\d{3,})[,\s]+(-?\d{1,3}\.\d{3,})`)
+// coordRegexp matches pairs of decimal numbers that look like lat/lon.
+// It handles both compact forms ("45.4248, -75.094") and the verbose
+// "Latitude: 45.4248..., Longitude: -75.094..." format the LLM often produces.
+var coordRegexp = regexp.MustCompile(`(-?\d{1,3}\.\d{3,})[^\d\-\n]{0,20}?(-?\d{1,3}\.\d{3,})`)
 
 // extractLocationKnowledge looks for lat/lon coordinates in the answer and
 // stores a note in location_knowledge so future questions about that area
