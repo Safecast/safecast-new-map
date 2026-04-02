@@ -10129,6 +10129,12 @@ func main() {
 			}
 			adminMCPDeleteHandler(w, r)
 		}))
+		http.HandleFunc("/api/admin/mcp/update", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminAccess(w, r) {
+				return
+			}
+			adminMCPUpdateHandler(w, r)
+		}))
 
 		// Serve admin Realtime page and API endpoints
 		http.HandleFunc("/admin/realtime", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
