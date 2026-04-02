@@ -38,10 +38,11 @@ type trackInsight struct {
 
 // trackLocationNote is a curated geographic note near the track.
 type trackLocationNote struct {
-	Lat          float64 `json:"lat"`
-	Lon          float64 `json:"lon"`
-	Note         string  `json:"note"`
-	SourceChatID int64   `json:"source_chat_id,omitempty"`
+	Lat           float64 `json:"lat"`
+	Lon           float64 `json:"lon"`
+	Note          string  `json:"note"`
+	SourceChatID  int64   `json:"source_chat_id,omitempty"`
+	FeedbackScore int     `json:"feedback_score"`
 }
 
 // trackInsightsResponse is the JSON payload for GET /api/track/{id}/insights.
@@ -159,9 +160,12 @@ func locationNotesInBbox(bounds database.Bounds) []trackLocationNote {
 	}
 
 	rows, err := duckDB.Query(
-		`SELECT lat, lon, note, source_chat_id FROM location_knowledge
-		 WHERE lat BETWEEN ? AND ? AND lon BETWEEN ? AND ?
-		 ORDER BY created_at DESC LIMIT 20`,
+		`SELECT lk.lat, lk.lon, lk.note, lk.source_chat_id,
+		        COALESCE(qe.feedback_score, 0) AS feedback_score
+		 FROM location_knowledge lk
+		 LEFT JOIN qa_embeddings qe ON qe.chat_id = lk.source_chat_id
+		 WHERE lk.lat BETWEEN ? AND ? AND lk.lon BETWEEN ? AND ?
+		 ORDER BY feedback_score DESC, lk.created_at DESC LIMIT 20`,
 		bounds.MinLat, bounds.MaxLat, bounds.MinLon, bounds.MaxLon,
 	)
 	if err != nil {
@@ -172,7 +176,7 @@ func locationNotesInBbox(bounds database.Bounds) []trackLocationNote {
 	for rows.Next() {
 		var n trackLocationNote
 		var srcID sql.NullInt64
-		if rows.Scan(&n.Lat, &n.Lon, &n.Note, &srcID) == nil {
+		if rows.Scan(&n.Lat, &n.Lon, &n.Note, &srcID, &n.FeedbackScore) == nil {
 			if srcID.Valid {
 				n.SourceChatID = srcID.Int64
 			}
