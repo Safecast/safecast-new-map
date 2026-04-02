@@ -1,0 +1,37 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "cddca4fbb142",
+  "session_id": "0bea46ec-8299-4cc3-98f2-d3a4fe4b316a",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-02T12:05:01.444025493Z",
+  "branch": "feat/insights-admin-and-fixes",
+  "checkpoints_count": 5,
+  "files_touched": [
+    "cmd/unified-server/admin_mcp.go",
+    "cmd/unified-server/public_html/admin-mcp.html",
+    "cmd/unified-server/public_html/map.html",
+    "cmd/unified-server/track_insights.go"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-sonnet-4-6",
+  "turn_id": "a167c96a1530",
+  "token_usage": {
+    "input_tokens": 438,
+    "cache_creation_tokens": 1472202,
+    "cache_read_tokens": 33791338,
+    "output_tokens": 129488,
+    "api_call_count": 360
+  },
+  "session_metrics": {
+    "turn_count": 30
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-02T12:04:46.796265576Z",
+    "agent_lines": 76,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 76,
+    "agent_percentage": 100
+  }
+}
