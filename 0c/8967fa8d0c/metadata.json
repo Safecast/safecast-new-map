@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "0c8967fa8d0c",
+  "strategy": "manual-commit",
+  "branch": "feat/track-detail-rag-sidebar",
+  "checkpoints_count": 11,
+  "files_touched": [
+    "cmd/unified-server/admin_mcp.go",
+    "cmd/unified-server/main.go",
+    "cmd/unified-server/public_html/admin-mcp.html",
+    "cmd/unified-server/public_html/map.html",
+    "cmd/unified-server/semantic_cache.go",
+    "cmd/unified-server/track_insights.go"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0c/8967fa8d0c/0/metadata.json",
+      "transcript": "/0c/8967fa8d0c/0/full.jsonl",
+      "content_hash": "/0c/8967fa8d0c/0/content_hash.txt",
+      "prompt": "/0c/8967fa8d0c/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 365,
+    "cache_creation_tokens": 1439601,
+    "cache_read_tokens": 27968610,
+    "output_tokens": 114499,
+    "api_call_count": 305
+  }
+}
