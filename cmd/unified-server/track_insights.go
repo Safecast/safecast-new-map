@@ -81,7 +81,7 @@ func trackInsightsHandler(w http.ResponseWriter, r *http.Request) {
 	resp := trackInsightsResponse{
 		TrackID:       trackID,
 		Insights:      insightsByEmbedding(ctx, bounds, trackID),
-		LocationNotes: locationNotesInBbox(bounds),
+		LocationNotes: locationNotesInBbox(bounds, trackID),
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp) //nolint:errcheck
@@ -153,7 +153,7 @@ func insightsByEmbedding(ctx context.Context, bounds database.Bounds, trackID st
 
 // locationNotesInBbox returns location_knowledge rows whose point falls
 // inside the track bounding box.
-func locationNotesInBbox(bounds database.Bounds) []trackLocationNote {
+func locationNotesInBbox(bounds database.Bounds, trackID string) []trackLocationNote {
 	out := []trackLocationNote{}
 	if !duckDBAvailable() {
 		return out
@@ -179,6 +179,10 @@ func locationNotesInBbox(bounds database.Bounds) []trackLocationNote {
 		if rows.Scan(&n.Lat, &n.Lon, &n.Note, &srcID, &n.FeedbackScore) == nil {
 			if srcID.Valid {
 				n.SourceChatID = srcID.Int64
+			}
+			// Skip notes that mention a different track ID.
+			if noteTrack := extractTrackID(n.Note); noteTrack != "" && noteTrack != trackID {
+				continue
 			}
 			out = append(out, n)
 		}
