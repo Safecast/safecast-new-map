@@ -1,0 +1,35 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "f87d8625f6b1",
+  "session_id": "0bea46ec-8299-4cc3-98f2-d3a4fe4b316a",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-02T12:32:34.000447318Z",
+  "branch": "fix/semantic-cache-track-id-isolation",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "cmd/unified-server/mcp_register.go",
+    "cmd/unified-server/semantic_cache.go"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-sonnet-4-6",
+  "turn_id": "411767fde657",
+  "token_usage": {
+    "input_tokens": 456,
+    "cache_creation_tokens": 1479913,
+    "cache_read_tokens": 35519566,
+    "output_tokens": 133118,
+    "api_call_count": 374
+  },
+  "session_metrics": {
+    "turn_count": 32
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-02T12:32:20.201644548Z",
+    "agent_lines": 41,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 41,
+    "agent_percentage": 100
+  }
+}
