@@ -1,0 +1,23 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "15b72ff11797",
+  "session_id": "0bea46ec-8299-4cc3-98f2-d3a4fe4b316a",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-02T21:16:39.213650443Z",
+  "branch": "fix/nginx-track-insights-routing",
+  "checkpoints_count": 1,
+  "files_touched": [],
+  "agent": "Claude Code",
+  "model": "claude-sonnet-4-6",
+  "turn_id": "9b8d42c552b5",
+  "token_usage": {
+    "input_tokens": 507,
+    "cache_creation_tokens": 1630916,
+    "cache_read_tokens": 42175187,
+    "output_tokens": 147886,
+    "api_call_count": 423
+  },
+  "session_metrics": {
+    "turn_count": 33
+  }
+}
