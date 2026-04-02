@@ -137,14 +137,10 @@ func insightsByEmbedding(ctx context.Context, bounds database.Bounds, trackID st
 	}
 
 	for _, c := range candidates[:limit] {
-		ans := c.e.Answer
-		if len(ans) > 800 {
-			ans = ans[:800] + "…"
-		}
 		out = append(out, trackInsight{
-			ChatID:          c.e.ID,
+			ChatID:          c.e.ChatID,
 			Question:        c.e.Question,
-			Answer:          ans,
+			Answer:          c.e.Answer,
 			SimilarityScore: c.score,
 			FeedbackScore:   c.e.FeedbackScore,
 		})

@@ -37,7 +37,8 @@ const (
 
 // qaEntry is a row from qa_embeddings.
 type qaEntry struct {
-	ID            int64
+	ID            int64 // internal row id (time.Now().UnixNano())
+	ChatID        int64 // chat_id sent to the frontend for feedback linkage
 	Question      string
 	Answer        string
 	Embedding     []float32
@@ -246,7 +247,7 @@ func extractLocationKnowledge(chatID int64) {
 func loadQAEmbeddingsForTrack(trackID string) ([]qaEntry, error) {
 	like := "%" + trackID + "%"
 	rows, err := duckDB.Query(
-		`SELECT id, question, answer, embedding, feedback_score FROM qa_embeddings
+		`SELECT id, chat_id, question, answer, embedding, feedback_score FROM qa_embeddings
 		 WHERE feedback_score > 0
 		 AND (question LIKE ? OR answer LIKE ?)`,
 		like, like,
@@ -260,7 +261,7 @@ func loadQAEmbeddingsForTrack(trackID string) ([]qaEntry, error) {
 	for rows.Next() {
 		var e qaEntry
 		var embJSON string
-		if err := rows.Scan(&e.ID, &e.Question, &e.Answer, &embJSON, &e.FeedbackScore); err != nil {
+		if err := rows.Scan(&e.ID, &e.ChatID, &e.Question, &e.Answer, &embJSON, &e.FeedbackScore); err != nil {
 			continue
 		}
 		if err := json.Unmarshal([]byte(embJSON), &e.Embedding); err != nil {
@@ -274,7 +275,7 @@ func loadQAEmbeddingsForTrack(trackID string) ([]qaEntry, error) {
 // loadQAEmbeddings fetches Q&A rows from DuckLake.
 // If positiveOnly is true, only rows with feedback_score > 0 are returned.
 func loadQAEmbeddings(positiveOnly bool) ([]qaEntry, error) {
-	query := `SELECT id, question, answer, embedding, feedback_score FROM qa_embeddings`
+	query := `SELECT id, chat_id, question, answer, embedding, feedback_score FROM qa_embeddings`
 	if positiveOnly {
 		query += ` WHERE feedback_score > 0`
 	}
@@ -288,7 +289,7 @@ func loadQAEmbeddings(positiveOnly bool) ([]qaEntry, error) {
 	for rows.Next() {
 		var e qaEntry
 		var embJSON string
-		if err := rows.Scan(&e.ID, &e.Question, &e.Answer, &embJSON, &e.FeedbackScore); err != nil {
+		if err := rows.Scan(&e.ID, &e.ChatID, &e.Question, &e.Answer, &embJSON, &e.FeedbackScore); err != nil {
 			continue
 		}
 		if err := json.Unmarshal([]byte(embJSON), &e.Embedding); err != nil {
