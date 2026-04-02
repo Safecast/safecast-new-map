@@ -10882,6 +10882,10 @@ function selectHomeSearchResult(result, query) {
         var wrap = document.createElement('div');
         wrap.style.cssText = 'display:flex;flex-direction:column;gap:12px;width:100%;';
 
+        function scoreBadge(n) {
+          return n ? ' <span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 3px;border-radius:8px;background:rgba(128,128,128,.18);font-size:10px;font-weight:700;vertical-align:middle;line-height:1;">' + n + '</span>' : '';
+        }
+
         var hdr = document.createElement('div');
         hdr.style.cssText = 'font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;opacity:.5;';
         hdr.textContent = 'Cached Track Insights (' + data.insights.length + ')';
@@ -10904,10 +10908,6 @@ function selectHomeSearchResult(result, query) {
           footer.style.cssText = 'display:flex;align-items:center;gap:6px;margin-top:4px;padding-top:4px;border-top:1px solid var(--modal-border);';
 
           var score = ins.feedback_score || 0;
-
-          function scoreBadge(n) {
-            return n ? ' <span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 3px;border-radius:8px;background:rgba(128,128,128,.18);font-size:10px;font-weight:700;vertical-align:middle;line-height:1;">' + n + '</span>' : '';
-          }
 
           var upBtn = document.createElement('button');
           upBtn.className = 'ai-feedback-btn' + (score > 0 ? ' active' : '');
@@ -10957,28 +10957,34 @@ function selectHomeSearchResult(result, query) {
           nlbl.style.cssText = 'font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;opacity:.5;margin-top:4px;';
           nlbl.textContent = 'Location Notes (' + data.location_notes.length + ')';
           wrap.appendChild(nlbl);
-          data.location_notes.forEach(function(n) {
+          data.location_notes.forEach(function(n, noteIdx) {
+            var isFirst = noteIdx === 0;
             var nc = document.createElement('div');
             nc.style.cssText = 'background:var(--control-bg);border:1px solid var(--modal-border);border-left:3px solid #4caf50;border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;';
 
             var noteBody = document.createElement('div');
             noteBody.className = 'ai-bubble';
-            noteBody.style.cssText = 'font-size:12px;max-height:80px;overflow:hidden;transition:max-height .3s;mask-image:linear-gradient(to bottom,black 50%,transparent 100%);-webkit-mask-image:linear-gradient(to bottom,black 50%,transparent 100%);';
+            if (isFirst) {
+              noteBody.style.cssText = 'font-size:12px;';
+            } else {
+              noteBody.style.cssText = 'font-size:12px;max-height:80px;overflow:hidden;transition:max-height .3s;mask-image:linear-gradient(to bottom,black 50%,transparent 100%);-webkit-mask-image:linear-gradient(to bottom,black 50%,transparent 100%);';
+            }
             noteBody.innerHTML = md(n.note);
 
             var nFooter = document.createElement('div');
             nFooter.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding-top:4px;border-top:1px solid var(--modal-border);';
 
             var co = document.createElement('div');
-            co.style.cssText = 'font-size:10px;opacity:.5;';
-            co.textContent = n.lat.toFixed(4) + ', ' + n.lon.toFixed(4);
+            co.style.cssText = 'font-size:10px;opacity:.5;display:flex;align-items:center;gap:6px;';
+            co.innerHTML = n.lat.toFixed(4) + ', ' + n.lon.toFixed(4) +
+              (n.feedback_score > 0 ? ' &#128077;' + scoreBadge(n.feedback_score) : '');
 
             var nExpand = document.createElement('button');
             nExpand.className = 'ti-expand-btn';
-            nExpand.textContent = 'Show more';
+            nExpand.textContent = isFirst ? 'Show less' : 'Show more';
             nExpand.onclick = (function(el, btn) {
               return function() {
-                var expanded = el.style.maxHeight === 'none';
+                var expanded = el.style.maxHeight === 'none' || el.style.maxHeight === '';
                 el.style.maxHeight = expanded ? '80px' : 'none';
                 el.style.maskImage = expanded ? 'linear-gradient(to bottom,black 50%,transparent 100%)' : 'none';
                 el.style.webkitMaskImage = el.style.maskImage;
