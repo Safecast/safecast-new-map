@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "f87d8625f6b1",
+  "strategy": "manual-commit",
+  "branch": "fix/semantic-cache-track-id-isolation",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "cmd/unified-server/mcp_register.go",
+    "cmd/unified-server/semantic_cache.go"
+  ],
+  "sessions": [
+    {
+      "metadata": "/f8/7d8625f6b1/0/metadata.json",
+      "transcript": "/f8/7d8625f6b1/0/full.jsonl",
+      "content_hash": "/f8/7d8625f6b1/0/content_hash.txt",
+      "prompt": "/f8/7d8625f6b1/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 456,
+    "cache_creation_tokens": 1479913,
+    "cache_read_tokens": 35519566,
+    "output_tokens": 133118,
+    "api_call_count": 374
+  }
+}
