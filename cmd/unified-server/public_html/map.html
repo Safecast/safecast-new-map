@@ -10959,13 +10959,37 @@ function selectHomeSearchResult(result, query) {
           wrap.appendChild(nlbl);
           data.location_notes.forEach(function(n) {
             var nc = document.createElement('div');
-            nc.style.cssText = 'background:var(--control-bg);border:1px solid var(--modal-border);border-left:3px solid #4caf50;border-radius:8px;padding:10px 12px;font-size:12px;';
-            nc.className = 'ai-bubble';
-            nc.innerHTML = md(n.note);
+            nc.style.cssText = 'background:var(--control-bg);border:1px solid var(--modal-border);border-left:3px solid #4caf50;border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;';
+
+            var noteBody = document.createElement('div');
+            noteBody.className = 'ai-bubble';
+            noteBody.style.cssText = 'font-size:12px;max-height:80px;overflow:hidden;transition:max-height .3s;mask-image:linear-gradient(to bottom,black 50%,transparent 100%);-webkit-mask-image:linear-gradient(to bottom,black 50%,transparent 100%);';
+            noteBody.innerHTML = md(n.note);
+
+            var nFooter = document.createElement('div');
+            nFooter.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding-top:4px;border-top:1px solid var(--modal-border);';
+
             var co = document.createElement('div');
-            co.style.cssText = 'font-size:10px;opacity:.5;margin-top:4px;';
+            co.style.cssText = 'font-size:10px;opacity:.5;';
             co.textContent = n.lat.toFixed(4) + ', ' + n.lon.toFixed(4);
-            nc.appendChild(co);
+
+            var nExpand = document.createElement('button');
+            nExpand.className = 'ti-expand-btn';
+            nExpand.textContent = 'Show more';
+            nExpand.onclick = (function(el, btn) {
+              return function() {
+                var expanded = el.style.maxHeight === 'none';
+                el.style.maxHeight = expanded ? '80px' : 'none';
+                el.style.maskImage = expanded ? 'linear-gradient(to bottom,black 50%,transparent 100%)' : 'none';
+                el.style.webkitMaskImage = el.style.maskImage;
+                btn.textContent = expanded ? 'Show more' : 'Show less';
+              };
+            })(noteBody, nExpand);
+
+            nFooter.appendChild(co);
+            nFooter.appendChild(nExpand);
+            nc.appendChild(noteBody);
+            nc.appendChild(nFooter);
             wrap.appendChild(nc);
           });
         }
