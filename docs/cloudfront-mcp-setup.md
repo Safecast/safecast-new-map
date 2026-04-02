@@ -93,6 +93,8 @@ server {
     location = /api/extreme   { proxy_pass http://localhost:3333/api/extreme; ... }
     location /api/info/       { proxy_pass http://localhost:3333/api/info/; ... }
     location /api/gpt/        { proxy_pass http://localhost:3333/api/gpt/; ... }
+    # Track insights lives on the map server (8765), must come BEFORE the broad /api/track/ rule
+    location ~ ^/api/track/[^/]+/insights { proxy_pass http://localhost:8765; ... }
     location /api/track/      { proxy_pass http://localhost:3333/api/track/; ... }
 
     # Map server — everything else (including /api/spectrum/, /api/markers/, etc.)
