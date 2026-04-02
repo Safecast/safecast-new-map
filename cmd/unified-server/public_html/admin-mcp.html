@@ -148,6 +148,8 @@
   <button class="active" onclick="switchTable('chat_questions')">Chat Questions</button>
   <button onclick="switchTable('mcp_query_log')">Tool Usage</button>
   <button onclick="switchTable('mcp_ai_query_log')">AI Query Log</button>
+  <button onclick="switchTable('qa_embeddings')">Cached Insights</button>
+  <button onclick="switchTable('location_knowledge')">Location Notes</button>
 </div>
 
 <div class="controls">
@@ -205,11 +207,14 @@ const COLUMN_LABELS = {
   client: 'Client', user_id: 'User ID', user_email: 'Email',
   created_at: 'Timestamp', client_info: 'Client', params: 'Params',
   generated_query: 'Query', commit_hash: 'Commit', error: 'Error',
-  thumbs_up: '👍', thumbs_down: '👎'
+  thumbs_up: '👍', thumbs_down: '👎',
+  chat_id: 'Chat ID', feedback_score: 'Score',
+  lat: 'Lat', lon: 'Lon', radius_m: 'Radius (m)', note: 'Note',
+  source_chat_id: 'Source Chat'
 };
 
 // Columns that should be expandable (long text)
-const EXPANDABLE = new Set(['question', 'answer', 'generated_query', 'user_agent', 'accept_language', 'referer', 'params']);
+const EXPANDABLE = new Set(['question', 'answer', 'generated_query', 'user_agent', 'accept_language', 'referer', 'params', 'note']);
 
 let currentTable = 'chat_questions';
 let currentSort = 'timestamp';
@@ -224,13 +229,17 @@ let currentColumns = [];
 const KEY_COLUMNS = {
   'chat_questions': 'id',
   'mcp_query_log': 'created_at',
-  'mcp_ai_query_log': 'timestamp'
+  'mcp_ai_query_log': 'timestamp',
+  'qa_embeddings': 'id',
+  'location_knowledge': 'id'
 };
 
 const EDITABLE_COLUMNS = {
   'chat_questions':   ['question', 'answer', 'source', 'model', 'country', 'browser', 'os'],
   'mcp_query_log':    ['params', 'client_info'],
-  'mcp_ai_query_log': ['generated_query', 'error']
+  'mcp_ai_query_log': ['generated_query', 'error'],
+  'qa_embeddings':    ['question', 'answer'],
+  'location_knowledge': ['note', 'lat', 'lon', 'radius_m']
 };
 
 let editRowIndex = null;
@@ -337,7 +346,9 @@ function switchTable(table) {
     btn.classList.toggle('active', btn.textContent === {
       'chat_questions': 'Chat Questions',
       'mcp_query_log': 'Tool Usage',
-      'mcp_ai_query_log': 'AI Query Log'
+      'mcp_ai_query_log': 'AI Query Log',
+      'qa_embeddings': 'Cached Insights',
+      'location_knowledge': 'Location Notes'
     }[table]);
   });
 

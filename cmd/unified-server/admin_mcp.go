@@ -51,10 +51,14 @@ func adminMCPDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	sortCol := r.URL.Query().Get("sort")
 	if !isValidColumn(sortCol, columns) {
-		// Default sort column: use "created_at" for mcp_query_log, "timestamp" for others
-		if tableName == "mcp_query_log" {
+		switch tableName {
+		case "mcp_query_log":
 			sortCol = "created_at"
-		} else {
+		case "qa_embeddings":
+			sortCol = "feedback_score"
+		case "location_knowledge":
+			sortCol = "created_at"
+		default:
 			sortCol = "timestamp"
 		}
 	}
@@ -232,8 +236,11 @@ func adminMCPExportHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	colList := strings.Join(exportCastCols, ", ")
 	orderCol := "timestamp"
-	if tableName == "mcp_query_log" {
+	switch tableName {
+	case "mcp_query_log", "location_knowledge":
 		orderCol = "created_at"
+	case "qa_embeddings":
+		orderCol = "feedback_score"
 	}
 	query := fmt.Sprintf("SELECT %s FROM %s %s ORDER BY %s DESC", colList, tableName, whereSQL, orderCol)
 
@@ -292,6 +299,12 @@ var mcpTableColumns = map[string][]string{
 		"user_id", "user_email", "session_id", "timestamp",
 		"tool_name", "generated_query", "duration_ms",
 		"commit_hash", "error",
+	},
+	"qa_embeddings": {
+		"id", "chat_id", "question", "answer", "feedback_score",
+	},
+	"location_knowledge": {
+		"id", "lat", "lon", "radius_m", "note", "source_chat_id", "created_at",
 	},
 }
 
@@ -399,6 +412,8 @@ var mcpTableKeyColumn = map[string]string{
 	"chat_questions":   "id",
 	"mcp_query_log":    "created_at",
 	"mcp_ai_query_log": "timestamp",
+	"qa_embeddings":    "id",
+	"location_knowledge": "id",
 }
 
 // mcpEditableColumns defines which columns can be edited per table.
@@ -408,6 +423,8 @@ var mcpEditableColumns = map[string][]string{
 	"chat_questions":   {"question", "answer", "source", "model", "country", "browser", "os"},
 	"mcp_query_log":    {"params", "client_info"},
 	"mcp_ai_query_log": {"generated_query", "error"},
+	"qa_embeddings":    {"question", "answer"},
+	"location_knowledge": {"note", "lat", "lon", "radius_m"},
 }
 
 // adminMCPUpdateHandler updates editable fields of a single row.

@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 
 	"safecast-new-map/pkg/database"
 )
@@ -123,20 +124,18 @@ func insightsByEmbedding(ctx context.Context, bounds database.Bounds, trackID st
 		candidates = append(candidates, scored{e, cosineSimilarity(embedding, e.Embedding)})
 	}
 
-	// Partial sort: bring top-5 to the front.
-	// Primary: feedback_score descending (most-voted first).
-	// Tie-break: cosine similarity descending.
+	// Sort: primary = feedback_score descending, tie-break = cosine similarity descending.
+	sort.Slice(candidates, func(i, j int) bool {
+		fi, fj := candidates[i].e.FeedbackScore, candidates[j].e.FeedbackScore
+		if fi != fj {
+			return fi > fj
+		}
+		return candidates[i].score > candidates[j].score
+	})
+
 	limit := 5
 	if len(candidates) < limit {
 		limit = len(candidates)
-	}
-	for i := 0; i < limit; i++ {
-		for j := i + 1; j < len(candidates); j++ {
-			iScore, jScore := candidates[i].e.FeedbackScore, candidates[j].e.FeedbackScore
-			if jScore > iScore || (jScore == iScore && candidates[j].score > candidates[i].score) {
-				candidates[i], candidates[j] = candidates[j], candidates[i]
-			}
-		}
 	}
 
 	for _, c := range candidates[:limit] {
