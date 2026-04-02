@@ -241,6 +241,36 @@ func extractLocationKnowledge(chatID int64) {
 	}
 }
 
+// loadQAEmbeddingsForTrack fetches positively-rated Q&A rows that mention
+// the given track ID in the question or answer text.
+func loadQAEmbeddingsForTrack(trackID string) ([]qaEntry, error) {
+	like := "%" + trackID + "%"
+	rows, err := duckDB.Query(
+		`SELECT id, question, answer, embedding, feedback_score FROM qa_embeddings
+		 WHERE feedback_score > 0
+		 AND (question LIKE ? OR answer LIKE ?)`,
+		like, like,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var entries []qaEntry
+	for rows.Next() {
+		var e qaEntry
+		var embJSON string
+		if err := rows.Scan(&e.ID, &e.Question, &e.Answer, &embJSON, &e.FeedbackScore); err != nil {
+			continue
+		}
+		if err := json.Unmarshal([]byte(embJSON), &e.Embedding); err != nil {
+			continue
+		}
+		entries = append(entries, e)
+	}
+	return entries, rows.Err()
+}
+
 // loadQAEmbeddings fetches Q&A rows from DuckLake.
 // If positiveOnly is true, only rows with feedback_score > 0 are returned.
 func loadQAEmbeddings(positiveOnly bool) ([]qaEntry, error) {
