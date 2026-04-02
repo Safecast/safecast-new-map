@@ -192,3 +192,7 @@ I checked and all seems to work fine.
 ---
 
 One more thing , if two or more notes are vailavable as cached, can we have the note with the most thumbs up on the top and showing in full lenght and the other notes the way they are now?
+
+---
+
+No, that did not work as expected. on a revist of a page the notes do not show up diretcly seen screen shot.
