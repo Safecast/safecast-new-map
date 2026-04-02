@@ -1,0 +1,23 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "15b72ff11797",
+  "strategy": "manual-commit",
+  "branch": "fix/nginx-track-insights-routing",
+  "checkpoints_count": 1,
+  "files_touched": null,
+  "sessions": [
+    {
+      "metadata": "/15/b72ff11797/0/metadata.json",
+      "transcript": "/15/b72ff11797/0/full.jsonl",
+      "content_hash": "/15/b72ff11797/0/content_hash.txt",
+      "prompt": "/15/b72ff11797/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 507,
+    "cache_creation_tokens": 1630916,
+    "cache_read_tokens": 42175187,
+    "output_tokens": 147886,
+    "api_call_count": 423
+  }
+}
