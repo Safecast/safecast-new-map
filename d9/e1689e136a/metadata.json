@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "d9e1689e136a",
+  "strategy": "manual-commit",
+  "branch": "fix/insights-notes-scorebadge-scope",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "cmd/unified-server/public_html/map.html",
+    "cmd/unified-server/track_insights.go"
+  ],
+  "sessions": [
+    {
+      "metadata": "/d9/e1689e136a/0/metadata.json",
+      "transcript": "/d9/e1689e136a/0/full.jsonl",
+      "content_hash": "/d9/e1689e136a/0/content_hash.txt",
+      "prompt": "/d9/e1689e136a/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 583,
+    "cache_creation_tokens": 1694663,
+    "cache_read_tokens": 48314960,
+    "output_tokens": 179337,
+    "api_call_count": 487
+  }
+}
