@@ -78,7 +78,7 @@ func trackInsightsHandler(w http.ResponseWriter, r *http.Request) {
 
 	resp := trackInsightsResponse{
 		TrackID:       trackID,
-		Insights:      insightsByEmbedding(ctx, bounds),
+		Insights:      insightsByEmbedding(ctx, bounds, trackID),
 		LocationNotes: locationNotesInBbox(bounds),
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -87,7 +87,7 @@ func trackInsightsHandler(w http.ResponseWriter, r *http.Request) {
 
 // insightsByEmbedding returns the top-5 positively-rated Q&A pairs whose
 // embeddings are most similar to a query generated from the track centroid.
-func insightsByEmbedding(ctx context.Context, bounds database.Bounds) []trackInsight {
+func insightsByEmbedding(ctx context.Context, bounds database.Bounds, trackID string) []trackInsight {
 	out := []trackInsight{}
 	if !duckDBAvailable() {
 		return out
@@ -103,7 +103,9 @@ func insightsByEmbedding(ctx context.Context, bounds database.Bounds) []trackIns
 		return out
 	}
 
-	entries, err := loadQAEmbeddings(true) // positiveOnly = true
+	// Load only Q&A that reference this specific track ID so the sidebar
+	// doesn't show insights from unrelated tracks.
+	entries, err := loadQAEmbeddingsForTrack(trackID)
 	if err != nil {
 		return out
 	}

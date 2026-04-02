@@ -10897,20 +10897,36 @@ function selectHomeSearchResult(result, query) {
         return card;
       }
 
-      // Render a location note card.
+      // Render a location note card with formatted markdown and expand/collapse.
       function renderNote(note) {
         var card = document.createElement('div');
         card.className = 'ti-note-card';
 
         var text = document.createElement('div');
-        text.textContent = note.note;
+        text.className = 'ti-card-answer ai-bubble';
+        var render = window.markdownToHTML || function(t) { return t.replace(/</g, '&lt;'); };
+        text.innerHTML = render(note.note);
+
+        var footer = document.createElement('div');
+        footer.className = 'ti-card-footer';
 
         var coords = document.createElement('div');
         coords.className = 'ti-note-coords';
         coords.textContent = note.lat.toFixed(4) + ', ' + note.lon.toFixed(4);
 
+        var expandBtn = document.createElement('button');
+        expandBtn.className = 'ti-expand-btn';
+        expandBtn.textContent = 'Show more';
+        expandBtn.addEventListener('click', function () {
+          var expanded = text.classList.toggle('expanded');
+          expandBtn.textContent = expanded ? 'Show less' : 'Show more';
+        });
+
+        footer.appendChild(coords);
+        footer.appendChild(expandBtn);
+
         card.appendChild(text);
-        card.appendChild(coords);
+        card.appendChild(footer);
         return card;
       }
 
