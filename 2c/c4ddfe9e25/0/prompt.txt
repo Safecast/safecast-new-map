@@ -44,3 +44,7 @@ The query seems to work, data is pulled from the DB, displayed and if I give it 
 ---
 
 That worked. Obly the data is not so nice readble for humand. Can you cleanup the formating.?
+
+---
+
+Please make a commit, push, pr,merge for GithUb and Codeberg..
