@@ -45,9 +45,35 @@ type qaEntry struct {
 	FeedbackScore int
 }
 
+// trackIDRegexp matches 5–10 character alphanumeric track IDs as whole words.
+var trackIDRegexp = regexp.MustCompile(`\b([A-Za-z0-9]{5,10})\b`)
+
+// extractTrackID returns the first token in s that looks like a Safecast track
+// ID (5–10 alphanumeric chars, mixed case). Returns "" if none found.
+func extractTrackID(s string) string {
+	for _, m := range trackIDRegexp.FindAllString(s, -1) {
+		// Skip common English words that would match the pattern.
+		lower := strings.ToLower(m)
+		if lower == "track" || lower == "about" || lower == "where" ||
+			lower == "what" || lower == "which" || lower == "japan" ||
+			lower == "korea" || lower == "china" || lower == "india" {
+			continue
+		}
+		// Track IDs contain both letters and digits.
+		hasLetter := strings.ContainsAny(m, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+		hasDigit := strings.ContainsAny(m, "0123456789")
+		if hasLetter && hasDigit {
+			return m
+		}
+	}
+	return ""
+}
+
 // checkSemanticCache looks for a positively-rated cached answer with high
-// cosine similarity to the given embedding. Returns ("", 0) on miss.
-func checkSemanticCache(embedding []float32) (answer string, chatID int64) {
+// cosine similarity to the given embedding.
+// question is used to detect a track ID so that cache hits from a different
+// track are never returned. Returns ("", 0) on miss.
+func checkSemanticCache(embedding []float32, question string) (answer string, chatID int64) {
 	if !duckDBAvailable() || len(embedding) == 0 {
 		return "", 0
 	}
@@ -56,16 +82,27 @@ func checkSemanticCache(embedding []float32) (answer string, chatID int64) {
 		log.Printf("semantic cache load: %v", err)
 		return "", 0
 	}
+
+	// If the question references a specific track ID, only accept cache hits
+	// whose question/answer also mention that same track ID.
+	queryTrackID := extractTrackID(question)
+
 	var bestScore float32
 	var best *qaEntry
 	for i := range entries {
+		if queryTrackID != "" {
+			if !strings.Contains(entries[i].Question, queryTrackID) &&
+				!strings.Contains(entries[i].Answer, queryTrackID) {
+				continue // cached entry is about a different track
+			}
+		}
 		if s := cosineSimilarity(embedding, entries[i].Embedding); s > bestScore {
 			bestScore = s
 			best = &entries[i]
 		}
 	}
 	if bestScore >= cacheHitThreshold && best != nil {
-		return best.Answer, best.ID
+		return best.Answer, best.ChatID
 	}
 	return "", 0
 }
