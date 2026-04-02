@@ -100,27 +100,27 @@ func adminMCPDataHandler(w http.ResponseWriter, r *http.Request) {
 	// Fetch data — use LEFT() to work around DuckLake Go driver bug where large
 	// inlined VARCHAR values are truncated to a single byte on read.
 	// LEFT(col, 100000) forces DuckDB to materialize a new string that the driver reads correctly.
-	longTextCols := map[string]bool{"question": true, "answer": true, "generated_query": true, "user_agent": true, "params": true}
+	longTextCols := map[string]bool{"question": true, "answer": true, "generated_query": true, "user_agent": true, "params": true, "note": true}
 	virtualCols := map[string]bool{"thumbs_up": true, "thumbs_down": true}
-	castCols := make([]string, 0, len(columns))
-	for _, col := range columns {
-		if virtualCols[col] {
-			continue // added via JOIN below
-		} else if longTextCols[col] {
-			castCols = append(castCols, fmt.Sprintf("LEFT(q.%s, 100000) AS %s", col, col))
-		} else {
-			castCols = append(castCols, "q."+col)
-		}
-	}
 
 	var dataQuery string
 	if tableName == "chat_questions" {
+		// chat_questions uses table alias q for the LEFT JOIN
+		castCols := make([]string, 0, len(columns))
+		for _, col := range columns {
+			if virtualCols[col] {
+				continue
+			} else if longTextCols[col] {
+				castCols = append(castCols, fmt.Sprintf("LEFT(q.%s, 100000) AS %s", col, col))
+			} else {
+				castCols = append(castCols, "q."+col)
+			}
+		}
 		castCols = append(castCols,
 			"COALESCE(f.thumbs_up, 0) AS thumbs_up",
 			"COALESCE(f.thumbs_down, 0) AS thumbs_down",
 		)
 		colList := strings.Join(castCols, ", ")
-		// Rewrite WHERE to use q. prefix for chat_questions columns
 		whereForJoin := whereSQL
 		if whereForJoin != "" {
 			whereForJoin = strings.ReplaceAll(whereForJoin, "CAST(", "CAST(q.")
@@ -137,6 +137,17 @@ func adminMCPDataHandler(w http.ResponseWriter, r *http.Request) {
 			%s ORDER BY q.%s %s LIMIT %d OFFSET %d`,
 			colList, whereForJoin, sortCol, order, limit, offset)
 	} else {
+		// All other tables: no alias, use bare column names
+		castCols := make([]string, 0, len(columns))
+		for _, col := range columns {
+			if virtualCols[col] {
+				continue
+			} else if longTextCols[col] {
+				castCols = append(castCols, fmt.Sprintf("LEFT(%s, 100000) AS %s", col, col))
+			} else {
+				castCols = append(castCols, col)
+			}
+		}
 		colList := strings.Join(castCols, ", ")
 		dataQuery = fmt.Sprintf("SELECT %s FROM %s %s ORDER BY %s %s LIMIT %d OFFSET %d",
 			colList, tableName, whereSQL, sortCol, order, limit, offset)
