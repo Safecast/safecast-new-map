@@ -251,6 +251,7 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 			Source          string             `json:"source,omitempty"`
 			Lang            string             `json:"lang,omitempty"`
 			ClientTimestamp string             `json:"client_timestamp,omitempty"`
+			TrackID         string             `json:"track_id,omitempty"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&chatReq); err != nil || chatReq.Message == "" {
 			w.WriteHeader(http.StatusBadRequest)
@@ -339,6 +340,9 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 
 		// 2. Build RAG context from similar past Q&A + location knowledge.
 		sysPrompt := webChatSystemPromptForLang(chatReq.Lang)
+		if chatReq.TrackID != "" {
+			sysPrompt = "The user is currently viewing track " + chatReq.TrackID + " on the Safecast map. When the user refers to 'this track', 'the track', or similar, they mean track " + chatReq.TrackID + ".\n\n" + sysPrompt
+		}
 		if len(embedding) > 0 {
 			ragCtx := buildRAGContext(embedding)
 			locKnowledge := getLocationKnowledge()

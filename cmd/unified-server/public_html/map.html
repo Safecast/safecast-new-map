@@ -10803,17 +10803,21 @@ function selectHomeSearchResult(result, query) {
           }
         }
 
+        var chatPayload = {
+          message: text,
+          history: chatHistory,
+          map_context: getMapContext(),
+          source: 'widget',
+          lang: currentLang,
+          client_timestamp: new Date().toISOString()
+        };
+        if (typeof currentTrackID !== 'undefined' && currentTrackID) {
+          chatPayload.track_id = currentTrackID;
+        }
         fetch('/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message: text,
-            history: chatHistory,
-            map_context: getMapContext(),
-            source: 'widget',
-            lang: currentLang,
-            client_timestamp: new Date().toISOString()
-          }),
+          body: JSON.stringify(chatPayload),
         }).then(response => {
           const reader = response.body.getReader();
           const decoder = new TextDecoder();
@@ -10901,7 +10905,7 @@ function selectHomeSearchResult(result, query) {
 
           var a = document.createElement('div');
           a.className = 'ai-bubble';
-          a.style.cssText = 'font-size:12px;max-height:120px;overflow:hidden;transition:max-height .3s;mask-image:linear-gradient(to bottom,black 60%,transparent 100%);-webkit-mask-image:linear-gradient(to bottom,black 60%,transparent 100%);';
+          a.style.cssText = 'font-size:12px;';
           a.innerHTML = md(ins.answer);
 
           var footer = document.createElement('div');
@@ -10932,10 +10936,10 @@ function selectHomeSearchResult(result, query) {
 
           var expandBtn = document.createElement('button');
           expandBtn.className = 'ti-expand-btn';
-          expandBtn.textContent = 'Show more';
+          expandBtn.textContent = 'Show less';
           expandBtn.onclick = (function(el, exBtn) {
             return function() {
-              var expanded = el.style.maxHeight === 'none';
+              var expanded = el.style.maxHeight === 'none' || el.style.maxHeight === '';
               el.style.maxHeight = expanded ? '120px' : 'none';
               el.style.maskImage = expanded ? 'linear-gradient(to bottom,black 60%,transparent 100%)' : 'none';
               el.style.webkitMaskImage = el.style.maskImage;
@@ -10958,17 +10962,12 @@ function selectHomeSearchResult(result, query) {
           nlbl.textContent = 'Location Notes (' + data.location_notes.length + ')';
           wrap.appendChild(nlbl);
           data.location_notes.forEach(function(n, noteIdx) {
-            var isFirst = noteIdx === 0;
             var nc = document.createElement('div');
             nc.style.cssText = 'background:var(--control-bg);border:1px solid var(--modal-border);border-left:3px solid #4caf50;border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;';
 
             var noteBody = document.createElement('div');
             noteBody.className = 'ai-bubble';
-            if (isFirst) {
-              noteBody.style.cssText = 'font-size:12px;';
-            } else {
-              noteBody.style.cssText = 'font-size:12px;max-height:80px;overflow:hidden;transition:max-height .3s;mask-image:linear-gradient(to bottom,black 50%,transparent 100%);-webkit-mask-image:linear-gradient(to bottom,black 50%,transparent 100%);';
-            }
+            noteBody.style.cssText = 'font-size:12px;max-height:80px;overflow:hidden;transition:max-height .3s;mask-image:linear-gradient(to bottom,black 50%,transparent 100%);-webkit-mask-image:linear-gradient(to bottom,black 50%,transparent 100%);';
             noteBody.innerHTML = md(n.note);
 
             var nFooter = document.createElement('div');
@@ -10981,7 +10980,7 @@ function selectHomeSearchResult(result, query) {
 
             var nExpand = document.createElement('button');
             nExpand.className = 'ti-expand-btn';
-            nExpand.textContent = isFirst ? 'Show less' : 'Show more';
+            nExpand.textContent = 'Show more';
             nExpand.onclick = (function(el, btn) {
               return function() {
                 var expanded = el.style.maxHeight === 'none' || el.style.maxHeight === '';
