@@ -37,7 +37,8 @@ const (
 
 // qaEntry is a row from qa_embeddings.
 type qaEntry struct {
-	ID            int64
+	ID            int64 // internal row id (time.Now().UnixNano())
+	ChatID        int64 // chat_id sent to the frontend for feedback linkage
 	Question      string
 	Answer        string
 	Embedding     []float32
@@ -203,7 +204,10 @@ func RecordFeedback(chatID int64, score int) error {
 	return nil
 }
 
-var coordRegexp = regexp.MustCompile(`(-?\d{1,3}\.\d{3,})[,\s]+(-?\d{1,3}\.\d{3,})`)
+// coordRegexp matches pairs of decimal numbers that look like lat/lon.
+// It handles both compact forms ("45.4248, -75.094") and the verbose
+// "Latitude: 45.4248..., Longitude: -75.094..." format the LLM often produces.
+var coordRegexp = regexp.MustCompile(`(-?\d{1,3}\.\d{3,})[^\d\-\n]{0,20}?(-?\d{1,3}\.\d{3,})`)
 
 // extractLocationKnowledge looks for lat/lon coordinates in the answer and
 // stores a note in location_knowledge so future questions about that area
@@ -238,10 +242,40 @@ func extractLocationKnowledge(chatID int64) {
 	}
 }
 
+// loadQAEmbeddingsForTrack fetches positively-rated Q&A rows that mention
+// the given track ID in the question or answer text.
+func loadQAEmbeddingsForTrack(trackID string) ([]qaEntry, error) {
+	like := "%" + trackID + "%"
+	rows, err := duckDB.Query(
+		`SELECT id, chat_id, question, answer, embedding, feedback_score FROM qa_embeddings
+		 WHERE feedback_score > 0
+		 AND (question LIKE ? OR answer LIKE ?)`,
+		like, like,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var entries []qaEntry
+	for rows.Next() {
+		var e qaEntry
+		var embJSON string
+		if err := rows.Scan(&e.ID, &e.ChatID, &e.Question, &e.Answer, &embJSON, &e.FeedbackScore); err != nil {
+			continue
+		}
+		if err := json.Unmarshal([]byte(embJSON), &e.Embedding); err != nil {
+			continue
+		}
+		entries = append(entries, e)
+	}
+	return entries, rows.Err()
+}
+
 // loadQAEmbeddings fetches Q&A rows from DuckLake.
 // If positiveOnly is true, only rows with feedback_score > 0 are returned.
 func loadQAEmbeddings(positiveOnly bool) ([]qaEntry, error) {
-	query := `SELECT id, question, answer, embedding, feedback_score FROM qa_embeddings`
+	query := `SELECT id, chat_id, question, answer, embedding, feedback_score FROM qa_embeddings`
 	if positiveOnly {
 		query += ` WHERE feedback_score > 0`
 	}
@@ -255,7 +289,7 @@ func loadQAEmbeddings(positiveOnly bool) ([]qaEntry, error) {
 	for rows.Next() {
 		var e qaEntry
 		var embJSON string
-		if err := rows.Scan(&e.ID, &e.Question, &e.Answer, &embJSON, &e.FeedbackScore); err != nil {
+		if err := rows.Scan(&e.ID, &e.ChatID, &e.Question, &e.Answer, &embJSON, &e.FeedbackScore); err != nil {
 			continue
 		}
 		if err := json.Unmarshal([]byte(embJSON), &e.Embedding); err != nil {

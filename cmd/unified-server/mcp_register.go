@@ -567,6 +567,11 @@ func RegisterMCP() {
 	mux.HandleFunc("/api/feedback", feedbackHandler)
 	http.HandleFunc("/api/feedback", feedbackHandler)
 
+	// Track insights: register on main mux (port 8765) using Go 1.22 pattern routing.
+	// The specific pattern "GET /api/track/{id}/insights" takes precedence over the
+	// pkg/httpapi catch-all "/api/track/" handler.
+	http.HandleFunc("GET /api/track/{id}/insights", trackInsightsHandler)
+
 	if apiKey != "" {
 		chatHandler := handleWebChat(mcpURL, apiKey, model)
 

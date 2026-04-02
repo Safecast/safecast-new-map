@@ -401,6 +401,74 @@ var mcpTableKeyColumn = map[string]string{
 	"mcp_ai_query_log": "timestamp",
 }
 
+// mcpEditableColumns defines which columns can be edited per table.
+// Only text/content fields are included — IDs, timestamps, and computed
+// columns (thumbs_up/thumbs_down) are intentionally excluded.
+var mcpEditableColumns = map[string][]string{
+	"chat_questions":   {"question", "answer", "source", "model", "country", "browser", "os"},
+	"mcp_query_log":    {"params", "client_info"},
+	"mcp_ai_query_log": {"generated_query", "error"},
+}
+
+// adminMCPUpdateHandler updates editable fields of a single row.
+// PUT /api/admin/mcp/update?table=chat_questions&id=<key_value>
+// Body: JSON object with field names → new string values.
+func adminMCPUpdateHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut && r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !duckDBAvailable() {
+		http.Error(w, "Analytics not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	tableName := r.URL.Query().Get("table")
+	if _, ok := mcpTableColumns[tableName]; !ok {
+		http.Error(w, "Invalid table name", http.StatusBadRequest)
+		return
+	}
+	keyVal := r.URL.Query().Get("id")
+	if keyVal == "" {
+		http.Error(w, "Missing id parameter", http.StatusBadRequest)
+		return
+	}
+
+	var payload map[string]string
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	// Build SET clause using only whitelisted editable columns.
+	var setClauses []string
+	var args []interface{}
+	for _, col := range mcpEditableColumns[tableName] {
+		if val, ok := payload[col]; ok {
+			setClauses = append(setClauses, fmt.Sprintf("%s = ?", col))
+			args = append(args, val)
+		}
+	}
+	if len(setClauses) == 0 {
+		http.Error(w, "No editable fields provided", http.StatusBadRequest)
+		return
+	}
+
+	keyCol := mcpTableKeyColumn[tableName]
+	args = append(args, keyVal)
+	query := fmt.Sprintf("UPDATE %s SET %s WHERE CAST(%s AS VARCHAR) = ?",
+		tableName, strings.Join(setClauses, ", "), keyCol)
+
+	if _, err := duckDB.Exec(query, args...); err != nil {
+		log.Printf("admin mcp update error: %v", err)
+		http.Error(w, "Update failed", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"}) //nolint:errcheck
+}
+
 func escapeLike(s string) string {
 	s = strings.ReplaceAll(s, "'", "''")
 	s = strings.ReplaceAll(s, "%", "")

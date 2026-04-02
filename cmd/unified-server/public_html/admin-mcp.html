@@ -114,6 +114,21 @@
     .modal h3 { margin-bottom: 10px; }
     .modal pre { white-space: pre-wrap; word-break: break-word; font-size: 0.9em; line-height: 1.5; background: var(--bg-primary); padding: 15px; border-radius: 8px; max-height: 60vh; overflow-y: auto; }
     .modal button { margin-top: 15px; padding: 8px 20px; background: var(--tab-active-bg); color: white; border: none; border-radius: var(--btn-border-radius); cursor: pointer; }
+
+    /* Edit modal */
+    .edit-modal { background: var(--bg-card); border-radius: 12px; padding: 24px; max-width: 700px; width: 90%; max-height: 85vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+    .edit-modal h3 { margin-bottom: 16px; font-size: 1.1em; }
+    .edit-field { margin-bottom: 14px; }
+    .edit-field label { display: block; font-size: 0.82em; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 5px; }
+    .edit-field textarea, .edit-field input[type="text"] { width: 100%; padding: 8px 10px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-primary); color: var(--text-primary); font-size: 0.9em; font-family: inherit; resize: vertical; }
+    .edit-field textarea { min-height: 80px; }
+    .edit-btn-row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
+    .btn-cancel { padding: 8px 18px; border: 1px solid var(--border-color); border-radius: var(--btn-border-radius); background: var(--bg-card); color: var(--text-primary); cursor: pointer; font-size: 0.9em; }
+    .btn-save { padding: 8px 18px; border: none; border-radius: var(--btn-border-radius); background: #4CAF50; color: white; cursor: pointer; font-size: 0.9em; font-weight: 600; }
+    .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+    td.actions-col { white-space: nowrap; }
+    .btn-row-edit { padding: 3px 10px; font-size: 0.8em; border: 1px solid #e65100; border-radius: 4px; background: #ff6d00; color: white; cursor: pointer; }
+    .btn-row-edit:hover { background: #e65100; }
     .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0; }
     .page-header h1 { margin: 0; }
     .back-to-map-btn { background: #2196F3 !important; color: white !important; padding: 8px 16px; border-radius: var(--btn-border-radius); text-decoration: none !important; font-weight: 500; transition: background 0.2s; }
@@ -164,6 +179,17 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="editModalOverlay" onclick="closeEditModal()">
+  <div class="edit-modal" onclick="event.stopPropagation()">
+    <h3>Edit Row</h3>
+    <div id="editFields"></div>
+    <div class="edit-btn-row">
+      <button class="btn-cancel" onclick="closeEditModal()">Cancel</button>
+      <button class="btn-save" id="editSaveBtn" onclick="saveEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const PASSWORD = new URLSearchParams(window.location.search).get('password') || '';
 const AUTH_PARAM = PASSWORD ? '?password=' + encodeURIComponent(PASSWORD) : '';
@@ -200,6 +226,84 @@ const KEY_COLUMNS = {
   'mcp_query_log': 'created_at',
   'mcp_ai_query_log': 'timestamp'
 };
+
+const EDITABLE_COLUMNS = {
+  'chat_questions':   ['question', 'answer', 'source', 'model', 'country', 'browser', 'os'],
+  'mcp_query_log':    ['params', 'client_info'],
+  'mcp_ai_query_log': ['generated_query', 'error']
+};
+
+let editRowIndex = null;
+
+function editRow(idx) {
+  const row = currentData[idx];
+  if (!row) return;
+  editRowIndex = idx;
+  const editableCols = EDITABLE_COLUMNS[currentTable] || [];
+  const container = document.getElementById('editFields');
+  container.innerHTML = '';
+  editableCols.forEach(col => {
+    const val = row[col] !== null && row[col] !== undefined ? String(row[col]) : '';
+    const isLong = EXPANDABLE.has(col);
+    const label = COLUMN_LABELS[col] || col;
+    const div = document.createElement('div');
+    div.className = 'edit-field';
+    if (isLong) {
+      div.innerHTML = `<label>${label}</label><textarea id="ef_${col}" rows="5">${escapeHtml(val)}</textarea>`;
+    } else {
+      div.innerHTML = `<label>${label}</label><input type="text" id="ef_${col}" value="${escapeHtml(val)}">`;
+    }
+    container.appendChild(div);
+  });
+  document.getElementById('editModalOverlay').classList.add('visible');
+  const first = container.querySelector('textarea, input');
+  if (first) first.focus();
+}
+
+function closeEditModal() {
+  document.getElementById('editModalOverlay').classList.remove('visible');
+  editRowIndex = null;
+}
+
+async function saveEdit() {
+  if (editRowIndex === null) return;
+  const row = currentData[editRowIndex];
+  const keyCol = KEY_COLUMNS[currentTable];
+  const keyVal = row[keyCol];
+  const editableCols = EDITABLE_COLUMNS[currentTable] || [];
+
+  const payload = {};
+  editableCols.forEach(col => {
+    const el = document.getElementById('ef_' + col);
+    if (el) payload[col] = el.value;
+  });
+
+  const saveBtn = document.getElementById('editSaveBtn');
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Saving…';
+
+  let url = `/api/admin/mcp/update?table=${currentTable}&id=${encodeURIComponent(String(keyVal))}`;
+  if (PASSWORD) url += '&password=' + encodeURIComponent(PASSWORD);
+
+  try {
+    const resp = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!resp.ok) {
+      const text = await resp.text();
+      throw new Error(text || 'HTTP ' + resp.status);
+    }
+    closeEditModal();
+    fetchData();
+  } catch (err) {
+    alert('Save failed: ' + err.message);
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save';
+  }
+}
 
 // Build admin tabs
 function buildAdminTabs() {
@@ -328,7 +432,9 @@ async function fetchData() {
     // Build header
     const thead = document.getElementById('tableHead');
     const keyCol = KEY_COLUMNS[currentTable];
+    const hasEditable = (EDITABLE_COLUMNS[currentTable] || []).length > 0;
     let headerHTML = '<tr><th class="checkbox-col"><input type="checkbox" onchange="toggleAll(this)"></th>';
+    if (hasEditable) headerHTML += '<th style="width:60px"></th>';
     columns.forEach(col => {
       const label = COLUMN_LABELS[col] || col;
       const sortClass = currentSort === col ? (currentOrder === 'asc' ? 'sortable asc' : 'sortable desc') : 'sortable';
@@ -337,6 +443,7 @@ async function fetchData() {
     headerHTML += '</tr>';
     // Filter row
     headerHTML += '<tr class="filter-row"><th></th>';
+    if (hasEditable) headerHTML += '<th></th>';
     columns.forEach(col => {
       const label = COLUMN_LABELS[col] || col;
       headerHTML += `<th><input type="text" class="filter-input" placeholder="${label}..." onkeyup="filterTable()"></th>`;
@@ -350,6 +457,7 @@ async function fetchData() {
     data.forEach((row, idx) => {
       const keyVal = row[keyCol];
       bodyHTML += `<tr><td class="checkbox-col"><input type="checkbox" class="row-cb" value="${keyVal}" onchange="updateDeleteBtn()"></td>`;
+      if (hasEditable) bodyHTML += `<td class="actions-col"><button class="btn-row-edit" onclick="editRow(${idx})">Edit</button></td>`;
       columns.forEach(col => {
         let val = row[col];
         if (val === null || val === undefined) val = '';
@@ -579,9 +687,9 @@ document.addEventListener('DOMContentLoaded', () => {
   fetchData();
 });
 
-// Keyboard shortcut: Escape closes modal
+// Keyboard shortcut: Escape closes modals
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeModal();
+  if (e.key === 'Escape') { closeModal(); closeEditModal(); }
 });
 </script>
 </body>
