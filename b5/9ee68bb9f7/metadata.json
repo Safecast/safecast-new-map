@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "b59ee68bb9f7",
+  "strategy": "manual-commit",
+  "branch": "fix/insights-notes-scorebadge-scope",
+  "checkpoints_count": 4,
+  "files_touched": [
+    "cmd/unified-server/admin_mcp.go",
+    "cmd/unified-server/mcp_register.go",
+    "cmd/unified-server/public_html/map.html"
+  ],
+  "sessions": [
+    {
+      "metadata": "/b5/9ee68bb9f7/0/metadata.json",
+      "transcript": "/b5/9ee68bb9f7/0/full.jsonl",
+      "content_hash": "/b5/9ee68bb9f7/0/content_hash.txt",
+      "prompt": "/b5/9ee68bb9f7/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 690,
+    "cache_creation_tokens": 1887462,
+    "cache_read_tokens": 55598551,
+    "output_tokens": 204770,
+    "api_call_count": 576
+  }
+}
