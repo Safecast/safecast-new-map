@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "fbccd68e9450",
+  "strategy": "manual-commit",
+  "branch": "feat/track-detail-rag-sidebar",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "cmd/unified-server/public_html/map.html",
+    "cmd/unified-server/semantic_cache.go",
+    "cmd/unified-server/track_insights.go"
+  ],
+  "sessions": [
+    {
+      "metadata": "/fb/ccd68e9450/0/metadata.json",
+      "transcript": "/fb/ccd68e9450/0/full.jsonl",
+      "content_hash": "/fb/ccd68e9450/0/content_hash.txt",
+      "prompt": "/fb/ccd68e9450/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 224,
+    "cache_creation_tokens": 855527,
+    "cache_read_tokens": 18017682,
+    "output_tokens": 72295,
+    "api_call_count": 192
+  }
+}
