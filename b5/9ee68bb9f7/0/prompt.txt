@@ -231,3 +231,8 @@ Aahh..  I see what is happening. Now when a insight is created , the mcp analylc
 Two things:
 1- Can we have a subtab on the admin where we can see the insight being generated and be able to edit them?
 2- If in "one track" mode the AI bot should be away of what track is being  questioned.
+
+---
+
+<ide_opened_file>The user opened the file /home/rob/Documents/Safecast/safecast-new-map/cmd/unified-server/public_html/map.html in the IDE. This may or may not be related to the current task.</ide_opened_file>
+Nice.. please commit/push/pr and merge for GitHub and codeberg.
