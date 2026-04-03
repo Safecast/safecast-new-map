@@ -1,0 +1,25 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "ba79838f04da",
+  "strategy": "manual-commit",
+  "branch": "fix/api-docs-base-url-production",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "cmd/unified-server/main.go"
+  ],
+  "sessions": [
+    {
+      "metadata": "/ba/79838f04da/0/metadata.json",
+      "transcript": "/ba/79838f04da/0/full.jsonl",
+      "content_hash": "/ba/79838f04da/0/content_hash.txt",
+      "prompt": "/ba/79838f04da/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 42,
+    "cache_creation_tokens": 67843,
+    "cache_read_tokens": 1718984,
+    "output_tokens": 10178,
+    "api_call_count": 32
+  }
+}
