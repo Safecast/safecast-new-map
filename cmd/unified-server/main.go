@@ -10084,6 +10084,17 @@ func main() {
 		}),
 	))
 
+	// Register MCP API swagger on port 8765 as well so the combined /docs/ page
+	// can fetch /mcp-api/doc.json without going to port 3333.
+	http.HandleFunc("/mcp-api/favicon.ico", serveFavicon)
+	http.HandleFunc("/mcp-api/favicon-16x16.png", serveFavicon16)
+	http.HandleFunc("/mcp-api/favicon-32x32.png", serveFavicon32)
+	http.HandleFunc("/mcp-api/swagger-theme.css", serveSwaggerTheme)
+	http.Handle("/mcp-api/", httpSwagger.Handler(
+		httpSwagger.URL("/mcp-api/doc.json"),
+		// default instance name "swagger" = MCP API spec from docs/docs.go
+	))
+
 	http.HandleFunc("/home", homeHandler)
 	http.HandleFunc("/", mapHandler)
 
