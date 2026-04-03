@@ -234,6 +234,84 @@ func serveSwaggerTheme(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(mcpSwaggerThemeCSS))
 }
 
+// serveMCPAPIPage serves the standalone MCP API Swagger page.
+// It loads static assets from /map-api/ to avoid the swaggerFiles.Handler singleton
+// prefix conflict that occurs when two httpSwagger instances share the same webdav handler.
+func serveMCPAPIPage(w http.ResponseWriter, r *http.Request) {
+	// Only handle root and index — let other /mcp-api/* paths (doc.json, favicons, CSS) fall through.
+	if r.URL.Path != "/mcp-api/" && r.URL.Path != "/mcp-api/index.html" {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = w.Write([]byte(mcpAPIPageHTML))
+}
+
+const mcpAPIPageHTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Safecast MCP API Documentation</title>
+<link rel="stylesheet" href="/map-api/swagger-ui.css">
+<link rel="stylesheet" href="/mcp-api/swagger-theme.css">
+<script>
+(function(){var t=localStorage.getItem('safecastDocTheme');if(t)document.documentElement.setAttribute('data-theme',t);})();
+</script>
+<style>
+:root{--bg-primary:#f5f5f5;--bg-card:#fff;--text-primary:#333;--text-secondary:#666;--border-color:#ddd;--link-color:#0066cc;--shadow:0 1px 3px rgba(0,0,0,0.1);}
+[data-theme="dark"]{--bg-primary:#1a1a1a;--bg-card:#2b2b2b;--text-primary:#eee;--text-secondary:#aaa;--border-color:#444;--link-color:#90caf9;--shadow:0 1px 3px rgba(255,255,255,0.07);}
+*,*::before,*::after{box-sizing:border-box;}
+body{margin:0;background:var(--bg-primary);color:var(--text-primary);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+.top-nav{position:sticky;top:0;z-index:1000;display:flex;align-items:center;gap:12px;padding:0 20px;height:52px;background:#1a3a5c;color:#fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);}
+.nav-logo{height:28px;width:28px;object-fit:contain;border-radius:4px;}
+.nav-brand{font-size:1.1rem;font-weight:700;color:#fff;text-decoration:none;}
+.nav-sep{color:rgba(255,255,255,0.4);font-size:1.2rem;}
+.nav-title{font-size:1rem;color:rgba(255,255,255,0.85);font-weight:500;}
+.nav-spacer{flex:1;}
+.nav-back{color:rgba(255,255,255,0.85);text-decoration:none;font-size:0.9rem;padding:6px 12px;border:1px solid rgba(255,255,255,0.3);border-radius:6px;}
+.nav-back:hover{background:rgba(255,255,255,0.1);}
+.theme-btn{background:none;border:1px solid rgba(255,255,255,0.3);color:#fff;cursor:pointer;padding:5px 10px;border-radius:6px;font-size:0.85rem;}
+.theme-btn:hover{background:rgba(255,255,255,0.1);}
+.preamble{background:var(--bg-card);border-bottom:1px solid var(--border-color);padding:18px 24px 14px;}
+.preamble h1{margin:0 0 6px;font-size:1.3rem;color:var(--text-primary);}
+.preamble p{margin:0;color:var(--text-secondary);font-size:0.95rem;}
+.swagger-wrap .swagger-ui{background:var(--bg-card)!important;}
+.swagger-wrap .swagger-ui .topbar{display:none!important;}
+.swagger-wrap .swagger-ui .info .link,.swagger-wrap .swagger-ui .info a[href*="doc.json"]{display:none!important;}
+</style>
+</head>
+<body>
+<nav class="top-nav">
+  <img src="/static/images/safecast-logo-squared.png" class="nav-logo" alt="Safecast">
+  <a href="/" class="nav-brand">Safecast</a>
+  <span class="nav-sep">|</span>
+  <span class="nav-title">MCP API Documentation</span>
+  <span class="nav-spacer"></span>
+  <a href="/docs/" class="nav-back">&#8592; All API Docs</a>
+  <button class="theme-btn" id="themeToggle">&#9788; Light Mode</button>
+</nav>
+<div class="preamble">
+  <h1>Safecast MCP API</h1>
+  <p>Model Context Protocol server — AI-accessible endpoints for radiation data, sensors, tracks, and analytics.</p>
+</div>
+<div class="swagger-wrap"><div id="swagger-ui"></div></div>
+<script src="/map-api/swagger-ui-bundle.js"></script>
+<script src="/map-api/swagger-ui-standalone-preset.js"></script>
+<script>
+(function(){
+  var btn=document.getElementById('themeToggle');
+  function applyTheme(t){document.documentElement.setAttribute('data-theme',t);btn.textContent=t==='dark'?'\u2600\ufe0f Light Mode':'\u2728 Dark Mode';localStorage.setItem('safecastDocTheme',t);}
+  var saved=localStorage.getItem('safecastDocTheme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
+  applyTheme(saved);
+  btn.addEventListener('click',function(){applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');});
+  SwaggerUIBundle({url:'/mcp-api/doc.json',dom_id:'#swagger-ui',presets:[SwaggerUIBundle.presets.apis,SwaggerUIStandalonePreset],layout:'BaseLayout',deepLinking:false,displayRequestDuration:true,defaultModelsExpandDepth:-1});
+})();
+</script>
+</body>
+</html>`
+
 // serveAPIDocsPage serves the combined Map API + MCP API documentation page with tabs.
 func serveAPIDocsPage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

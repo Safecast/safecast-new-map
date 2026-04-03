@@ -55,6 +55,7 @@ import (
 	"golang.org/x/crypto/acme/autocert"
 
 	_ "safecast-new-map/cmd/unified-server/docs/api"
+	"github.com/swaggo/swag"
 	"safecast-new-map/pkg/auth"
 	"safecast-new-map/pkg/countryresolver"
 	"safecast-new-map/pkg/database"
@@ -10084,16 +10085,24 @@ func main() {
 		}),
 	))
 
-	// Register MCP API swagger on port 8765 as well so the combined /docs/ page
-	// can fetch /mcp-api/doc.json without going to port 3333.
+	// Serve MCP API spec JSON directly (avoids sharing swaggerFiles.Handler singleton
+	// with the /map-api/ swagger instance, which causes a prefix conflict).
+	http.HandleFunc("/mcp-api/doc.json", func(w http.ResponseWriter, r *http.Request) {
+		doc, err := swag.ReadDoc("swagger")
+		if err != nil {
+			http.Error(w, "swagger spec unavailable", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(doc))
+	})
+	// Standalone /mcp-api/ page: custom HTML that loads assets from /map-api/
+	// (single swagger static-file handler on this port — avoids prefix conflict).
 	http.HandleFunc("/mcp-api/favicon.ico", serveFavicon)
 	http.HandleFunc("/mcp-api/favicon-16x16.png", serveFavicon16)
 	http.HandleFunc("/mcp-api/favicon-32x32.png", serveFavicon32)
 	http.HandleFunc("/mcp-api/swagger-theme.css", serveSwaggerTheme)
-	http.Handle("/mcp-api/", httpSwagger.Handler(
-		httpSwagger.URL("/mcp-api/doc.json"),
-		// default instance name "swagger" = MCP API spec from docs/docs.go
-	))
+	http.HandleFunc("/mcp-api/", serveMCPAPIPage)
 
 	http.HandleFunc("/home", homeHandler)
 	http.HandleFunc("/", mapHandler)
