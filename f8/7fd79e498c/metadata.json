@@ -1,0 +1,25 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "f87fd79e498c",
+  "strategy": "manual-commit",
+  "branch": "feat/api-docs-unified-nav",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "docs/DEPLOYMENT.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/f8/7fd79e498c/0/metadata.json",
+      "transcript": "/f8/7fd79e498c/0/full.jsonl",
+      "content_hash": "/f8/7fd79e498c/0/content_hash.txt",
+      "prompt": "/f8/7fd79e498c/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 338,
+    "cache_creation_tokens": 350442,
+    "cache_read_tokens": 21463186,
+    "output_tokens": 94921,
+    "api_call_count": 266
+  }
+}
