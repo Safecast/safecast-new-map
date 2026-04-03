@@ -314,15 +314,17 @@ body {
   top: 0;
   z-index: 100;
 }
-.top-nav .logo {
+.top-nav .nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-weight: 700;
   font-size: 17px;
-  letter-spacing: 0.02em;
   color: #fff;
   text-decoration: none;
   white-space: nowrap;
 }
-.top-nav .logo span { color: #7ecbff; }
+.top-nav .nav-logo img { height: 28px; width: 28px; object-fit: contain; }
 .top-nav .back-link {
   color: #afd4f5;
   text-decoration: none;
@@ -488,7 +490,10 @@ body {
 <body>
 
 <nav class="top-nav">
-  <a href="/" class="logo">Safe<span>cast</span></a>
+  <a href="/" class="nav-logo">
+    <img src="/static/images/safecast-logo-squared.png" alt="Safecast">
+    Safecast
+  </a>
   <span style="color:rgba(255,255,255,0.3);font-size:18px;">|</span>
   <a href="/" class="back-link">← Back to Map</a>
   <span class="nav-title">API Documentation</span>
