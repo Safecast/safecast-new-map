@@ -25,3 +25,7 @@ But with Safecast logo and name before the tile of the page andl only the admin 
 ---
 
 But with Safecast logo and name before the tile of the page andl only the admin pages.
+
+---
+
+yes.. that shoubd like a good idea/plan. Please implement.
