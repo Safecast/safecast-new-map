@@ -476,6 +476,17 @@ Swagger's microlight syntax highlighter was rendering code examples with near-in
 .swagger-ui .microlight span { color: inherit !important; }
 ```
 
+### `swaggerFiles` singleton conflict fix
+
+`github.com/swaggo/files` exposes a **package-level webdav singleton** (`swaggerFiles.Handler`). When two `httpSwagger.Handler` instances are registered on the same `http.ServeMux` (e.g. `/map-api/` and `/mcp-api/`), each closure sets `handler.Prefix` via its own `sync.Once` on first request. Whichever runs second overwrites the prefix, causing the first handler to return 404 for all its static assets (`swagger-ui-bundle.js`, `swagger-ui.css`, etc.).
+
+**Fix (PR #63):** Only one `httpSwagger.Handler` is registered on port 8765 (`/map-api/`). The `/mcp-api/` path uses:
+
+- `/mcp-api/doc.json` — served directly via `swag.ReadDoc("swagger")` (no webdav involved)
+- `/mcp-api/` — custom HTML page (`serveMCPAPIPage` in `rest.go`) that loads all static assets from `/map-api/`
+
+The combined `/docs/` page was also already loading assets from `/map-api/`, so it benefits from this fix too.
+
 ### Preamble dark mode fix (`/map-api/`)
 
 The white preamble header box (title, description, nav buttons) on `/map-api/` was not responding to dark mode. Fixed by injecting a `<style>` element via the `onComplete` JS callback with `body.dark-mode #safecast-preamble` rules.
