@@ -5225,6 +5225,13 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 <html>
 <head>
 	<title>Admin - File Uploads</title>
+	<script>
+	(function() {
+		var saved = localStorage.getItem('safecastDocTheme');
+		var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+		document.documentElement.setAttribute('data-theme', saved || (prefersDark ? 'dark' : 'light'));
+	})();
+	</script>
 
 	<!-- favicon -->
 	<link rel="apple-touch-icon" sizes="180x180" href="/static/images/apple-touch-icon.png">
@@ -5261,41 +5268,34 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		:root[data-theme='light'] {
-			--bg-primary: #f5f5f5;
-			--bg-card: white;
-			--text-primary: #333;
-			--text-secondary: #666;
-			--text-muted: #999;
-			--border-color: #ddd;
-			--link-color: #0066cc;
-			--shadow: 0 1px 3px rgba(0,0,0,0.1);
-			--th-bg: #424242;
-			--hover-bg: #f9f9f9;
-			color-scheme: light;
+			--bg-primary: #f5f5f5; --bg-card: #fff; --text-primary: #333;
+			--text-secondary: #666; --text-muted: #999; --border-color: #ddd;
+			--link-color: #0066cc; --shadow: 0 1px 3px rgba(0,0,0,0.1);
+			--hover-bg: #f9f9f9; --th-bg: #424242; color-scheme: light;
 		}
 		:root[data-theme='dark'] {
-			--bg-primary: #1a1a1a;
-			--bg-card: #2b2b2b;
-			--text-primary: #eee;
-			--text-secondary: #aaa;
-			--text-muted: #777;
-			--border-color: #444;
-			--link-color: #90caf9;
-			--shadow: 0 1px 3px rgba(255,255,255,0.1);
-			--th-bg: #616161;
-			--hover-bg: #333;
-			color-scheme: dark;
+			--bg-primary: #1a1a1a; --bg-card: #2b2b2b; --text-primary: #eee;
+			--text-secondary: #aaa; --text-muted: #777; --border-color: #444;
+			--link-color: #90caf9; --shadow: 0 1px 3px rgba(255,255,255,0.07);
+			--hover-bg: #333; --th-bg: #616161; color-scheme: dark;
 		}
-		body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; margin: 20px; background: var(--bg-primary); color: var(--text-primary); }
+		body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; margin: 0; background: var(--bg-primary); color: var(--text-primary); transition: background 0.2s, color 0.2s; }
 		h1 { color: var(--text-primary); }
+		.top-nav { background: #1a3a5c; color: #fff; padding: 0 24px; display: flex; align-items: center; gap: 16px; height: 52px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); position: sticky; top: 0; z-index: 100; }
+		.nav-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; color: #fff; font-weight: 700; font-size: 17px; white-space: nowrap; }
+		.nav-logo img { height: 28px; width: 28px; object-fit: contain; }
+		.nav-sep { color: rgba(255,255,255,0.3); font-size: 18px; }
+		.nav-title { font-size: 15px; font-weight: 600; color: #d0e8ff; white-space: nowrap; }
+		.nav-spacer { flex: 1; }
+		.back-link { color: #afd4f5; text-decoration: none; font-size: 13px; white-space: nowrap; }
+		.back-link:hover { color: #fff; }
+		#theme-toggle { background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.25); border-radius: 6px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
+		#theme-toggle:hover { background: rgba(255,255,255,0.22); }
+		.page-content { padding: 20px 24px; }
 		.nav { background: var(--bg-card); padding: 15px; margin-bottom: 20px; border-radius: 5px; box-shadow: var(--shadow); display: flex; align-items: center; justify-content: space-between; }
 		.nav-left { display: flex; align-items: center; gap: 15px; }
 		.nav a { color: var(--link-color); text-decoration: none; }
 		.nav a:hover { text-decoration: underline; }
-		.back-to-map-btn { background: #2196F3 !important; color: white !important; padding: 8px 16px; border-radius: 4px; text-decoration: none !important; font-weight: 500; transition: background 0.2s; }
-		.back-to-map-btn:hover { background: #1976D2 !important; text-decoration: none !important; }
-		.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0; }
-		.page-header h1 { margin: 0; }
 		.summary { background: var(--bg-card); padding: 15px; margin-bottom: 20px; border-radius: 5px; box-shadow: var(--shadow); }
 		table { border-collapse: collapse; width: 100%; background: var(--bg-card); box-shadow: var(--shadow); table-layout: auto; }
 		th { background: var(--th-bg); color: white; padding: 12px; text-align: left; font-weight: 600; white-space: nowrap; position: relative; overflow: hidden; }
@@ -5361,10 +5361,18 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 	</style>
 </head>
 <body>
-	<div class="page-header">
-		<h1>File Uploads Administration</h1>
-		<a href="/" class="back-to-map-btn">Back to Map</a>
-	</div>
+<nav class="top-nav">
+  <a href="/" class="nav-logo">
+    <img src="/static/images/safecast-logo-squared.png" alt="Safecast">
+    Safecast
+  </a>
+  <span class="nav-sep">|</span>
+  <span class="nav-title">File Uploads Administration</span>
+  <span class="nav-spacer"></span>
+  <a href="/" class="back-link">&#8592; Back to Map</a>
+  <button id="theme-toggle" onclick="toggleTheme()">&#127769; Dark Mode</button>
+</nav>
+<div class="page-content">
 	<div class="admin-tabs">
 		<a href="/admin/users` + func() string {
 		if password != "" {
@@ -6107,6 +6115,22 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 			</div>
 		</div>
 	</div>
+</div><!-- .page-content -->
+<script>
+(function() {
+	function applyLabel() {
+		var btn = document.getElementById('theme-toggle');
+		if (btn) btn.textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? '\u2600\uFE0F Light Mode' : '\uD83C\uDF19 Dark Mode';
+	}
+	applyLabel();
+	window.toggleTheme = function() {
+		var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+		document.documentElement.setAttribute('data-theme', next);
+		localStorage.setItem('safecastDocTheme', next);
+		applyLabel();
+	};
+})();
+</script>
 </body>
 </html>`
 
@@ -7160,6 +7184,13 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 <html>
 <head>
 	<title>Admin - All Tracks</title>
+	<script>
+	(function() {
+		var saved = localStorage.getItem('safecastDocTheme');
+		var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+		document.documentElement.setAttribute('data-theme', saved || (prefersDark ? 'dark' : 'light'));
+	})();
+	</script>
 
 	<!-- favicon -->
 	<link rel="apple-touch-icon" sizes="180x180" href="/static/images/apple-touch-icon.png">
@@ -7237,16 +7268,23 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 			--badge-spectrum-text: #81c784;
 			color-scheme: dark;
 		}
-		body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; margin: 20px; background: var(--bg-primary); color: var(--text-primary); }
+		body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; margin: 0; background: var(--bg-primary); color: var(--text-primary); transition: background 0.2s, color 0.2s; }
 		h1 { color: var(--text-primary); }
+		.top-nav { background: #1a3a5c; color: #fff; padding: 0 24px; display: flex; align-items: center; gap: 16px; height: 52px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); position: sticky; top: 0; z-index: 100; }
+		.nav-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; color: #fff; font-weight: 700; font-size: 17px; white-space: nowrap; }
+		.nav-logo img { height: 28px; width: 28px; object-fit: contain; }
+		.nav-sep { color: rgba(255,255,255,0.3); font-size: 18px; }
+		.nav-title { font-size: 15px; font-weight: 600; color: #d0e8ff; white-space: nowrap; }
+		.nav-spacer { flex: 1; }
+		.back-link { color: #afd4f5; text-decoration: none; font-size: 13px; white-space: nowrap; }
+		.back-link:hover { color: #fff; }
+		#theme-toggle { background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.25); border-radius: 6px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
+		#theme-toggle:hover { background: rgba(255,255,255,0.22); }
+		.page-content { padding: 20px 24px; }
 		.nav { background: var(--bg-card); padding: 15px; margin-bottom: 20px; border-radius: 5px; box-shadow: var(--shadow); display: flex; align-items: center; justify-content: space-between; }
 		.nav-left { display: flex; align-items: center; gap: 15px; }
 		.nav a { color: var(--link-color); text-decoration: none; }
 		.nav a:hover { text-decoration: underline; }
-		.back-to-map-btn { background: #2196F3 !important; color: white !important; padding: 8px 16px; border-radius: 4px; text-decoration: none !important; font-weight: 500; transition: background 0.2s; }
-		.back-to-map-btn:hover { background: #1976D2 !important; text-decoration: none !important; }
-		.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0; }
-		.page-header h1 { margin: 0; }
 		.summary { background: var(--bg-card); padding: 15px; margin-bottom: 20px; border-radius: 5px; box-shadow: var(--shadow); }
 		table { border-collapse: collapse; width: 100%; background: var(--bg-card); box-shadow: var(--shadow); }
 		th { background: var(--th-bg); color: white; padding: 12px; text-align: left; font-weight: 600; }
@@ -7304,10 +7342,18 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 	</style>
 </head>
 <body>
-	<div class="page-header">
-		<h1>All Tracks Administration</h1>
-		<a href="/" class="back-to-map-btn">Back to Map</a>
-	</div>
+<nav class="top-nav">
+  <a href="/" class="nav-logo">
+    <img src="/static/images/safecast-logo-squared.png" alt="Safecast">
+    Safecast
+  </a>
+  <span class="nav-sep">|</span>
+  <span class="nav-title">All Tracks Administration</span>
+  <span class="nav-spacer"></span>
+  <a href="/" class="back-link">&#8592; Back to Map</a>
+  <button id="theme-toggle" onclick="toggleTheme()">&#127769; Dark Mode</button>
+</nav>
+<div class="page-content">
 	<div class="admin-tabs">
 		<a href="/admin/users` + func() string {
 		if password != "" {
@@ -7872,6 +7918,22 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 			updateDeleteButton();
 		}
 	</script>
+</div><!-- .page-content -->
+<script>
+(function() {
+	function applyLabel() {
+		var btn = document.getElementById('theme-toggle');
+		if (btn) btn.textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? '\u2600\uFE0F Light Mode' : '\uD83C\uDF19 Dark Mode';
+	}
+	applyLabel();
+	window.toggleTheme = function() {
+		var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+		document.documentElement.setAttribute('data-theme', next);
+		localStorage.setItem('safecastDocTheme', next);
+		applyLabel();
+	};
+})();
+</script>
 </body>
 </html>`
 
