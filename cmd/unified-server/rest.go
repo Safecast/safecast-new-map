@@ -254,6 +254,9 @@ const mcpAPIPageHTML = `<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Safecast MCP API Documentation</title>
+<link rel="icon" type="image/x-icon" href="/mcp-api/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="/mcp-api/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/mcp-api/favicon-16x16.png">
 <link rel="stylesheet" href="/map-api/swagger-ui.css">
 <link rel="stylesheet" href="/mcp-api/swagger-theme.css">
 <script>
@@ -325,6 +328,9 @@ const apiDocsPageHTML = `<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Safecast API Documentation</title>
+<link rel="icon" type="image/x-icon" href="/map-api/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="/map-api/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/map-api/favicon-16x16.png">
 <link rel="stylesheet" href="/map-api/swagger-ui.css">
 <style>
 /* ── Admin-style CSS variables (matches admin pages exactly) ── */
