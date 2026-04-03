@@ -9944,6 +9944,22 @@ func main() {
 				};
 				document.body.appendChild(btn);
 
+				// ── Dark-mode styles for preamble ──
+				const dmStyle = document.createElement('style');
+				dmStyle.textContent = [
+					'body.dark-mode #safecast-preamble { background: #1a2535 !important; border-bottom-color: #0d9488 !important; }',
+					'body.dark-mode #safecast-preamble h2 { color: #93c5fd !important; }',
+					'body.dark-mode #safecast-preamble > div > p { color: #b0b8c8 !important; }',
+					'body.dark-mode #safecast-preamble a[href*="creativecommons"] { color: #5eead4 !important; }',
+					'body.dark-mode #safecast-preamble summary { color: #93c5fd !important; }',
+					'body.dark-mode #safecast-preamble details > div > div { background: #0f1c2e !important; border-color: #2a3f5f !important; }',
+					'body.dark-mode #safecast-preamble details > div > div strong { color: #93c5fd !important; }',
+					'body.dark-mode #safecast-preamble details > div > div p { color: #8899aa !important; }',
+					'body.dark-mode #safecast-preamble details > div > p { color: #6b7a8d !important; }',
+					'body.dark-mode #safecast-preamble code { background: #0f1c2e !important; color: #5eead4 !important; }',
+				].join('\n');
+				document.head.appendChild(dmStyle);
+
 				// ── Preamble section (inserted before #swagger-ui) ──
 				const existing = document.getElementById('safecast-preamble');
 				if (existing) existing.remove();
