@@ -1,0 +1,17 @@
+what is the url for the api documentation on the prodcution server?
+
+---
+
+screen
+
+---
+
+can you fix the url for the switch to map API link? On the production server  it now it goes to http://localhost:8765/map-api/..
+
+---
+
+On the api map page same prroblem.. if goes to localhost..
+
+---
+
+Can you document the changes and make a commit/push/PR and merge  for Github and cOdeberg  with the information  what we chnaged?
