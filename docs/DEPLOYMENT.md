@@ -232,9 +232,36 @@ Then restart the service to reload: `systemctl restart safecast-new-map`
 
 | Service | systemd name | Binary | Config |
 |---------|-------------|--------|--------|
-| Map server | `safecast-new-map` | `/usr/local/bin/safecast-new-map` | flags in service file |
+| Map server | `safecast-new-map` | `/usr/local/bin/safecast-new-map` | flags + `Environment=` lines in service file |
 | MCP server | `safecast-mcp` | `/root/safecast-mcp-server/safecast-mcp` | `/root/safecast-mcp-server/.env` |
 | Web-chat | `safecast-web-chat` | `/root/safecast-web-chat-server/safecast-web-chat` | `/root/safecast-web-chat-server/.env` |
+
+### Required Environment Variables — safecast-new-map service
+
+These must be set as `Environment=` lines in `/etc/systemd/system/safecast-new-map.service`. Without them, API documentation cross-links fall back to `http://localhost:8765`.
+
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `MAP_BASE_URL` | `https://simplemap.safecast.org` | Base URL for the Map API docs "Switch to MCP API" button |
+| `MCP_BASE_URL` | `https://simplemap.safecast.org` | Base URL for the MCP API docs "Switch to Map API" button |
+| `DUCKLAKE_PG_URL` | `dbname=ducklake_catalog host=localhost user=ducklake_rw password=...` | DuckLake catalog |
+| `DUCKLAKE_DATA_PATH` | `/var/lib/safecast/ducklake/` | DuckLake Parquet data path |
+| `ANTHROPIC_API_KEY` | `sk-ant-...` | Claude API key |
+
+**Example service file snippet:**
+```ini
+Environment=MAP_BASE_URL=https://simplemap.safecast.org
+Environment=MCP_BASE_URL=https://simplemap.safecast.org
+Environment=DUCKLAKE_PG_URL="dbname=ducklake_catalog host=localhost user=ducklake_rw password=SECRET"
+Environment=DUCKLAKE_DATA_PATH=/var/lib/safecast/ducklake/
+Environment=ANTHROPIC_API_KEY=sk-ant-...
+```
+
+After editing the service file, always reload and restart:
+```bash
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 \
+  "systemctl daemon-reload && systemctl restart safecast-new-map"
+```
 
 ### Useful Commands
 
@@ -415,6 +442,10 @@ ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl cat safecast-new-map
 **CloudFront Distribution ID:** E12FYIQ8RRXOJ1
 **Service Name:** `safecast-new-map`
 **Binary Path:** `/usr/local/bin/safecast-new-map`
+
+**API Documentation URLs:**
+- Map API Docs: `https://simplemap.safecast.org/map-api/`
+- MCP API Docs: `https://simplemap.safecast.org/mcp-api/`
 
 **One-Line Deploy:**
 ```bash
