@@ -427,6 +427,59 @@ ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl cat safecast-new-map
 
 **Note:** Many tracks have no comment in the old API (the uploader never wrote one) — this is normal. Only tracks where the uploader provided a description will have a non-empty `comment`.
 
+## API Documentation Pages
+
+### Overview
+
+Three Swagger UI pages are served by the unified server (`safecast-new-map`, port 8765):
+
+| URL | Description |
+|-----|-------------|
+| `/docs/` | **Combined page** — Map API and MCP API in a tabbed interface |
+| `/map-api/` | Map API only (standalone Swagger UI) |
+| `/mcp-api/` | MCP API only (standalone Swagger UI) |
+
+All three support dark mode. `/docs/` is the canonical entry point.
+
+### Nginx routing
+
+All three paths are proxied from both nginx configs to port 8765:
+
+```nginx
+location /docs/     { proxy_pass http://localhost:8765/docs/; ... }
+location /mcp-api/  { proxy_pass http://localhost:8765/mcp-api/; ... }
+location /map-api/  { ... }  # falls through to the default location / block → 8765
+```
+
+**Note:** `/mcp-api/` requires an explicit nginx `location` block — it does NOT fall through to the default `location /` block because that block also goes to 8765 but earlier nginx configs had it pointing to port 3333 by mistake.
+
+### Combined docs page (`/docs/`)
+
+Implemented in `cmd/unified-server/rest.go` — `serveAPIDocsPage()` handler.
+
+- Admin-style CSS variables (`--bg-primary`, `--bg-card`, `--text-primary`, etc.) matching all admin pages
+- Tab bar uses the same `.api-tabs` pattern as admin `.admin-tabs`
+- Dark mode stored in `localStorage` key `safecastDocTheme`, applied via `data-theme` on `<html>`
+- MCP API swagger initialized **lazily** — only on first tab click (avoids loading both at page load)
+- Active tab persisted in `localStorage` key `safecastDocTab`
+- Both swagger instances use `BaseLayout` (no duplicate swagger topbars)
+- Swagger UI assets reused from `/map-api/swagger-ui-bundle.js`
+
+### Code block visibility fix (light mode)
+
+Swagger's microlight syntax highlighter was rendering code examples with near-invisible light text on a light background in light mode. Fixed in both theme CSS constants (`mapSwaggerThemeCSS`, `mcpSwaggerThemeCSS`) in `cmd/unified-server/rest.go`:
+
+```css
+.swagger-ui .microlight, .swagger-ui pre.microlight {
+  color: #24292e !important;  /* dark charcoal — was unset, defaulting to near-white */
+}
+.swagger-ui .microlight span { color: inherit !important; }
+```
+
+### Preamble dark mode fix (`/map-api/`)
+
+The white preamble header box (title, description, nav buttons) on `/map-api/` was not responding to dark mode. Fixed by injecting a `<style>` element via the `onComplete` JS callback with `body.dark-mode #safecast-preamble` rules.
+
 ## Related Documentation
 
 - [CloudFront Setup Guide](cloudfront-setup.md) - Initial CloudFront configuration
@@ -444,8 +497,9 @@ ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl cat safecast-new-map
 **Binary Path:** `/usr/local/bin/safecast-new-map`
 
 **API Documentation URLs:**
-- Map API Docs: `https://simplemap.safecast.org/map-api/`
-- MCP API Docs: `https://simplemap.safecast.org/mcp-api/`
+- **Combined docs (tabs):** `https://simplemap.safecast.org/docs/`
+- Map API only: `https://simplemap.safecast.org/map-api/`
+- MCP API only: `https://simplemap.safecast.org/mcp-api/`
 
 **One-Line Deploy:**
 ```bash
