@@ -1,0 +1,14 @@
+<ide_opened_file>The user opened the file /home/rob/Documents/Safecast/safecast-new-map/cmd/unified-server/public_html/map.html in the IDE. This may or may not be related to the current task.</ide_opened_file>
+I stopped the push. We need to chnage a few things more..
+
+---
+
+In light mode some  text is not readble. Only when you select text you can read it.
+
+---
+
+I was wondering if we can combine the Two API swagger setup into one page with two tabs. Can that be done?
+
+---
+
+Great. Please do that and try to make the stying simlar as the admin pages. So all the admin/api style is similar..
