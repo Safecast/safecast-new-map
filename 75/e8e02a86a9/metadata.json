@@ -1,0 +1,25 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "75e8e02a86a9",
+  "strategy": "manual-commit",
+  "branch": "fix/api-docs-base-url-production",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "docs/DEPLOYMENT.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/75/e8e02a86a9/0/metadata.json",
+      "transcript": "/75/e8e02a86a9/0/full.jsonl",
+      "content_hash": "/75/e8e02a86a9/0/content_hash.txt",
+      "prompt": "/75/e8e02a86a9/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 39,
+    "cache_creation_tokens": 31808,
+    "cache_read_tokens": 792912,
+    "output_tokens": 8557,
+    "api_call_count": 29
+  }
+}
