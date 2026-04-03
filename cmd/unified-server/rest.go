@@ -234,6 +234,359 @@ func serveSwaggerTheme(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(mcpSwaggerThemeCSS))
 }
 
+// serveAPIDocsPage serves the combined Map API + MCP API documentation page with tabs.
+func serveAPIDocsPage(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = w.Write([]byte(apiDocsPageHTML))
+}
+
+const apiDocsPageHTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Safecast API Documentation</title>
+<link rel="stylesheet" href="/map-api/swagger-ui.css">
+<style>
+/* ── Admin-style CSS variables (matches admin pages exactly) ── */
+:root {
+  --bg-primary:   #f5f5f5;
+  --bg-card:      #fff;
+  --text-primary: #333;
+  --text-secondary:#666;
+  --text-muted:   #999;
+  --border-color: #ddd;
+  --link-color:   #0066cc;
+  --shadow:       0 1px 3px rgba(0,0,0,0.1);
+  --hover-bg:     #f9f9f9;
+  --th-bg:        #424242;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary:   #1a1a1a;
+    --bg-card:      #2b2b2b;
+    --text-primary: #eee;
+    --text-secondary:#aaa;
+    --text-muted:   #777;
+    --border-color: #444;
+    --link-color:   #90caf9;
+    --shadow:       0 1px 3px rgba(255,255,255,0.07);
+    --hover-bg:     #333;
+    --th-bg:        #616161;
+    color-scheme: dark;
+  }
+}
+:root[data-theme='light'] {
+  --bg-primary:   #f5f5f5; --bg-card: #fff; --text-primary: #333;
+  --text-secondary:#666; --text-muted: #999; --border-color: #ddd;
+  --link-color:   #0066cc; --shadow: 0 1px 3px rgba(0,0,0,0.1);
+  --hover-bg:     #f9f9f9; --th-bg: #424242; color-scheme: light;
+}
+:root[data-theme='dark'] {
+  --bg-primary:   #1a1a1a; --bg-card: #2b2b2b; --text-primary: #eee;
+  --text-secondary:#aaa; --text-muted: #777; --border-color: #444;
+  --link-color:   #90caf9; --shadow: 0 1px 3px rgba(255,255,255,0.07);
+  --hover-bg:     #333; --th-bg: #616161; color-scheme: dark;
+}
+
+/* ── Layout ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Arial, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  transition: background 0.2s, color 0.2s;
+}
+
+/* ── Top nav bar (matches admin pages) ── */
+.top-nav {
+  background: #1a3a5c;
+  color: #fff;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 52px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.top-nav .logo {
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: 0.02em;
+  color: #fff;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.top-nav .logo span { color: #7ecbff; }
+.top-nav .back-link {
+  color: #afd4f5;
+  text-decoration: none;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.top-nav .back-link:hover { color: #fff; }
+.top-nav .nav-title {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+  color: #d0e8ff;
+  text-align: center;
+}
+#theme-toggle {
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+#theme-toggle:hover { background: rgba(255,255,255,0.22); }
+
+/* ── Page content ── */
+.page-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+}
+
+/* ── Description card ── */
+.desc-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow);
+}
+.desc-card h1 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+.desc-card p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+.desc-card a { color: var(--link-color); }
+
+/* ── API tabs (matches admin-tabs exactly) ── */
+.api-tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 16px;
+  background: var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  width: fit-content;
+}
+.api-tab {
+  padding: 10px 28px;
+  border: none;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.95em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.api-tab:hover { background: var(--hover-bg); color: var(--text-primary); }
+.api-tab.active { background: #2196F3; color: #fff; }
+
+/* ── Swagger containers ── */
+.swagger-panel { display: none; }
+.swagger-panel.active { display: block; }
+.swagger-wrap {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+/* ── Swagger UI overrides — shared for both panels ── */
+.swagger-wrap .swagger-ui { background: var(--bg-card) !important; }
+.swagger-wrap .swagger-ui .info .title,
+.swagger-wrap .swagger-ui .info h1,
+.swagger-wrap .swagger-ui .info h2 { color: var(--text-primary) !important; }
+.swagger-wrap .swagger-ui .info .base-url,
+.swagger-wrap .swagger-ui .info p { color: var(--text-secondary) !important; }
+.swagger-wrap .swagger-ui .opblock-tag { color: var(--text-primary) !important; border-bottom: 1px solid var(--border-color) !important; }
+.swagger-wrap .swagger-ui .opblock { border-radius: 6px !important; margin-bottom: 6px !important; border: 1px solid var(--border-color) !important; background: var(--bg-card) !important; box-shadow: var(--shadow) !important; }
+.swagger-wrap .swagger-ui .opblock.opblock-get { border-color: #0066cc !important; background: #f0f6ff !important; }
+.swagger-wrap .swagger-ui .opblock.opblock-get .opblock-summary-method { background: #0066cc !important; border-radius: 4px !important; }
+.swagger-wrap .swagger-ui .opblock.opblock-post { border-color: #4caf50 !important; background: #f0fff4 !important; }
+.swagger-wrap .swagger-ui .opblock.opblock-post .opblock-summary-method { background: #4caf50 !important; border-radius: 4px !important; }
+.swagger-wrap .swagger-ui table thead tr th { background: var(--th-bg) !important; color: #fff !important; font-weight: 600 !important; }
+.swagger-wrap .swagger-ui table tbody tr:hover { background: var(--hover-bg) !important; }
+.swagger-wrap .swagger-ui .responses-inner { background: var(--bg-card) !important; border-radius: 6px !important; }
+.swagger-wrap .swagger-ui input[type=text],
+.swagger-wrap .swagger-ui textarea,
+.swagger-wrap .swagger-ui select { border-radius: 6px !important; border: 1px solid var(--border-color) !important; background: var(--bg-card) !important; color: var(--text-primary) !important; }
+.swagger-wrap .swagger-ui .btn.execute { background: #0066cc !important; border-color: #0066cc !important; border-radius: 6px !important; color: #fff !important; }
+.swagger-wrap .swagger-ui .btn.authorize { border-radius: 6px !important; color: #0066cc !important; border-color: #0066cc !important; }
+/* Code blocks — ensure readable text in light mode */
+.swagger-wrap .swagger-ui .microlight,
+.swagger-wrap .swagger-ui pre.microlight { background: #f6f8fa !important; color: #24292e !important; border-radius: 6px !important; border: 1px solid var(--border-color) !important; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace !important; font-size: 0.88rem !important; }
+.swagger-wrap .swagger-ui .microlight span { color: inherit !important; }
+/* Hide swagger topbar (we have our own nav) */
+.swagger-wrap .swagger-ui .topbar { display: none !important; }
+/* Hide doc.json info link */
+.swagger-wrap .swagger-ui .info .link,
+.swagger-wrap .swagger-ui .info a[href*="doc.json"] { display: none !important; }
+/* Scheme selector */
+.swagger-wrap .swagger-ui .scheme-container { background: var(--bg-card) !important; box-shadow: none !important; border-bottom: 1px solid var(--border-color) !important; padding: 10px 20px !important; }
+.swagger-wrap .swagger-ui .wrapper { padding: 16px 20px !important; }
+
+/* ── Dark mode overrides for swagger ── */
+[data-theme='dark'] .swagger-wrap .swagger-ui,
+[data-theme='dark'] .swagger-wrap .swagger-ui .wrapper { background: #1e1e1e !important; color: #eee !important; }
+[data-theme='dark'] .swagger-wrap .swagger-ui .opblock { background: #2b2b2b !important; border-color: #444 !important; }
+[data-theme='dark'] .swagger-wrap .swagger-ui .opblock.opblock-get { background: #1a2940 !important; border-color: #90caf9 !important; }
+[data-theme='dark'] .swagger-wrap .swagger-ui .opblock.opblock-get .opblock-summary-method { background: #1565c0 !important; }
+[data-theme='dark'] .swagger-wrap .swagger-ui .opblock.opblock-post { background: #1a2e1a !important; border-color: #81c784 !important; }
+[data-theme='dark'] .swagger-wrap .swagger-ui .opblock.opblock-post .opblock-summary-method { background: #388e3c !important; }
+[data-theme='dark'] .swagger-wrap .swagger-ui .opblock-summary-description,
+[data-theme='dark'] .swagger-wrap .swagger-ui .opblock-summary-path,
+[data-theme='dark'] .swagger-wrap .swagger-ui .opblock-tag,
+[data-theme='dark'] .swagger-wrap .swagger-ui p,
+[data-theme='dark'] .swagger-wrap .swagger-ui td,
+[data-theme='dark'] .swagger-wrap .swagger-ui label { color: #ddd !important; }
+[data-theme='dark'] .swagger-wrap .swagger-ui a { color: #90caf9 !important; }
+[data-theme='dark'] .swagger-wrap .swagger-ui .scheme-container { background: #1e1e1e !important; border-bottom-color: #444 !important; }
+[data-theme='dark'] .swagger-wrap .swagger-ui select { background: #2b2b2b !important; color: #eee !important; border-color: #555 !important; }
+[data-theme='dark'] .swagger-wrap .swagger-ui input[type=text],
+[data-theme='dark'] .swagger-wrap .swagger-ui textarea { background: #2b2b2b !important; color: #eee !important; border-color: #555 !important; }
+[data-theme='dark'] .swagger-wrap .swagger-ui .microlight,
+[data-theme='dark'] .swagger-wrap .swagger-ui pre.microlight { background: #0d1117 !important; color: #c9d1d9 !important; border-color: #444 !important; }
+[data-theme='dark'] .swagger-wrap .swagger-ui .responses-inner { background: #1e1e1e !important; }
+[data-theme='dark'] .swagger-wrap .swagger-ui .model-box,
+[data-theme='dark'] .swagger-wrap .swagger-ui section.models { background: #2b2b2b !important; border-color: #444 !important; }
+[data-theme='dark'] .swagger-wrap { border-color: #444 !important; }
+[data-theme='dark'] .desc-card { border-color: #444 !important; }
+[data-theme='dark'] .swagger-wrap .swagger-ui .opblock-body { background: #222 !important; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .swagger-wrap .swagger-ui { background: #1e1e1e !important; color: #eee !important; }
+  :root:not([data-theme='light']) .swagger-wrap .swagger-ui .opblock { background: #2b2b2b !important; border-color: #444 !important; }
+  :root:not([data-theme='light']) .swagger-wrap .swagger-ui .opblock.opblock-get { background: #1a2940 !important; border-color: #90caf9 !important; }
+  :root:not([data-theme='light']) .swagger-wrap .swagger-ui .microlight,
+  :root:not([data-theme='light']) .swagger-wrap .swagger-ui pre.microlight { background: #0d1117 !important; color: #c9d1d9 !important; border-color: #444 !important; }
+}
+</style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <a href="/" class="logo">Safe<span>cast</span></a>
+  <span style="color:rgba(255,255,255,0.3);font-size:18px;">|</span>
+  <a href="/" class="back-link">← Back to Map</a>
+  <span class="nav-title">API Documentation</span>
+  <button id="theme-toggle" onclick="toggleTheme()">🌙 Dark Mode</button>
+</nav>
+
+<div class="page-content">
+  <div class="desc-card">
+    <h1>Safecast API Documentation</h1>
+    <p>Safecast has collected over 200 million radiation measurements from citizen scientists worldwide.
+       All data is <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank">CC0 licensed</a>
+       and freely accessible — no account or API key required.</p>
+  </div>
+
+  <div class="api-tabs">
+    <button class="api-tab active" id="tab-btn-map" onclick="switchTab('map')">Map API</button>
+    <button class="api-tab" id="tab-btn-mcp" onclick="switchTab('mcp')">MCP API</button>
+  </div>
+
+  <div id="panel-map" class="swagger-panel active">
+    <div class="swagger-wrap"><div id="swagger-map"></div></div>
+  </div>
+  <div id="panel-mcp" class="swagger-panel">
+    <div class="swagger-wrap"><div id="swagger-mcp"></div></div>
+  </div>
+</div>
+
+<script src="/map-api/swagger-ui-bundle.js"></script>
+<script src="/map-api/swagger-ui-standalone-preset.js"></script>
+<script>
+(function() {
+  // ── Theme ──
+  var saved = localStorage.getItem('safecastDocTheme');
+  var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  var theme = saved || (prefersDark ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', theme);
+
+  function applyThemeLabel() {
+    var btn = document.getElementById('theme-toggle');
+    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    btn.textContent = isDark ? '\u2600\uFE0F Light Mode' : '\uD83C\uDF19 Dark Mode';
+  }
+  applyThemeLabel();
+
+  window.toggleTheme = function() {
+    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    var next = isDark ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('safecastDocTheme', next);
+    applyThemeLabel();
+  };
+
+  // ── Tab switching ──
+  var mcpInitialized = false;
+  window.switchTab = function(tab) {
+    document.getElementById('panel-map').classList.toggle('active', tab === 'map');
+    document.getElementById('panel-mcp').classList.toggle('active', tab === 'mcp');
+    document.getElementById('tab-btn-map').classList.toggle('active', tab === 'map');
+    document.getElementById('tab-btn-mcp').classList.toggle('active', tab === 'mcp');
+    localStorage.setItem('safecastDocTab', tab);
+    if (tab === 'mcp' && !mcpInitialized) {
+      mcpInitialized = true;
+      initMCP();
+    }
+  };
+
+  // ── Initialize Map API swagger ──
+  SwaggerUIBundle({
+    url: '/map-api/doc.json',
+    domNode: document.getElementById('swagger-map'),
+    presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+    layout: 'BaseLayout',
+    deepLinking: false,
+    displayRequestDuration: true,
+    defaultModelsExpandDepth: -1,
+  });
+
+  // ── Initialize MCP API swagger (lazy — on first tab click) ──
+  function initMCP() {
+    SwaggerUIBundle({
+      url: '/mcp-api/doc.json',
+      domNode: document.getElementById('swagger-mcp'),
+      presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+      layout: 'BaseLayout',
+      deepLinking: false,
+      displayRequestDuration: true,
+      defaultModelsExpandDepth: -1,
+    });
+  }
+
+  // ── Restore last active tab ──
+  var lastTab = localStorage.getItem('safecastDocTab');
+  if (lastTab === 'mcp') switchTab('mcp');
+})();
+</script>
+</body>
+</html>`
+
 // serveMapSwaggerTheme serves the Map API Swagger theme CSS (blue/navy accent).
 func serveMapSwaggerTheme(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/css")
@@ -414,10 +767,14 @@ body,
 .swagger-ui .microlight,
 .swagger-ui pre.microlight {
   background: #f6f8fa !important;
+  color: #24292e !important;
   border-radius: 8px !important;
   border: 1px solid #ddd !important;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace !important;
   font-size: 0.9rem !important;
+}
+.swagger-ui .microlight span {
+  color: inherit !important;
 }
 
 /* Input fields */
@@ -714,10 +1071,14 @@ body,
 .swagger-ui .microlight,
 .swagger-ui pre.microlight {
   background: #f6f8fa !important;
+  color: #24292e !important;
   border-radius: 8px !important;
   border: 1px solid #ddd !important;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace !important;
   font-size: 0.9rem !important;
+}
+.swagger-ui .microlight span {
+  color: inherit !important;
 }
 
 /* Input fields */

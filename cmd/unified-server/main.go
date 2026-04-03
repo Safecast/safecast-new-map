@@ -9874,6 +9874,12 @@ func main() {
 	}
 	mcpDocsURL := strings.TrimRight(mcpBaseForDocs, "/") + "/mcp-api/"
 
+	// Combined API docs page (Map API + MCP API tabs)
+	http.HandleFunc("/docs/", serveAPIDocsPage)
+	http.HandleFunc("/docs", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/docs/", http.StatusMovedPermanently)
+	})
+
 	// Register Map API favicon and theme CSS endpoints
 	http.HandleFunc("/map-api/favicon.ico", serveFavicon)
 	http.HandleFunc("/map-api/favicon-16x16.png", serveFavicon16)
