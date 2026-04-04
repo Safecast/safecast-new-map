@@ -3,3 +3,7 @@ Just wondering how hard it will be to implement H3grid for the current setup?
 ---
 
 can we make a test branch and create an overlay. Would that speedup the display of the markers a lot?
+
+---
+
+go
