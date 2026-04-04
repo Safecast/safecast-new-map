@@ -1,0 +1,37 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "fd4aa93249a0",
+  "session_id": "ac137498-0684-42bc-bd3b-70bbe9bbdfe9",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-04T12:33:22.62148969Z",
+  "branch": "feat/h3-overlay",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "cmd/unified-server/public_html/map.html",
+    "cmd/unified-server/rest.go",
+    "cmd/unified-server/rest_h3.go",
+    "go.mod",
+    "go.sum"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "1fdab5d8b6c8",
+  "token_usage": {
+    "input_tokens": 67,
+    "cache_creation_tokens": 54210,
+    "cache_read_tokens": 2937154,
+    "output_tokens": 19742,
+    "api_call_count": 59
+  },
+  "session_metrics": {
+    "turn_count": 2
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-04T12:33:19.748575387Z",
+    "agent_lines": 266,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 266,
+    "agent_percentage": 100
+  }
+}
