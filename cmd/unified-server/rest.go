@@ -66,6 +66,9 @@ func (h *RESTHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/extreme", handleRESTExtremeReadings)
 	mux.HandleFunc("/api/info/", h.handleInfo) // /api/info/{topic}
 
+	// H3 hexagonal grid overlay
+	mux.HandleFunc("/api/h3grid", h.handleH3Grid)
+
 	// GPT-optimised compact endpoints (for Custom GPT Actions)
 	h.RegisterGPT(mux)
 
