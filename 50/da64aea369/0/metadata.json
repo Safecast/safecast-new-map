@@ -1,0 +1,35 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "50da64aea369",
+  "session_id": "0bea46ec-8299-4cc3-98f2-d3a4fe4b316a",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-04T01:16:54.710548143Z",
+  "branch": "fix/slider-back-btn-tooltip",
+  "checkpoints_count": 6,
+  "files_touched": [
+    "cmd/unified-server/public_html/map.html"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "739da1dc47f6",
+  "checkpoint_transcript_start": 1797,
+  "transcript_lines_at_start": 1797,
+  "token_usage": {
+    "input_tokens": 59,
+    "cache_creation_tokens": 23263,
+    "cache_read_tokens": 6470103,
+    "output_tokens": 14833,
+    "api_call_count": 45
+  },
+  "session_metrics": {
+    "turn_count": 13
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-04T01:16:29.15466742Z",
+    "agent_lines": 14,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 14,
+    "agent_percentage": 100
+  }
+}
