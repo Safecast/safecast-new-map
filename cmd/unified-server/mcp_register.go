@@ -287,7 +287,7 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 
 		if len(embedding) > 0 {
 			// 1. Check semantic cache: high-similarity + positive feedback → return instantly.
-			if cachedAnswer, _ := checkSemanticCache(embedding, chatReq.Message); cachedAnswer != "" {
+			if cachedAnswer, _ := checkSemanticCache(embedding, chatReq.Message, chatReq.TrackID); cachedAnswer != "" {
 				writeChunkBuffered(w, chunk{Type: "text", Text: cachedAnswer}, &buffer, isCloudFront)
 				writeChunkBuffered(w, chunk{Type: "done", ChatID: embeddingChatID, Cached: true}, &buffer, isCloudFront)
 				if isCloudFront {
