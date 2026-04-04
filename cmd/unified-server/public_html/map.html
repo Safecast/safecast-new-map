@@ -2296,6 +2296,9 @@ body, html {
     <!-- Leaflet MarkerCluster plugin -->
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
+    <!-- H3 hexagonal grid library -->
+    <script src="https://unpkg.com/h3-js@4.1.0/dist/browser/h3-js.umd.js"></script>
+
     <!-- Chart.js for spectrum visualization -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
@@ -3308,6 +3311,9 @@ function setStoredUserCenter(lat, lon) {
 var circleMarkers = {};
 var isTrackView = false;
 var osmLayer, googleSatellite;
+var h3GridLayer = null;   // Leaflet LayerGroup for H3 hex overlay
+var h3GridActive = false; // whether overlay is currently shown
+var h3GridFetchCtrl = null; // AbortController for in-flight /api/h3grid requests
 var trackBounds;
 var currentTrackID = null;
 var currentTrackIDs = null;  // For multiple tracks view
@@ -4237,10 +4243,31 @@ document.addEventListener('DOMContentLoaded', function () {
     "Google Satellite": googleSatellite
   };
 
-  L.control.layers(baseLayers, null, {
+  // H3 overlay — create an empty LayerGroup that we populate on demand
+  h3GridLayer = L.layerGroup();
+  var overlayLayers = {
+    "H3 Grid": h3GridLayer
+  };
+
+  L.control.layers(baseLayers, overlayLayers, {
     position: 'topleft',
     collapsed: false
   }).addTo(map);
+
+  // Track H3 overlay add/remove
+  map.on('overlayadd', function(e) {
+    if (e.name === 'H3 Grid') {
+      h3GridActive = true;
+      refreshH3Grid();
+    }
+  });
+  map.on('overlayremove', function(e) {
+    if (e.name === 'H3 Grid') {
+      h3GridActive = false;
+      if (h3GridFetchCtrl) { h3GridFetchCtrl.abort(); h3GridFetchCtrl = null; }
+      h3GridLayer.clearLayers();
+    }
+  });
 
   // Add custom attribution links that open informative popups
   map.attributionControl.addAttribution(
@@ -4280,6 +4307,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Load map state from URL
   loadMapFromUrl();
+
+  // Refresh H3 grid when the map moves or zooms (only when overlay is active)
+  map.on('moveend zoomend', function() {
+    if (h3GridActive) refreshH3Grid();
+  });
 
   // Update URL on map changes
   map.on('baselayerchange', updateUrl);
@@ -7867,6 +7899,80 @@ function updateRenderMetrics(markerCount, renderTimeMs) {
   // Exponential moving average: 70% old, 30% new for stability
   lastRenderTime = lastRenderTime * 0.7 + renderTimeMs * 0.3;
 }
+
+// ============================================================
+// H3 Hexagonal Grid Overlay
+// ============================================================
+
+/**
+ * Maps a µSv/h dose rate to a fill colour for H3 hex cells.
+ * Palette matches the existing marker colour scale.
+ */
+function h3DoseColor(dose) {
+  if (dose < 0.05)  return { color: '#2ecc71', opacity: 0.6 };  // green  — background
+  if (dose < 0.10)  return { color: '#f1c40f', opacity: 0.65 }; // yellow
+  if (dose < 0.30)  return { color: '#e67e22', opacity: 0.7 };  // orange
+  if (dose < 1.00)  return { color: '#e74c3c', opacity: 0.75 }; // red
+  return               { color: '#9b59b6', opacity: 0.85 };      // purple — extreme
+}
+
+/**
+ * Fetch /api/h3grid for current viewport and redraw the H3 overlay layer.
+ */
+function refreshH3Grid() {
+  if (!h3GridActive || !map || typeof h3 === 'undefined') return;
+
+  // Cancel any in-flight request
+  if (h3GridFetchCtrl) h3GridFetchCtrl.abort();
+  h3GridFetchCtrl = new AbortController();
+
+  const bounds = map.getBounds();
+  const zoom   = map.getZoom();
+  const params = new URLSearchParams({
+    zoom:   zoom,
+    minLat: bounds.getSouth(),
+    minLon: bounds.getWest(),
+    maxLat: bounds.getNorth(),
+    maxLon: bounds.getEast()
+  });
+
+  fetch('/api/h3grid?' + params, { signal: h3GridFetchCtrl.signal })
+    .then(r => r.json())
+    .then(cells => {
+      h3GridLayer.clearLayers();
+      if (!Array.isArray(cells)) return;
+
+      cells.forEach(function(cell) {
+        // h3-js boundary: array of [lat, lng] pairs
+        var boundary = h3.cellToBoundary(cell.cell);
+        // Leaflet expects [lat, lng] — h3-js already returns that format
+        var latLngs = boundary.map(function(pt) { return [pt[0], pt[1]]; });
+
+        var style = h3DoseColor(cell.avg_dose);
+        var poly = L.polygon(latLngs, {
+          color:       style.color,
+          fillColor:   style.color,
+          fillOpacity: style.opacity,
+          weight:      0.5,
+          opacity:     0.4
+        });
+
+        poly.bindTooltip(
+          '<b>' + cell.avg_dose.toFixed(3) + ' µSv/h</b> avg<br>' +
+          'peak: ' + cell.max_dose.toFixed(3) + ' µSv/h<br>' +
+          'n = ' + cell.count,
+          { sticky: true }
+        );
+
+        h3GridLayer.addLayer(poly);
+      });
+    })
+    .catch(function(err) {
+      if (err.name !== 'AbortError') console.warn('H3 grid fetch error:', err);
+    });
+}
+
+// ============================================================
 
 function debounceUpdateMarkers() {
   clearTimeout(debounceTimeout);
