@@ -594,3 +594,7 @@ Much faster, but it seems it mixes airplane data too? And no realtime devices?
 ---
 
 Can we activate also till zoom 18?
+
+---
+
+Please made a commit and psuh.. Do not merge with the main!!! keep this as a seperated test branch..
