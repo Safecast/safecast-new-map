@@ -1889,7 +1889,7 @@ body, html {
     <div id="legend-bar" style="width:24px; margin-right:8px; border-radius:12px; border: 1px solid rgba(0,0,0,0.2);"></div>
     <div id="legend-labels" style="display:flex; flex-direction:column; justify-content:space-between; height:100%; font-weight:bold; min-width:35px; text-align:left;">
     </div>
-    <div style="position:absolute; bottom:20px;right:5px;width:100%;text-align:center; font-size:15px; font-weight:bold; color:var(--modal-text); text-shadow: 0 0 2px var(--control-bg);">
+    <div style="position:absolute; bottom:20px;right:5px;width:100%;text-align:center; font-size:15px; font-weight:bold; color:white; text-shadow: 0 1px 3px rgba(0,0,0,0.9), 0 0 6px rgba(0,0,0,0.7);">
        <span id="legend-unit-label">µSv/h</span>
     </div>
 </div>
@@ -3777,6 +3777,7 @@ function saveSpeedFilterState(state) {
 function loadUnitPreference() {
   try {
     const stored = localStorage.getItem('unitPreference');
+    // uSv/h is the default; uR is opt-in via the toggle only
     return (stored === 'uR') ? 'uR' : 'uSv';
   } catch (e) {
     return 'uSv';
@@ -10489,6 +10490,8 @@ function selectHomeSearchResult(result, query) {
       });
 
       function closePanel() {
+        // Reset inline width first so the default CSS left: -470px is enough to hide it
+        panel.style.width = '';
         panel.classList.remove('open');
         setTimeout(() => {
           if (typeof map !== 'undefined' && map.invalidateSize) map.invalidateSize();
