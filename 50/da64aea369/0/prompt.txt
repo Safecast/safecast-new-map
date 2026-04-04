@@ -1,0 +1,21 @@
+Noticed one more thing. When itn track detailed mode, the hover of the orange/red "back to combined tracks button" does not show what the button functions is. It o only shows "filtr rmeasuremners by data or year range" from the slider hover.
+
+---
+
+Nor I can see both hover info  on roll over. of the organge/red button.
+
+---
+
+I did not see any change. Can you kill the server and restat it?
+
+---
+
+Still seems to be an idsue. The back to combned track button seems to be part of the time sider hover group?
+
+---
+
+The back to comnine track hover works, but no hover tool tip for the sider any more.(also importand).
+
+---
+
+That did not work.
