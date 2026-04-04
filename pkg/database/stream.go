@@ -5,6 +5,93 @@ import (
 	"fmt"
 )
 
+// StreamMarkersForH3 streams at most `limit` markers for H3 grid aggregation.
+// Uses TABLESAMPLE SYSTEM for large viewports (low zoom) so Postgres scans only
+// a fraction of the table, keeping response times under ~1 second.
+func (db *Database) StreamMarkersForH3(ctx context.Context, zoom int, minLat, minLon, maxLat, maxLon float64, dbType string, limit int) (<-chan Marker, <-chan error) {
+	out := make(chan Marker)
+	errCh := make(chan error, 1)
+
+	go func() {
+		defer close(out)
+		defer close(errCh)
+
+		// At low zoom, the viewport covers a huge area. Use TABLESAMPLE to scan only
+		// a fraction of physical pages rather than millions of rows. At high zoom the
+		// bounding box is small enough that a full index scan is fast.
+		samplePct := 100.0
+		switch {
+		case zoom <= 5:
+			samplePct = 1.0
+		case zoom <= 7:
+			samplePct = 5.0
+		case zoom <= 9:
+			samplePct = 15.0
+		}
+
+		var query string
+		switch dbType {
+		case "pgx":
+			// Exclude airborne measurements: speed > 150 m/s ≈ 540 km/h (planes ~200-270 m/s)
+			speedFilter := "AND (speed IS NULL OR speed = 0 OR speed < 150)"
+			if samplePct < 100 {
+				query = fmt.Sprintf(`
+					SELECT id, doserate, date, lon, lat, countrate, zoom, COALESCE(speed,0), trackid,
+					       COALESCE(altitude,0), COALESCE(detector,''), COALESCE(radiation,''),
+					       COALESCE(temperature,0), COALESCE(humidity,0), COALESCE(has_spectrum,FALSE)
+					FROM markers TABLESAMPLE SYSTEM(%g)
+					WHERE zoom = $1
+					  AND geom && ST_MakeEnvelope($4, $2, $5, $3, 4326)
+					  %s
+					LIMIT %d;`, samplePct, speedFilter, limit)
+			} else {
+				query = fmt.Sprintf(`
+					SELECT id, doserate, date, lon, lat, countrate, zoom, COALESCE(speed,0), trackid,
+					       COALESCE(altitude,0), COALESCE(detector,''), COALESCE(radiation,''),
+					       COALESCE(temperature,0), COALESCE(humidity,0), COALESCE(has_spectrum,FALSE)
+					FROM markers
+					WHERE zoom = $1
+					  AND geom && ST_MakeEnvelope($4, $2, $5, $3, 4326)
+					  %s
+					LIMIT %d;`, speedFilter, limit)
+			}
+		default:
+			query = fmt.Sprintf(`
+				SELECT id, doseRate, date, lon, lat, countRate, zoom, COALESCE(speed,0), trackID,
+				       COALESCE(altitude,0), COALESCE(detector,''), COALESCE(radiation,''),
+				       COALESCE(temperature,0), COALESCE(humidity,0), COALESCE(has_spectrum,0)
+				FROM markers
+				WHERE zoom = ? AND lat BETWEEN ? AND ? AND lon BETWEEN ? AND ?
+				LIMIT %d;`, limit)
+		}
+
+		rows, err := db.DB.QueryContext(ctx, query, zoom, minLat, maxLat, minLon, maxLon)
+		if err != nil {
+			errCh <- fmt.Errorf("query markers for h3: %w", err)
+			return
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var m Marker
+			if err := rows.Scan(&m.ID, &m.DoseRate, &m.Date, &m.Lon, &m.Lat, &m.CountRate, &m.Zoom, &m.Speed, &m.TrackID,
+				&m.Altitude, &m.Detector, &m.Radiation, &m.Temperature, &m.Humidity, &m.HasSpectrum); err != nil {
+				errCh <- fmt.Errorf("scan marker: %w", err)
+				return
+			}
+			select {
+			case out <- m:
+			case <-ctx.Done():
+				return
+			}
+		}
+		if err := rows.Err(); err != nil {
+			errCh <- fmt.Errorf("iterate markers: %w", err)
+		}
+	}()
+	return out, errCh
+}
+
 // StreamMarkersByZoomAndBounds streams markers row by row through a channel.
 // It avoids loading large result sets into memory and stops when the context is done.
 func (db *Database) StreamMarkersByZoomAndBounds(ctx context.Context, zoom int, minLat, minLon, maxLat, maxLon float64, dbType string) (<-chan Marker, <-chan error) {
