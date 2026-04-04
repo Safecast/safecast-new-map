@@ -1,0 +1,596 @@
+Just wondering how hard it will be to implement H3grid for the current setup?
+
+---
+
+can we make a test branch and create an overlay. Would that speedup the display of the markers a lot?
+
+---
+
+go
+
+---
+
+screen
+
+---
+
+screen.. H3 grid butons show, but no hex grid and still all the slow loading of the markers..
+
+---
+
+The resource from “https://cdn.jsdelivr.net/npm/h3-js@4.1.0/dist/browser/h3-js.umd.js” was blocked due to MIME type (“text/plain”) mismatch (X-Content-Type-Options: nosniff). localhost:8765
+Loading failed for the <script> with source “https://cdn.jsdelivr.net/npm/h3-js@4.1.0/dist/browser/h3-js.umd.js”. localhost:8765:2281:79
+H3 Grid: h3-js failed to load from CDN localhost:8765:1:9
+[Performance] Built color lookup table: 100,000 entries for 15 color steps 2 localhost:8765:2689:17
+[Pool] Prewarmed: 1000 circles, 100 divs localhost:8765:5316:13
+[Worker] Marker parser worker initialized localhost:8765:3308:13
+Loading Worker from “http://localhost:8765/js/marker-worker.js” was blocked because of a disallowed MIME type (“text/plain”). localhost:8765
+Marker worker error, falling back to main thread: undefined localhost:8765:3298:15
+Speed filter changed - cleared all markers, batch queue, and cache localhost:8765:5115:13
+[Cache MISS] Tile 0 fetching... localhost:8765:5188:17
+[Cache MISS] Tile 1 fetching... localhost:8765:5188:17
+[Cache MISS] Tile 2 fetching... localhost:8765:5188:17
+[Cache MISS] Tile 3 fetching... localhost:8765:5188:17
+[Performance] Redraw complete: 36087 markers in 3422ms localhost:8765:5558:13
+  └─ Network: 2688ms (time to first marker) localhost:8765:5559:13
+  └─ Streaming: 734ms localhost:8765:5560:13
+  └─ JSON parse: 51ms (0.00ms avg) localhost:8765:5561:13
+  └─ Marker create: 102ms (0.00ms avg) localhost:8765:5562:13
+  └─ Final batch flush: 268ms localhost:8765:5563:13
+[Cache STORE] Tile 3: 36087 markers cached localhost:8765:5571:15
+[Performance] Redraw complete: 16146 markers in 3751ms localhost:8765:5558:13
+  └─ Network: 156ms (time to first marker) localhost:8765:5559:13
+  └─ Streaming: 3595ms localhost:8765:5560:13
+  └─ JSON parse: 26ms (0.00ms avg) localhost:8765:5561:13
+  └─ Marker create: 34ms (0.00ms avg) localhost:8765:5562:13
+  └─ Final batch flush: 48ms localhost:8765:5563:13
+[Cache STORE] Tile 1: 16146 markers cached localhost:8765:5571:15
+[Performance] Redraw complete: 58178 markers in 4647ms localhost:8765:5558:13
+  └─ Network: 1285ms (time to first marker) localhost:8765:5559:13
+  └─ Streaming: 3362ms localhost:8765:5560:13
+  └─ JSON parse: 82ms (0.00ms avg) localhost:8765:5561:13
+  └─ Marker create: 189ms (0.00ms avg) localhost:8765:5562:13
+  └─ Final batch flush: 171ms localhost:8765:5563:13
+[Cache STORE] Tile 0: 58178 markers cached localhost:8765:5571:15
+[Performance] Redraw complete: 37703 markers in 5174ms localhost:8765:5558:13
+  └─ Network: 2151ms (time to first marker) localhost:8765:5559:13
+  └─ Streaming: 3023ms localhost:8765:5560:13
+  └─ JSON parse: 74ms (0.00ms avg) localhost:8765:5561:13
+  └─ Marker create: 118ms (0.00ms avg) localhost:8765:5562:13
+  └─ Final batch flush: 84ms localhost:8765:5563:13
+[Cache STORE] Tile 2: 37703 markers cached localhost:8765:5571:15
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+Speed filter changed - cleared all markers, batch queue, and cache localhost:8765:5115:13
+[Cache MISS] Tile 0 fetching... localhost:8765:5188:17
+[Cache MISS] Tile 1 fetching... localhost:8765:5188:17
+[Cache MISS] Tile 2 fetching... localhost:8765:5188:17
+[Cache MISS] Tile 3 fetching... localhost:8765:5188:17
+[Performance] Redraw complete: 51075 markers in 3548ms localhost:8765:5558:13
+  └─ Network: 2551ms (time to first marker) localhost:8765:5559:13
+  └─ Streaming: 997ms localhost:8765:5560:13
+  └─ JSON parse: 109ms (0.00ms avg) localhost:8765:5561:13
+  └─ Marker create: 295ms (0.01ms avg) localhost:8765:5562:13
+  └─ Final batch flush: 222ms localhost:8765:5563:13
+[Cache STORE] Tile 0: 51075 markers cached localhost:8765:5571:15
+[Performance] Redraw complete: 12630 markers in 3984ms localhost:8765:5558:13
+  └─ Network: 3789ms (time to first marker) localhost:8765:5559:13
+  └─ Streaming: 195ms localhost:8765:5560:13
+  └─ JSON parse: 29ms (0.00ms avg) localhost:8765:5561:13
+  └─ Marker create: 36ms (0.00ms avg) localhost:8765:5562:13
+  └─ Final batch flush: 52ms localhost:8765:5563:13
+[Cache STORE] Tile 1: 12630 markers cached localhost:8765:5571:15
+[Performance] Redraw complete: 20718 markers in 4346ms localhost:8765:5558:13
+  └─ Network: 4043ms (time to first marker) localhost:8765:5559:13
+  └─ Streaming: 303ms localhost:8765:5560:13
+  └─ JSON parse: 41ms (0.00ms avg) localhost:8765:5561:13
+  └─ Marker create: 62ms (0.00ms avg) localhost:8765:5562:13
+  └─ Final batch flush: 82ms localhost:8765:5563:13
+[Cache STORE] Tile 3: 20718 markers cached localhost:8765:5571:15
+[Performance] Redraw complete: 32211 markers in 4926ms localhost:8765:5558:13
+  └─ Network: 4462ms (time to first marker) localhost:8765:5559:13
+  └─ Streaming: 464ms localhost:8765:5560:13
+  └─ JSON parse: 56ms (0.00ms avg) localhost:8765:5561:13
+  └─ Marker create: 98ms (0.00ms avg) localhost:8765:5562:13
+  └─ Final batch flush: 120ms localhost:8765:5563:13
+[Cache STORE] Tile 2: 32211 markers cached localhost:8765:5571:15
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[Cache MISS] Tile 0 fetching... localhost:8765:5188:17
+[Cache MISS] Tile 1 fetching... localhost:8765:5188:17
+[Cache MISS] Tile 2 fetching... localhost:8765:5188:17
+[Cache MISS] Tile 3 fetching... localhost:8765:5188:17
+[Performance] Redraw complete: 13796 markers in 1471ms localhost:8765:5558:13
+  └─ Network: 1246ms (time to first marker) localhost:8765:5559:13
+  └─ Streaming: 225ms localhost:8765:5560:13
+  └─ JSON parse: 22ms (0.00ms avg) localhost:8765:5561:13
+  └─ Marker create: 64ms (0.00ms avg) localhost:8765:5562:13
+  └─ Final batch flush: 65ms localhost:8765:5563:13
+[Cache STORE] Tile 1: 13796 markers cached localhost:8765:5571:15
+[Performance] Redraw complete: 25483 markers in 2972ms localhost:8765:5558:13
+  └─ Network: 2619ms (time to first marker) localhost:8765:5559:13
+  └─ Streaming: 353ms localhost:8765:5560:13
+  └─ JSON parse: 46ms (0.00ms avg) localhost:8765:5561:13
+  └─ Marker create: 78ms (0.00ms avg) localhost:8765:5562:13
+  └─ Final batch flush: 93ms localhost:8765:5563:13
+[Cache STORE] Tile 3: 25483 markers cached localhost:8765:5571:15
+[Performance] Redraw complete: 52448 markers in 4134ms localhost:8765:5558:13
+  └─ Network: 1126ms (time to first marker) localhost:8765:5559:13
+  └─ Streaming: 3008ms localhost:8765:5560:13
+  └─ JSON parse: 83ms (0.00ms avg) localhost:8765:5561:13
+  └─ Marker create: 171ms (0.00ms avg) localhost:8765:5562:13
+  └─ Final batch flush: 227ms localhost:8765:5563:13
+[Cache STORE] Tile 0: 52448 markers cached localhost:8765:5571:15
+[Performance] Redraw complete: 35384 markers in 4682ms localhost:8765:5558:13
+  └─ Network: 2219ms (time to first marker) localhost:8765:5559:13
+  └─ Streaming: 2463ms localhost:8765:5560:13
+  └─ JSON parse: 44ms (0.00ms avg) localhost:8765:5561:13
+  └─ Marker create: 120ms (0.00ms avg) localhost:8765:5562:13
+  └─ Final batch flush: 60ms localhost:8765:5563:13
+[Cache STORE] Tile 2: 35384 markers cached localhost:8765:5571:15
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+
+---
+
+GET
+http://localhost:8765/js/h3-js.umd.js
+NS_ERROR_CORRUPTED_CONTENT
+
+The resource from “http://localhost:8765/js/h3-js.umd.js” was blocked due to MIME type (“text/plain”) mismatch (X-Content-Type-Options: nosniff). localhost:8765
+GET
+http://localhost:8765/js/h3-js.umd.js
+NS_ERROR_CORRUPTED_CONTENT
+
+The resource from “http://localhost:8765/js/h3-js.umd.js” was blocked due to MIME type (“text/plain”) mismatch (X-Content-Type-Options: nosniff). localhost:8765
+Loading failed for the <script> with source “http://localhost:8765/js/h3-js.umd.js”. localhost:8765:2280:36
+[Performance] Built color lookup table: 100,000 entries for 15 color steps 2 localhost:8765:2688:17
+[Pool] Prewarmed: 1000 circles, 100 divs localhost:8765:5315:13
+[Worker] Marker parser worker initialized localhost:8765:3307:13
+GET
+http://localhost:8765/js/marker-worker.js
+NS_ERROR_CORRUPTED_CONTENT
+
+Speed filter changed - cleared all markers, batch queue, and cache localhost:8765:5114:13
+[Cache MISS] Tile 0 fetching... localhost:8765:5187:17
+Loading Worker from “http://localhost:8765/js/marker-worker.js” was blocked because of a disallowed MIME type (“text/plain”). localhost:8765
+Marker worker error, falling back to main thread: undefined localhost:8765:3297:15
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[Performance] Redraw complete: 50172 markers in 5331ms localhost:8765:5557:13
+  └─ Network: 268ms (time to first marker) localhost:8765:5558:13
+  └─ Streaming: 5063ms localhost:8765:5559:13
+  └─ JSON parse: 117ms (0.00ms avg) localhost:8765:5560:13
+  └─ Marker create: 210ms (0.00ms avg) localhost:8765:5561:13
+  └─ Final batch flush: 12ms localhost:8765:5562:13
+[Cache STORE] Tile 0: 50172 markers cached localhost:8765:5570:15
+
+---
+
+The connection to http://localhost:8765/stream_markers?zoom=7&minLat=40.63896734381725&minLon=134.42871093750003&maxLat=46.882723010671945&maxLon=151.86401367187503 was interrupted while the page was loading. localhost:8765:5189:20
+GET
+http://localhost:8765/js/h3-js.umd.js
+NS_ERROR_CORRUPTED_CONTENT
+
+The resource from “http://localhost:8765/js/h3-js.umd.js” was blocked due to MIME type (“text/plain”) mismatch (X-Content-Type-Options: nosniff). localhost:8765
+GET
+http://localhost:8765/js/h3-js.umd.js
+NS_ERROR_CORRUPTED_CONTENT
+
+Loading failed for the <script> with source “http://localhost:8765/js/h3-js.umd.js”. localhost:8765:2280:36
+The resource from “http://localhost:8765/js/h3-js.umd.js” was blocked due to MIME type (“text/plain”) mismatch (X-Content-Type-Options: nosniff). localhost:8765
+[Performance] Built color lookup table: 100,000 entries for 15 color steps localhost:8765:2688:17
+[Performance] Built color lookup table: 100,000 entries for 15 color steps localhost:8765:2688:17
+[Pool] Prewarmed: 1000 circles, 100 divs localhost:8765:5315:13
+[Worker] Marker parser worker initialized localhost:8765:3307:13
+GET
+http://localhost:8765/js/marker-worker.js
+NS_ERROR_CORRUPTED_CONTENT
+
+Loading Worker from “http://localhost:8765/js/marker-worker.js” was blocked because of a disallowed MIME type (“text/plain”). localhost:8765
+Marker worker error, falling back to main thread: undefined localhost:8765:3297:15
+Speed filter changed - cleared all markers, batch queue, and cache localhost:8765:5114:13
+[Cache MISS] Tile 0 fetching... localhost:8765:5187:17
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+H3 Grid: h3-js library not loaded — hexagons disabled localhost:8765:7839:13
+[Performance] Redraw complete: 52472 markers in 5902ms localhost:8765:5557:13
+  └─ Network: 315ms (time to first marker) localhost:8765:5558:13
+  └─ Streaming: 5587ms localhost:8765:5559:13
+  └─ JSON parse: 189ms (0.00ms avg) localhost:8765:5560:13
+  └─ Marker create: 290ms (0.01ms avg) localhost:8765:5561:13
+  └─ Final batch flush: 1ms localhost:8765:5562:13
+[Cache STORE] Tile 0: 52472 markers cached localhost:8765:5570:15
+
+---
+
+[Performance] Built color lookup table: 100,000 entries for 15 color steps localhost:8765:2688:17
+[Performance] Built color lookup table: 100,000 entries for 15 color steps localhost:8765:2688:17
+[Worker] Marker parser worker initialized localhost:8765:3307:13
+[Pool] Prewarmed: 1000 circles, 100 divs localhost:8765:5315:13
+[Worker] MessagePack loaded successfully marker-worker.js:13:13
+Speed filter changed - cleared all markers, batch queue, and cache localhost:8765:5114:13
+[Cache MISS] Tile 0 fetching... localhost:8765:5187:17
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[Performance] Redraw complete: 49595 markers in 6266ms localhost:8765:5557:13
+  └─ Network: 358ms (time to first marker) localhost:8765:5558:13
+  └─ Streaming: 5908ms localhost:8765:5559:13
+  └─ JSON parse: (worker) localhost:8765:5560:13
+  └─ Marker create: 387ms (0.01ms avg) localhost:8765:5561:13
+  └─ Final batch flush: 0ms localhost:8765:5562:13
+[Cache STORE] Tile 0: 49595 markers cached localhost:8765:5570:15
+[H3 Grid] fetching zoom=7 bounds=134.40673828125003,40.63896734381725,151.84204101562503,46.882723010671945 localhost:8765:7849:11
+H3 grid fetch error: SyntaxError: JSON.parse: unexpected character at line 1 column 1 of the JSON data localhost:8765:7891:46
+
+---
+
+H3 grid fetch error: TypeError: NetworkError when attempting to fetch resource. localhost:8765:7891:46
+[Performance] Built color lookup table: 100,000 entries for 15 color steps localhost:8765:2688:17
+[Performance] Built color lookup table: 100,000 entries for 15 color steps localhost:8765:2688:17
+[Worker] Marker parser worker initialized localhost:8765:3307:13
+[Pool] Prewarmed: 1000 circles, 100 divs localhost:8765:5315:13
+[Worker] MessagePack loaded successfully marker-worker.js:13:13
+Speed filter changed - cleared all markers, batch queue, and cache localhost:8765:5114:13
+[Cache MISS] Tile 0 fetching... localhost:8765:5187:17
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[Performance] Redraw complete: 51043 markers in 6125ms localhost:8765:5557:13
+  └─ Network: 352ms (time to first marker) localhost:8765:5558:13
+  └─ Streaming: 5773ms localhost:8765:5559:13
+  └─ JSON parse: (worker) localhost:8765:5560:13
+  └─ Marker create: 430ms (0.01ms avg) localhost:8765:5561:13
+  └─ Final batch flush: 0ms localhost:8765:5562:13
+[Cache STORE] Tile 0: 51043 markers cached localhost:8765:5570:15
+
+---
+
+ew-map$ curl "http://localhost:8765/api/h3grid?zoom=9&minLat=35.5&minLon=139.0&maxLat=36.0&maxLon=140.0" | head -c 300
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --  0     0    0     0    0     0      0      0 --  0     0    0     0    0     0      0      0 --  0     0    0     0    0     0      0      0 --  0     0    0     0    0     0      0      0 --  0     0    0     0    0     0      0      0 --  0     0    0     0    0     0      0      0 --  0     0    0     0    0     0      0      0 --  0     0    0     0    0     0      0      0 --  0     0    0     0    0     0      0      0 --  0     0    0     0    0     0      0      0 --  0     0    0     0    0     0      0      0 --  0     0    0     0    0     0      0      0 --  0     0    0     0    0     0      0      0 --  0     0    0     0    0     0      0      0 --  0     0    0     0    0     0      0      0 --  0     0    0     0    0     0      0      0 --  0     0    0     0    0     0      0      0 --  0     0    0     0    0     0      0      0 --  0     0    0     0    0     0      0      0 --  0     0    0     0    0     0      0      0 --  0     0    0     0    0     0      0      0 --  0     0    0     0    0     0      0      0 --  0     0    0     0    0     0      0      0 --  0     0    0     0    0     0      0      0 --  0     0    0     0    0     0      0      0 --  0     0    0     0    0     0      0      0 --  0     0    0     0    0     0      0      0 --  0     0    0     0    0     0      0      0 --  0     0    0     0    0     0      0      0 --100  1064  100  1064    0     0     36      0  0:00:29  0:00:28  0:00:01   234
+[{"cell":"842f5bdffffffff","lat":35.531775518857 32,"lon":139.43217752117934,"avg_dose":0.1035792 7702651729,"max_dose":0.7095808383233533,"count" :1117335},{"cell":"842f5a3ffffffff","lat":35.868 82301857695,"lon":139.68122370558314,"avg_dose": 0.1017096365416204,"max_dose":44.16766467065868,
+rob@rob-GS66-Stealth-10UG:~/Documents/Safecast/safecast-new-map$
+
+---
+
+Something sshow, but it is very, very slow.. and colors seesm to be wrong?
+
+---
+
+[Performance] Built color lookup table: 100,000 entries for 15 color steps localhost:8765:2688:17
+[Performance] Built color lookup table: 100,000 entries for 15 color steps localhost:8765:2688:17
+[Pool] Prewarmed: 1000 circles, 100 divs localhost:8765:5333:13
+[Worker] Marker parser worker initialized localhost:8765:3307:13
+Reporting Header: invalid JSON value received. lyrs=s&x=227&y=99&z=8
+Speed filter changed - cleared all markers, batch queue, and cache localhost:8765:5132:13
+[Cache MISS] Tile 0 fetching... localhost:8765:5205:17
+[Cache MISS] Tile 1 fetching... localhost:8765:5205:17
+[Cache MISS] Tile 2 fetching... localhost:8765:5205:17
+[Cache MISS] Tile 3 fetching... localhost:8765:5205:17
+Reporting Header: invalid JSON value received. lyrs=s&x=227&y=100&z=8
+[Worker] MessagePack loaded successfully marker-worker.js:13:13
+Reporting Header: invalid JSON value received. lyrs=s&x=226&y=99&z=8
+Reporting Header: invalid JSON value received. lyrs=s&x=228&y=99&z=8
+Reporting Header: invalid JSON value received. lyrs=s&x=226&y=100&z=8
+Reporting Header: invalid JSON value received. lyrs=s&x=228&y=100&z=8
+Reporting Header: invalid JSON value received. lyrs=s&x=227&y=98&z=8
+Reporting Header: invalid JSON value received. lyrs=s&x=227&y=101&z=8
+Reporting Header: invalid JSON value received. lyrs=s&x=226&y=98&z=8
+Reporting Header: invalid JSON value received. lyrs=s&x=228&y=98&z=8
+Reporting Header: invalid JSON value received. lyrs=s&x=226&y=101&z=8
+Reporting Header: invalid JSON value received. lyrs=s&x=228&y=101&z=8
+Reporting Header: invalid JSON value received. lyrs=s&x=225&y=99&z=8
+Reporting Header: invalid JSON value received. lyrs=s&x=229&y=99&z=8
+Reporting Header: invalid JSON value received. lyrs=s&x=225&y=100&z=8
+Reporting Header: invalid JSON value received. lyrs=s&x=229&y=100&z=8
+Reporting Header: invalid JSON value received. lyrs=s&x=225&y=98&z=8
+Reporting Header: invalid JSON value received. lyrs=s&x=229&y=98&z=8
+Reporting Header: invalid JSON value received. lyrs=s&x=225&y=101&z=8
+Reporting Header: invalid JSON value received. lyrs=s&x=229&y=101&z=8
+Reporting Header: invalid JSON value received. lyrs=s&x=224&y=99&z=8
+Reporting Header: invalid JSON value received. lyrs=s&x=230&y=99&z=8
+Reporting Header: invalid JSON value received. lyrs=s&x=224&y=100&z=8
+Reporting Header: invalid JSON value received. lyrs=s&x=230&y=100&z=8
+Reporting Header: invalid JSON value received. lyrs=s&x=224&y=98&z=8
+Reporting Header: invalid JSON value received. lyrs=s&x=230&y=98&z=8
+Reporting Header: invalid JSON value received. lyrs=s&x=224&y=101&z=8
+Reporting Header: invalid JSON value received. lyrs=s&x=230&y=101&z=8
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+
+---
+
+Gids seesm also to be to rough?
+
+---
+
+Grids seesm also to be too rough?
+
+---
+
+Better.. Can we have the colors the same as the legend?
+
+---
+
+[Performance] Built color lookup table: 100,000 entries for 15 color steps localhost:8765:2688:17
+[Performance] Built color lookup table: 100,000 entries for 15 color steps localhost:8765:2688:17
+[Pool] Prewarmed: 1000 circles, 100 divs localhost:8765:5336:13
+[Worker] Marker parser worker initialized localhost:8765:3307:13
+Reporting Header: invalid JSON value received. lyrs=s&x=113&y=49&z=7
+Reporting Header: invalid JSON value received. lyrs=s&x=114&y=49&z=7
+[Worker] MessagePack loaded successfully marker-worker.js:13:13
+Speed filter changed - cleared all markers, batch queue, and cache localhost:8765:5135:13
+[Cache MISS] Tile 0 fetching... localhost:8765:5208:17
+[Cache MISS] Tile 1 fetching... localhost:8765:5208:17
+[Cache MISS] Tile 2 fetching... localhost:8765:5208:17
+[Cache MISS] Tile 3 fetching... localhost:8765:5208:17
+Reporting Header: invalid JSON value received. lyrs=s&x=1824&y=793&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1825&y=793&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1824&y=792&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1824&y=794&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1825&y=794&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1825&y=792&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1823&y=794&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1823&y=793&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1824&y=795&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1823&y=795&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1826&y=795&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1825&y=795&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1826&y=794&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1827&y=793&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1826&y=793&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1826&y=792&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1822&y=793&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1823&y=792&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1827&y=794&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1822&y=792&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1822&y=794&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1827&y=792&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1821&y=793&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1828&y=794&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1828&y=792&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1821&y=792&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1828&y=793&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1827&y=795&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1821&y=794&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1821&y=795&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1822&y=795&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1828&y=795&z=11
+[H3 Grid] fetching zoom=11 bounds=140.16906738281253,37.25547303105431,141.36383056640628,37.684907136008846 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] fetching zoom=11 bounds=140.16906738281253,37.25547303105431,141.36383056640628,37.684907136008846 localhost:8765:7903:11
+[H3 Grid] fetching zoom=10 bounds=139.74197387695315,37.05408113619033,142.13150024414065,37.91278405007035 2 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null bootstrap-autofill-overlay.js:9562:13
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null bootstrap-autofill-overlay.js:9562:13
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null bootstrap-autofill-overlay.js:9562:13
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null bootstrap-autofill-overlay.js:9562:13
+Reporting Header: invalid JSON value received. lyrs=s&x=911&y=396&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=912&y=396&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=913&y=396&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=912&y=397&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=913&y=397&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=911&y=397&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=914&y=396&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=914&y=397&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=913&y=395&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=912&y=395&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=909&y=397&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=915&y=395&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=915&y=396&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=910&y=398&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=915&y=397&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=910&y=395&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=910&y=397&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=910&y=396&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=914&y=398&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=911&y=398&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=911&y=395&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=914&y=395&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=913&y=398&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=912&y=398&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=909&y=395&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=909&y=396&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=909&y=398&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=915&y=398&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=916&y=397&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=916&y=396&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=916&y=398&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=916&y=395&z=10
+[H3 Grid] rendering 29 cells localhost:8765:7917:15
+Reporting Header: invalid JSON value received. lyrs=s&x=913&y=394&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=912&y=394&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=910&y=394&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=909&y=394&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=911&y=394&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=914&y=394&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=916&y=394&z=10
+Reporting Header: invalid JSON value received. lyrs=s&x=915&y=394&z=10
+[H3 Grid] fetching zoom=10 bounds=139.66918945312503,37.2991828608248,142.05871582031253,38.155077102180655 localhost:8765:7903:11
+MouseEvent.mozPressure is deprecated. Use PointerEvent.pressure instead. leaflet.js:5:320
+MouseEvent.mozInputSource is deprecated. Use PointerEvent.pointerType instead. leaflet.js:5:320
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] rendering 29 cells localhost:8765:7917:15
+Reporting Header: invalid JSON value received. lyrs=s&x=1822&y=791&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1823&y=791&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1825&y=791&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1824&y=791&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1821&y=791&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1827&y=791&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1822&y=790&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1826&y=790&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1823&y=790&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1826&y=791&z=11
+[H3 Grid] fetching zoom=11 bounds=140.20271301269534,37.4824867978744,141.3974761962891,37.91061711049342 2 localhost:8765:7903:11
+Reporting Header: invalid JSON value received. lyrs=s&x=1825&y=790&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1824&y=790&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1828&y=791&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1821&y=790&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1828&y=790&z=11
+Reporting Header: invalid JSON value received. lyrs=s&x=1827&y=790&z=11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] rendering 279 cells localhost:8765:7917:15
+[H3 Grid] fetching zoom=11 bounds=140.20271301269534,37.43942886015505,141.3974761962891,37.86780697709982 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] rendering 280 cells localhost:8765:7917:15
+Reporting Header: invalid JSON value received. lyrs=s&x=3649&y=1584&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3649&y=1585&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3649&y=1583&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3647&y=1583&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3647&y=1585&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3651&y=1586&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3647&y=1584&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3648&y=1583&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3647&y=1586&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3650&y=1586&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3648&y=1585&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3648&y=1584&z=12
+[H3 Grid] fetching zoom=12 bounds=140.48767089843753,37.570433123704,141.0850524902344,37.784554114444994 2 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+Reporting Header: invalid JSON value received. lyrs=s&x=3649&y=1586&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3648&y=1586&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3653&y=1586&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3646&y=1586&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3646&y=1583&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3646&y=1585&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3652&y=1586&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3646&y=1584&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3650&y=1584&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3650&y=1583&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3650&y=1585&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3653&y=1583&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3653&y=1584&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3652&y=1583&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3652&y=1585&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3652&y=1584&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3651&y=1585&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3651&y=1583&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3651&y=1584&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3653&y=1585&z=12
+[H3 Grid] rendering 829 cells localhost:8765:7917:15
+Reporting Header: invalid JSON value received. lyrs=s&x=3651&y=1582&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3649&y=1582&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3650&y=1582&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3653&y=1582&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3652&y=1582&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3648&y=1582&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3646&y=1582&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3647&y=1582&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3649&y=1587&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3647&y=1587&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3648&y=1587&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3645&y=1585&z=12
+[H3 Grid] fetching zoom=12 bounds=140.4372024536133,37.50264464701539,141.03458404541018,37.71696084622755 localhost:8765:7903:11
+Reporting Header: invalid JSON value received. lyrs=s&x=3645&y=1584&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3651&y=1587&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3646&y=1587&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3650&y=1587&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3645&y=1583&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3652&y=1587&z=12
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+Reporting Header: invalid JSON value received. lyrs=s&x=3645&y=1587&z=12
+Reporting Header: invalid JSON value received. lyrs=s&x=3645&y=1586&z=12
+[H3 Grid] rendering 698 cells localhost:8765:7917:15
+Reporting Header: invalid JSON value received. lyrs=s&x=3653&y=1587&z=12
+[H3 Grid] fetching zoom=12 bounds=140.5082702636719,37.445425754961384,141.10565185546878,37.659906493259385 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] rendering 352 cells localhost:8765:7917:15
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null bootstrap-autofill-overlay.js:9562:13
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null bootstrap-autofill-overlay.js:9562:13
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null bootstrap-autofill-overlay.js:9562:13
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] fetching zoom=12 bounds=140.61607360839847,37.403710127026216,141.21345520019534,37.61831068887276 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] rendering 251 cells localhost:8765:7917:15
+[H3 Grid] fetching zoom=13 bounds=140.78275680541995,37.443790285861574,141.0814476013184,37.55111016010863 2 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] rendering 184 cells localhost:8765:7917:15
+[H3 Grid] fetching zoom=12 bounds=140.6339263916016,37.41407304054799,141.23130798339847,37.628643846637885 2 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] rendering 306 cells localhost:8765:7917:15
+[H3 Grid] fetching zoom=12 bounds=140.58105468750003,37.40561919248851,141.1784362792969,37.62021427322739 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] fetching zoom=11 bounds=140.2658843994141,37.34177550214861,141.46064758300784,37.77071473849611 2 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] rendering 295 cells localhost:8765:7917:15
+[H3 Grid] fetching zoom=12 bounds=140.57178497314456,37.425525119225966,141.16916656494143,37.640063034033936 2 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null bootstrap-autofill-overlay.js:9562:13
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null bootstrap-autofill-overlay.js:9562:13
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null bootstrap-autofill-overlay.js:9562:13
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] rendering 312 cells localhost:8765:7917:15
+[H3 Grid] fetching zoom=12 bounds=140.58620452880862,37.37043003275148,141.1835861206055,37.585126106780116 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] rendering 268 cells localhost:8765:7917:15
+[H3 Grid] fetching zoom=12 bounds=140.6789016723633,37.28033610947317,141.27628326416018,37.49529038649114 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] rendering 247 cells localhost:8765:7917:15
+[H3 Grid] fetching zoom=12 bounds=140.65486907958987,37.322666405074756,141.25225067138675,37.537499432247294 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] rendering 244 cells localhost:8765:7917:15
+[H3 Grid] fetching zoom=13 bounds=140.81674575805667,37.36278989422155,141.1154365539551,37.470225986469885 2 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] rendering 177 cells localhost:8765:7917:15
+[H3 Grid] fetching zoom=14 bounds=140.90103149414065,37.38229799043159,141.05037689208987,37.436021319443185 2 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] rendering 67 cells localhost:8765:7917:15
+[H3 Grid] fetching zoom=13 bounds=140.81657409667972,37.362926332088826,141.11526489257815,37.47036222875846 2 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] rendering 185 cells localhost:8765:7917:15
+[H3 Grid] fetching zoom=12 bounds=140.64731597900393,37.324577533510364,141.2446975708008,37.539405083738934 2 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] rendering 246 cells localhost:8765:7917:15
+[H3 Grid] fetching zoom=11 bounds=140.30914306640628,37.2478212015543,141.50390625000003,37.67729913640427 2 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] rendering 257 cells localhost:8765:7917:15
+[H3 Grid] fetching zoom=10 bounds=139.7337341308594,37.12090636165329,142.1232604980469,37.97884504049713 2 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] rendering 11 cells localhost:8765:7917:15
+[H3 Grid] fetching zoom=9 bounds=138.56506347656253,36.855449936136495,143.34411621093753,38.567495358827344 2 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] fetching zoom=8 bounds=136.21398925781253,36.328402729422656,145.77209472656253,39.73676229957947 2 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] rendering 12 cells localhost:8765:7917:15
+[H3 Grid] fetching zoom=8 bounds=135.03295898437503,36.27527883184338,144.59106445312503,39.68605343225989 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null bootstrap-autofill-overlay.js:9562:13
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null bootstrap-autofill-overlay.js:9562:13
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null bootstrap-autofill-overlay.js:9562:13
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] fetching zoom=7 bounds=130.30883789062503,35.35321610123823,149.42504882812503,42.09822241118974 2 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] fetching zoom=6 bounds=120.65185546875001,33.32134852669881,158.88427734375003,46.5286346952717 2 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] rendering 19 cells localhost:8765:7917:15
+[H3 Grid] fetching zoom=6 bounds=115.53222656250001,30.278044377800153,153.76464843750003,44.008620115415354 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] rendering 23 cells localhost:8765:7917:15
+[H3 Grid] fetching zoom=7 bounds=125.48583984375001,32.24068253457369,144.60205078125003,39.257778150283364 2 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] rendering 21 cells localhost:8765:7917:15
+[H3 Grid] fetching zoom=8 bounds=130.43518066406253,33.165145408240285,139.99328613281253,36.712467243386264 2 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] rendering 66 cells localhost:8765:7917:15
+[H3 Grid] fetching zoom=9 bounds=133.12957763671878,33.55055114384406,137.90863037109378,35.33529320309331 2 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] fetching zoom=10 bounds=134.47265625000003,33.74489664315623,136.86218261718753,34.639987356029515 2 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] rendering 250 cells localhost:8765:7917:15
+[H3 Grid] fetching zoom=9 bounds=133.15155029296878,33.51162942617925,137.93060302734378,35.29719384502174 2 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] rendering 22 cells localhost:8765:7917:15
+[H3 Grid] fetching zoom=8 bounds=130.49011230468753,33.05932046347212,140.04821777343753,36.61111838494165 2 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] rendering 67 cells localhost:8765:7917:15
+[H3 Grid] fetching zoom=8 bounds=133.34655761718753,33.27543541298162,142.90466308593753,36.81808022778529 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] rendering 42 cells localhost:8765:7917:15
+[H3 Grid] fetching zoom=10 bounds=137.7177429199219,34.14590795200977,140.1072692871094,35.0367432201753 2 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] rendering 250 cells localhost:8765:7917:15
+[H3 Grid] fetching zoom=8 bounds=133.33557128906253,33.31675830290707,142.89367675781253,36.85764758564407 2 localhost:8765:7903:11
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+[H3 Grid] rendering 10 cells localhost:8765:7917:15
+
+---
+
+Much faster, but it seems it mixes aiplane data too?
+
+---
+
+Much faster, but it seems it mixes airplane data too? And no realtime devices?
+
+---
+
+Can we activate also till zoom 18?
