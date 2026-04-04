@@ -36,6 +36,7 @@ import (
 	"log"
 	"math"
 	"math/rand"
+	"mime"
 	"mime/multipart"
 	"net"
 	"net/http"
@@ -9616,6 +9617,12 @@ func realtimeHistoryHandler(w http.ResponseWriter, r *http.Request) {
 // MAIN
 // =====================
 func main() {
+	// Ensure correct MIME types for JS/CSS/JSON — Linux distros often lack these in the OS DB.
+	mime.AddExtensionType(".js", "application/javascript")
+	mime.AddExtensionType(".mjs", "application/javascript")
+	mime.AddExtensionType(".css", "text/css; charset=utf-8")
+	mime.AddExtensionType(".json", "application/json")
+
 	// 1. Флаги и версии
 	flag.Parse()
 	debugIPAllowlist = parseDebugAllowlist(*debugIPsFlag)
@@ -9923,10 +9930,24 @@ func main() {
 	http.Handle("/static/", http.StripPrefix("/static/",
 		http.FileServer(http.FS(staticFS))))
 
-	// Serve JS files from the physical directory as a workaround
-	// This ensures the marker-worker.js file is accessible to the browser
-	// Access files from public_html root and let StripPrefix handle the path
-	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("public_html/"))))
+	// Serve JS files with explicit Content-Type to avoid OS MIME database issues.
+	// http.FileServer relies on the OS MIME DB which often lacks JS on Linux.
+	// Files live at public_html/js/<name> — the /js/ URL prefix maps to that dir.
+	http.HandleFunc("/js/", func(w http.ResponseWriter, r *http.Request) {
+		name := strings.TrimPrefix(r.URL.Path, "/js/")
+		if name == "" || strings.Contains(name, "..") || !strings.HasSuffix(name, ".js") {
+			http.NotFound(w, r)
+			return
+		}
+		data, err := os.ReadFile(filepath.Join("public_html", "js", name))
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+		w.Write(data)
+	})
 	mcpPortForDocs := strings.TrimSpace(os.Getenv("MCP_PORT"))
 	if mcpPortForDocs == "" {
 		mcpPortForDocs = "3333"
@@ -10336,6 +10357,36 @@ func main() {
 	// Note: /stream_markers is Server-Sent Events (streaming) so gzip is skipped.
 	// Gzip doesn't work well with streaming responses due to buffering.
 	http.HandleFunc("/stream_markers", streamMarkersHandler)
+	// H3 hexagonal grid overlay endpoint
+	restH3 := RESTHandler{}
+	http.HandleFunc("/api/h3grid", restH3.handleH3Grid)
+	// Realtime sensors endpoint for H3 overlay (returns current sensor positions)
+	http.HandleFunc("/api/realtime", func(w http.ResponseWriter, r *http.Request) {
+		if !*safecastRealtimeEnabled {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte("[]"))
+			return
+		}
+		q := r.URL.Query()
+		minLat, _ := strconv.ParseFloat(q.Get("minLat"), 64)
+		minLon, _ := strconv.ParseFloat(q.Get("minLon"), 64)
+		maxLat, _ := strconv.ParseFloat(q.Get("maxLat"), 64)
+		maxLon, _ := strconv.ParseFloat(q.Get("maxLon"), 64)
+		rt, err := db.GetLatestRealtimeByBounds(r.Context(), minLat, minLon, maxLat, maxLon, *dbType)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		for i := range rt {
+			rt[i].Tube = safecastrealtime.DetectorLabel(rt[i].Tube, rt[i].Transport, rt[i].DeviceName)
+		}
+		if rt == nil {
+			rt = []database.Marker{}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-cache")
+		json.NewEncoder(w).Encode(rt)
+	})
 	http.HandleFunc("/realtime_history", realtimeHistoryHandler)
 	http.HandleFunc("/trackid/", trackHandler)
 	http.HandleFunc("/tracks/", tracksHandler)

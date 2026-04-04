@@ -21,23 +21,27 @@ type H3Cell struct {
 // zoomToH3Resolution maps a Leaflet zoom level to a sensible H3 resolution.
 // Target: 200–2000 visible hex cells per viewport.
 func zoomToH3Resolution(zoom int) int {
+	// res 3 = ~33km, res 4 = ~12km, res 5 = ~4.5km, res 6 = ~1.7km,
+	// res 7 = ~0.6km, res 8 = ~200m, res 9 = ~70m, res 10 = ~25m, res 11 = ~9m
 	switch {
 	case zoom <= 3:
-		return 1
-	case zoom <= 5:
-		return 2
-	case zoom <= 7:
 		return 3
-	case zoom <= 9:
+	case zoom <= 5:
 		return 4
-	case zoom <= 10:
+	case zoom <= 7:
 		return 5
-	case zoom <= 11:
+	case zoom <= 9:
 		return 6
-	case zoom <= 12:
+	case zoom <= 11:
 		return 7
-	default:
+	case zoom <= 13:
 		return 8
+	case zoom <= 15:
+		return 9
+	case zoom <= 17:
+		return 10
+	default:
+		return 11
 	}
 }
 
@@ -101,8 +105,10 @@ func (h *RESTHandler) handleH3Grid(w http.ResponseWriter, r *http.Request) {
 
 	res := zoomToH3Resolution(zoom)
 
-	// Stream raw markers (zoom=0 = full resolution data) through the existing pipeline.
-	markers, errCh := db.StreamMarkersByZoomAndBounds(r.Context(), 0, minLat, minLon, maxLat, maxLon, *dbType)
+	// Use the H3-optimised streaming function: SQL LIMIT + TABLESAMPLE at low zoom
+	// so Postgres stops early rather than scanning millions of rows.
+	const maxMarkers = 200_000
+	markers, errCh := db.StreamMarkersForH3(r.Context(), 0, minLat, minLon, maxLat, maxLon, *dbType, maxMarkers)
 
 	type cellAcc struct {
 		sumDose float64
@@ -128,7 +134,7 @@ func (h *RESTHandler) handleH3Grid(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Drain error channel (non-blocking — context cancellation is normal).
+	// Drain error channel — context cancellation is normal.
 	if e := <-errCh; e != nil && r.Context().Err() == nil {
 		writeError(w, http.StatusInternalServerError, e.Error())
 		return

@@ -2296,8 +2296,8 @@ body, html {
     <!-- Leaflet MarkerCluster plugin -->
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
-    <!-- H3 hexagonal grid library -->
-    <script src="https://unpkg.com/h3-js@4.1.0/dist/browser/h3-js.umd.js"></script>
+    <!-- H3 hexagonal grid library (bundled locally — v4.1.0 UMD) -->
+    <script src="/js/h3-js.umd.js"></script>
 
     <!-- Chart.js for spectrum visualization -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
@@ -3311,8 +3311,8 @@ function setStoredUserCenter(lat, lon) {
 var circleMarkers = {};
 var isTrackView = false;
 var osmLayer, googleSatellite;
-var h3GridLayer = null;   // Leaflet LayerGroup for H3 hex overlay
-var h3GridActive = false; // whether overlay is currently shown
+var h3GridLayer = null;     // Leaflet LayerGroup for H3 hex overlay
+var h3GridActive = false;   // whether overlay is currently shown
 var h3GridFetchCtrl = null; // AbortController for in-flight /api/h3grid requests
 var trackBounds;
 var currentTrackID = null;
@@ -4258,6 +4258,19 @@ document.addEventListener('DOMContentLoaded', function () {
   map.on('overlayadd', function(e) {
     if (e.name === 'H3 Grid') {
       h3GridActive = true;
+      // Cancel any in-flight marker streams and clear existing markers
+      if (markerStreamSource) markerStreamSource.close();
+      if (window.markerStreamSources) window.markerStreamSources.forEach(s => s.close());
+      window.markerStreamSources = [];
+      markerBatch.length = 0;
+      cancelPendingFlush();
+      for (const key in circleMarkers) {
+        map.removeLayer(circleMarkers[key]);
+        if (markerPool) markerPool.release(circleMarkers[key]);
+      }
+      circleMarkers = {};
+      if (typeof markerQuadTree !== 'undefined') markerQuadTree.clear();
+      tileCache.clear();
       refreshH3Grid();
     }
   });
@@ -4266,6 +4279,8 @@ document.addEventListener('DOMContentLoaded', function () {
       h3GridActive = false;
       if (h3GridFetchCtrl) { h3GridFetchCtrl.abort(); h3GridFetchCtrl = null; }
       h3GridLayer.clearLayers();
+      // Resume normal marker loading
+      debounceUpdateMarkers();
     }
   });
 
@@ -5007,6 +5022,9 @@ function flushMarkerBatch(fromDone = false) {
   batchFlushScheduled = false;
   batchFlushRAFId = null;
 
+  // H3 Grid mode — drop any queued markers, don't render them
+  if (h3GridActive) { markerBatch.length = 0; return; }
+
   if (markerBatch.length === 0) return;
 
   // Use FeatureGroup to batch DOM operations
@@ -5101,6 +5119,9 @@ function invalidateMarkerStyleCache() {
  * and keep the date sliders in sync with the viewport.
  */
 function updateMarkers(){
+  // H3 Grid mode replaces individual markers — skip normal loading
+  if (h3GridActive) return;
+
   // Don't load markers if home overlay is still showing (unless in track view)
   if (!homeOverlayDismissed && !isTrackView && shouldShowHomeOverlay()) {
     return;
@@ -7906,41 +7927,84 @@ function updateRenderMetrics(markerCount, renderTimeMs) {
 
 /**
  * Maps a µSv/h dose rate to a fill colour for H3 hex cells.
- * Palette matches the existing marker colour scale.
+ * Uses the exact same schemeSafecast colour scale as individual markers.
  */
 function h3DoseColor(dose) {
-  if (dose < 0.05)  return { color: '#2ecc71', opacity: 0.6 };  // green  — background
-  if (dose < 0.10)  return { color: '#f1c40f', opacity: 0.65 }; // yellow
-  if (dose < 0.30)  return { color: '#e67e22', opacity: 0.7 };  // orange
-  if (dose < 1.00)  return { color: '#e74c3c', opacity: 0.75 }; // red
-  return               { color: '#9b59b6', opacity: 0.85 };      // purple — extreme
+  // Mirror of schemeSafecast defined above
+  const scheme = [
+    { uSv: 0.03,  color: [0,   0,   139] },
+    { uSv: 0.05,  color: [0,   71,  171] },
+    { uSv: 0.08,  color: [65,  105, 225] },
+    { uSv: 0.12,  color: [135, 206, 250] },
+    { uSv: 0.16,  color: [0,   191, 255] },
+    { uSv: 0.23,  color: [0,   255, 255] },
+    { uSv: 0.31,  color: [64,  224, 208] },
+    { uSv: 0.43,  color: [147, 112, 219] },
+    { uSv: 0.60,  color: [186, 85,  211] },
+    { uSv: 0.87,  color: [255, 0,   255] },
+    { uSv: 1.31,  color: [255, 20,  147] },
+    { uSv: 2.13,  color: [255, 0,   0]   },
+    { uSv: 3.99,  color: [255, 69,  0]   },
+    { uSv: 10.09, color: [255, 165, 0]   },
+    { uSv: 65.54, color: [255, 255, 0]   },
+  ];
+
+  if (dose <= scheme[0].uSv) {
+    const c = scheme[0].color;
+    return { color: `rgb(${c[0]},${c[1]},${c[2]})`, opacity: 0.7 };
+  }
+  if (dose >= scheme[scheme.length - 1].uSv) {
+    const c = scheme[scheme.length - 1].color;
+    return { color: `rgb(${c[0]},${c[1]},${c[2]})`, opacity: 0.85 };
+  }
+  for (let i = 0; i < scheme.length - 1; i++) {
+    if (dose >= scheme[i].uSv && dose <= scheme[i + 1].uSv) {
+      const t  = (dose - scheme[i].uSv) / (scheme[i + 1].uSv - scheme[i].uSv);
+      const lo = scheme[i].color, hi = scheme[i + 1].color;
+      const r  = Math.round(lo[0] + (hi[0] - lo[0]) * t);
+      const g  = Math.round(lo[1] + (hi[1] - lo[1]) * t);
+      const b  = Math.round(lo[2] + (hi[2] - lo[2]) * t);
+      return { color: `rgb(${r},${g},${b})`, opacity: 0.7 };
+    }
+  }
+  return { color: 'rgb(255,255,0)', opacity: 0.85 };
 }
 
 /**
  * Fetch /api/h3grid for current viewport and redraw the H3 overlay layer.
+ * Works at all zoom levels (1–18). Always overlays realtime sensors on top.
  */
 function refreshH3Grid() {
-  if (!h3GridActive || !map || typeof h3 === 'undefined') return;
+  if (!h3GridActive || !map) return;
+
+  const bounds = map.getBounds();
+  const zoom   = map.getZoom();
+
+  if (typeof h3 === 'undefined') {
+    console.error('H3 Grid: h3-js library not loaded — hexagons disabled');
+    return;
+  }
 
   // Cancel any in-flight request
   if (h3GridFetchCtrl) h3GridFetchCtrl.abort();
   h3GridFetchCtrl = new AbortController();
 
-  const bounds = map.getBounds();
-  const zoom   = map.getZoom();
-  const params = new URLSearchParams({
-    zoom:   zoom,
+  const bboxParams = {
     minLat: bounds.getSouth(),
     minLon: bounds.getWest(),
     maxLat: bounds.getNorth(),
     maxLon: bounds.getEast()
-  });
+  };
+  const params = new URLSearchParams(Object.assign({ zoom: zoom }, bboxParams));
+
+  console.log('[H3 Grid] fetching zoom=' + zoom + ' bounds=' + bounds.toBBoxString());
 
   fetch('/api/h3grid?' + params, { signal: h3GridFetchCtrl.signal })
-    .then(r => r.json())
+    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
     .then(cells => {
       h3GridLayer.clearLayers();
-      if (!Array.isArray(cells)) return;
+      if (!Array.isArray(cells)) { console.warn('[H3 Grid] unexpected response:', cells); return; }
+      console.log('[H3 Grid] rendering ' + cells.length + ' cells');
 
       cells.forEach(function(cell) {
         // h3-js boundary: array of [lat, lng] pairs
@@ -7966,6 +8030,21 @@ function refreshH3Grid() {
 
         h3GridLayer.addLayer(poly);
       });
+
+      // Overlay realtime sensors on top of H3 cells
+      if (window.safecastRealtimeEnabled) {
+        fetch('/api/realtime?' + new URLSearchParams(bboxParams))
+          .then(r => r.json())
+          .then(function(sensors) {
+            if (!Array.isArray(sensors)) return;
+            console.log('[H3 Grid] overlaying ' + sensors.length + ' realtime sensors');
+            sensors.forEach(function(m) {
+              var marker = createMarkerFromData(m, zoom);
+              if (marker) h3GridLayer.addLayer(marker);
+            });
+          })
+          .catch(function() {});
+      }
     })
     .catch(function(err) {
       if (err.name !== 'AbortError') console.warn('H3 grid fetch error:', err);
