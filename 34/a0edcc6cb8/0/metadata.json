@@ -1,0 +1,35 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "34a0edcc6cb8",
+  "session_id": "0bea46ec-8299-4cc3-98f2-d3a4fe4b316a",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-04T00:33:35.926938356Z",
+  "branch": "fix/legend-unit-color-and-panel-close",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "cmd/unified-server/public_html/map.html"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "5a8bc8e144eb",
+  "checkpoint_transcript_start": 1691,
+  "transcript_lines_at_start": 1691,
+  "token_usage": {
+    "input_tokens": 42,
+    "cache_creation_tokens": 26519,
+    "cache_read_tokens": 3954823,
+    "output_tokens": 14743,
+    "api_call_count": 34
+  },
+  "session_metrics": {
+    "turn_count": 6
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-04T00:33:11.590328911Z",
+    "agent_lines": 4,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 4,
+    "agent_percentage": 100
+  }
+}

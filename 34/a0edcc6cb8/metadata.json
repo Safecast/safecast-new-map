@@ -1,0 +1,25 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "34a0edcc6cb8",
+  "strategy": "manual-commit",
+  "branch": "fix/legend-unit-color-and-panel-close",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "cmd/unified-server/public_html/map.html"
+  ],
+  "sessions": [
+    {
+      "metadata": "/34/a0edcc6cb8/0/metadata.json",
+      "transcript": "/34/a0edcc6cb8/0/full.jsonl",
+      "content_hash": "/34/a0edcc6cb8/0/content_hash.txt",
+      "prompt": "/34/a0edcc6cb8/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 42,
+    "cache_creation_tokens": 26519,
+    "cache_read_tokens": 3954823,
+    "output_tokens": 14743,
+    "api_call_count": 34
+  }
+}
