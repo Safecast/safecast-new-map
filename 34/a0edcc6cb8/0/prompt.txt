@@ -1,0 +1,9 @@
+One small thing i noticed, That when the chat is extended to the right and then closed (by cliping the small x on the top right), the chat screen still displayed some parts. When expanded and closed it should close compleetly.
+
+---
+
+Onw other thing. On the map in ight mode, the radiation units are black and hard to read on the dark blue of the legend. Can you make the radiation units always white and in default it should be uSv/h not uR/h.
+
+---
+
+The closing of the extended chat still seems not to be working.
