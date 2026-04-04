@@ -71,9 +71,10 @@ func extractTrackID(s string) string {
 
 // checkSemanticCache looks for a positively-rated cached answer with high
 // cosine similarity to the given embedding.
-// question is used to detect a track ID so that cache hits from a different
-// track are never returned. Returns ("", 0) on miss.
-func checkSemanticCache(embedding []float32, question string) (answer string, chatID int64) {
+// trackID is the explicit track the user is viewing (may be ""); question is
+// used as a fallback to extract a track ID when trackID is empty. Cache hits
+// from a different track are never returned. Returns ("", 0) on miss.
+func checkSemanticCache(embedding []float32, question, trackID string) (answer string, chatID int64) {
 	if !duckDBAvailable() || len(embedding) == 0 {
 		return "", 0
 	}
@@ -83,9 +84,11 @@ func checkSemanticCache(embedding []float32, question string) (answer string, ch
 		return "", 0
 	}
 
-	// If the question references a specific track ID, only accept cache hits
-	// whose question/answer also mention that same track ID.
-	queryTrackID := extractTrackID(question)
+	// Prefer the explicit track ID; fall back to extracting from question text.
+	queryTrackID := trackID
+	if queryTrackID == "" {
+		queryTrackID = extractTrackID(question)
+	}
 
 	var bestScore float32
 	var best *qaEntry
