@@ -4476,9 +4476,16 @@ function createDateRangeSlider(){
       sliderBox.setAttribute('role', 'group');
       sliderBox.setAttribute('tabindex', '0');
       sliderBox.setAttribute('aria-label', translate('date_slider_tooltip'));
+      // _sliderOverBack is set by mouseover (which fires BEFORE mouseenter),
+      // so the content function sees the correct state when the tooltip is about to show.
+      var _sliderOverBack = false;
+      sliderBox.addEventListener('mouseover', function (e) {
+        var bb = sliderBox.querySelector('#btnBack');
+        _sliderOverBack = !!(bb && (e.target === bb || bb.contains(e.target)));
+      });
       sliderTooltipHandle = attachControlTooltip(sliderBox, {
         placement: 'right',
-        content: function () { return translate('date_slider_tooltip'); },
+        content: function () { return _sliderOverBack ? '' : translate('date_slider_tooltip'); },
         maxWidth: 300,
       });
       return sliderBox;
@@ -4490,6 +4497,12 @@ function createDateRangeSlider(){
   const btnM = sliderBox.querySelector('#btnMonth');
   const btnReset = sliderBox.querySelector('#btnReset');
   const btnBack = sliderBox.querySelector('#btnBack');
+
+  // Give the back button its own tooltip.
+  attachControlTooltip(btnBack, {
+    placement: 'right',
+    content: function () { return translate('back_to_all_tracks'); },
+  });
   const lblMin = () => sliderBox.querySelector('#lblMin');
   const lblMax = () => sliderBox.querySelector('#lblMax');
 
