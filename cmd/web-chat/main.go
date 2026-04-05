@@ -428,14 +428,6 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 			return
 		}
 
-		if chatReq.Message == "test map export" {
-			mockResponse := `{"type": "data_preview", "summary": {"rows_shown": 5, "rows_total": 500, "region": "Test Mode"}, "export_available": true, "suggested_export": {"format": "csv", "limit": "testmode"}, "table": [{"Location": "Osaka", "Radiation_uSv": 0.05, "device_id": "80242", "lat": 34.6937, "lon": 135.5023}, {"Location": "Tokyo", "Radiation_uSv": 0.04, "device_id": "1002", "lat": 35.6895, "lon": 139.6917}]}`
-			writeChunkBuffered(w, chunk{Type: "text", Text: mockResponse}, &buffer, isCloudfFront)
-			writeChunkBuffered(w, chunk{Type: "done"}, &buffer, isCloudfFront)
-			if isCloudfFront { flushBuffer(w, buffer) }
-			return
-		}
-
 		// ── Connect to MCP server ──────────────────────────────────────────
 		var tools []anthropicTool
 		mc, err := mcpclient.NewStreamableHttpClient(mcpURL)
