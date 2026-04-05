@@ -4764,6 +4764,13 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			logT(trackID, "Upload", "✘ completed with error: %v", lastError)
 		} else {
 			logT(trackID, "Upload", "✔ completed, redirecting to: %s", trackURL)
+			if trackID != "" {
+				if isSpectrumUpload {
+					triggerSpectrumAnomalyAnalysis(trackID)
+				} else {
+					triggerAnomalyAnalysis(trackID)
+				}
+			}
 		}
 	}()
 }
@@ -5405,6 +5412,12 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return ""
 	}() + `">Translations</a>
+		<a href="/admin/anomaly` + func() string {
+		if password != "" {
+			return "?password=" + password
+		}
+		return ""
+	}() + `">Anomalies</a>
 	</div>
 	<div class="nav">
 		<div class="nav-left">
@@ -7386,6 +7399,12 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return ""
 	}() + `">Translations</a>
+		<a href="/admin/anomaly` + func() string {
+		if password != "" {
+			return "?password=" + password
+		}
+		return ""
+	}() + `">Anomalies</a>
 	</div>
 	<div class="nav">
 		<div class="nav-left">
@@ -9694,6 +9713,9 @@ func main() {
 	seedTranslationsDB(content, "public_html/translations.json")
 	loadTranslationsFromDB()
 
+	// Initialize anomaly detection config (creates table + loads settings)
+	initAnomalyConfig()
+
 	// Initialize authentication system if configured
 	var authManager *auth.Manager
 	var emailSender *email.Sender
@@ -10321,6 +10343,57 @@ func main() {
 			default:
 				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			}
+		}))
+
+		// Admin anomaly page and API
+		http.HandleFunc("/admin/anomaly", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminAccess(w, r) {
+				return
+			}
+			data, err := content.ReadFile("public_html/admin-anomaly.html")
+			if err != nil {
+				http.Error(w, "Page not found", http.StatusNotFound)
+				return
+			}
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Write(data)
+		}))
+		http.HandleFunc("/api/admin/anomaly/config", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminAccess(w, r) {
+				return
+			}
+			switch r.Method {
+			case http.MethodGet:
+				adminAnomalyConfigGetHandler(w, r)
+			case http.MethodPost:
+				adminAnomalyConfigSaveHandler(w, r)
+			default:
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			}
+		}))
+		http.HandleFunc("/api/admin/anomaly/data", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminAccess(w, r) {
+				return
+			}
+			adminAnomalyDataHandler(w, r)
+		}))
+		http.HandleFunc("/api/admin/anomaly/rerun/", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminAccess(w, r) {
+				return
+			}
+			adminAnomalyRerunHandler(w, r)
+		}))
+		http.HandleFunc("/api/admin/anomaly/spectrum-data", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminAccess(w, r) {
+				return
+			}
+			adminSpectrumAnomalyDataHandler(w, r)
+		}))
+		http.HandleFunc("/api/admin/anomaly/spectrum-rerun/", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminAccess(w, r) {
+				return
+			}
+			adminSpectrumAnomalyRerunHandler(w, r)
 		}))
 
 	}

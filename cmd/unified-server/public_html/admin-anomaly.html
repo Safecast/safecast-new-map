@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Anomaly Detection - Safecast Admin</title>
+  <script>
+  (function() {
+    var saved = localStorage.getItem('safecastDocTheme');
+    var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.setAttribute('data-theme', saved || (prefersDark ? 'dark' : 'light'));
+  })();
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/images/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/images/favicon-16x16.png">
+  <link rel="manifest" href="/static/images/site.webmanifest">
+  <style>
+    :root {
+      --bg-primary: #f5f5f5; --bg-card: white; --text-primary: #333;
+      --text-secondary: #666; --text-muted: #999; --border-color: #ddd;
+      --link-color: #0066cc; --shadow: 0 1px 3px rgba(0,0,0,0.1);
+      --th-bg: #424242; --hover-bg: #f9f9f9; --btn-border-radius: 8px;
+      --tab-active-bg: #2196F3; --tab-active-text: white;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1a1a1a; --bg-card: #2b2b2b; --text-primary: #eee;
+        --text-secondary: #aaa; --text-muted: #777; --border-color: #444;
+        --link-color: #90caf9; --shadow: 0 1px 3px rgba(255,255,255,0.1);
+        --th-bg: #616161; --hover-bg: #333;
+        --tab-active-bg: #1976D2; color-scheme: dark;
+      }
+    }
+    :root[data-theme='light'] {
+      --bg-primary: #f5f5f5; --bg-card: #fff; --text-primary: #333;
+      --text-secondary: #666; --text-muted: #999; --border-color: #ddd;
+      --link-color: #0066cc; --shadow: 0 1px 3px rgba(0,0,0,0.1);
+      --hover-bg: #f9f9f9; --th-bg: #424242; color-scheme: light;
+    }
+    :root[data-theme='dark'] {
+      --bg-primary: #1a1a1a; --bg-card: #2b2b2b; --text-primary: #eee;
+      --text-secondary: #aaa; --text-muted: #777; --border-color: #444;
+      --link-color: #90caf9; --shadow: 0 1px 3px rgba(255,255,255,0.07);
+      --hover-bg: #333; --th-bg: #616161; color-scheme: dark;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-primary); color: var(--text-primary); transition: background 0.2s, color 0.2s; }
+    .top-nav { background: #1a3a5c; color: #fff; padding: 0 24px; display: flex; align-items: center; gap: 16px; height: 52px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); position: sticky; top: 0; z-index: 100; }
+    .nav-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; color: #fff; font-weight: 700; font-size: 17px; white-space: nowrap; }
+    .nav-logo img { height: 28px; width: 28px; object-fit: contain; }
+    .nav-sep { color: rgba(255,255,255,0.3); font-size: 18px; }
+    .nav-title { font-size: 15px; font-weight: 600; color: #d0e8ff; white-space: nowrap; }
+    .nav-spacer { flex: 1; }
+    .back-link { color: #afd4f5; text-decoration: none; font-size: 13px; white-space: nowrap; }
+    .back-link:hover { color: #fff; }
+    #theme-toggle { background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.25); border-radius: 6px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
+    #theme-toggle:hover { background: rgba(255,255,255,0.22); }
+    .page-content { padding: 20px 24px; }
+
+    .admin-tabs { display: flex; gap: 2px; margin-top: 10px; margin-bottom: 10px; background: var(--border-color); border-radius: 8px; overflow: hidden; }
+    .admin-tabs a, .admin-tabs span { padding: 10px 20px; text-decoration: none; color: var(--text-secondary); background: var(--bg-card); font-weight: 500; font-size: 0.95em; transition: background 0.2s; }
+    .admin-tabs a:hover { background: var(--hover-bg); color: var(--text-primary); }
+    .admin-tabs a.active { background: var(--tab-active-bg); color: var(--tab-active-text); }
+
+    /* Config card */
+    .config-card { background: var(--bg-card); border-radius: 8px; box-shadow: var(--shadow); padding: 20px 24px; margin-bottom: 20px; }
+    .config-card h2 { font-size: 1.1em; margin-bottom: 16px; color: var(--text-primary); }
+    .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px; }
+    .config-field label { display: block; font-size: 0.85em; font-weight: 600; color: var(--text-secondary); margin-bottom: 5px; }
+    .config-field input[type="number"] { width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--btn-border-radius); background: var(--bg-card); color: var(--text-primary); font-size: 0.95em; }
+    .config-field .hint { font-size: 0.78em; color: var(--text-muted); margin-top: 4px; }
+    .config-actions { display: flex; align-items: center; gap: 12px; }
+    .btn-save-config { background: #4CAF50; color: white; border: none; padding: 9px 22px; border-radius: var(--btn-border-radius); cursor: pointer; font-size: 0.95em; font-weight: 600; }
+    .btn-save-config:hover { background: #388E3C; }
+    .config-status { font-size: 0.88em; padding: 6px 12px; border-radius: 4px; display: none; }
+    .config-status.ok { background: #e8f5e9; color: #2e7d32; display: inline-block; }
+    .config-status.err { background: #ffebee; color: #c62828; display: inline-block; }
+
+    /* Table controls */
+    .controls { display: flex; gap: 10px; align-items: center; margin-bottom: 15px; flex-wrap: wrap; }
+    .controls input[type="text"] { padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--btn-border-radius); background: var(--bg-card); color: var(--text-primary); font-size: 0.95em; min-width: 220px; }
+    .controls button { padding: 8px 16px; border: 1px solid var(--border-color); border-radius: var(--btn-border-radius); background: var(--bg-card); color: var(--text-primary); cursor: pointer; font-size: 0.95em; }
+    .controls button:hover { background: var(--hover-bg); }
+    .summary { color: var(--text-secondary); font-size: 0.9em; }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; background: var(--bg-card); border-radius: 8px; box-shadow: var(--shadow); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+    th { background: var(--th-bg); color: white; padding: 10px 12px; text-align: left; white-space: nowrap; position: sticky; top: 0; }
+    td { padding: 8px 12px; border-bottom: 1px solid var(--border-color); }
+    tr:hover { background: var(--hover-bg); }
+    .sortable { cursor: pointer; user-select: none; position: relative; padding-right: 20px; }
+    .sortable:hover { background: rgba(255,255,255,0.1); }
+    .sortable::after { content: '\21C5'; position: absolute; right: 4px; opacity: 0.5; }
+    .sortable.asc::after { content: '\25B2'; opacity: 1; }
+    .sortable.desc::after { content: '\25BC'; opacity: 1; }
+
+    .no-data { text-align: center; padding: 40px; color: var(--text-muted); }
+    .loading { text-align: center; padding: 40px; color: var(--text-muted); }
+
+    .badge-ok { display: inline-block; padding: 2px 8px; border-radius: 4px; background: #e8f5e9; color: #2e7d32; font-size: 0.8em; font-weight: 600; }
+    .badge-warn { display: inline-block; padding: 2px 8px; border-radius: 4px; background: #fff3e0; color: #e65100; font-size: 0.8em; font-weight: 600; }
+    .badge-high { display: inline-block; padding: 2px 8px; border-radius: 4px; background: #ffebee; color: #c62828; font-size: 0.8em; font-weight: 600; }
+
+    .btn-view { background: #2196F3; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.82em; text-decoration: none; display: inline-block; }
+    .btn-view:hover { background: #1976D2; }
+    .btn-rerun { background: #FF9800; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.82em; margin-left: 4px; }
+    .btn-rerun:hover { background: #F57C00; }
+    .btn-rerun:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .pagination { display: flex; gap: 5px; align-items: center; justify-content: center; margin-top: 15px; flex-wrap: wrap; }
+    .pagination button { padding: 6px 12px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-card); color: var(--text-primary); cursor: pointer; }
+    .pagination button:hover { background: var(--hover-bg); }
+    .pagination button.active { background: var(--tab-active-bg); color: white; border-color: var(--tab-active-bg); }
+    .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .pagination select { padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-card); color: var(--text-primary); }
+  </style>
+</head>
+<body>
+<nav class="top-nav">
+  <a href="/" class="nav-logo">
+    <img src="/static/images/safecast-logo-squared.png" alt="Safecast">
+    Safecast
+  </a>
+  <span class="nav-sep">|</span>
+  <span class="nav-title">Anomaly Detection</span>
+  <span class="nav-spacer"></span>
+  <a href="/" class="back-link">← Back to Map</a>
+  <button id="theme-toggle" onclick="toggleTheme()">🌙 Dark Mode</button>
+</nav>
+<div class="page-content">
+
+<div class="admin-tabs" id="adminTabs"></div>
+
+<!-- Configuration card -->
+<div class="config-card">
+  <h2>Detection Settings</h2>
+  <div class="config-grid">
+    <div class="config-field">
+      <label for="cfgSigma">Sigma Threshold (σ)</label>
+      <input type="number" id="cfgSigma" min="1" max="10" step="0.1" value="3.0">
+      <div class="hint">Readings above mean + σ × stddev are flagged. Default: 3.0</div>
+    </div>
+    <div class="config-field">
+      <label for="cfgMinDose">Min Doserate (µSv/h)</label>
+      <input type="number" id="cfgMinDose" min="0" step="0.001" value="0">
+      <div class="hint">Readings at or below this value are excluded. Default: 0</div>
+    </div>
+    <div class="config-field">
+      <label for="cfgMaxDose">Max Doserate (µSv/h)</label>
+      <input type="number" id="cfgMaxDose" min="1" step="1" value="10000">
+      <div class="hint">Readings at or above this value are excluded as outliers. Default: 10000</div>
+    </div>
+    <div class="config-field">
+      <label for="cfgMaxIDs">Max Stored Anomaly IDs</label>
+      <input type="number" id="cfgMaxIDs" min="1" max="500" step="1" value="50">
+      <div class="hint">Maximum number of anomalous marker IDs stored per track. Default: 50</div>
+    </div>
+  </div>
+  <div class="config-actions">
+    <button class="btn-save-config" onclick="saveConfig()">Save Settings</button>
+    <span class="config-status" id="configStatus"></span>
+  </div>
+</div>
+
+<!-- Spectrum anomaly config -->
+<div class="config-card">
+  <h2>Spectrum Detection Settings</h2>
+  <div class="config-grid">
+    <div class="config-field">
+      <label for="cfgCosine">Cosine Similarity Threshold</label>
+      <input type="number" id="cfgCosine" min="0" max="1" step="0.01" value="0.85">
+      <div class="hint">Spectra with shape similarity below this are flagged. Default: 0.85 (1.0 = identical shape)</div>
+    </div>
+    <div class="config-field">
+      <label for="cfgMinLive">Min Live Time (seconds)</label>
+      <input type="number" id="cfgMinLive" min="0" step="0.1" value="1.0">
+      <div class="hint">Spectra shorter than this are excluded as unreliable. Default: 1.0</div>
+    </div>
+  </div>
+  <div class="config-actions">
+    <button class="btn-save-config" onclick="saveConfig()">Save All Settings</button>
+    <span class="config-status" id="configStatus2"></span>
+  </div>
+</div>
+
+<!-- Dose-rate anomaly results table -->
+<h3 style="margin-bottom:10px;font-size:1.05em;color:var(--text-secondary);">Dose-Rate Track Anomalies</h3>
+<div class="controls">
+  <input type="text" id="searchInput" placeholder="Search by track ID..." onkeydown="if(event.key==='Enter')doSearch()">
+  <button onclick="doSearch()">Search</button>
+  <button onclick="clearSearch()">Clear</button>
+  <span class="summary" id="summary"></span>
+</div>
+
+<div class="table-wrap">
+  <div class="loading" id="loading">Loading...</div>
+  <table id="dataTable" style="display:none">
+    <thead>
+      <tr>
+        <th class="sortable" onclick="sortBy('track_id')">Track ID</th>
+        <th class="sortable" onclick="sortBy('computed_at')">Computed At</th>
+        <th class="sortable" onclick="sortBy('reading_count')">Readings</th>
+        <th class="sortable" onclick="sortBy('mean_doserate')">Mean (µSv/h)</th>
+        <th>Median (µSv/h)</th>
+        <th>Stddev</th>
+        <th>Threshold</th>
+        <th class="sortable" onclick="sortBy('anomaly_count')">Anomalies</th>
+        <th>Max Anomaly</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+  <div class="no-data" id="noData" style="display:none">No anomaly summaries found. Upload a track to trigger analysis.</div>
+</div>
+
+<div class="pagination" id="pagination"></div>
+
+<!-- Spectrum anomaly results table -->
+<h3 style="margin:24px 0 10px;font-size:1.05em;color:var(--text-secondary);">Spectrum Track Anomalies</h3>
+<div class="controls">
+  <input type="text" id="specSearchInput" placeholder="Search by track ID..." onkeydown="if(event.key==='Enter')doSpecSearch()">
+  <button onclick="doSpecSearch()">Search</button>
+  <button onclick="clearSpecSearch()">Clear</button>
+  <span class="summary" id="specSummary"></span>
+</div>
+
+<div class="table-wrap">
+  <div class="loading" id="specLoading">Loading...</div>
+  <table id="specTable" style="display:none">
+    <thead>
+      <tr>
+        <th class="sortable" onclick="specSortBy('track_id')">Track ID</th>
+        <th class="sortable" onclick="specSortBy('computed_at')">Computed At</th>
+        <th class="sortable" onclick="specSortBy('spectrum_count')">Spectra</th>
+        <th class="sortable" onclick="specSortBy('anomaly_count')">Anomalies</th>
+        <th class="sortable" onclick="specSortBy('median_total_counts')">Median CPS</th>
+        <th>Threshold</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="specTableBody"></tbody>
+  </table>
+  <div class="no-data" id="specNoData" style="display:none">No spectrum anomaly summaries found. Upload a spectrum track to trigger analysis.</div>
+</div>
+<div class="pagination" id="specPagination"></div>
+
+<script>
+const PASSWORD = new URLSearchParams(window.location.search).get('password') || '';
+const AUTH_PARAM = PASSWORD ? '?password=' + encodeURIComponent(PASSWORD) : '';
+
+let currentSort = 'computed_at';
+let currentOrder = 'desc';
+let currentSearch = '';
+let currentOffset = 0;
+let currentLimit = 50;
+let totalRows = 0;
+let currentData = [];
+
+function buildAdminTabs() {
+  const tabs = [
+    { label: 'Users',        href: '/admin/users' },
+    { label: 'Uploads',      href: '/admin/uploads' },
+    { label: 'MCP Analytics',href: '/admin/mcp' },
+    { label: 'Realtime',     href: '/admin/realtime' },
+    { label: 'Translations', href: '/admin/translations' },
+    { label: 'Anomalies',    href: '/admin/anomaly', active: true }
+  ];
+  const container = document.getElementById('adminTabs');
+  tabs.forEach(t => {
+    const href = t.href + (PASSWORD ? '?password=' + encodeURIComponent(PASSWORD) : '');
+    container.innerHTML += `<a href="${href}" class="${t.active ? 'active' : ''}">${t.label}</a>`;
+  });
+}
+
+async function loadConfig() {
+  let url = '/api/admin/anomaly/config' + AUTH_PARAM;
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) return;
+    const cfg = await resp.json();
+    document.getElementById('cfgSigma').value   = cfg.sigma_threshold;
+    document.getElementById('cfgMinDose').value  = cfg.min_doserate;
+    document.getElementById('cfgMaxDose').value  = cfg.max_doserate;
+    document.getElementById('cfgMaxIDs').value   = cfg.max_anomaly_ids;
+    document.getElementById('cfgCosine').value   = cfg.spectrum_cosine_threshold;
+    document.getElementById('cfgMinLive').value  = cfg.spectrum_min_live_time;
+  } catch(e) { console.error('loadConfig:', e); }
+}
+
+async function saveConfig() {
+  const payload = {
+    sigma_threshold:           parseFloat(document.getElementById('cfgSigma').value),
+    min_doserate:              parseFloat(document.getElementById('cfgMinDose').value),
+    max_doserate:              parseFloat(document.getElementById('cfgMaxDose').value),
+    max_anomaly_ids:           parseInt(document.getElementById('cfgMaxIDs').value, 10),
+    spectrum_cosine_threshold: parseFloat(document.getElementById('cfgCosine').value),
+    spectrum_min_live_time:    parseFloat(document.getElementById('cfgMinLive').value)
+  };
+  for (const id of ['configStatus', 'configStatus2']) {
+    const s = document.getElementById(id);
+    s.className = 'config-status'; s.style.display = 'none';
+  }
+  try {
+    let url = '/api/admin/anomaly/config' + AUTH_PARAM;
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!resp.ok) {
+      const text = await resp.text();
+      throw new Error(text || 'HTTP ' + resp.status);
+    }
+    for (const id of ['configStatus', 'configStatus2']) {
+      const s = document.getElementById(id);
+      s.textContent = '✓ Settings saved'; s.className = 'config-status ok'; s.style.display = 'inline-block';
+      setTimeout(() => { s.style.display = 'none'; }, 4000);
+    }
+  } catch(e) {
+    for (const id of ['configStatus', 'configStatus2']) {
+      const s = document.getElementById(id);
+      s.textContent = '✗ ' + e.message; s.className = 'config-status err'; s.style.display = 'inline-block';
+      setTimeout(() => { s.style.display = 'none'; }, 4000);
+    }
+  }
+}
+
+function doSearch() {
+  currentSearch = document.getElementById('searchInput').value.trim();
+  currentOffset = 0;
+  fetchData();
+}
+
+function clearSearch() {
+  document.getElementById('searchInput').value = '';
+  currentSearch = '';
+  currentOffset = 0;
+  fetchData();
+}
+
+function sortBy(col) {
+  if (currentSort === col) {
+    currentOrder = currentOrder === 'desc' ? 'asc' : 'desc';
+  } else {
+    currentSort = col;
+    currentOrder = 'desc';
+  }
+  currentOffset = 0;
+  fetchData();
+  updateSortIndicators();
+}
+
+function updateSortIndicators() {
+  document.querySelectorAll('th.sortable').forEach(th => {
+    th.classList.remove('asc', 'desc');
+    const col = th.getAttribute('onclick')?.match(/sortBy\('(\w+)'\)/)?.[1];
+    if (col === currentSort) th.classList.add(currentOrder);
+  });
+}
+
+function fmt(val, decimals=4) {
+  if (val == null || val === 0) return '—';
+  return Number(val).toFixed(decimals);
+}
+
+function formatDate(val) {
+  if (!val) return '';
+  try {
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return String(val);
+    return d.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
+  } catch { return String(val); }
+}
+
+function anomalyBadge(count) {
+  if (count === 0) return `<span class="badge-ok">0</span>`;
+  if (count < 5)   return `<span class="badge-warn">${count}</span>`;
+  return `<span class="badge-high">${count}</span>`;
+}
+
+async function fetchData() {
+  const loading = document.getElementById('loading');
+  const table   = document.getElementById('dataTable');
+  const noData  = document.getElementById('noData');
+  loading.style.display = 'block';
+  table.style.display   = 'none';
+  noData.style.display  = 'none';
+
+  let url = `/api/admin/anomaly/data?limit=${currentLimit}&offset=${currentOffset}&sort=${currentSort}&order=${currentOrder}`;
+  if (PASSWORD)       url += '&password=' + encodeURIComponent(PASSWORD);
+  if (currentSearch)  url += '&search='   + encodeURIComponent(currentSearch);
+
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) {
+      if (resp.status === 401) { loading.textContent = 'Unauthorized'; return; }
+      throw new Error('HTTP ' + resp.status);
+    }
+    const json = await resp.json();
+    totalRows   = json.total;
+    currentData = json.data || [];
+    loading.style.display = 'none';
+
+    if (currentData.length === 0) {
+      noData.style.display = 'block';
+      document.getElementById('summary').textContent = 'No results';
+      document.getElementById('pagination').innerHTML = '';
+      return;
+    }
+
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = currentData.map((row, idx) => `
+      <tr>
+        <td><code>${row.track_id}</code></td>
+        <td>${formatDate(row.computed_at)}</td>
+        <td>${row.reading_count.toLocaleString()}</td>
+        <td>${fmt(row.mean_doserate)}</td>
+        <td>${fmt(row.median_doserate)}</td>
+        <td>${fmt(row.stddev_doserate)}</td>
+        <td>${fmt(row.threshold)}</td>
+        <td>${anomalyBadge(row.anomaly_count)}</td>
+        <td>${row.anomaly_max ? fmt(row.anomaly_max) : '—'}</td>
+        <td>
+          <a class="btn-view" href="/trackid/${row.track_id}" target="_blank">View</a>
+          <button class="btn-rerun" id="rerun-${idx}" onclick="rerun('${row.track_id}', ${idx})">Re-run</button>
+        </td>
+      </tr>`).join('');
+
+    table.style.display = 'table';
+    updateSortIndicators();
+
+    const page = Math.floor(currentOffset / currentLimit) + 1;
+    const totalPages = Math.ceil(totalRows / currentLimit);
+    document.getElementById('summary').textContent =
+      `${totalRows} track${totalRows !== 1 ? 's' : ''} analysed | Page ${page} of ${totalPages}`;
+    buildPagination(totalPages, page);
+
+  } catch(err) {
+    loading.textContent = 'Error: ' + err.message;
+  }
+}
+
+async function rerun(trackID, idx) {
+  const btn = document.getElementById('rerun-' + idx);
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  let url = `/api/admin/anomaly/rerun/${trackID}` + AUTH_PARAM;
+  try {
+    const resp = await fetch(url, { method: 'POST' });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    setTimeout(() => fetchData(), 3500); // refresh after analysis completes
+  } catch(e) {
+    alert('Re-run failed: ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'Re-run'; }
+  }
+}
+
+function buildPagination(totalPages, currentPage) {
+  const container = document.getElementById('pagination');
+  let html = '';
+  html += `<button ${currentPage <= 1 ? 'disabled' : ''} onclick="goToPage(1)">First</button>`;
+  html += `<button ${currentPage <= 1 ? 'disabled' : ''} onclick="goToPage(${currentPage - 1})">Prev</button>`;
+  let start = Math.max(1, currentPage - 3);
+  let end   = Math.min(totalPages, start + 6);
+  start = Math.max(1, end - 6);
+  for (let i = start; i <= end; i++) {
+    html += `<button class="${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+  }
+  html += `<button ${currentPage >= totalPages ? 'disabled' : ''} onclick="goToPage(${currentPage + 1})">Next</button>`;
+  html += `<button ${currentPage >= totalPages ? 'disabled' : ''} onclick="goToPage(${totalPages})">Last</button>`;
+  html += ` <select onchange="changeLimit(this.value)">`;
+  [25, 50, 100, 200].forEach(n => {
+    html += `<option value="${n}" ${n === currentLimit ? 'selected' : ''}>${n} per page</option>`;
+  });
+  html += `</select>`;
+  container.innerHTML = html;
+}
+
+function goToPage(page) {
+  currentOffset = (page - 1) * currentLimit;
+  fetchData();
+}
+
+function changeLimit(val) {
+  currentLimit  = parseInt(val);
+  currentOffset = 0;
+  fetchData();
+}
+
+// ── Spectrum anomaly table ──────────────────────────────────────────────────
+let specSort = 'computed_at', specOrder = 'desc', specSearch = '', specOffset = 0, specLimit = 50, specTotal = 0, specData = [];
+
+function doSpecSearch() { specSearch = document.getElementById('specSearchInput').value.trim(); specOffset = 0; fetchSpecData(); }
+function clearSpecSearch() { document.getElementById('specSearchInput').value=''; specSearch=''; specOffset=0; fetchSpecData(); }
+
+function specSortBy(col) {
+  if (specSort === col) { specOrder = specOrder === 'desc' ? 'asc' : 'desc'; }
+  else { specSort = col; specOrder = 'desc'; }
+  specOffset = 0; fetchSpecData(); updateSpecSortIndicators();
+}
+
+function updateSpecSortIndicators() {
+  document.querySelectorAll('#specTable th.sortable').forEach(th => {
+    th.classList.remove('asc','desc');
+    const col = th.getAttribute('onclick')?.match(/specSortBy\('(\w+)'\)/)?.[1];
+    if (col === specSort) th.classList.add(specOrder);
+  });
+}
+
+async function fetchSpecData() {
+  const loading = document.getElementById('specLoading');
+  const table   = document.getElementById('specTable');
+  const noData  = document.getElementById('specNoData');
+  loading.style.display='block'; table.style.display='none'; noData.style.display='none';
+
+  let url = `/api/admin/anomaly/spectrum-data?limit=${specLimit}&offset=${specOffset}&sort=${specSort}&order=${specOrder}`;
+  if (PASSWORD) url += '&password=' + encodeURIComponent(PASSWORD);
+  if (specSearch) url += '&search=' + encodeURIComponent(specSearch);
+
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) { loading.textContent = 'HTTP ' + resp.status; return; }
+    const json = await resp.json();
+    specTotal = json.total; specData = json.data || [];
+    loading.style.display = 'none';
+    if (specData.length === 0) { noData.style.display='block'; document.getElementById('specSummary').textContent='No results'; document.getElementById('specPagination').innerHTML=''; return; }
+
+    const tbody = document.getElementById('specTableBody');
+    tbody.innerHTML = specData.map((row, idx) => `
+      <tr>
+        <td><code>${row.track_id}</code></td>
+        <td>${formatDate(row.computed_at)}</td>
+        <td>${row.spectrum_count.toLocaleString()}</td>
+        <td>${anomalyBadge(row.anomaly_count)}</td>
+        <td>${fmt(row.median_total_counts, 1)}</td>
+        <td>${fmt(row.cosine_threshold, 2)}</td>
+        <td>
+          <a class="btn-view" href="/trackid/${row.track_id}" target="_blank">View</a>
+          <button class="btn-rerun" id="spec-rerun-${idx}" onclick="specRerun('${row.track_id}',${idx})">Re-run</button>
+        </td>
+      </tr>`).join('');
+
+    table.style.display='table'; updateSpecSortIndicators();
+    const page = Math.floor(specOffset/specLimit)+1, totalPages = Math.ceil(specTotal/specLimit);
+    document.getElementById('specSummary').textContent = `${specTotal} track${specTotal!==1?'s':''} analysed | Page ${page} of ${totalPages}`;
+    buildSpecPagination(totalPages, page);
+  } catch(err) { loading.textContent = 'Error: ' + err.message; }
+}
+
+async function specRerun(trackID, idx) {
+  const btn = document.getElementById('spec-rerun-' + idx);
+  if (btn) { btn.disabled=true; btn.textContent='...'; }
+  let url = `/api/admin/anomaly/spectrum-rerun/${trackID}` + AUTH_PARAM;
+  try {
+    const resp = await fetch(url, { method: 'POST' });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    setTimeout(() => fetchSpecData(), 4000);
+  } catch(e) {
+    alert('Re-run failed: ' + e.message);
+    if (btn) { btn.disabled=false; btn.textContent='Re-run'; }
+  }
+}
+
+function buildSpecPagination(totalPages, currentPage) {
+  const container = document.getElementById('specPagination');
+  let html = `<button ${currentPage<=1?'disabled':''} onclick="goSpecPage(1)">First</button>`;
+  html += `<button ${currentPage<=1?'disabled':''} onclick="goSpecPage(${currentPage-1})">Prev</button>`;
+  let start=Math.max(1,currentPage-3), end=Math.min(totalPages,start+6); start=Math.max(1,end-6);
+  for (let i=start;i<=end;i++) html+=`<button class="${i===currentPage?'active':''}" onclick="goSpecPage(${i})">${i}</button>`;
+  html+=`<button ${currentPage>=totalPages?'disabled':''} onclick="goSpecPage(${currentPage+1})">Next</button>`;
+  html+=`<button ${currentPage>=totalPages?'disabled':''} onclick="goSpecPage(${totalPages})">Last</button>`;
+  html+=` <select onchange="changeSpecLimit(this.value)">${[25,50,100,200].map(n=>`<option value="${n}" ${n===specLimit?'selected':''}>${n} per page</option>`).join('')}</select>`;
+  container.innerHTML = html;
+}
+function goSpecPage(p) { specOffset=(p-1)*specLimit; fetchSpecData(); }
+function changeSpecLimit(v) { specLimit=parseInt(v); specOffset=0; fetchSpecData(); }
+
+buildAdminTabs();
+loadConfig();
+fetchData();
+fetchSpecData();
+</script>
+</div><!-- .page-content -->
+<script>
+(function() {
+  function applyLabel() {
+    var btn = document.getElementById('theme-toggle');
+    if (btn) btn.textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? '\u2600\uFE0F Light Mode' : '\uD83C\uDF19 Dark Mode';
+  }
+  applyLabel();
+  window.toggleTheme = function() {
+    var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('safecastDocTheme', next);
+    applyLabel();
+  };
+})();
+</script>
+</body>
+</html>
