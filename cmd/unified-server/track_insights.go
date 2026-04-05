@@ -47,9 +47,11 @@ type trackLocationNote struct {
 
 // trackInsightsResponse is the JSON payload for GET /api/track/{id}/insights.
 type trackInsightsResponse struct {
-	TrackID       string              `json:"track_id"`
-	Insights      []trackInsight      `json:"insights"`
-	LocationNotes []trackLocationNote `json:"location_notes"`
+	TrackID                string                  `json:"track_id"`
+	Insights               []trackInsight          `json:"insights"`
+	LocationNotes          []trackLocationNote     `json:"location_notes"`
+	AnomalySummary         *AnomalySummary         `json:"anomaly_summary,omitempty"`
+	SpectrumAnomalySummary *SpectrumAnomalySummary `json:"spectrum_anomaly_summary,omitempty"`
 }
 
 // trackInsightsHandler serves GET /api/track/{id}/insights.
@@ -78,10 +80,14 @@ func trackInsightsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	anomaly, _ := loadAnomalySummary(trackID)
+	spectrumAnomaly, _ := loadSpectrumAnomalySummary(trackID)
 	resp := trackInsightsResponse{
-		TrackID:       trackID,
-		Insights:      insightsByEmbedding(ctx, bounds, trackID),
-		LocationNotes: locationNotesInBbox(bounds, trackID),
+		TrackID:                trackID,
+		Insights:               insightsByEmbedding(ctx, bounds, trackID),
+		LocationNotes:          locationNotesInBbox(bounds, trackID),
+		AnomalySummary:         anomaly,
+		SpectrumAnomalySummary: spectrumAnomaly,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp) //nolint:errcheck

@@ -180,6 +180,34 @@ func createDuckDBSchema() error {
 			source_chat_id BIGINT,
 			created_at TIMESTAMPTZ DEFAULT now()
 		)`,
+		// Track anomaly summaries: computed after each upload, stores statistical
+		// baseline and flagged anomalous readings (> mean + 3σ) per track.
+		`CREATE TABLE IF NOT EXISTS track_anomaly_summaries (
+			track_id        VARCHAR,
+			computed_at     TIMESTAMPTZ DEFAULT now(),
+			reading_count   INTEGER,
+			mean_doserate   DOUBLE,
+			median_doserate DOUBLE,
+			stddev_doserate DOUBLE,
+			threshold       DOUBLE,
+			anomaly_count   INTEGER,
+			anomaly_ids     VARCHAR,
+			anomaly_max     DOUBLE,
+			anomaly_min     DOUBLE
+		)`,
+		// Spectrum anomaly summaries: computed after each spectrum upload.
+		// Flags individual spectra whose cosine similarity to the track's
+		// median spectrum falls below the configured threshold.
+		`CREATE TABLE IF NOT EXISTS spectrum_anomaly_summaries (
+			track_id              VARCHAR,
+			computed_at           TIMESTAMPTZ DEFAULT now(),
+			spectrum_count        INTEGER,
+			anomaly_count         INTEGER,
+			anomaly_spectrum_ids  VARCHAR,
+			median_total_counts   DOUBLE,
+			cosine_threshold      DOUBLE,
+			anomaly_details       VARCHAR
+		)`,
 	}
 
 	for _, ddl := range tables {
