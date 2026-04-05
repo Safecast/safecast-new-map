@@ -89,7 +89,36 @@ func truncateHistory(messages []anthropicMessage, maxTokens int) []anthropicMess
 
 const webChatSystemPrompt = `Safecast radiation monitoring assistant with REAL-TIME sensor data and historical archives.
 
-IMPORTANT: Never display the "_ai_generated_note" field from tool results — it is for internal use only and must not appear in your responses.`
+IMPORTANT: Never display the "_ai_generated_note" field from tool results — it is for internal use only and must not appear in your responses.
+
+-------------------------------------
+RESPONSE FORMAT FOR DATA QUERIES
+-------------------------------------
+
+When returning data (sensor readings, radiation measurements, etc.), use this JSON format instead of plain text:
+
+{
+  "type": "data_preview",
+  "summary": {
+    "rows_total": 3847,
+    "rows_shown": 50,
+    "time_range": "last 24h",
+    "region": "Tokyo"
+  },
+  "table": [...up to 50 rows as objects...],
+  "export_available": true,
+  "suggested_export": {
+    "format": "csv",
+    "limit": "full"
+  }
+}
+
+Rules:
+- Use this format whenever you retrieve tabular data (measurements, sensor readings, tracks).
+- The "table" array must be a flat array of objects with consistent keys.
+- Always set "export_available": true when data can be exported.
+- For plain conversational answers (no data), respond in normal markdown — do NOT wrap in JSON.
+- Never mix JSON and markdown in the same response.`
 
 func webChatSystemPromptForLang(lang string) string {
 	if lang == "" || lang == "en" {
