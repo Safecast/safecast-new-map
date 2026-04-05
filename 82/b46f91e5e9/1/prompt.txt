@@ -1,0 +1,102 @@
+Can you have a look at this issue(https://codeberg.org/Safecast/safecast-new-map/issues/6) , make a list what we:
+1- is already implemeted, 
+2- can do simply and fast  
+3 -what requires much more structual cahnges/work
+
+---
+
+Please make a plan the the issues to be implemented:
+2	Post-upload anomaly detection	Fast (1-2 days)
+6	Basic geology context tool	Fast (1 day)
+7	Technogenic POI lookup (OSM)	Fast (1 day)
+8	Basic water route context	Fast (1-2 days)
+
+---
+
+Step 1-2 please..
+
+---
+
+What are the next steps?
+
+---
+
+Let me first check the spet 1and 2 if they are working as expected. What would you suggest I do for testing?
+
+---
+
+rob@rob-GS66-Stealth-10UG:~/Documents/Safecast/safecast-new-map$ /usr/local/go/bin/go build -o safecast-new-map ./cmd/unified-server/ && bash local-server-config.sh
+2026/04/05 09:56:40 [i18n] Loaded translations from embedded file (fallback)
+2026/04/05 09:56:40 PostgreSQL connection pool tuned: MaxOpenConns=64 (4×16 CPU cores), idle_timeout=2m, lifetime=5m
+2026/04/05 09:56:40 DB init: error connecting to the database: failed to connect to `user=postgres database=safecast`:
+        127.0.0.1:5432 (127.0.0.1): dial error: dial tcp 127.0.0.1:5432: connect: connection refused
+        127.0.0.1:5432 (127.0.0.1): dial error: dial tcp 127.0.0.1:5432: connect: connection refused
+rob@rob-GS66-Stealth-10UG:~/Documents/Safecast/safecast-new-map$
+
+---
+
+<ide_opened_file>The user opened the file /home/rob/Documents/Safecast/safecast-new-map/docs/architecture-overview.mmd in the IDE. This may or may not be related to the current task.</ide_opened_file>
+How to check:
+
+That covers both steps — if it boots cleanly and query_analytics accepts a SELECT on track_anomaly_summaries, you're good to proceed to step 3.
+
+---
+
+rob@rob-GS66-Stealth-10UG:~/Documents/Safecast/safecast-new-map$ curl -s "http://localhost:8765/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Use query_analytics to run: SELECT COUNT(*) FROM track_anomaly_summaries"}' | jq .
+jq: parse error: Invalid numeric literal at line 1, column 10
+rob@rob-GS66-Stealth-10UG:~/Documents/Safecast/safecast-new-map$
+
+---
+
+Waht is ducklake password?
+
+---
+
+rob@rob-GS66-Stealth-10UG:~/Documents/Safecast/safecast-new-map$ psql "postgresql://ducklake_rw:ducklake123@127.0.0.1:5432/ducklake_catalog" -c "\dt" | grep anomaly
+rob@rob-GS66-Stealth-10UG:~/Documents/Safecast/safecast-new-map$
+
+---
+
+Not ready..
+
+---
+
+can we test to upload post abnormalities check first?
+
+---
+
+Then go with the next stepts till we are at a point I can test the abnormallities upload.
+
+---
+
+What are the parameters for something to be abnormal and are  the parametres for an admin configurable in the UI?
+
+---
+
+A new tabe for adnomalities of tracks and on top of the table the configrauion settings. A  small config section to the existing /admin/translations-style admin UI and make a new tab for it. Same style and functionaly for interface as the rest of admin pages.
+
+---
+
+That link does not work.
+
+---
+
+Still not working..
+
+---
+
+continue
+
+---
+
+Nice!!! that works.
+
+---
+
+3
+
+---
+
+yes
