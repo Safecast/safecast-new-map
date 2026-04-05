@@ -10843,21 +10843,38 @@ function selectHomeSearchResult(result, query) {
         }
       }
 
-      function renderBotBubble(bubble, text) {
+      function extractJSON(text) {
+        // 1. Pure JSON
         const trimmed = text.trim();
         if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-          try {
-            const data = JSON.parse(trimmed);
-            if (data.type === 'data_preview') {
-              bubble.innerHTML = '';
-              renderDataPreview(data, bubble);
-              return;
-            } else if (data.type === 'export_request') {
-              bubble.innerHTML = '';
-              handleExportRequest(data, bubble);
-              return;
-            }
-          } catch (e) { /* fall through to markdown */ }
+          try { return JSON.parse(trimmed); } catch (e) {}
+        }
+        // 2. Markdown code fence: ```json ... ``` or ``` ... ```
+        const fenceMatch = trimmed.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+        if (fenceMatch) {
+          try { return JSON.parse(fenceMatch[1]); } catch (e) {}
+        }
+        // 3. JSON embedded anywhere in the text (greedy last { to last })
+        const start = text.indexOf('{');
+        const end = text.lastIndexOf('}');
+        if (start !== -1 && end > start) {
+          try { return JSON.parse(text.slice(start, end + 1)); } catch (e) {}
+        }
+        return null;
+      }
+
+      function renderBotBubble(bubble, text) {
+        const data = extractJSON(text);
+        if (data) {
+          if (data.type === 'data_preview') {
+            bubble.innerHTML = '';
+            renderDataPreview(data, bubble);
+            return;
+          } else if (data.type === 'export_request') {
+            bubble.innerHTML = '';
+            handleExportRequest(data, bubble);
+            return;
+          }
         }
         bubble.innerHTML = markdownToHTML(text);
       }
