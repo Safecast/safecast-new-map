@@ -1,0 +1,29 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "2c36c842c12a",
+  "strategy": "manual-commit",
+  "branch": "feat/h3-overlay",
+  "checkpoints_count": 4,
+  "files_touched": [
+    "cmd/unified-server/h3_backfill.go",
+    "cmd/unified-server/main.go",
+    "cmd/unified-server/rest_h3.go",
+    "pkg/database/database.go",
+    "pkg/database/stream.go"
+  ],
+  "sessions": [
+    {
+      "metadata": "/2c/36c842c12a/0/metadata.json",
+      "transcript": "/2c/36c842c12a/0/full.jsonl",
+      "content_hash": "/2c/36c842c12a/0/content_hash.txt",
+      "prompt": "/2c/36c842c12a/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 72,
+    "cache_creation_tokens": 110553,
+    "cache_read_tokens": 4053291,
+    "output_tokens": 26312,
+    "api_call_count": 48
+  }
+}
