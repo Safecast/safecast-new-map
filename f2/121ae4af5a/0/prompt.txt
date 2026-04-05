@@ -170,3 +170,7 @@ For what resltions we have H3 grids now?
 ---
 
 For what zoom resolutions we have H3 grids now?
+
+---
+
+after zoom 18 can we have the markers (withhout H3grids) being pulled, like thye have at https://map.radiaverse.com?
