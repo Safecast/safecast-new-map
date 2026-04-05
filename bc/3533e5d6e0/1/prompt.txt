@@ -1,0 +1,1 @@
+Still json only and it seems the assistamd does not work anymore http://localhost:8765/assistant.. show
