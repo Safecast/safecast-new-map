@@ -159,6 +159,45 @@
       align-self: center;
     }
 
+    /* ── Data Table & Export ── */
+    .data-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin: 12px 0;
+      overflow: hidden;
+    }
+    .data-header {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255,255,255,0.03);
+    }
+    .data-header .meta { font-size: 12px; color: var(--muted); }
+    .data-table-container { overflow-x: auto; max-height: 400px; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .data-table th {
+      text-align: left; padding: 8px 12px;
+      background: rgba(255,255,255,0.05);
+      border-bottom: 1px solid var(--border);
+      color: var(--muted); font-weight: 600;
+      position: sticky; top: 0;
+    }
+    .data-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+    .data-table tr:hover { background: rgba(255,255,255,0.02); }
+    .export-group { display: flex; gap: 8px; }
+    .export-btn {
+      background: var(--green); color: #fff; border: none;
+      border-radius: 4px; padding: 4px 10px; font-size: 12px;
+      cursor: pointer; display: flex; align-items: center; gap: 4px;
+      transition: background .15s;
+    }
+    .export-btn:hover { background: var(--green-dk); }
+    .export-btn svg { width: 12px; height: 12px; fill: #fff; }
+    .export-btn:disabled { opacity: 0.6; cursor: wait; }
+
     .avatar {
       width: 30px; height: 30px; border-radius: 50%;
       flex-shrink: 0; display: flex; align-items: center; justify-content: center;
@@ -470,6 +509,120 @@
     return html;
   }
 
+  const dlSVG = '<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>';
+
+  function extractJSON(text) {
+    const stripped = text.trim()
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```\s*$/, '');
+    const start = stripped.indexOf('{');
+    const end = stripped.lastIndexOf('}');
+    if (start !== -1 && end > start) {
+      try { return JSON.parse(stripped.slice(start, end + 1)); } catch (e) {}
+    }
+    return null;
+  }
+
+  function renderDataPreview(data, container) {
+    const card = document.createElement('div');
+    card.className = 'data-card';
+    const header = document.createElement('div');
+    header.className = 'data-header';
+    let metaText = `Showing ${data.summary.rows_shown} of ${data.summary.rows_total} rows`;
+    if (data.summary.region) metaText += ` in ${data.summary.region}`;
+    header.innerHTML = `<div class="meta">${metaText}</div>`;
+    if (data.table && data.table.length > 0) {
+      const grp = document.createElement('div');
+      grp.className = 'export-group';
+      ['CSV','Excel','JSON'].forEach(f => {
+        const btn = document.createElement('button');
+        btn.className = 'export-btn';
+        btn.innerHTML = `${dlSVG} ${f}`;
+        btn.onclick = () => {
+          const cfg = Object.assign({}, data.suggested_export || { limit: 'full' });
+          cfg.format = f.toLowerCase();
+          triggerExport(cfg, btn);
+        };
+        grp.appendChild(btn);
+      });
+      header.appendChild(grp);
+    }
+    const tc = document.createElement('div');
+    tc.className = 'data-table-container';
+    const table = document.createElement('table');
+    table.className = 'data-table';
+    if (data.table && data.table.length > 0) {
+      const keys = Object.keys(data.table[0]);
+      const thead = document.createElement('thead');
+      const hr = document.createElement('tr');
+      keys.forEach(k => { const th = document.createElement('th'); th.textContent = k.charAt(0).toUpperCase() + k.slice(1).replace('_',' '); hr.appendChild(th); });
+      thead.appendChild(hr); table.appendChild(thead);
+      const tbody = document.createElement('tbody');
+      data.table.forEach(row => {
+        const tr = document.createElement('tr');
+        keys.forEach(k => {
+          const td = document.createElement('td');
+          let v = row[k];
+          if (typeof v === 'object' && v !== null) v = JSON.stringify(v);
+          td.textContent = v;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+    }
+    tc.appendChild(table); card.appendChild(header); card.appendChild(tc);
+    container.appendChild(card);
+  }
+
+  function handleExportRequest(data, container) {
+    const status = document.createElement('div');
+    status.style.cssText = 'padding:10px;font-size:13px;color:var(--muted)';
+    status.innerHTML = `<em>Preparing export of ${data.estimated_rows} rows (${data.mode})...</em>`;
+    container.appendChild(status);
+    if (data.mode === 'sync' || data.estimated_rows < 50000) {
+      triggerExport(data.export_config, null, status);
+    } else {
+      const btn = document.createElement('button');
+      btn.className = 'export-btn'; btn.style.marginTop = '10px';
+      btn.innerHTML = `${dlSVG} Confirm Download`;
+      btn.onclick = () => triggerExport(data.export_config, btn, status);
+      container.appendChild(btn);
+    }
+  }
+
+  async function triggerExport(config, btn, statusEl) {
+    if (btn) { btn.disabled = true; btn.innerHTML = 'Exporting...'; }
+    if (statusEl) statusEl.innerHTML = '<em>Fetching dataset...</em>';
+    try {
+      const response = await fetch('/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config)
+      });
+      if (!response.ok) throw new Error('Export failed: ' + response.statusText);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `safecast_export_${new Date().toISOString().slice(0,10)}.${config.format || 'csv'}`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      if (statusEl) statusEl.innerHTML = '<span style="color:var(--green)">✓ Download started.</span>';
+    } catch (err) {
+      if (statusEl) statusEl.innerHTML = `<span style="color:var(--err)">✗ Export failed: ${err.message}</span>`;
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = `${dlSVG} Export CSV`; }
+    }
+  }
+
+  function renderBotBubble(bubble, text) {
+    const data = extractJSON(text);
+    if (data && data.type === 'data_preview') { bubble.innerHTML = ''; renderDataPreview(data, bubble); return; }
+    if (data && data.type === 'export_request') { bubble.innerHTML = ''; handleExportRequest(data, bubble); return; }
+    bubble.innerHTML = markdownToHTML(text);
+  }
+
   function addMessage(role, text, cls) {
     if (introEl) introEl.style.display = 'none';
 
@@ -491,7 +644,7 @@
     bubble.className = `bubble ${cls || ''}`;
     // User messages are plain text, bot messages support markdown
     if (role === 'bot') {
-      bubble.innerHTML = markdownToHTML(text);
+      renderBotBubble(bubble, text);
 
       // Add copy button for bot messages
       const copyBtn = document.createElement('button');
@@ -644,9 +797,8 @@
       sendBtn.disabled = false;
       msgEl.focus();
 
-      // Display bot response (disclaimer already included in _ai_generated_note from backend)
       if (success && accumulated) {
-        botBubble.innerHTML = markdownToHTML(accumulated);
+        renderBotBubble(botBubble, accumulated);
 
         // Re-add copy button
         const copyBtn = document.createElement('button');
@@ -706,7 +858,7 @@
                   accumulated = '';
                 }
                 accumulated += ev.text;
-                botBubble.innerHTML = markdownToHTML(accumulated);
+                renderBotBubble(botBubble, accumulated);
                 messagesEl.scrollTop = messagesEl.scrollHeight;
               } else if (ev.type === 'done') {
                 if (ev.chat_id) { chatID = ev.chat_id; isCached = !!ev.cached; }
