@@ -799,10 +799,14 @@ func RegisterMCP() {
 		mux.HandleFunc("/chat", chatHandler)
 		mux.HandleFunc("/export", handleExport(mcpURL))
 
-		// Also register /chat and /export on main map server (port 8765) so the
-		// embedded widget can use relative URLs without cross-origin issues.
+		// Also register on main map server (port 8765) so relative URLs work
+		// and /assistant/ is reachable without going through port 3333.
 		http.HandleFunc("/chat", chatHandler)
 		http.HandleFunc("/export", handleExport(mcpURL))
+		http.HandleFunc("/assistant/", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Write(webChatIndexHTML)
+		})
 
 		log.Printf("Web chat enabled at http://localhost:%s/assistant/ (model=%s)", mcpPort, model)
 	} else {
