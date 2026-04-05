@@ -10582,7 +10582,7 @@
         btn.innerHTML = '<span class="status-spinner"></span>...';
         btn.disabled = true;
 
-        fetch('https://assistant.safecast.org/export', {
+        fetch('http://localhost:3334/export', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(expConfig)
@@ -10627,23 +10627,29 @@
         
         let metaText = `Showing ${data.summary.rows_shown} of ${data.summary.rows_total} rows`;
         if (data.summary.region) metaText += ` in ${data.summary.region}`;
+        if (data.summary.lat && data.summary.lon) {
+          metaText += ` (${data.summary.lat}°N, ${data.summary.lon}°E)`;
+        }
         header.innerHTML = `<div class="meta">${metaText}</div>`;
         
-        if (data.export_available) {
+        if (data.export_available || data.type === 'export_request') {
           const btnGroup = document.createElement('div');
           btnGroup.className = 'export-group';
           btnGroup.style.display = 'flex';
           btnGroup.style.gap = '8px';
           
-          const formats = ['CSV', 'Excel', 'JSON'];
+          const formats = [
+            { id: 'csv', label: 'CSV' },
+            { id: 'excel', label: 'Export CSV' }, // Matching Image 2 labels exactly
+            { id: 'json', label: 'JSON' }
+          ];
           formats.forEach(f => {
             const btn = document.createElement('button');
             btn.className = 'export-btn';
-            btn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> ${f}`;
-            const formatId = f.toLowerCase();
+            btn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> ${f.label}`;
             btn.onclick = () => {
-                 const expConfig = Object.assign({}, data.suggested_export || { limit: 'full' });
-                 expConfig.format = formatId;
+                 const expConfig = Object.assign({}, data.suggested_export || data.export_config || { limit: 'full' });
+                 expConfig.format = f.id;
                  triggerExport(expConfig, btn);
             };
             btnGroup.appendChild(btn);
@@ -10696,25 +10702,7 @@
         container.appendChild(card);
       }
 
-      function handleExportRequest(data, container) {
-        const status = document.createElement('div');
-        status.style.padding = '10px';
-        status.style.fontSize = '13px';
-        status.style.color = 'var(--muted, #7a8494)';
-        status.innerHTML = `<em>Preparing export of ${data.estimated_rows} rows (${data.mode})...</em>`;
-        container.appendChild(status);
-        
-        if (data.mode === 'sync' || data.estimated_rows < 50000) {
-            triggerExport(data.export_config, null, status);
-        } else {
-            const btn = document.createElement('button');
-            btn.className = 'export-btn';
-            btn.style.marginTop = '10px';
-            btn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> Confirm Download`;
-            btn.onclick = () => triggerExport(data.export_config, btn, status);
-            container.appendChild(btn);
-        }
-      }
+
 
       async function triggerExport(config, btn, statusEl) {
         if (btn) {
@@ -10847,13 +10835,9 @@
               
               const data = JSON.parse(jsonStr.trim());
               if (data && data.type) {
-                if (data.type === 'data_preview') {
+                if (data.type === 'data_preview' || data.type === 'export_request') {
                   botBubble.innerHTML = ''; 
                   renderDataPreview(data, botBubble);
-                  isDataAware = true;
-                } else if (data.type === 'export_request') {
-                  botBubble.innerHTML = '';
-                  handleExportRequest(data, botBubble);
                   isDataAware = true;
                 }
               }
@@ -10875,7 +10859,7 @@
         }
 
         // TODO: Revert to 'https://assistant.safecast.org/chat' before deploying
-        fetch('https://assistant.safecast.org/chat', {
+        fetch('http://localhost:3334/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

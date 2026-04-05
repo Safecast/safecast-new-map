@@ -1,0 +1,6 @@
+# safecast-new-map/cmd/safecast-new-map
+cmd\safecast-new-map\main.go:6163:6: not enough arguments in call to safecastfetcher.ImportSafecastFile
+	have (context.Context, []byte, string, int64, string, string, string, *database.Database, string, nil)
+	want (context.Context, []byte, string, int64, string, string, string, string, *database.Database, string, safecastfetcher.ImporterFunc)
+cmd\safecast-new-map\main.go:8785:37: cannot use importerFunc (variable of type func(ctx context.Context, fileContent []byte, filename string, safecastImportID int64, sourceURL string, userID string, username string, db *database.Database, dbType string) (trackID string, markerCount int, err error)) as safecastfetcher.ImporterFunc value in assignment
+cmd\safecast-new-map\main.go:8794:18: cannot use importerFunc (variable of type func(ctx context.Context, fileContent []byte, filename string, safecastImportID int64, sourceURL string, userID string, username string, db *database.Database, dbType string) (trackID string, markerCount int, err error)) as safecastfetcher.ImporterFunc value in struct literal
