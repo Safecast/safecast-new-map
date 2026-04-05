@@ -1,0 +1,1 @@
+Both fixes work. But I do not see the export buttons for CVS and Excel when a table is displayed. as in Azamat his screenshot..
