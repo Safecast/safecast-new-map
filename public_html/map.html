@@ -1764,6 +1764,66 @@
       font-family: inherit;
       color: var(--modal-text);
     }
+    
+    /* ── Data Table & Export ── */
+    .data-card {
+      background: var(--surface, #242930);
+      border: 1px solid var(--border, #2e3540);
+      border-radius: 8px;
+      margin: 12px 0;
+      overflow: hidden;
+      color: #e4e8ef;
+    }
+    .data-header {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border, #2e3540);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .data-header .meta { font-size: 12px; color: var(--muted, #7a8494); }
+    .data-table-container {
+      overflow-x: auto;
+      max-height: 400px;
+    }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .data-table th {
+      text-align: left;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border-bottom: 1px solid var(--border, #2e3540);
+      color: var(--muted, #7a8494);
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+    }
+    .data-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border, #2e3540);
+    }
+    .data-table tr:hover { background: rgba(255, 255, 255, 0.02); }
+    
+    .export-btn {
+      background: var(--green, #1e88e5);
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: background .15s;
+    }
+    .export-btn:hover { background: var(--green-dk, #1565c0); }
+    .export-btn svg { width: 12px; height: 12px; fill: #fff; }
+    .export-btn.loading { opacity: 0.7; cursor: wait; }
   </style>
 
   <!-- Translation script -->
@@ -10517,6 +10577,174 @@
         return html;
       }
 
+      function triggerExport(expConfig, btn) {
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="status-spinner"></span>...';
+        btn.disabled = true;
+
+        fetch('http://localhost:3334/export', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(expConfig)
+        })
+        .then(res => {
+          if (!res.ok) throw new Error('Export failed');
+          const ext = expConfig.format === 'excel' ? 'xlsx' : expConfig.format;
+          const disposition = res.headers.get('Content-Disposition');
+          let filename = `safecast_export.${ext}`;
+          if (disposition && disposition.indexOf('attachment') !== -1) {
+             const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition);
+             if (matches != null && matches[1]) filename = matches[1].replace(/['"]/g, '');
+          }
+          return res.blob().then(blob => ({ blob, filename }));
+        })
+        .then(({ blob, filename }) => {
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.style.display = 'none';
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        })
+        .catch(err => {
+          console.error('Export error:', err);
+          alert('Export failed for this payload');
+        })
+        .finally(() => {
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+        });
+      }
+
+      function renderDataPreview(data, container) {
+        const card = document.createElement('div');
+        card.className = 'data-card';
+        const header = document.createElement('div');
+        header.className = 'data-header';
+        
+        let metaText = `Showing ${data.summary.rows_shown} of ${data.summary.rows_total} rows`;
+        if (data.summary.region) metaText += ` in ${data.summary.region}`;
+        if (data.summary.lat && data.summary.lon) {
+          metaText += ` (${data.summary.lat}°N, ${data.summary.lon}°E)`;
+        }
+        header.innerHTML = `<div class="meta">${metaText}</div>`;
+        
+        if (data.export_available || data.type === 'export_request') {
+          const btnGroup = document.createElement('div');
+          btnGroup.className = 'export-group';
+          btnGroup.style.display = 'flex';
+          btnGroup.style.gap = '8px';
+          
+          const formats = [
+            { id: 'csv', label: 'CSV' },
+            { id: 'excel', label: 'Export CSV' }, // Matching Image 2 labels exactly
+            { id: 'json', label: 'JSON' }
+          ];
+          formats.forEach(f => {
+            const btn = document.createElement('button');
+            btn.className = 'export-btn';
+            btn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> ${f.label}`;
+            btn.onclick = () => {
+                 const expConfig = Object.assign({}, data.suggested_export || data.export_config || { limit: 'full' });
+                 expConfig.format = f.id;
+                 triggerExport(expConfig, btn);
+            };
+            btnGroup.appendChild(btn);
+          });
+          header.appendChild(btnGroup);
+        }
+        
+        const tableContainer = document.createElement('div');
+        tableContainer.className = 'data-table-container';
+        const table = document.createElement('table');
+        table.className = 'data-table';
+        
+        if (data.table && data.table.length > 0) {
+          const keys = Object.keys(data.table[0]);
+          const thead = document.createElement('thead');
+          const headerRow = document.createElement('tr');
+          keys.forEach(k => {
+            const th = document.createElement('th');
+            th.textContent = k.charAt(0).toUpperCase() + k.slice(1).replace(/_/g, ' ');
+            headerRow.appendChild(th);
+          });
+          thead.appendChild(headerRow);
+          table.appendChild(thead);
+          
+          const tbody = document.createElement('tbody');
+          data.table.forEach(row => {
+            const tr = document.createElement('tr');
+            keys.forEach(k => {
+              const td = document.createElement('td');
+              let val = row[k];
+              if (typeof val === 'object' && val !== null) {
+                val = JSON.stringify(val);
+              }
+              if (k === 'device_id' && row.lat && row.lon) {
+                td.innerHTML = `<a href="https://simplemap.safecast.org/?lat=${row.lat}&lon=${row.lon}&zoom=15" target="_blank">${val}</a>`;
+              } else if (typeof val === 'string' && val.includes('https://simplemap.safecast.org')) {
+                td.innerHTML = markdownToHTML(val);
+              } else {
+                td.textContent = val;
+              }
+              tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+          });
+          table.appendChild(tbody);
+        }
+        tableContainer.appendChild(table);
+        card.appendChild(header);
+        card.appendChild(tableContainer);
+        container.appendChild(card);
+      }
+
+
+
+      async function triggerExport(config, btn, statusEl) {
+        if (btn) {
+            btn.disabled = true;
+            btn.classList.add('loading');
+            btn.innerHTML = 'Exporting...';
+        }
+        if (statusEl) statusEl.innerHTML = `<em>Fetching dataset... this may take a moment.</em>`;
+
+        try {
+            // TODO: Change localhost:3334 to relative /export or production domain
+            const response = await fetch('http://localhost:3334/export', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config)
+            });
+
+            if (!response.ok) throw new Error('Export failed: ' + response.statusText);
+
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `safecast_export_${new Date().toISOString().slice(0,10)}.${config.format || 'csv'}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            if (statusEl) statusEl.innerHTML = `<span style="color:var(--upload-btn-bg, #4caf50)">✓ Export complete. Download started.</span>`;
+        } catch (err) {
+            console.error(err);
+            if (statusEl) statusEl.innerHTML = `<span style="color:var(--err, #e17055)">✗ Export failed: ${err.message}</span>`;
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.classList.remove('loading');
+                btn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> Export CSV`;
+            }
+        }
+      }
+
       function addMessageUI(role, text) {
         const row = document.createElement('div');
         row.className = `ai-msg-row ${role}`;
@@ -10591,9 +10819,34 @@
           sendBtn.disabled = false;
           msgInput.focus();
           if (success && accumulated) {
-            // Add disclaimer to the response
-            const responseWithDisclaimer = accumulated + AI_DISCLAIMER;
-            botBubble.innerHTML = markdownToHTML(responseWithDisclaimer);
+            let isDataAware = false;
+            try {
+              let jsonStr = accumulated;
+              const jsonMatch = accumulated.match(/```(?:json)?\s*([\s\S]*?)```/);
+              if (jsonMatch) {
+                jsonStr = jsonMatch[1];
+              } else {
+                const firstBrace = accumulated.indexOf('{');
+                const lastBrace = accumulated.lastIndexOf('}');
+                if (firstBrace !== -1 && lastBrace !== -1) {
+                  jsonStr = accumulated.substring(firstBrace, lastBrace + 1);
+                }
+              }
+              
+              const data = JSON.parse(jsonStr.trim());
+              if (data && data.type) {
+                if (data.type === 'data_preview' || data.type === 'export_request') {
+                  botBubble.innerHTML = ''; 
+                  renderDataPreview(data, botBubble);
+                  isDataAware = true;
+                }
+              }
+            } catch (e) { /* fallback to markdown */ }
+
+            if (!isDataAware) {
+              const responseWithDisclaimer = accumulated + AI_DISCLAIMER;
+              botBubble.innerHTML = markdownToHTML(responseWithDisclaimer);
+            }
             
             chatHistory.push(
               { role: 'user', content: text },
@@ -10605,7 +10858,8 @@
           }
         }
 
-        fetch('https://assistant.safecast.org/chat', {
+        // TODO: Revert to 'https://assistant.safecast.org/chat' before deploying
+        fetch('http://localhost:3334/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -10636,6 +10890,7 @@
                       accumulated = '';
                     }
                     accumulated += ev.text;
+                    // Always update raw markdown initially so we see streaming text
                     botBubble.innerHTML = markdownToHTML(accumulated);
                     messagesEl.scrollTop = messagesEl.scrollHeight;
                   } else if (ev.type === 'action' || ev.action) {

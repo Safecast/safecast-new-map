@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -23,6 +25,7 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 	httpSwagger "github.com/swaggo/http-swagger"
 	"safecast-new-map/cmd/unified-server/model-adapter"
+	"github.com/xuri/excelize/v2"
 )
 
 var (
@@ -465,6 +468,181 @@ func handleFeedback() http.HandlerFunc {
 	}
 }
 
+func handleExport(mcpURL string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("Access-Control-Expose-Headers", "Content-Disposition")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		var exportReq struct {
+			Format        string    `json:"format"`
+			Limit         string    `json:"limit"`
+			TimeRange     string    `json:"time_range"`
+			Bbox          []float64 `json:"bbox"`
+			Region        string    `json:"region"`
+			Columns       []string  `json:"columns"`
+			Aggregation   string    `json:"aggregation"`
+			SuggestedTool string    `json:"suggested_tool"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&exportReq); err != nil {
+			http.Error(w, "Invalid request", http.StatusBadRequest)
+			return
+		}
+
+		var data map[string]any
+
+		ctx := r.Context()
+		mc, err := mcpclient.NewStreamableHttpClient(mcpURL)
+		if err != nil {
+			http.Error(w, "MCP connection failed: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		defer mc.Close()
+
+		if _, err := mc.Initialize(ctx, mcp.InitializeRequest{
+			Params: mcp.InitializeParams{
+				ProtocolVersion: mcp.LATEST_PROTOCOL_VERSION,
+				ClientInfo:      mcp.Implementation{Name: "safecast-export", Version: "1.0.0"},
+			},
+		}); err != nil {
+			http.Error(w, "MCP init error", http.StatusInternalServerError)
+			return
+		}
+
+		toolName := "query_radiation"
+		if exportReq.SuggestedTool != "" {
+			toolName = exportReq.SuggestedTool
+		}
+
+		limit := 10000
+		if exportReq.Limit == "full" {
+			limit = 100000
+		}
+
+		args := map[string]any{"limit": limit}
+		if len(exportReq.Bbox) == 4 {
+			args["min_lat"] = exportReq.Bbox[0]
+			args["min_lon"] = exportReq.Bbox[1]
+			args["max_lat"] = exportReq.Bbox[2]
+			args["max_lon"] = exportReq.Bbox[3]
+			args["lat"] = (exportReq.Bbox[0] + exportReq.Bbox[2]) / 2
+			args["lon"] = (exportReq.Bbox[1] + exportReq.Bbox[3]) / 2
+			args["radius_m"] = 50000
+		}
+
+		callReq := mcp.CallToolRequest{}
+		callReq.Params.Name = toolName
+		callReq.Params.Arguments = args
+
+		toolResult, err := mc.CallTool(ctx, callReq)
+		if err != nil {
+			http.Error(w, "Tool call failed: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		var resultText string
+		for _, c := range toolResult.Content {
+			if tc, ok := c.(mcp.TextContent); ok {
+				resultText += tc.Text
+			}
+		}
+		if err := json.Unmarshal([]byte(resultText), &data); err != nil {
+			http.Error(w, "Parse tool result failed", http.StatusInternalServerError)
+			return
+		}
+
+		switch exportReq.Format {
+		case "json":
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Content-Disposition", "attachment; filename=safecast_export.json")
+			json.NewEncoder(w).Encode(data)
+		case "excel", "xlsx":
+			w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+			w.Header().Set("Content-Disposition", "attachment; filename=safecast_export.xlsx")
+			var rows []any
+			if m, ok := data["measurements"].([]any); ok {
+				rows = m
+			} else if r2, ok := data["readings"].([]any); ok {
+				rows = r2
+			}
+			f := excelize.NewFile()
+			defer f.Close()
+			f.SetSheetName("Sheet1", "Data")
+			if len(rows) > 0 {
+				firstRow, _ := rows[0].(map[string]any)
+				var headers []string
+				for k := range firstRow {
+					headers = append(headers, k)
+				}
+				sort.Strings(headers)
+				for i, h := range headers {
+					cell, _ := excelize.CoordinatesToCellName(i+1, 1)
+					f.SetCellValue("Data", cell, h)
+				}
+				for rowIdx, r2 := range rows {
+					rowMap, _ := r2.(map[string]any)
+					for colIdx, h := range headers {
+						val := rowMap[h]
+						cell, _ := excelize.CoordinatesToCellName(colIdx+1, rowIdx+2)
+						if m, ok := val.(map[string]any); ok {
+							b, _ := json.Marshal(m)
+							f.SetCellValue("Data", cell, string(b))
+						} else {
+							f.SetCellValue("Data", cell, val)
+						}
+					}
+				}
+			}
+			f.Write(w)
+		default: // csv
+			w.Header().Set("Content-Type", "text/csv")
+			w.Header().Set("Content-Disposition", "attachment; filename=safecast_export.csv")
+			var rows []any
+			if m, ok := data["measurements"].([]any); ok {
+				rows = m
+			} else if r2, ok := data["readings"].([]any); ok {
+				rows = r2
+			}
+			if len(rows) > 0 {
+				writer := csv.NewWriter(w)
+				firstRow, _ := rows[0].(map[string]any)
+				var headers []string
+				for k := range firstRow {
+					headers = append(headers, k)
+				}
+				sort.Strings(headers)
+				writer.Write(headers)
+				for _, r2 := range rows {
+					row, _ := r2.(map[string]any)
+					var line []string
+					for _, h := range headers {
+						val := row[h]
+						if m, ok := val.(map[string]any); ok {
+							b, _ := json.Marshal(m)
+							line = append(line, string(b))
+						} else {
+							line = append(line, fmt.Sprintf("%v", val))
+						}
+					}
+					writer.Write(line)
+				}
+				writer.Flush()
+			} else {
+				fmt.Fprint(w, "No data available")
+			}
+		}
+	}
+}
+
 // RegisterMCP starts the MCP server on a separate port (default 3333).
 func RegisterMCP() {
 	log.Println("DEBUG: safecast unified server with MCP integration")
@@ -590,11 +768,12 @@ func RegisterMCP() {
 			w.Write(webChatLogoPNG)
 		})
 		mux.HandleFunc("/chat", chatHandler)
+		mux.HandleFunc("/export", handleExport(mcpURL))
 
-		// Also register /chat on main map server (port 8765) so the
-		// embedded widget can use a relative "/chat" URL without
-		// cross-origin or CloudFront routing issues.
+		// Also register /chat and /export on main map server (port 8765) so the
+		// embedded widget can use relative URLs without cross-origin issues.
 		http.HandleFunc("/chat", chatHandler)
+		http.HandleFunc("/export", handleExport(mcpURL))
 
 		log.Printf("Web chat enabled at http://localhost:%s/assistant/ (model=%s)", mcpPort, model)
 	} else {
