@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "82b46f91e5e9",
+  "strategy": "manual-commit",
+  "branch": "feat/anomaly-detection-and-geo-tools",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "cmd/mcp-server/geo_helpers.go",
+    "cmd/unified-server/duckdb_analytics.go",
+    "cmd/unified-server/geo_helpers.go"
+  ],
+  "sessions": [
+    {
+      "metadata": "/82/b46f91e5e9/0/metadata.json",
+      "transcript": "/82/b46f91e5e9/0/full.jsonl",
+      "content_hash": "/82/b46f91e5e9/0/content_hash.txt",
+      "prompt": "/82/b46f91e5e9/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 270,
+    "cache_creation_tokens": 358132,
+    "cache_read_tokens": 19410443,
+    "output_tokens": 104679,
+    "api_call_count": 222
+  }
+}
