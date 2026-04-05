@@ -10844,21 +10844,14 @@ function selectHomeSearchResult(result, query) {
       }
 
       function extractJSON(text) {
-        // 1. Pure JSON
-        const trimmed = text.trim();
-        if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-          try { return JSON.parse(trimmed); } catch (e) {}
-        }
-        // 2. Markdown code fence: ```json ... ``` or ``` ... ```
-        const fenceMatch = trimmed.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-        if (fenceMatch) {
-          try { return JSON.parse(fenceMatch[1]); } catch (e) {}
-        }
-        // 3. JSON embedded anywhere in the text (greedy last { to last })
-        const start = text.indexOf('{');
-        const end = text.lastIndexOf('}');
+        // Strip markdown code fence prefix/suffix first, then find first { to last }
+        const stripped = text.trim()
+          .replace(/^```(?:json)?\s*/i, '')
+          .replace(/\s*```\s*$/, '');
+        const start = stripped.indexOf('{');
+        const end = stripped.lastIndexOf('}');
         if (start !== -1 && end > start) {
-          try { return JSON.parse(text.slice(start, end + 1)); } catch (e) {}
+          try { return JSON.parse(stripped.slice(start, end + 1)); } catch (e) {}
         }
         return null;
       }
