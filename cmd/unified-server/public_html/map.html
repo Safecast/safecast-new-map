@@ -7970,15 +7970,50 @@ function h3DoseColor(dose) {
   return { color: 'rgb(255,255,0)', opacity: 0.85 };
 }
 
+// At this zoom and above, show individual markers instead of H3 hexagons.
+var H3_MARKER_ZOOM = 18;
+
 /**
  * Fetch /api/h3grid for current viewport and redraw the H3 overlay layer.
- * Works at all zoom levels (1–18). Always overlays realtime sensors on top.
+ * At zoom >= H3_MARKER_ZOOM (default 18), switches to individual markers.
+ * Always overlays realtime sensors on top.
  */
 function refreshH3Grid() {
   if (!h3GridActive || !map) return;
 
   const bounds = map.getBounds();
   const zoom   = map.getZoom();
+
+  // ── High-zoom fallback: individual markers ──────────────────────────────
+  if (zoom >= H3_MARKER_ZOOM) {
+    if (h3GridFetchCtrl) { h3GridFetchCtrl.abort(); h3GridFetchCtrl = null; }
+    h3GridLayer.clearLayers();
+
+    const params = new URLSearchParams({
+      zoom  : zoom,
+      minLat: bounds.getSouth(),
+      minLon: bounds.getWest(),
+      maxLat: bounds.getNorth(),
+      maxLon: bounds.getEast()
+    });
+
+    // Reuse the SSE stream endpoint so we get the same dose-rate markers.
+    const es = new EventSource('/stream_markers?' + params);
+    let count = 0;
+    es.onmessage = function(e) {
+      try {
+        const m = JSON.parse(e.data);
+        if (m && m.doseRate > 0) {
+          const marker = createMarkerFromData(m, zoom);
+          if (marker) { h3GridLayer.addLayer(marker); count++; }
+        }
+      } catch(err) { /* skip bad frames */ }
+    };
+    es.addEventListener('done', function() { es.close(); console.log('[H3 Grid] markers zoom=' + zoom + ' n=' + count); });
+    es.onerror = function() { es.close(); };
+    return;
+  }
+  // ────────────────────────────────────────────────────────────────────────
 
   if (typeof h3 === 'undefined') {
     console.error('H3 Grid: h3-js library not loaded — hexagons disabled');
