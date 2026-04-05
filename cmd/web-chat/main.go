@@ -553,14 +553,17 @@ func handleExport(mcpURL string) http.HandlerFunc {
 		}
 
 		var exportReq struct {
-			Format       string         `json:"format"`
-			Limit        string         `json:"limit"`
-			TimeRange    string         `json:"time_range"`
-			Bbox         []float64      `json:"bbox"`
-			Region       string         `json:"region"`
-			Columns      []string       `json:"columns"`
-			Aggregation  string         `json:"aggregation"`
-			SuggestedTool string         `json:"suggested_tool"`
+			Format        string    `json:"format"`
+			Limit         string    `json:"limit"`
+			TimeRange     string    `json:"time_range"`
+			Bbox          []float64 `json:"bbox"`
+			Region        string    `json:"region"`
+			Columns       []string  `json:"columns"`
+			Aggregation   string    `json:"aggregation"`
+			SuggestedTool string    `json:"suggested_tool"`
+			Lat           float64   `json:"lat"`
+			Lon           float64   `json:"lon"`
+			RadiusM       float64   `json:"radius_m"`
 		}
 
 		if err := json.NewDecoder(r.Body).Decode(&exportReq); err != nil {
@@ -613,20 +616,23 @@ func handleExport(mcpURL string) http.HandlerFunc {
 				limit = 100000
 			}
 
-			args := map[string]any{
-				"limit": limit,
-			}
+			args := map[string]any{"limit": limit}
 			if len(exportReq.Bbox) == 4 {
 				args["min_lat"] = exportReq.Bbox[0]
 				args["min_lon"] = exportReq.Bbox[1]
 				args["max_lat"] = exportReq.Bbox[2]
 				args["max_lon"] = exportReq.Bbox[3]
-				
-				centerLat := (exportReq.Bbox[0] + exportReq.Bbox[2]) / 2
-				centerLon := (exportReq.Bbox[1] + exportReq.Bbox[3]) / 2
-				args["lat"] = centerLat
-				args["lon"] = centerLon
-				args["radius_m"] = 50000 
+				args["lat"] = (exportReq.Bbox[0] + exportReq.Bbox[2]) / 2
+				args["lon"] = (exportReq.Bbox[1] + exportReq.Bbox[3]) / 2
+				args["radius_m"] = 50000
+			} else if exportReq.Lat != 0 || exportReq.Lon != 0 {
+				args["lat"] = exportReq.Lat
+				args["lon"] = exportReq.Lon
+				radius := exportReq.RadiusM
+				if radius == 0 {
+					radius = 50000
+				}
+				args["radius_m"] = radius
 			}
 
 			callReq := mcp.CallToolRequest{}
