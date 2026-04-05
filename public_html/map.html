@@ -10577,6 +10577,48 @@
         return html;
       }
 
+      function triggerExport(expConfig, btn) {
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="status-spinner"></span>...';
+        btn.disabled = true;
+
+        fetch('https://assistant.safecast.org/export', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(expConfig)
+        })
+        .then(res => {
+          if (!res.ok) throw new Error('Export failed');
+          const ext = expConfig.format === 'excel' ? 'xlsx' : expConfig.format;
+          const disposition = res.headers.get('Content-Disposition');
+          let filename = `safecast_export.${ext}`;
+          if (disposition && disposition.indexOf('attachment') !== -1) {
+             const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition);
+             if (matches != null && matches[1]) filename = matches[1].replace(/['"]/g, '');
+          }
+          return res.blob().then(blob => ({ blob, filename }));
+        })
+        .then(({ blob, filename }) => {
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.style.display = 'none';
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        })
+        .catch(err => {
+          console.error('Export error:', err);
+          alert('Export failed for this payload');
+        })
+        .finally(() => {
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+        });
+      }
+
       function renderDataPreview(data, container) {
         const card = document.createElement('div');
         card.className = 'data-card';
@@ -10791,9 +10833,20 @@
           if (success && accumulated) {
             let isDataAware = false;
             try {
-              const trimmed = accumulated.trim();
-              if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-                const data = JSON.parse(trimmed);
+              let jsonStr = accumulated;
+              const jsonMatch = accumulated.match(/```(?:json)?\s*([\s\S]*?)```/);
+              if (jsonMatch) {
+                jsonStr = jsonMatch[1];
+              } else {
+                const firstBrace = accumulated.indexOf('{');
+                const lastBrace = accumulated.lastIndexOf('}');
+                if (firstBrace !== -1 && lastBrace !== -1) {
+                  jsonStr = accumulated.substring(firstBrace, lastBrace + 1);
+                }
+              }
+              
+              const data = JSON.parse(jsonStr.trim());
+              if (data && data.type) {
                 if (data.type === 'data_preview') {
                   botBubble.innerHTML = ''; 
                   renderDataPreview(data, botBubble);
@@ -10822,7 +10875,7 @@
         }
 
         // TODO: Revert to 'https://assistant.safecast.org/chat' before deploying
-        fetch('http://localhost:3334/chat', {
+        fetch('https://assistant.safecast.org/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
