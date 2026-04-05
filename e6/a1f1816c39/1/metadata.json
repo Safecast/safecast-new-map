@@ -1,0 +1,36 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "e6a1f1816c39",
+  "session_id": "fdaaa736-904a-4a0c-958c-b0ff6f936ce9",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-05T21:42:25.837474546Z",
+  "branch": "feat/chat-data-export-map-widget",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "cmd/unified-server/mcp_register.go",
+    "cmd/unified-server/public_html/map.html"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "4ed7f68420c0",
+  "checkpoint_transcript_start": 297,
+  "transcript_lines_at_start": 297,
+  "token_usage": {
+    "input_tokens": 12,
+    "cache_creation_tokens": 4920,
+    "cache_read_tokens": 865757,
+    "output_tokens": 2717,
+    "api_call_count": 10
+  },
+  "session_metrics": {
+    "turn_count": 9
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-05T21:42:21.686806531Z",
+    "agent_lines": 31,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 31,
+    "agent_percentage": 100
+  }
+}
