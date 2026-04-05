@@ -1,0 +1,1 @@
+Local assist works, but downlaod of the data does not work?
