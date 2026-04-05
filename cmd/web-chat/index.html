@@ -660,9 +660,10 @@
       // Try to parse as data-aware JSON first
       let isDataAware = false;
       try {
-          const trimmed = text.trim();
-          if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-              const data = JSON.parse(trimmed);
+          const stripped = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
+          const s = stripped.indexOf('{'), e = stripped.lastIndexOf('}');
+          if (s !== -1 && e > s) {
+              const data = JSON.parse(stripped.slice(s, e + 1));
               if (data.type === 'data_preview') {
                   renderDataPreview(data, bubble);
                   isDataAware = true;
