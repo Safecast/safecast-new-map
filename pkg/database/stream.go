@@ -32,8 +32,8 @@ func (db *Database) StreamMarkersForH3(ctx context.Context, zoom int, minLat, mi
 		var query string
 		switch dbType {
 		case "pgx":
-			// Exclude airborne measurements: speed > 150 m/s ≈ 540 km/h (planes ~200-270 m/s)
-			speedFilter := "AND (speed IS NULL OR speed = 0 OR speed < 150)"
+			// Exclude vehicle/airborne measurements: speed > 45 m/s ≈ 100 mph (RadiaMaps standard)
+			speedFilter := "AND (speed IS NULL OR speed = 0 OR speed < 45)"
 			if samplePct < 100 {
 				query = fmt.Sprintf(`
 					SELECT id, doserate, date, lon, lat, countrate, zoom, COALESCE(speed,0), trackid,

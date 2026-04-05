@@ -10357,9 +10357,6 @@ func main() {
 	// Note: /stream_markers is Server-Sent Events (streaming) so gzip is skipped.
 	// Gzip doesn't work well with streaming responses due to buffering.
 	http.HandleFunc("/stream_markers", streamMarkersHandler)
-	// H3 hexagonal grid overlay endpoint
-	restH3 := RESTHandler{}
-	http.HandleFunc("/api/h3grid", restH3.handleH3Grid)
 	// Realtime sensors endpoint for H3 overlay (returns current sensor positions)
 	http.HandleFunc("/api/realtime", func(w http.ResponseWriter, r *http.Request) {
 		if !*safecastRealtimeEnabled {
@@ -10452,6 +10449,11 @@ func main() {
 			}
 		}()
 	}
+
+	// Background H3 index fill — populates h3_res5/7/9 columns for existing markers.
+	ctxH3, cancelH3 := context.WithCancel(context.Background())
+	defer cancelH3()
+	go backfillH3IndicesBackground(ctxH3)
 
 	// асинхронные индексы в бд без блокирования основного процесса начало
 	ctxIdx, cancelIdx := context.WithCancel(context.Background())

@@ -1724,6 +1724,9 @@ func (db *Database) ensureMarkerMetadataColumns(dbType string) error {
 		{name: "tube", def: "tube TEXT"},
 		{name: "country", def: "country TEXT"},
 		{name: "has_spectrum", def: "has_spectrum INTEGER DEFAULT 0"},
+		{name: "h3_res5", def: "h3_res5 TEXT"},
+		{name: "h3_res7", def: "h3_res7 TEXT"},
+		{name: "h3_res9", def: "h3_res9 TEXT"},
 	}
 
 	switch strings.ToLower(dbType) {
