@@ -1,0 +1,23 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "f2121ae4af5a",
+  "strategy": "manual-commit",
+  "branch": "feat/h3-overlay",
+  "checkpoints_count": 3,
+  "files_touched": null,
+  "sessions": [
+    {
+      "metadata": "/f2/121ae4af5a/0/metadata.json",
+      "transcript": "/f2/121ae4af5a/0/full.jsonl",
+      "content_hash": "/f2/121ae4af5a/0/content_hash.txt",
+      "prompt": "/f2/121ae4af5a/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 292,
+    "cache_creation_tokens": 370212,
+    "cache_read_tokens": 19073715,
+    "output_tokens": 99556,
+    "api_call_count": 218
+  }
+}
