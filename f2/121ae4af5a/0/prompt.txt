@@ -1,0 +1,172 @@
+Can you have a look at this issue(https://codeberg.org/Safecast/safecast-new-map/issues/6) , make a list what we:
+1- is already implemeted, 
+2- can do simply and fast  
+3 -what requires much more structual cahnges/work
+
+---
+
+Please make a plan the the issues to be implemented:
+2	Post-upload anomaly detection	Fast (1-2 days)
+6	Basic geology context tool	Fast (1 day)
+7	Technogenic POI lookup (OSM)	Fast (1 day)
+8	Basic water route context	Fast (1-2 days)
+
+---
+
+Step 1-2 please..
+
+---
+
+What are the next steps?
+
+---
+
+Let me first check the spet 1and 2 if they are working as expected. What would you suggest I do for testing?
+
+---
+
+rob@rob-GS66-Stealth-10UG:~/Documents/Safecast/safecast-new-map$ /usr/local/go/bin/go build -o safecast-new-map ./cmd/unified-server/ && bash local-server-config.sh
+2026/04/05 09:56:40 [i18n] Loaded translations from embedded file (fallback)
+2026/04/05 09:56:40 PostgreSQL connection pool tuned: MaxOpenConns=64 (4×16 CPU cores), idle_timeout=2m, lifetime=5m
+2026/04/05 09:56:40 DB init: error connecting to the database: failed to connect to `user=postgres database=safecast`:
+        127.0.0.1:5432 (127.0.0.1): dial error: dial tcp 127.0.0.1:5432: connect: connection refused
+        127.0.0.1:5432 (127.0.0.1): dial error: dial tcp 127.0.0.1:5432: connect: connection refused
+rob@rob-GS66-Stealth-10UG:~/Documents/Safecast/safecast-new-map$
+
+---
+
+<ide_opened_file>The user opened the file /home/rob/Documents/Safecast/safecast-new-map/docs/architecture-overview.mmd in the IDE. This may or may not be related to the current task.</ide_opened_file>
+How to check:
+
+That covers both steps — if it boots cleanly and query_analytics accepts a SELECT on track_anomaly_summaries, you're good to proceed to step 3.
+
+---
+
+rob@rob-GS66-Stealth-10UG:~/Documents/Safecast/safecast-new-map$ curl -s "http://localhost:8765/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Use query_analytics to run: SELECT COUNT(*) FROM track_anomaly_summaries"}' | jq .
+jq: parse error: Invalid numeric literal at line 1, column 10
+rob@rob-GS66-Stealth-10UG:~/Documents/Safecast/safecast-new-map$
+
+---
+
+Waht is ducklake password?
+
+---
+
+rob@rob-GS66-Stealth-10UG:~/Documents/Safecast/safecast-new-map$ psql "postgresql://ducklake_rw:ducklake123@127.0.0.1:5432/ducklake_catalog" -c "\dt" | grep anomaly
+rob@rob-GS66-Stealth-10UG:~/Documents/Safecast/safecast-new-map$
+
+---
+
+Not ready..
+
+---
+
+can we test to upload post abnormalities check first?
+
+---
+
+Then go with the next stepts till we are at a point I can test the abnormallities upload.
+
+---
+
+What are the parameters for something to be abnormal and are  the parametres for an admin configurable in the UI?
+
+---
+
+A new tabe for adnomalities of tracks and on top of the table the configrauion settings. A  small config section to the existing /admin/translations-style admin UI and make a new tab for it. Same style and functionaly for interface as the rest of admin pages.
+
+---
+
+That link does not work.
+
+---
+
+Still not working..
+
+---
+
+continue
+
+---
+
+Nice!!! that works.
+
+---
+
+3
+
+---
+
+yes
+
+---
+
+can you make a  branch for the implemention for the new features, commit and push to GitHub and Codeberg?
+
+---
+
+I like to switch to the H3grid branch first before testing..
+
+---
+
+I got some information from a seach that would maybe help us the get the H3grid faster working . :
+
+I'll fetch that URL to analyze how the H3 grid layer is built. I notice there might be a typo in the URL — let me try the likely correct domain.Let me search for it first.Good, I found it. Now let me fetch the actual map page to examine its JavaScript source and understand how the H3 grid layer is implemented.The map page is blocking automated fetching. Let me try the main RadiaMaps site to find more technical details about how the H3 grid works.Now let me try to fetch the actual Radiaverse map page to inspect the JavaScript source:Excellent — that RadiaMaps UI dump is very revealing. Now I have enough to piece together a solid analysis. Here's what I found, Rob:
+
+## How the Radiaverse / RadiaMaps H3 Grid Layer Works
+
+Based on what I could gather (the site blocks automated fetching, so this is reconstructed from the FAQ, ToS, UI elements, and the RadiaMaps interface), here's the architecture:
+
+### 1. H3 Resolution & Zoom Mapping
+
+The RadiaMaps UI exposes a `HEX_RESOLUTION` control with an "Auto (Adjusts with Zoom)" mode and manual overrides from resolution 3 (world scale) through 15, with named levels: 3=WORLD, 4=CONTINENTAL, 5=COUNTRY, 6=REGION, 7=CITY, 8=DISTRICT, 9=BLOCK, 10=BUILDING, then 11–15 unnamed. So the hexagon grid dynamically adjusts resolution as you zoom in/out — this is the standard multi-resolution H3 approach where the map viewport zoom level is mapped to an appropriate H3 resolution.
+
+### 2. Data Pipeline (Server-Side)
+
+The backend does the heavy lifting:
+
+- **Ingestion**: Users upload track files from RadiaCode devices. The system calculates derived data including speed and H3 indices from the raw GPS + dose rate readings.
+- **Speed filtering**: Readings taken at over 100 mph are filtered out of the hexagon averaging algorithm — this removes noisy highway/aircraft data that would skew the averages.
+- **H3 indexing**: Each valid reading's lat/lng is converted to an H3 cell index at the relevant resolution(s) using `latLngToCell()`. The backend likely pre-computes indices at multiple resolutions, or computes parent cells on the fly from a fine-resolution index.
+- **Aggregation**: All valid uploaded data is always used anonymously to calculate the aggregated average dose information displayed in the map's hexagons. So each hexagon shows the mean dose rate (in µSv/h) of all readings that fall within that cell.
+
+### 3. Frontend Rendering
+
+The map is most likely built with **Mapbox GL JS** (the UI shows Mapbox-style map style options like Satellite, Outdoors, Streets, Navigation Day/Night) combined with either:
+
+- **deck.gl's `H3HexagonLayer`** — the most common approach for rendering H3 cells on Mapbox. It takes an array of `{h3index, value}` objects and renders filled/stroked hexagons with color mapping. This is very efficient for large datasets since it can use instanced rendering.
+- Or a custom GeoJSON layer where hexagon boundaries are computed from H3 indices using `cellToBoundary()` from h3-js.
+
+Given the cyberpunk styling and the performance needed for potentially hundreds of thousands of hexagons globally, deck.gl's H3HexagonLayer is the most probable choice.
+
+### 4. Color Mapping
+
+The hexagons are color-coded by aggregated dose rate, likely using a gradient from green/blue (low background, ~0.05 µSv/h) through yellow/orange to red (elevated levels). The UI also supports toggling hexagons on/off and switching dose rate units between nSv/h, µSv/h, and mSv/h.
+
+### 5. Two-Layer System
+
+The UI has separate toggles for "Show Readings" and "Show Hexagons", indicating two distinct layers: raw individual data points (scatter/dot layer) and the aggregated H3 hexagon overlay. The readings layer also has a `READINGS_LIMIT` control (All, None, 20k–200k) for performance management.
+
+### Key Technical Differences from Safecast's Approach
+
+This is interesting to compare with Safecast's tilemap approach. RadiaMaps/Radiaverse uses H3 for spatial binning rather than Safecast's traditional raster tile approach. The advantages are the multi-resolution hierarchy (zoom in → finer hexagons automatically), equidistant neighbors for cleaner spatial analysis, and the ability to do server-side pre-aggregation by H3 index which maps efficiently to database queries (e.g., `GROUP BY h3_index`).
+
+Want me to dig deeper into any specific aspect, or perhaps look at how something similar could be implemented for Safecast's data?
+
+---
+
+Yes, all points if possible..
+
+---
+
+Still working?
+
+---
+
+For what resltions we have H3 grids now?
+
+---
+
+For what zoom resolutions we have H3 grids now?
