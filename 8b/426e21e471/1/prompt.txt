@@ -1,0 +1,5 @@
+rob@rob-GS66-Stealth-10UG:~/Documents/Safecast/safecast-new-map$ bash local-server-config.sh
+
+---
+
+screen
