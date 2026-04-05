@@ -501,12 +501,12 @@
     
     header.innerHTML = `<div class="meta">${metaText}</div>`;
     
-    if (data.export_available) {
+    if (data.table && data.table.length > 0) {
       const btnGroup = document.createElement('div');
       btnGroup.className = 'export-group';
       btnGroup.style.display = 'flex';
       btnGroup.style.gap = '8px';
-      
+
       const formats = ['CSV', 'Excel', 'JSON'];
       formats.forEach(f => {
         const btn = document.createElement('button');
