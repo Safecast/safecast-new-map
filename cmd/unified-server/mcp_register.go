@@ -109,7 +109,11 @@ When returning data (sensor readings, radiation measurements, etc.), use this JS
   "export_available": true,
   "suggested_export": {
     "format": "csv",
-    "limit": "full"
+    "limit": "full",
+    "lat": <center latitude of the query>,
+    "lon": <center longitude of the query>,
+    "radius_m": <radius in meters used>,
+    "suggested_tool": "<MCP tool name used, e.g. query_radiation>"
   }
 }
 
@@ -521,6 +525,9 @@ func handleExport(mcpURL string) http.HandlerFunc {
 			Columns       []string  `json:"columns"`
 			Aggregation   string    `json:"aggregation"`
 			SuggestedTool string    `json:"suggested_tool"`
+			Lat           float64   `json:"lat"`
+			Lon           float64   `json:"lon"`
+			RadiusM       float64   `json:"radius_m"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&exportReq); err != nil {
 			http.Error(w, "Invalid request", http.StatusBadRequest)
@@ -566,6 +573,14 @@ func handleExport(mcpURL string) http.HandlerFunc {
 			args["lat"] = (exportReq.Bbox[0] + exportReq.Bbox[2]) / 2
 			args["lon"] = (exportReq.Bbox[1] + exportReq.Bbox[3]) / 2
 			args["radius_m"] = 50000
+		} else if exportReq.Lat != 0 || exportReq.Lon != 0 {
+			args["lat"] = exportReq.Lat
+			args["lon"] = exportReq.Lon
+			radius := exportReq.RadiusM
+			if radius == 0 {
+				radius = 50000
+			}
+			args["radius_m"] = radius
 		}
 
 		callReq := mcp.CallToolRequest{}
