@@ -10387,6 +10387,9 @@ func main() {
 	http.HandleFunc("/realtime_history", realtimeHistoryHandler)
 	http.HandleFunc("/trackid/", trackHandler)
 	http.HandleFunc("/tracks/", tracksHandler)
+	// H3 hexagonal grid overlay endpoint
+	restH3 := RESTHandler{}
+	http.HandleFunc("/api/h3grid", restH3.handleH3Grid)
 	// api/docs, licenses/, api/geoip, s/, api/spectrum/, api/markers/spectra, api/tracks/bounds, api/track-info/, api/update-coordinates, qrpng — registered via webServer.Register above
 	// API endpoints ship JSON/archives. Keeping registration close to other
 	// routes avoids surprises for operators scanning main() for handlers.

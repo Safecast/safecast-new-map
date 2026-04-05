@@ -152,8 +152,8 @@ func queryH3ByColumn(ctx context.Context, col string, minLat, minLon, maxLat, ma
 	// col is always one of h3_res5 / h3_res7 / h3_res9 — no user input, safe to interpolate.
 	query := `SELECT ` + col + `, AVG(doserate), MAX(doserate), COUNT(*)
 	          FROM markers
-	          WHERE latitude  BETWEEN $1 AND $2
-	            AND longitude BETWEEN $3 AND $4
+	          WHERE lat BETWEEN $1 AND $2
+	            AND lon BETWEEN $3 AND $4
 	            AND doserate  > 0
 	            AND (speed IS NULL OR speed = 0 OR speed < 45)
 	            AND ` + col + ` IS NOT NULL
