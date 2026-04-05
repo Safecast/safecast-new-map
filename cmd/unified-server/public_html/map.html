@@ -11054,7 +11054,14 @@ function selectHomeSearchResult(result, query) {
                       accumulated = '';
                     }
                     accumulated += ev.text;
-                    renderBotBubble(botBubble, accumulated);
+                    // During streaming: show markdown. If it looks like JSON,
+                    // show a neutral placeholder to avoid raw JSON flicker.
+                    const looksLikeJSON = accumulated.trim().replace(/^```(?:json)?\s*/i,'').trimStart().startsWith('{');
+                    if (looksLikeJSON) {
+                      botBubble.innerHTML = '<em style="color:var(--text-muted,#888);font-size:13px">Loading data...</em>';
+                    } else {
+                      botBubble.innerHTML = markdownToHTML(accumulated);
+                    }
                     messagesEl.scrollTop = messagesEl.scrollHeight;
                   } else if (ev.type === 'action' || ev.action) {
                     executeMapAction(ev);

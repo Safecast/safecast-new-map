@@ -828,7 +828,12 @@
                   accumulated = '';
                 }
                 accumulated += ev.text;
-                botBubble.innerHTML = markdownToHTML(accumulated);
+                const looksLikeJSON = accumulated.trim().replace(/^```(?:json)?\s*/i,'').trimStart().startsWith('{');
+                if (looksLikeJSON) {
+                  botBubble.innerHTML = '<em style="color:var(--muted,#888);font-size:13px">Loading data...</em>';
+                } else {
+                  botBubble.innerHTML = markdownToHTML(accumulated);
+                }
                 messagesEl.scrollTop = messagesEl.scrollHeight;
               } else if (ev.type === 'done') {
                 finish();
