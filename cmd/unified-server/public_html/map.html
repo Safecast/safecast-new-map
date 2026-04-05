@@ -10208,6 +10208,60 @@ function selectHomeSearchResult(result, query) {
       align-self: center;
     }
 
+    /* ── Data Table & Export ── */
+    .ai-data-card {
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      margin: 8px 0;
+      overflow: hidden;
+      font-size: 13px;
+    }
+    .ai-data-header {
+      padding: 8px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255,255,255,0.03);
+    }
+    .ai-data-header .ai-data-meta { font-size: 11px; color: var(--text-muted, #888); }
+    .ai-data-table-container { overflow-x: auto; max-height: 320px; }
+    .ai-data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .ai-data-table th {
+      text-align: left;
+      padding: 6px 10px;
+      background: rgba(255,255,255,0.05);
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      color: var(--text-muted, #888);
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      white-space: nowrap;
+    }
+    .ai-data-table td {
+      padding: 6px 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      white-space: nowrap;
+    }
+    .ai-data-table tr:hover { background: rgba(255,255,255,0.03); }
+    .ai-export-group { display: flex; gap: 6px; flex-shrink: 0; }
+    .ai-export-btn {
+      background: #4caf50;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-size: 11px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      transition: background .15s;
+    }
+    .ai-export-btn:hover { background: #388e3c; }
+    .ai-export-btn svg { width: 11px; height: 11px; fill: #fff; }
+    .ai-export-btn:disabled { opacity: 0.6; cursor: wait; }
+
     /* ── Track Insights button (pill, above AI toggle) ─────────── */
     #track-insights-btn {
       display: none;
@@ -10677,6 +10731,137 @@ function selectHomeSearchResult(result, query) {
         return html;
       }
 
+      const downloadSVG = '<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>';
+
+      function renderDataPreview(data, container) {
+        const card = document.createElement('div');
+        card.className = 'ai-data-card';
+
+        const header = document.createElement('div');
+        header.className = 'ai-data-header';
+
+        let metaText = `Showing ${data.summary.rows_shown} of ${data.summary.rows_total} rows`;
+        if (data.summary.region) metaText += ` in ${data.summary.region}`;
+        header.innerHTML = `<div class="ai-data-meta">${metaText}</div>`;
+
+        if (data.export_available) {
+          const btnGroup = document.createElement('div');
+          btnGroup.className = 'ai-export-group';
+          ['CSV', 'Excel', 'JSON'].forEach(f => {
+            const btn = document.createElement('button');
+            btn.className = 'ai-export-btn';
+            btn.innerHTML = `${downloadSVG} ${f}`;
+            btn.onclick = () => {
+              const cfg = Object.assign({}, data.suggested_export || { limit: 'full' });
+              cfg.format = f.toLowerCase();
+              triggerExport(cfg, btn);
+            };
+            btnGroup.appendChild(btn);
+          });
+          header.appendChild(btnGroup);
+        }
+
+        const tableContainer = document.createElement('div');
+        tableContainer.className = 'ai-data-table-container';
+        const table = document.createElement('table');
+        table.className = 'ai-data-table';
+
+        if (data.table && data.table.length > 0) {
+          const keys = Object.keys(data.table[0]);
+          const thead = document.createElement('thead');
+          const headerRow = document.createElement('tr');
+          keys.forEach(k => {
+            const th = document.createElement('th');
+            th.textContent = k.charAt(0).toUpperCase() + k.slice(1).replace('_', ' ');
+            headerRow.appendChild(th);
+          });
+          thead.appendChild(headerRow);
+          table.appendChild(thead);
+
+          const tbody = document.createElement('tbody');
+          data.table.forEach(row => {
+            const tr = document.createElement('tr');
+            keys.forEach(k => {
+              const td = document.createElement('td');
+              let val = row[k];
+              if (typeof val === 'object' && val !== null) val = JSON.stringify(val);
+              td.textContent = val;
+              tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+          });
+          table.appendChild(tbody);
+        }
+
+        tableContainer.appendChild(table);
+        card.appendChild(header);
+        card.appendChild(tableContainer);
+        container.appendChild(card);
+      }
+
+      function handleExportRequest(data, container) {
+        const status = document.createElement('div');
+        status.style.cssText = 'padding:8px;font-size:12px;color:var(--text-muted,#888)';
+        status.innerHTML = `<em>Preparing export of ${data.estimated_rows} rows (${data.mode})...</em>`;
+        container.appendChild(status);
+        if (data.mode === 'sync' || data.estimated_rows < 50000) {
+          triggerExport(data.export_config, null, status);
+        } else {
+          const btn = document.createElement('button');
+          btn.className = 'ai-export-btn';
+          btn.style.marginTop = '8px';
+          btn.innerHTML = `${downloadSVG} Confirm Download`;
+          btn.onclick = () => triggerExport(data.export_config, btn, status);
+          container.appendChild(btn);
+        }
+      }
+
+      async function triggerExport(config, btn, statusEl) {
+        if (btn) { btn.disabled = true; btn.innerHTML = 'Exporting...'; }
+        if (statusEl) statusEl.innerHTML = '<em>Fetching dataset...</em>';
+        try {
+          const response = await fetch('/export', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(config)
+          });
+          if (!response.ok) throw new Error('Export failed: ' + response.statusText);
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `safecast_export_${new Date().toISOString().slice(0,10)}.${config.format || 'csv'}`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          if (statusEl) statusEl.innerHTML = '<span style="color:#4caf50">✓ Download started.</span>';
+        } catch (err) {
+          if (statusEl) statusEl.innerHTML = `<span style="color:#e53935">✗ Export failed: ${err.message}</span>`;
+        } finally {
+          if (btn) { btn.disabled = false; btn.innerHTML = `${downloadSVG} Export CSV`; }
+        }
+      }
+
+      function renderBotBubble(bubble, text) {
+        const trimmed = text.trim();
+        if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+          try {
+            const data = JSON.parse(trimmed);
+            if (data.type === 'data_preview') {
+              bubble.innerHTML = '';
+              renderDataPreview(data, bubble);
+              return;
+            } else if (data.type === 'export_request') {
+              bubble.innerHTML = '';
+              handleExportRequest(data, bubble);
+              return;
+            }
+          } catch (e) { /* fall through to markdown */ }
+        }
+        bubble.innerHTML = markdownToHTML(text);
+      }
+
       function addMessageUI(role, text) {
         const row = document.createElement('div');
         row.className = `ai-msg-row ${role}`;
@@ -10693,7 +10878,7 @@ function selectHomeSearchResult(result, query) {
         bubble.className = 'ai-bubble';
 
         if (role === 'bot') {
-          bubble.innerHTML = markdownToHTML(text);
+          renderBotBubble(bubble, text);
         } else {
           bubble.textContent = text;
         }
@@ -10805,6 +10990,8 @@ function selectHomeSearchResult(result, query) {
           sendBtn.disabled = false;
           msgInput.focus();
           if (success && accumulated) {
+            // Final re-render: detects JSON data_preview or falls back to markdown
+            renderBotBubble(botBubble, accumulated);
             chatHistory.push(
               { role: 'user', content: text },
               { role: 'assistant', content: accumulated }
@@ -10857,7 +11044,7 @@ function selectHomeSearchResult(result, query) {
                       accumulated = '';
                     }
                     accumulated += ev.text;
-                    botBubble.innerHTML = markdownToHTML(accumulated);
+                    renderBotBubble(botBubble, accumulated);
                     messagesEl.scrollTop = messagesEl.scrollHeight;
                   } else if (ev.type === 'action' || ev.action) {
                     executeMapAction(ev);
