@@ -592,6 +592,7 @@
   }
 
   async function triggerExport(config, btn, statusEl) {
+    const origLabel = btn ? btn.innerHTML : null;
     if (btn) { btn.disabled = true; btn.innerHTML = 'Exporting...'; }
     if (statusEl) statusEl.innerHTML = '<em>Fetching dataset...</em>';
     try {
@@ -612,7 +613,7 @@
     } catch (err) {
       if (statusEl) statusEl.innerHTML = `<span style="color:var(--err)">✗ Export failed: ${err.message}</span>`;
     } finally {
-      if (btn) { btn.disabled = false; btn.innerHTML = `${dlSVG} Export CSV`; }
+      if (btn) { btn.disabled = false; btn.innerHTML = origLabel; }
     }
   }
 

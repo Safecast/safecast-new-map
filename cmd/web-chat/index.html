@@ -596,6 +596,7 @@
   }
 
   async function triggerExport(config, btn, statusEl) {
+    const origLabel = btn ? btn.innerHTML : null;
     if (btn) {
         btn.disabled = true;
         btn.classList.add('loading');
@@ -630,7 +631,7 @@
         if (btn) {
             btn.disabled = false;
             btn.classList.remove('loading');
-            btn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> Export CSV`;
+            btn.innerHTML = origLabel;
         }
     }
   }
