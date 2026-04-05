@@ -10744,7 +10744,7 @@ function selectHomeSearchResult(result, query) {
         if (data.summary.region) metaText += ` in ${data.summary.region}`;
         header.innerHTML = `<div class="ai-data-meta">${metaText}</div>`;
 
-        if (data.export_available) {
+        if (data.table && data.table.length > 0) {
           const btnGroup = document.createElement('div');
           btnGroup.className = 'ai-export-group';
           ['CSV', 'Excel', 'JSON'].forEach(f => {
