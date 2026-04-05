@@ -118,7 +118,7 @@ Rules:
 - The "table" array must be a flat array of objects with consistent keys.
 - Always set "export_available": true when data can be exported.
 - For plain conversational answers (no data), respond in normal markdown — do NOT wrap in JSON.
-- Never mix JSON and markdown in the same response.`
+- CRITICAL: When returning data_preview JSON, output ONLY the raw JSON object — no introductory text, no trailing text, no markdown code fences. The response must start with { and end with }.`
 
 func webChatSystemPromptForLang(lang string) string {
 	if lang == "" || lang == "en" {
