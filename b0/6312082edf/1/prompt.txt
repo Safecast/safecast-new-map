@@ -1,0 +1,17 @@
+screen
+
+---
+
+Local assiatnt seesms fine now..Let me check a bit more..
+
+---
+
+Seems good!!!
+
+---
+
+MNN.. seems still an issue wt local assist..
+
+---
+
+Tested more. Interrsting that even when a table is created no download buttons are shown? Should that not be automatically?
