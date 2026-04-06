@@ -1,0 +1,2 @@
+In the assistant page locally and on production server still only JSON... I tough we fixed that?
+On the map chat locally only still Json. On produtcion all seems fine?
