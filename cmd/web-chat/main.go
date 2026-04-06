@@ -290,6 +290,68 @@ type chunk struct {
 	DataPreview json.RawMessage `json:"data_preview,omitempty"`
 }
 
+// sanitizeJSON replaces non-standard JSON values the AI sometimes emits.
+func sanitizeJSON(s string) string {
+	s = strings.NewReplacer(
+		": NaN", ": null",
+		":NaN", ":null",
+		": Infinity", ": null",
+		":Infinity", ":null",
+		": -Infinity", ": null",
+		":-Infinity", ":null",
+	).Replace(s)
+	var out []byte
+	inStr := false
+	esc := false
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if esc {
+			esc = false
+			out = append(out, c)
+			continue
+		}
+		if c == '\\' && inStr {
+			esc = true
+			out = append(out, c)
+			continue
+		}
+		if c == '"' {
+			inStr = !inStr
+			out = append(out, c)
+			continue
+		}
+		if inStr {
+			switch c {
+			case '\n':
+				out = append(out, '\\', 'n')
+				continue
+			case '\r':
+				out = append(out, '\\', 'r')
+				continue
+			case '\t':
+				out = append(out, '\\', 't')
+				continue
+			default:
+				if c < 0x20 {
+					continue
+				}
+			}
+		} else {
+			if c == ',' {
+				j := i + 1
+				for j < len(s) && (s[j] == ' ' || s[j] == '\t' || s[j] == '\n' || s[j] == '\r') {
+					j++
+				}
+				if j < len(s) && (s[j] == '}' || s[j] == ']') {
+					continue
+				}
+			}
+		}
+		out = append(out, c)
+	}
+	return string(out)
+}
+
 // extractDataPreview looks for a data_preview JSON object in the AI response text.
 // Returns the raw JSON bytes if found, nil otherwise.
 func extractDataPreview(text string) json.RawMessage {
@@ -345,7 +407,7 @@ func extractDataPreview(text string) json.RawMessage {
 		if objEnd == -1 || objEnd < marker {
 			continue
 		}
-		candidate := text[i : objEnd+1]
+		candidate := sanitizeJSON(text[i : objEnd+1])
 		var obj map[string]json.RawMessage
 		if err := json.Unmarshal([]byte(candidate), &obj); err != nil {
 			continue

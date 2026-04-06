@@ -421,6 +421,29 @@
     msgEl.style.height = 'auto';
   }
 
+  function sanitizeForParse(s) {
+    let out = '', inStr = false, esc = false;
+    for (let i = 0; i < s.length; i++) {
+      const c = s[i];
+      if (esc) { esc = false; out += c; continue; }
+      if (c === '\\' && inStr) { esc = true; out += c; continue; }
+      if (c === '"') { inStr = !inStr; out += c; continue; }
+      if (inStr) {
+        if (c === '\n') { out += '\\n'; continue; }
+        if (c === '\r') { out += '\\r'; continue; }
+        if (c === '\t') { out += '\\t'; continue; }
+        if (c.charCodeAt(0) < 0x20) continue;
+      } else {
+        if (c === ',' && /^[ \t\r\n]*[}\]]/.test(s.slice(i + 1))) continue;
+      }
+      out += c;
+    }
+    return out
+      .replace(/:[ \t]*NaN\b/g, ': null')
+      .replace(/:[ \t]*Infinity\b/g, ': null')
+      .replace(/:[ \t]*-Infinity\b/g, ': null');
+  }
+
   // Robust JSON extractor: finds the first { whose matching } spans the
   // "type":"data_preview" marker. Uses bracket counting so it works even
   // when the AI puts summary fields before "type" or adds preamble text.
@@ -447,7 +470,10 @@
       if (text[i] !== '{') continue;
       const end = matchingBrace(text, i);
       if (end !== -1 && end >= m) {
-        try { return JSON.parse(text.slice(i, end + 1)); } catch (_) { continue; }
+        const slice = text.slice(i, end + 1);
+        try { return JSON.parse(slice); } catch (_) {
+          try { return JSON.parse(sanitizeForParse(slice)); } catch (_) { continue; }
+        }
       }
     }
     return null;
@@ -579,9 +605,13 @@
       const tbody = document.createElement('tbody');
       data.table.forEach(row => {
         const tr = document.createElement('tr');
-        const mapUrl = row.map_link || (row.latitude && row.longitude
-          ? `https://simplemap.safecast.org/?lat=${row.latitude}&lon=${row.longitude}&zoom=15`
-          : (row.lat && row.lon ? `https://simplemap.safecast.org/?lat=${row.lat}&lon=${row.lon}&zoom=15` : null));
+        let mapUrl = row.map_link ||
+          (row.latitude && row.longitude ? `https://simplemap.safecast.org/?lat=${row.latitude}&lon=${row.longitude}&zoom=15` :
+          (row.lat && row.lon ? `https://simplemap.safecast.org/?lat=${row.lat}&lon=${row.lon}&zoom=15` : null));
+        if (!mapUrl && row.location) {
+          const m = String(row.location).match(/([-\d.]+)[°\s]*[Nn][,\s]+([-\d.]+)[°\s]*[Ee]/);
+          if (m) mapUrl = `https://simplemap.safecast.org/?lat=${m[1]}&lon=${m[2]}&zoom=15`;
+        }
         keys.forEach(k => {
           const td = document.createElement('td');
           let val = row[k];
