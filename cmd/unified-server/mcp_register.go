@@ -422,22 +422,34 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 			})
 
 			var toolUses []contentBlock
+			var textBlocks []string
 			for _, block := range resp.Content {
 				switch block.Type {
 				case "text":
 					answerText.WriteString(block.Text)
-					if dp := extractDataPreview(block.Text); dp != nil {
-						writeChunkBuffered(w, chunk{Type: "data_preview", DataPreview: dp}, &buffer, isCloudFront)
-					} else {
-						writeChunkBuffered(w, chunk{Type: "text", Text: block.Text}, &buffer, isCloudFront)
-					}
+					textBlocks = append(textBlocks, block.Text)
 				case "tool_use":
 					toolUses = append(toolUses, block)
 				}
 			}
 
-			if resp.StopReason == "end_turn" || len(toolUses) == 0 {
+			isFinal := resp.StopReason == "end_turn" || len(toolUses) == 0
+			if isFinal {
+				// Run extractDataPreview on the full combined text to handle cases where
+				// the AI splits preamble and JSON across multiple text blocks.
+				fullText := strings.Join(textBlocks, "")
+				if dp := extractDataPreview(fullText); dp != nil {
+					writeChunkBuffered(w, chunk{Type: "data_preview", DataPreview: dp}, &buffer, isCloudFront)
+				} else {
+					for _, t := range textBlocks {
+						writeChunkBuffered(w, chunk{Type: "text", Text: t}, &buffer, isCloudFront)
+					}
+				}
 				break
+			}
+			// Non-final iteration (tool calls pending): stream text blocks normally
+			for _, t := range textBlocks {
+				writeChunkBuffered(w, chunk{Type: "text", Text: t}, &buffer, isCloudFront)
 			}
 
 			var toolResults []contentBlock
