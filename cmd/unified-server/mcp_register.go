@@ -172,11 +172,32 @@ type anthropicResponse struct {
 
 // Streaming helpers
 type chunk struct {
-	Type   string `json:"type"`
-	Text   string `json:"text,omitempty"`
-	Error  string `json:"error,omitempty"`
-	ChatID int64  `json:"chat_id,omitempty"` // set on "done" for feedback linkage
-	Cached bool   `json:"cached,omitempty"`  // true when answer came from semantic cache
+	Type        string          `json:"type"`
+	Text        string          `json:"text,omitempty"`
+	Error       string          `json:"error,omitempty"`
+	ChatID      int64           `json:"chat_id,omitempty"`
+	Cached      bool            `json:"cached,omitempty"`
+	DataPreview json.RawMessage `json:"data_preview,omitempty"`
+}
+
+// extractDataPreview looks for a data_preview JSON object in the AI response text.
+// Returns the raw JSON bytes if found, nil otherwise.
+func extractDataPreview(text string) json.RawMessage {
+	start := strings.Index(text, "{")
+	end := strings.LastIndex(text, "}")
+	if start == -1 || end <= start {
+		return nil
+	}
+	candidate := text[start : end+1]
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(candidate), &obj); err != nil {
+		return nil
+	}
+	var typeVal string
+	if err := json.Unmarshal(obj["type"], &typeVal); err != nil || typeVal != "data_preview" {
+		return nil
+	}
+	return json.RawMessage(candidate)
 }
 
 func writeChunk(w http.ResponseWriter, c chunk) {
@@ -405,7 +426,11 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 				switch block.Type {
 				case "text":
 					answerText.WriteString(block.Text)
-					writeChunkBuffered(w, chunk{Type: "text", Text: block.Text}, &buffer, isCloudFront)
+					if dp := extractDataPreview(block.Text); dp != nil {
+						writeChunkBuffered(w, chunk{Type: "data_preview", DataPreview: dp}, &buffer, isCloudFront)
+					} else {
+						writeChunkBuffered(w, chunk{Type: "text", Text: block.Text}, &buffer, isCloudFront)
+					}
 				case "tool_use":
 					toolUses = append(toolUses, block)
 				}

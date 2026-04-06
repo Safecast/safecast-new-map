@@ -853,7 +853,13 @@
             if (!line.trim()) continue;
             try {
               const ev = JSON.parse(line);
-              if (ev.type === 'text') {
+              if (ev.type === 'data_preview') {
+                botBubble.classList.remove('thinking');
+                botBubble.innerHTML = '';
+                renderDataPreview(ev.data_preview, botBubble);
+                accumulated = JSON.stringify(ev.data_preview);
+                messagesEl.scrollTop = messagesEl.scrollHeight;
+              } else if (ev.type === 'text') {
                 if (botBubble.classList.contains('thinking')) {
                   botBubble.classList.remove('thinking');
                   accumulated = '';
