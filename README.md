@@ -246,20 +246,6 @@ claude mcp add --transport http safecast https://simplemap.safecast.org/mcp-http
 
 **Web Chat:** Open `http://localhost:8765/assistant/` in your browser.
 
-#### Data Export from the AI Chat
-
-Both the standalone web chat (`/assistant/`) and the embedded map chat widget support exporting query results directly to your computer.
-
-When you ask the AI for radiation data (e.g. *"show me the latest dataset in Tokyo"*), the response includes a data preview table with **CSV**, **Excel**, and **JSON** download buttons:
-
-- **CSV** — comma-separated, compatible with Excel, R, Python pandas, etc.
-- **Excel** — `.xlsx` workbook with a single "Data" sheet
-- **JSON** — raw array of measurement objects
-
-Exports are fetched via `POST /export` on the same server. The AI passes the query parameters (bounding box, region, tool name) so the export reflects exactly what was shown in the preview. Large datasets (> 50 000 rows) prompt a confirmation button before downloading.
-
-> The `/export` endpoint requires `ANTHROPIC_API_KEY` to be set (same requirement as the chat feature).
-
 **Swagger API docs:** [simplemap.safecast.org/map-api/](https://simplemap.safecast.org/map-api/)
 
 Regenerate documentation after API changes:

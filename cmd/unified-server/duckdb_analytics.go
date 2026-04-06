@@ -1,4 +1,5 @@
-//go:build duckdb
+// DuckDB Analytics Initialization for Unified Server
+// Uses DuckLake with PostgreSQL catalog for shared analytics across all services
 
 package main
 
@@ -11,6 +12,8 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )
+
+var duckDB *sql.DB
 
 // initDuckDBAnalytics initializes DuckDB with DuckLake catalog backed by PostgreSQL.
 // This allows multiple services to share the same analytics tables concurrently.
