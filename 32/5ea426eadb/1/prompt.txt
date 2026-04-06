@@ -1,0 +1,8 @@
+Local Map Chat AI is good.
+Local assistant is NG (Feels like we are going in circles.. )
+Production Map AI chat is good.
+Prodcution assistant does not show anything any more?  "thinking" does not animates any more?
+
+---
+
+Do not change anything on the Map AI-chat . That seems to work fine. Only the assist (loclahost and production)  we have to work on.
