@@ -3,7 +3,7 @@
   "checkpoint_id": "f2f5fcb146cb",
   "strategy": "manual-commit",
   "branch": "fix/excel-extension",
-  "checkpoints_count": 0,
+  "checkpoints_count": 1,
   "files_touched": [
     "cmd/unified-server/public_html/map.html",
     "cmd/unified-server/static/index.html",
@@ -15,13 +15,19 @@
       "transcript": "/f2/f5fcb146cb/0/full.jsonl",
       "content_hash": "/f2/f5fcb146cb/0/content_hash.txt",
       "prompt": ""
+    },
+    {
+      "metadata": "/f2/f5fcb146cb/1/metadata.json",
+      "transcript": "/f2/f5fcb146cb/1/full.jsonl",
+      "content_hash": "/f2/f5fcb146cb/1/content_hash.txt",
+      "prompt": "/f2/f5fcb146cb/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 0,
-    "cache_creation_tokens": 0,
-    "cache_read_tokens": 0,
-    "output_tokens": 0,
-    "api_call_count": 0
+    "input_tokens": 549,
+    "cache_creation_tokens": 1295659,
+    "cache_read_tokens": 36834303,
+    "output_tokens": 196200,
+    "api_call_count": 424
   }
 }
