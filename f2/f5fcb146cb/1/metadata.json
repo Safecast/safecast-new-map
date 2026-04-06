@@ -1,0 +1,23 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "f2f5fcb146cb",
+  "session_id": "fdaaa736-904a-4a0c-958c-b0ff6f936ce9",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-06T06:49:23.762123912Z",
+  "branch": "fix/excel-extension",
+  "checkpoints_count": 1,
+  "files_touched": [],
+  "agent": "Claude Code",
+  "model": "claude-sonnet-4-6",
+  "turn_id": "33b426347990",
+  "token_usage": {
+    "input_tokens": 549,
+    "cache_creation_tokens": 1295659,
+    "cache_read_tokens": 36834303,
+    "output_tokens": 196200,
+    "api_call_count": 424
+  },
+  "session_metrics": {
+    "turn_count": 33
+  }
+}

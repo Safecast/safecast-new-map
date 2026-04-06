@@ -1,0 +1,809 @@
+NG  for assist and chat both do not work as expected.JSON again and no download buttons..
+
+---
+
+NG
+
+---
+
+Both NG
+
+---
+
+screen
+
+---
+
+GET
+http://localhost:8765/assistant/
+[HTTP/1.1 200 OK 0ms]
+
+GET
+http://localhost:8765/assistant/safecast-square-ct.png
+[HTTP/1.1 200 OK 0ms]
+
+GET
+http://localhost:8765/assistant/favicon-16x16.png
+[HTTP/1.1 200 OK 0ms]
+
+GET
+http://localhost:8765/assistant/safecast-square-ct.png
+[HTTP/1.1 200 OK 0ms]
+
+GET
+data:image/webp;base64,UklGRq5iAABXRUJQVlA4WAoAAAASAAAAJwAAJwAAQU5JTQYAAAD/////REDACTED/REDACTED/f/jb5EJEnT4nCkliUL3XFFijH4IM/FZUeXYJfV2LSN2vdspAifePbdn/pxu9JEjJ1O4K2PI7rlIlFZO37Hj/REDACTED/REDACTED/REDACTED/REDACTED/REDACTED/REDACTED/R5ETRWUDggKgAAADADAJ0BKiQAJAA+kUifS6WkIqGjiACwEglpAAAbgb0+DgAA/REDACTED/REDACTED/REDACTED//REDACTED/REDACTED/REDACTED/EwJbkFcWK1zctB7xochz/REDACTED/1swlg/REDACTED/REDACTED/3f3+1H7cyf88p8fzBZ0uGZsG4HNzLWQ9k/n4r7Esn7aZ+waDV7+LP4jQrTOz7/dGkz7uM9k2hs+/REDACTED/REDACTED/REDACTED/REDACTED/UFxgdWUDggKgAAADADAJ0BKicAJwA+kUifS6WkIqGjiACwEglpAAAbgb0+DgAA/REDACTED/GEoV0UfbyAiJgD/REDACTED/REDACTED/8yZB0Br/REDACTED/5iFMdmqZPKcTbReAvZFn/REDACTED/REDACTED/REDACTED/Dv6sMt63Bgyy8vDciI5xN74/REDACTED/jEI/iU1p2VHK/REDACTED/eCWAtQIE/REDACTED//REDACTED/+ADmXe/3mT9q63+O7J/REDACTED/REDACTED/REDACTED/nXH4p+fQ/NGbVKnMYnYA04xXwTa4/3B+V/KlktAGB/REDACTED/REDACTED/REDACTED/73w5E/REDACTED/REDACTED/REDACTED/cZxGGaPXnd48esGzn2Ils7cffe1nu1UfOM2/5/REDACTED/6v3oyc2dQspQILlamb1wY8w6id/edOZmO0ZG1vx9Md26mMYD4rf/REDACTED/QHl9nAxExAfh/Esfa47qC2koxDyGjF/REDACTED/REDACTED/3AHmLr3y09kQHk357LSaW/REDACTED/tQUWbGJv/REDACTED/REDACTED/b/REDACTED/REDACTED/REDACTED/REDACTED/REDACTED/REDACTED/Rpf9L9X1eQqmPXz1cSXbmPD3tK/HtkSAvgFWUDggKgAAADADAJ0BKicAJwA+kUifS6WkIqGjiACwEglpAAAbgb0+DgAA/vhNAAAAAEFOTUb4AgAAAAAAAAAAJwAAJwAAHgAAAkFMUEitAgAADaCt7Z8hSfoFslzVU+2qWds2j2zvEe/ENu5gD/fItm1bZWVlVyciMuI/rIp69gYiYgLwfxWmmlIhia2x8/REDACTED/REDACTED/myGo/REDACTED/REDACTED/REDACTED/REDACTED/REDACTED/PUgjxmSMiUjw0jd4ZbEAe8/iJVa9/REDACTED//REDACTED/REDACTED/tNPYeZvf/jx8v0LggqLXqa/1IsUo8Y/z/REDACTED/f00cWK8ckGvwnno/nBTgvtX77uewJ5mt/5vFnJVOfJ+lCZKZAABWUDggKgAAADADAJ0BKigAKAA+kUifS6WkIqGjiACwEglpAAAbgb0+DgAA/REDACTED/REDACTED/REDACTED/ZeWokGJEWd2Uowe+yt3ADp5Pov5/REDACTED/nrOh83QVFcw8o/eZ+Vp0L0v92ornGiIGL+3zwDVJ82k/REDACTED/REDACTED/KJtheNEnJZ8OGnK/7pkV5rFAnvB+suSqDn/REDACTED/REDACTED/REDACTED/REDACTED/REDACTED/vhNAAAAAEFOTUbsAgAAAAAAAAAAJgAAJgAAHgAAAkFMUEihAgAADaCs7Z9h2/REDACTED/REDACTED/REDACTED/REDACTED/DrMjryR0PtVXQN3yu/REDACTED/REDACTED/4csamA99+7tnAtz2tAc8nC5c2FX9Iw2vjI/+Z6fqF7qJfvLw62GlloM8CG/Eh/REDACTED/REDACTED/REDACTED/REDACTED/OE8/lN63/Orla49ZagWPIfj0yKRCNd/REDACTED/REDACTED/REDACTED/REDACTED/hvz+fn2WZq2Pv/sJokMRtFzs9C59+MsBPz50/x3Hi/t8ftVyXEcDV7K4DC/UW8GQdgzY/REDACTED/3AM4LfPsotfHvt1/REDACTED/v9KF7Ftm07PfWSSWQoGYzRsm3z2vrt/REDACTED/REDACTED/REDACTED/REDACTED/REDACTED/en7FjtgbetX/Wt5UtX9a+s3+Oeuh+/REDACTED/mBudGM6cMF96vVWRQE5V/REDACTED/REDACTED/REDACTED/JdU1vw/REDACTED//jzR8RxtEvkfGmC2EU/oH/Bkubbf2w8U2aibhiNmnpxzbJ+OBWsfrg/BxnseV2ycf3XhtUJo/REDACTED/GBgfZc/2znYcLlM7/8UuYuhHx4pLjM8ad5dJaFH/ftMXjv/mS0EBEDxLRq87NwptDCNz+KLoDJb/REDACTED/z066P/gT/ph0vh8DL3K/Bv12weGVRZyZAsWE/akqE18SEpPQDw+oe/fYSQCxGBq0gf5v1RCluHsT1/GB47vajasgZniyjvrNPRx+qefJ7dv/nN00yCj/3M1oIreAVZQOCAqAAAAMAMAnQEqKAAoAD6RSJ9LpaQioaOIALASCWkAABuBvT4OAAD++E0AAAAAQU5NRvYCAAAAAAAAAAAmAAAmAAAeAAACQUxQSKsCAAANoKVt2yFJer//REDACTED//REDACTED/REDACTED/REDACTED/REDACTED/REDACTED/tEcoKbrF0Zw8NL3E/REDACTED//7T7BKNTZ6dpfJGy/tV8sTc87GEnZdr0xOTnP07Q9Y/W/REDACTED/p7jtcgiamnRvcZU8mVK29tlUiLdd/mSke3b5OEhNTInTjm/kvDWSZlL/REDACTED/REDACTED/1kuUVwt9/REDACTED/REDACTED/REDACTED/REDACTED/REDACTED/REDACTED/el9wuyq/REDACTED/hqKgVisAiPfq10oTU++LWVLa+vr2e8/k6lauahPen9/REDACTED/REDACTED/REDACTED/KcqJWfRoK/IAx6OQ/REDACTED/REDACTED/jI4jp1/8Fc7+OtL7FQ/WY8N/Vrhr6Y4gl978udfS+/H8S7Yv+m39MSdwuCr7SE0d+9C8/ex//WnZA+GP1w4y42rF/Xm98sd1MjUL6Z+/WXjf/sOw37Z/vz+WU7Lt7JF649hZ5ss1S7kp9/REDACTED/0GQ6Xg7dy5y9HqIpxst4ogEgMf/o2j+PXn/VJ9XpRMQlJpVhYje6GINQ/REDACTED/REDACTED/WLoiCZn0SGQmk/REDACTED/REDACTED/rw/REDACTED/gq5o7nQgrnQWEjM38svR9j/REDACTED/5++FJg/i3LwyP9Zq/1aT/Th689Fpj+5cbU9OK627ZPrck+xf/REDACTED/REDACTED/REDACTED/REDACTED/REDACTED/QjpCsTlSDo5Nnq+CDiKXiXHIvODX/REDACTED/REDACTED/REDACTED/REDACTED//U/9dA0Qjw49w//41/7azn/5UJM4/REDACTED/urNKoVtkSR/REDACTED/REDACTED/REDACTED/KWs/jc1177swPP6kBueTkq9cl/REDACTED/j3wIdFU2xnysHBzz/REDACTED/REDACTED/REDACTED/REDACTED/REDACTED/REDACTED/REDACTED/REDACTED/BoPe0Qr6+eJz29jB5FM/REDACTED/REDACTED/RnqRYDuLb5Tw/REDACTED/REDACTED/fAB45PtMXFzxxO4TUk3+w/REDACTED/VEHfHPDQCw3rNlSqUsXjCue+/REDACTED/mm/Nv/REDACTED/REDACTED/REDACTED/ZM/VAHbyjFpFCFqoHy0lwrbjvi2r22cc/REDACTED/CJ8sQdO/REDACTED/0Oj+UKZ5gSqUSHMKDlSzGPXY0/REDACTED/REDACTED/rHkah8/REDACTED/fDRC/REDACTED/1nzwym1fucceDZ+8tKPfO0b57/wy9Kltty17rOxP4OJF375VvXPZzD/R3vzQh3IXrng8ULyyYc/+5JV43ss0Ju7MWWpvYnEF9T3/kWGsyOz8fNjTFfewoL7798ciqiVy/REDACTED/REDACTED/REDACTED/REDACTED/REDACTED/REDACTED/NDZbHwAlKo5F/A66+IsCDcokgJgeilTX4LNH/REDACTED/REDACTED/REDACTED/pRWowEQBlLYPHMdxSKIK2QKaH/IAZNIRCIpnq/REDACTED/+9H70sAySeo3Q6+5GpQo3xh/+NWfMtKgm0SJIwllMVqNR4P/IGFgEVZQOCAqAAAAMAMAnQEqKAAoAD6RSJ9LpaQioaOIALASCWkAABuBvT4OAAD++E0AAAAAQU5NRgYDAAAAAAAAAAAnAAAnAAAeAAACQUxQSLwCAAANoGTbthrJue9/REDACTED/REDACTED/REDACTED/irRI+TYHldqGLh+cs/REDACTED/REDACTED/REDACTED/REDACTED/yLGuwA172LgIgK12QI7HL7ma5It/REDACTED/REDACTED/REDACTED/REDACTED/REDACTED/Kh1jALsG17yjbDEX/E/zUz/7xmAxExAfi/CgaBuTUE01ICucL1+2e/REDACTED/+ujmzM09SRaxEwRR8d9nN2/rPP5u++mtjwqnEiWLKJeeGoL/eVJev1YHStcM/fR83UipLj7mICoE7Dr7/REDACTED//REDACTED/REDACTED/REDACTED/REDACTED/REDACTED/REDACTED/Gv6bhyMdQzYtLlfLizJOxBXt+yz/REDACTED/REDACTED/REDACTED/jIwvdtUwroUdV0qST9vYtT3e/REDACTED/REDACTED//REDACTED/REDACTED/REDACTED/REDACTED/7PoZwFAGu1tEFs3mqQids/REDACTED/GCTsWDtFRpuXSNPxY/REDACTED/LWpYcC1//SDOckJkukJ7tTJA/REDACTED/REDACTED/5IF/REDACTED/REDACTED/REDACTED/e4Pxrf0dwF8/YUptOEKXz24/P6qmvd/REDACTED/K60BSCjhaZDjnP4el/GlwMCkFi67ffQaJ2jUYekhCIXr/REDACTED/REDACTED/REDACTED/REDACTED/HXm7Oni7/REDACTED/+N9z3qXbFk/vevbVL90YuTAiUmoCSNCqUJv/AGdvcnFh/7vlTjydSCBWWGPw2fChh8gd2/REDACTED/REDACTED/NDsfFnwTal9RGZmwcmHHlWrafnPszVv/REDACTED/REDACTED/REDACTED/vhNAAAAAEFOTUbqAgAAAAAAAAAAJgAAJgAAHgAAAkFMUEigAgAADaCmbZshS3q/REDACTED/REDACTED/uujMkmzRAqk4uWKz/REDACTED/REDACTED/eP3XqDiRY+/xv/nwepnlx1Ayeavp+NHKdh+x8v/46MAD1dQft+R+B6m24vP/REDACTED/REDACTED/Oy9GC9Z2RvD6l/REDACTED//REDACTED/yzKNz/REDACTED/REDACTED/REDACTED/+aOe7R/UtdTYGZwhhbNp8+a/G5h5NVrnqu/tezASok7vyP4zwnROKph144/OG7lQ8m958HMN/REDACTED/REDACTED/BBfp3hx4OP/kAC/kIfuLzs2BnxTMgkAwvRIVbWV/REDACTED/9OVB/zEsGmCXtI1ISzf6NQC4HCAZrihN/uGyw/REDACTED/Rk3HDVmIUcHREFn3cb/REDACTED/RcDYxJkygyWYw65ZRjAyIDAx3f2O6+KsDTZZ/HTlcAAPMMWp4JVpyONVGkt0vLDT/REDACTED/REDACTED/e9Md89Um+4V/pv/REDACTED/OYrBS09ZPlPpT6OO9btEt57Kw0gxr5u0H5x/PaTWZx45lujfIA7FzxR/REDACTED/i/7j6nTUGIh20taP97AnjtsrEIQDW/ufUMNMc/FS+wl57zWQOQ4/REDACTED/REDACTED/REDACTED/UaaezBinamKH1tSU9q95qdmIK/REDACTED/REDACTED/REDACTED/L+oz3CQpfHdlAREwA/qfExU1ytCTno1UKx44GS8m9Oxp//fJbvR2Tuu3o5mO/fOlIe8lev2VbAT9/1o9BZO/tMJd/sBSfiYlJq2w+m/3u0+YsyrbHzZ9/REDACTED/REDACTED/WXul0+e3WgKzy8bX2/ahsK3Z/REDACTED/v4zNf/REDACTED/X4ou+PULCnBmxjsn9B/REDACTED/REDACTED/PioNLuz8Kobf4HUahrMqlb/REDACTED/REDACTED/tj1tlF3pwOxuIevaE4iICcD/REDACTED/REDACTED/LPpbfKn6a8sX4n29Dk/REDACTED/REDACTED/NKTsRznew3/9L2Or1kTIhpk/K53oSWPEdd/REDACTED/9ZN7+Q8z/REDACTED/REDACTED/06a5Gf/REDACTED/REDACTED/vhNAAAAAEFOTUbuAgAAAAAAAAAAJgAAJgAAHgAAAkFMUEikAgAADaCebdsxSbqf91NVm2Pbtv1r1gEggc1go/AGYfyzd8dmm2Xj0/REDACTED/WV/f1y8STnJHTb/x0wx8XCLECUc+G7frpRGFBS9/s+j7rx6h7KbfZr/uY7HjL7vKtqm7v2Avf/0xChT/REDACTED/REDACTED/Vh+7U8LIbzA5N7piA1tnf/yP4/Q4mvjeMSKNXy+BB7ZeB9C585Fl/REDACTED/REDACTED/REDACTED/REDACTED/KJh2Y6l8/VOEP/gbffsq05S9hA73C6IuEc/REDACTED/EvnO/REDACTED/Y9/REDACTED/h8pVj+0ChugpBYUp930FaTFssM9fQ3Qsx/REDACTED/EkVBn9wDpHYbbep81be/DVxz3vCAJdy/REDACTED/FO/REDACTED/REDACTED/8y5ivEi1ygG5dtE7Yl/9cMmTNS2YpnwIQdOzIpG8f/tZQZmmvCCQAhO9uuhLeXR0/miBs7iJNxfNQ/3fbEu/4or+GdHPu+vEKqA8XjN/w72f3sdRL3FQ2LfOEcVxUvZ/REDACTED/REDACTED/REDACTED/REDACTED/REDACTED/REDACTED/REDACTED/REDACTED/REDACTED/Zqj/57mcZCWqbVaKgpFTB/kd/OWS8/fxXM24zWkfZCrigonb+i4mX4/z6fWs3cw0pobhZBiom6u/REDACTED/REDACTED/vhNAAAAAA==
+
+GET
+http://localhost:8765/assistant/safecast-square-ct.png
+[HTTP/1.1 200 OK 0ms]
+
+GET
+data:image/svg+xml;charset=utf-8,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%0A%3Cpath%20fill-rule%3D%22evenodd%22%20clip-rule%3D%22evenodd%22%20d%3D%22M11.4%206.6C11.4%206.26863%2011.6686%206%2012%206C12.3314%206%2012.6%206.26863%2012.6%206.6V10.2C12.6%2010.5314%2012.3314%2010.8%2012%2010.8C11.6686%2010.8%2011.4%2010.5314%2011.4%2010.2V6.6ZM7.75736%207.75716C7.99167%207.52284%208.37157%207.52284%208.60589%207.75716C8.81417%207.96544%208.83731%208.28875%208.67531%208.52259L8.60589%208.60569C6.73137%2010.4802%206.73137%2013.5194%208.60589%2015.3939C10.4804%2017.2684%2013.5196%2017.2684%2015.3941%2015.3939C17.2686%2013.5194%2017.2686%2010.4802%2015.3941%208.60569C15.1598%208.37137%2015.1598%207.99147%2015.3941%207.75716C15.6024%207.54888%2015.9257%207.52574%2016.1595%207.68773L16.2426%207.75716C18.5858%2010.1003%2018.5858%2013.8993%2016.2426%2016.2424C13.8995%2018.5856%2010.1005%2018.5856%207.75736%2016.2424C5.41421%2013.8993%205.41421%2010.1003%207.75736%207.75716Z%22%20fill%3D%22%23fff%22/%3E%0A%3C/svg%3E%0A
+
+GET
+data:image/svg+xml;charset=utf-8,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%0A%3Cpath%20fill-rule%3D%22evenodd%22%20clip-rule%3D%22evenodd%22%20d%3D%22M11.8621%206.84489C11.7625%206.47488%2011.2375%206.47488%2011.1379%206.84489L10.9008%207.7255C10.4838%209.27418%209.27414%2010.4839%207.7255%2010.9008L6.84489%2011.1379C6.47488%2011.2375%206.47488%2011.7625%206.84489%2011.8621L7.7255%2012.0992C9.27414%2012.5162%2010.4838%2013.7259%2010.9008%2015.2746L11.1379%2016.1552C11.2375%2016.5251%2011.7625%2016.5251%2011.8621%2016.1552L12.0992%2015.2745C12.5162%2013.7259%2013.7259%2012.5162%2015.2745%2012.0992L16.1551%2011.8621C16.5251%2011.7625%2016.5251%2011.2375%2016.1551%2011.1379L15.2745%2010.9008C13.7259%2010.4839%2012.5162%209.27414%2012.0992%207.7255L11.8621%206.84489Z%22%20fill%3D%22white%22/%3E%0A%3Cpath%20d%3D%22M6.37462%204.17962C6.44351%203.92385%206.8064%203.92385%206.87525%204.17962C7.16351%205.25017%207.99972%206.08639%209.07027%206.37464C9.32606%206.44349%209.32606%206.80638%209.07027%206.87526C7.99972%207.16349%207.16351%207.99974%206.87525%209.07025C6.8064%209.32604%206.44351%209.32604%206.37462%209.07025C6.08639%207.99974%205.25017%207.16349%204.17963%206.87526C3.92385%206.80638%203.92385%206.44349%204.17963%206.37464C5.25017%206.08639%206.08639%205.25017%206.37462%204.17962Z%22%20fill%3D%22white%22/%3E%0A%3C/svg%3E%0A
+
+[chat] data_preview event received 
+Object { type: "data_preview", summary: {…}, table: (12) […], export_available: true, suggested_export: {…} }
+assistant:858:25
+[chat] finish() accumulated starts with: {"type":"data_preview","summary":{"rows_total":84,"rows_shown":50,"time_range":" assistant:802:17
+XHRPOST
+http://localhost:8765/export
+[HTTP/1.1 500 Internal Server Error 1ms]
+
+	
+POST
+	http://localhost:8765/export
+Status
+500
+Internal Server Error
+VersionHTTP/1.1
+Transferred475 B (102 B size)
+Referrer Policystrict-origin-when-cross-origin
+Request PriorityHighest
+DNS ResolutionSystem
+
+---
+
+I checked..
+
+- Download works nice now.in chat on the map, but not in the assistant.
+- Table format works, but no device name or track  and no link to the device  on the map?
+- local assistant does not show correct table and no downlaod buttons.
+
+---
+
+Both the  assistant and  chat map NG..
+
+---
+
+Again NG
+
+---
+
+Assistant:Table format fine, but no links?
+Map Chat: No table format, no buttons, no links to download.
+
+---
+
+[Performance] Built color lookup table: 100,000 entries for 15 color steps 2 7Frn5h:2685:17
+Speed filter changed - cleared all markers, batch queue, and cache 7Frn5h:5082:13
+[Worker] Marker parser worker initialized 7Frn5h:3301:13
+[Pool] Prewarmed: 1000 circles, 100 divs 7Frn5h:5283:13
+Loading Worker from “http://localhost:8765/js/marker-worker.js” was blocked because of a disallowed MIME type (“text/plain”). 7Frn5h
+Marker worker error, falling back to main thread: undefined 7Frn5h:3291:15
+Track view - showing marker with speed: -1 124 7Frn5h:3167:13
+Track view - showing marker with speed: 1.7442531594324646 2 7Frn5h:3167:13
+Track view - showing marker with speed: 2.2656313370940895 7Frn5h:3167:13
+Track view - showing marker with speed: 1.742428630115084 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7472808221978589 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6348934820608962 7Frn5h:3167:13
+Track view - showing marker with speed: 0.59355195394693 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5538618437541653 7Frn5h:3167:13
+Track view - showing marker with speed: 0.4808319613795487 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6247288057488894 7Frn5h:3167:13
+Track view - showing marker with speed: 0.17544336621225903 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8947897341878607 7Frn5h:3167:13
+Track view - showing marker with speed: 0.3174468595284824 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8645972106878205 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7977082525931599 7Frn5h:3167:13
+Track view - showing marker with speed: 1.1956610906903642 7Frn5h:3167:13
+Track view - showing marker with speed: 1.3510173041749494 7Frn5h:3167:13
+Track view - showing marker with speed: 1.2250660212182005 7Frn5h:3167:13
+Track view - showing marker with speed: 1.3064971257687472 7Frn5h:3167:13
+Track view - showing marker with speed: 0.560189990888819 7Frn5h:3167:13
+Track view - showing marker with speed: 1.3221867177570799 7Frn5h:3167:13
+Track view - showing marker with speed: 1.2317685720595073 7Frn5h:3167:13
+Track view - showing marker with speed: 1.2093637596938251 7Frn5h:3167:13
+Track view - showing marker with speed: 0.768910241281344 7Frn5h:3167:13
+Track view - showing marker with speed: 0.2019927670969452 7Frn5h:3167:13
+Track view - showing marker with speed: 0.4927074084439972 7Frn5h:3167:13
+Track view - showing marker with speed: 0.41387197153607114 7Frn5h:3167:13
+Track view - showing marker with speed: 0.24670693480402808 7Frn5h:3167:13
+Track view - showing marker with speed: 0.25945482889332194 7Frn5h:3167:13
+Track view - showing marker with speed: 1.783414360298501 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6917286735984398 7Frn5h:3167:13
+Track view - showing marker with speed: 0.39330798921643717 7Frn5h:3167:13
+Track view - showing marker with speed: 0.3140753970340857 7Frn5h:3167:13
+Track view - showing marker with speed: 3.078298363998906 7Frn5h:3167:13
+Track view - showing marker with speed: 1.802134273162683 7Frn5h:3167:13
+Track view - showing marker with speed: 15.081971246737606 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6415564253859816 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8029956619783146 7Frn5h:3167:13
+Track view - showing marker with speed: 1.276332423918627 7Frn5h:3167:13
+Track view - showing marker with speed: 1.4601014393468454 7Frn5h:3167:13
+Track view - showing marker with speed: 0.20199302976458994 7Frn5h:3167:13
+Track view - showing marker with speed: 1.7164350910034145 7Frn5h:3167:13
+Track view - showing marker with speed: 0.15593407659398342 7Frn5h:3167:13
+Track view - showing marker with speed: 0.10289001297086417 7Frn5h:3167:13
+Track view - showing marker with speed: 0.420496918151317 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5654150265724888 7Frn5h:3167:13
+Track view - showing marker with speed: 0.4280201364203003 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8917136366024316 7Frn5h:3167:13
+Track view - showing marker with speed: 0.36092856309112353 7Frn5h:3167:13
+Track view - showing marker with speed: 0.9089686476196516 7Frn5h:3167:13
+Track view - showing marker with speed: 0.2043791724593654 7Frn5h:3167:13
+Track view - showing marker with speed: 0.17028200883171737 7Frn5h:3167:13
+Track view - showing marker with speed: 0.34056401766343475 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5263297875859277 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6800644627286997 7Frn5h:3167:13
+Track view - showing marker with speed: 0.12681322990717328 7Frn5h:3167:13
+Track view - showing marker with speed: 0.07796701089514721 7Frn5h:3167:13
+Track view - showing marker with speed: 0.18046424369951566 7Frn5h:3167:13
+Track view - showing marker with speed: 0.1884716708642942 7Frn5h:3167:13
+Track view - showing marker with speed: 0.11636396362765385 7Frn5h:3167:13
+Track view - showing marker with speed: 0.21197087481894256 7Frn5h:3167:13
+Track view - showing marker with speed: 0.15593399458298998 7Frn5h:3167:13
+Track view - showing marker with speed: 0.20577988640669945 7Frn5h:3167:13
+Track view - showing marker with speed: 0.10099648379900672 7Frn5h:3167:13
+Track view - showing marker with speed: 0.1421054971377227 7Frn5h:3167:13
+Track view - showing marker with speed: 0.07412995106722987 7Frn5h:3167:13
+Track view - showing marker with speed: 0.15149472653416868 7Frn5h:3167:13
+Track view - showing marker with speed: 0.4828387708885125 7Frn5h:3167:13
+Track view - showing marker with speed: 0.3032854520589675 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7769526157363795 7Frn5h:3167:13
+Track view - showing marker with speed: 0.22668813421308207 7Frn5h:3167:13
+Track view - showing marker with speed: 0.4132254935658981 7Frn5h:3167:13
+Track view - showing marker with speed: 0.9946029252639048 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5499967867315764 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5200418185206119 7Frn5h:3167:13
+Track view - showing marker with speed: 0.24292087115381394 7Frn5h:3167:13
+Track view - showing marker with speed: 0.3424296252295553 7Frn5h:3167:13
+Track view - showing marker with speed: 0.15217509098471563 7Frn5h:3167:13
+Track view - showing marker with speed: 0.2090912748202285 7Frn5h:3167:13
+Track view - showing marker with speed: 0.15217509111242872 7Frn5h:3167:13
+Track view - showing marker with speed: 0.21197086543121185 7Frn5h:3167:13
+Track view - showing marker with speed: 0.23057637268665304 7Frn5h:3167:13
+Track view - showing marker with speed: 0.20437906092651836 7Frn5h:3167:13
+Track view - showing marker with speed: 0.1306497223093119 7Frn5h:3167:13
+Track view - showing marker with speed: 0.07796698224903202 7Frn5h:3167:13
+Track view - showing marker with speed: 0.03706497545460618 7Frn5h:3167:13
+Track view - showing marker with speed: 0.30866975867262303 7Frn5h:3167:13
+Track view - showing marker with speed: 1.0936246733299644 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7537823139188602 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5291541824214314 7Frn5h:3167:13
+Track view - showing marker with speed: 0.4784399355090751 7Frn5h:3167:13
+Track view - showing marker with speed: 0.2524911819519323 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7069752730188436 7Frn5h:3167:13
+Track view - showing marker with speed: 0.887692157549448 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7630482431709092 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5225987934215001 7Frn5h:3167:13
+Track view - showing marker with speed: 0.268368848869201 7Frn5h:3167:13
+Track view - showing marker with speed: 0.2598897875709566 7Frn5h:3167:13
+Track view - showing marker with speed: 0.9329660988058592 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5832291565486853 7Frn5h:3167:13
+Track view - showing marker with speed: 0.885654249477458 7Frn5h:3167:13
+Track view - showing marker with speed: 1.1095532571532176 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6237359276020757 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6338271278150029 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5157832883577528 7Frn5h:3167:13
+Track view - showing marker with speed: 0.4823467045233348 7Frn5h:3167:13
+Track view - showing marker with speed: 0.13064973977650624 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7210836138071735 7Frn5h:3167:13
+Track view - showing marker with speed: 0.4032293810524664 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6774772341824057 7Frn5h:3167:13
+Track view - showing marker with speed: 0.21872501284983983 7Frn5h:3167:13
+Track view - showing marker with speed: 0.03429665617414211 7Frn5h:3167:13
+Track view - showing marker with speed: 0.653248677580728 7Frn5h:3167:13
+Track view - showing marker with speed: 0.15593400376784713 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6336843080438072 7Frn5h:3167:13
+Track view - showing marker with speed: 1.0924083095413286 7Frn5h:3167:13
+Track view - showing marker with speed: 0.747280793011508 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7538866929450392 7Frn5h:3167:13
+Track view - showing marker with speed: 1.3896897939996729 7Frn5h:3167:13
+Track view - showing marker with speed: 0.22668812625972418 7Frn5h:3167:13
+Track view - showing marker with speed: 1.0943961026552 7Frn5h:3167:13
+Track view - showing marker with speed: 0.9950396195289402 7Frn5h:3167:13
+Track view - showing marker with speed: 0.3606923253988889 7Frn5h:3167:13
+Track view - showing marker with speed: 0.10099646662506427 7Frn5h:3167:13
+Track view - showing marker with speed: 0.1111949267588623 7Frn5h:3167:13
+Track view - showing marker with speed: 0.9725173894473362 7Frn5h:3167:13
+Track view - showing marker with speed: 1.5893205494475136 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6421843678784123 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6558385650638067 7Frn5h:3167:13
+Track view - showing marker with speed: 0.36003080337412136 7Frn5h:3167:13
+Track view - showing marker with speed: 0.3108869380615344 7Frn5h:3167:13
+Track view - showing marker with speed: 0.36003081927662806 7Frn5h:3167:13
+Track view - showing marker with speed: 1.2474711418561086 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5538613691092 7Frn5h:3167:13
+Track view - showing marker with speed: 0.47984500519067363 7Frn5h:3167:13
+Track view - showing marker with speed: 1.034889738684956 7Frn5h:3167:13
+Track view - showing marker with speed: 0.18046418775456435 7Frn5h:3167:13
+Track view - showing marker with speed: 0.33358477988154306 7Frn5h:3167:13
+Track view - showing marker with speed: 0.734410629282236 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8505745078511175 7Frn5h:3167:13
+Track view - showing marker with speed: 1.011915989576575 7Frn5h:3167:13
+Track view - showing marker with speed: 1.2800033821149641 7Frn5h:3167:13
+Track view - showing marker with speed: 1.198005941764862 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7904462213013999 7Frn5h:3167:13
+Track view - showing marker with speed: 2.4478592265887706 7Frn5h:3167:13
+Track view - showing marker with speed: 2.0896871150894687 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8175141813561524 7Frn5h:3167:13
+Track view - showing marker with speed: 1.1470656711845186 7Frn5h:3167:13
+Track view - showing marker with speed: 1.5260973205229817 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5234235695014507 7Frn5h:3167:13
+Track view - showing marker with speed: 1.1286610179516845 7Frn5h:3167:13
+Track view - showing marker with speed: 1.007184101593023 7Frn5h:3167:13
+Track view - showing marker with speed: 2.5688092058929506 7Frn5h:3167:13
+Track view - showing marker with speed: 1.3700369438909923 7Frn5h:3167:13
+Track view - showing marker with speed: 0.18046399927172516 7Frn5h:3167:13
+Track view - showing marker with speed: 1.0770706753296935 7Frn5h:3167:13
+Track view - showing marker with speed: 1.0383858535842831 7Frn5h:3167:13
+Track view - showing marker with speed: 0.826888860323623 7Frn5h:3167:13
+Track view - showing marker with speed: 1.1250943833938711 7Frn5h:3167:13
+Track view - showing marker with speed: 1.839405171577593 7Frn5h:3167:13
+Track view - showing marker with speed: 2.1460406823018494 7Frn5h:3167:13
+Track view - showing marker with speed: 0.9868800101152801 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6819244657642286 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8649724987940977 7Frn5h:3167:13
+Track view - showing marker with speed: 1.7699293551623079 7Frn5h:3167:13
+Track view - showing marker with speed: 2.0749913265911313 7Frn5h:3167:13
+Track view - showing marker with speed: 7.137010462087154 7Frn5h:3167:13
+Track view - showing marker with speed: 0.3353431790787273 7Frn5h:3167:13
+Track view - showing marker with speed: 0.15593309155424154 7Frn5h:3167:13
+Track view - showing marker with speed: 0.1514942019092767 7Frn5h:3167:13
+Track view - showing marker with speed: 0.21197049815117489 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8111707351504576 7Frn5h:3167:13
+Track view - showing marker with speed: 1.367258966284101 7Frn5h:3167:13
+Track view - showing marker with speed: 1.3243856853028582 7Frn5h:3167:13
+Track view - showing marker with speed: 0.754520761476624 7Frn5h:3167:13
+Track view - showing marker with speed: 1.1142926652464762 7Frn5h:3167:13
+Track view - showing marker with speed: 1.303150058057463 7Frn5h:3167:13
+Track view - showing marker with speed: 1.4747448261784906 7Frn5h:3167:13
+Track view - showing marker with speed: 3.3593946390193543 7Frn5h:3167:13
+Track view - showing marker with speed: 10.11506470814582 7Frn5h:3167:13
+Track view - showing marker with speed: 3.1675701097513684 7Frn5h:3167:13
+Track view - showing marker with speed: 1.4556699693194666 7Frn5h:3167:13
+Track view - showing marker with speed: 1.240333398920412 7Frn5h:3167:13
+Track view - showing marker with speed: 1.1445720999899487 7Frn5h:3167:13
+Track view - showing marker with speed: 0.11636395096786126 7Frn5h:3167:13
+Track view - showing marker with speed: 0.30328522569188665 7Frn5h:3167:13
+Track view - showing marker with speed: 1.3371206040096788 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6872498413408011 7Frn5h:3167:13
+Track view - showing marker with speed: 1.244014737744963 7Frn5h:3167:13
+Track view - showing marker with speed: 1.5815592997395669 7Frn5h:3167:13
+Track view - showing marker with speed: 0.2187249320722257 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7866173973922079 7Frn5h:3167:13
+Track view - showing marker with speed: 0.34253537817657126 7Frn5h:3167:13
+Track view - showing marker with speed: 0.4053497208797542 7Frn5h:3167:13
+Track view - showing marker with speed: 0.38447709472631497 7Frn5h:3167:13
+Track view - showing marker with speed: 0.29604883709739327 7Frn5h:3167:13
+Track view - showing marker with speed: 1.1095533360892642 7Frn5h:3167:13
+Track view - showing marker with speed: 1.007311794826212 7Frn5h:3167:13
+Track view - showing marker with speed: 0.9523398693209442 7Frn5h:3167:13
+Track view - showing marker with speed: 1.0947932211534925 7Frn5h:3167:13
+Track view - showing marker with speed: 1.1250945367711016 7Frn5h:3167:13
+Track view - showing marker with speed: 1.2609748568176444 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8056350040953214 7Frn5h:3167:13
+Track view - showing marker with speed: 1.4374653050751143 7Frn5h:3167:13
+Track view - showing marker with speed: 1.4444750450001815 7Frn5h:3167:13
+Track view - showing marker with speed: 0.3449641446622568 7Frn5h:3167:13
+Track view - showing marker with speed: 1.1077244529336971 7Frn5h:3167:13
+Track view - showing marker with speed: 1.6157765511015492 7Frn5h:3167:13
+Track view - showing marker with speed: 1.4370892350291011 7Frn5h:3167:13
+Track view - showing marker with speed: 1.881825408119139 7Frn5h:3167:13
+Track view - showing marker with speed: 1.4095840698832638 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7966229388033303 7Frn5h:3167:13
+Track view - showing marker with speed: 1.0614232578193066 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8363665441018762 7Frn5h:3167:13
+Track view - showing marker with speed: 1.0191638999392398 7Frn5h:3167:13
+Track view - showing marker with speed: 1.0289010122405293 7Frn5h:3167:13
+Track view - showing marker with speed: 0.9857220813861239 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5935525001093193 7Frn5h:3167:13
+Track view - showing marker with speed: 1.3154676506215333 7Frn5h:3167:13
+Track view - showing marker with speed: 0.28421153976503344 7Frn5h:3167:13
+Track view - showing marker with speed: 0.19761166300203994 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6718897551124986 7Frn5h:3167:13
+Track view - showing marker with speed: 0.561654234910759 7Frn5h:3167:13
+Track view - showing marker with speed: 1.1413295414281055 7Frn5h:3167:13
+Track view - showing marker with speed: 0.36054245042676764 7Frn5h:3167:13
+Track view - showing marker with speed: 1.5052095399144274 7Frn5h:3167:13
+Track view - showing marker with speed: 0.9650655872158074 7Frn5h:3167:13
+Track view - showing marker with speed: 0.9830828020760987 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7436917985496678 7Frn5h:3167:13
+Track view - showing marker with speed: 1.1197994736637313 7Frn5h:3167:13
+Track view - showing marker with speed: 0.9039551798604817 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6885407297467667 7Frn5h:3167:13
+Track view - showing marker with speed: 1.3625027439308581 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8427143907914173 7Frn5h:3167:13
+Track view - showing marker with speed: 1.385428742626377 7Frn5h:3167:13
+Track view - showing marker with speed: 1.5665316811563084 7Frn5h:3167:13
+Track view - showing marker with speed: 2.2401134568808647 7Frn5h:3167:13
+Track view - showing marker with speed: 1.9670666182133378 7Frn5h:3167:13
+Track view - showing marker with speed: 1.373867971071293 7Frn5h:3167:13
+Track view - showing marker with speed: 2.4706185032699746 7Frn5h:3167:13
+Track view - showing marker with speed: 1.6721807162517799 7Frn5h:3167:13
+Track view - showing marker with speed: 1.7129160721815784 7Frn5h:3167:13
+Track view - showing marker with speed: 1.9580684948989604 7Frn5h:3167:13
+Track view - showing marker with speed: 3.018088859869189 7Frn5h:3167:13
+Track view - showing marker with speed: 2.0016422855445293 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7689107020388919 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6564777193230842 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7017040099296613 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7655386157110472 7Frn5h:3167:13
+Track view - showing marker with speed: 1.0315682594363313 7Frn5h:3167:13
+Track view - showing marker with speed: 1.1666770470654264 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8701414966778337 7Frn5h:3167:13
+Track view - showing marker with speed: 1.738401638102594 7Frn5h:3167:13
+Track view - showing marker with speed: 1.8701083163252914 7Frn5h:3167:13
+Track view - showing marker with speed: 0.9842641221526277 7Frn5h:3167:13
+Track view - showing marker with speed: 1.0153402664371574 7Frn5h:3167:13
+Track view - showing marker with speed: 1.3655607663829017 7Frn5h:3167:13
+Track view - showing marker with speed: 1.589322630726612 7Frn5h:3167:13
+Track view - showing marker with speed: 1.8135059393487585 7Frn5h:3167:13
+Track view - showing marker with speed: 2.1759195454175777 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8552495587391953 7Frn5h:3167:13
+Track view - showing marker with speed: 1.1051738292658608 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5842200701968687 7Frn5h:3167:13
+Track view - showing marker with speed: 0.32808751105948786 7Frn5h:3167:13
+Track view - showing marker with speed: 0.18847167110867952 7Frn5h:3167:13
+Track view - showing marker with speed: 1.540368209073801 7Frn5h:3167:13
+Track view - showing marker with speed: 2.2647922888302636 7Frn5h:3167:13
+Track view - showing marker with speed: 1.2281022922640612 7Frn5h:3167:13
+Track view - showing marker with speed: 1.3040077027653043 7Frn5h:3167:13
+Track view - showing marker with speed: 1.9318290273114591 7Frn5h:3167:13
+Track view - showing marker with speed: 1.2884767553243484 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7114560796090188 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8758638693524297 7Frn5h:3167:13
+Track view - showing marker with speed: 3.853900403635143 7Frn5h:3167:13
+Track view - showing marker with speed: 1.158641650609453 7Frn5h:3167:13
+Track view - showing marker with speed: 0.14210546612624933 7Frn5h:3167:13
+Track view - showing marker with speed: 0.176591232147626 7Frn5h:3167:13
+Track view - showing marker with speed: 1.9150447367631738 7Frn5h:3167:13
+Track view - showing marker with speed: 1.108193598174339 7Frn5h:3167:13
+Track view - showing marker with speed: 1.8379607305710546 7Frn5h:3167:13
+Track view - showing marker with speed: 0.48234681253295736 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5793211933614494 7Frn5h:3167:13
+Track view - showing marker with speed: 1.789579277406471 7Frn5h:3167:13
+Track view - showing marker with speed: 1.5539062010325795 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7554366693799076 7Frn5h:3167:13
+Track view - showing marker with speed: 0.9650649954648978 7Frn5h:3167:13
+Track view - showing marker with speed: 0.9323192165177044 7Frn5h:3167:13
+Track view - showing marker with speed: 1.0580238248782552 7Frn5h:3167:13
+Track view - showing marker with speed: 1.7207046581341718 7Frn5h:3167:13
+Track view - showing marker with speed: 1.2111891679314406 7Frn5h:3167:13
+Track view - showing marker with speed: 1.290528600833275 7Frn5h:3167:13
+Track view - showing marker with speed: 1.0754313117627385 7Frn5h:3167:13
+Track view - showing marker with speed: 0.4830637281490887 7Frn5h:3167:13
+Track view - showing marker with speed: 0.44230985209717844 7Frn5h:3167:13
+Track view - showing marker with speed: 0.9039570355817326 7Frn5h:3167:13
+Track view - showing marker with speed: 1.362505248725911 7Frn5h:3167:13
+Track view - showing marker with speed: 1.1695080857095927 7Frn5h:3167:13
+Track view - showing marker with speed: 0.584660060682568 7Frn5h:3167:13
+Track view - showing marker with speed: 1.0151276673240694 7Frn5h:3167:13
+Track view - showing marker with speed: 0.9289753160894925 7Frn5h:3167:13
+Track view - showing marker with speed: 0.2683689312114469 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8079733083154249 7Frn5h:3167:13
+Track view - showing marker with speed: 0.28216696905396604 7Frn5h:3167:13
+Track view - showing marker with speed: 0.1268135433355425 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8239569358050354 7Frn5h:3167:13
+Track view - showing marker with speed: 3.9331013975843696 7Frn5h:3167:13
+Track view - showing marker with speed: 2.2255836570800818 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8582198278056937 7Frn5h:3167:13
+Track view - showing marker with speed: 0.43192587581811565 7Frn5h:3167:13
+Track view - showing marker with speed: 1.4007165454210935 7Frn5h:3167:13
+Track view - showing marker with speed: 1.2859974813804205 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8079729485329503 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6917298271060984 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8584711089151496 7Frn5h:3167:13
+Track view - showing marker with speed: 1.0080746087037193 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5200418234626318 7Frn5h:3167:13
+Track view - showing marker with speed: 0.11636398593139594 7Frn5h:3167:13
+Track view - showing marker with speed: 0.1306498114706964 7Frn5h:3167:13
+Track view - showing marker with speed: 0.4567021564136856 7Frn5h:3167:13
+Track view - showing marker with speed: 0.10099659475381625 7Frn5h:3167:13
+Track view - showing marker with speed: 0.0342967282481375 7Frn5h:3167:13
+Track view - showing marker with speed: 0.17659150784136107 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7287642847573512 7Frn5h:3167:13
+Track view - showing marker with speed: 0.31744724151150033 7Frn5h:3167:13
+Track view - showing marker with speed: 0.12681340126612975 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6055945912390136 7Frn5h:3167:13
+Track view - showing marker with speed: 0.05049829961676751 7Frn5h:3167:13
+Track view - showing marker with speed: 0.08167934518668157 7Frn5h:3167:13
+Track view - showing marker with speed: 0.9691664386191897 7Frn5h:3167:13
+Track view - showing marker with speed: 1.6642419987619896 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7218576938777883 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6131387462333989 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6917300371655515 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7240371015164331 7Frn5h:3167:13
+Track view - showing marker with speed: 2.439653682955831 7Frn5h:3167:13
+Track view - showing marker with speed: 1.021897894116394 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7472824592426517 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7904467776174798 7Frn5h:3167:13
+Track view - showing marker with speed: 1.2231441930833449 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6530226029604754 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8832178958057316 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5582230412500604 7Frn5h:3167:13
+Track view - showing marker with speed: 0.22501892682088473 7Frn5h:3167:13
+Track view - showing marker with speed: 0.18847169837078132 7Frn5h:3167:13
+Track view - showing marker with speed: 0.4914393591851628 7Frn5h:3167:13
+Track view - showing marker with speed: 0.3846656763098374 7Frn5h:3167:13
+Track view - showing marker with speed: 0.9372423653767074 7Frn5h:3167:13
+Track view - showing marker with speed: 0.3844790461048654 7Frn5h:3167:13
+Track view - showing marker with speed: 0.33115342082028915 7Frn5h:3167:13
+Track view - showing marker with speed: 0.23057678621721034 7Frn5h:3167:13
+Track view - showing marker with speed: 0.10936295259054325 7Frn5h:3167:13
+Track view - showing marker with speed: 0.33115341496256645 7Frn5h:3167:13
+Track view - showing marker with speed: 0.18046452301730118 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5570314755097393 7Frn5h:3167:13
+Track view - showing marker with speed: 0.38152501461310007 7Frn5h:3167:13
+Track view - showing marker with speed: 0.4083969329409781 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6811281734470186 7Frn5h:3167:13
+Track view - showing marker with speed: 0.298496679419336 7Frn5h:3167:13
+Track view - showing marker with speed: 1.647916606724889 7Frn5h:3167:13
+Track view - showing marker with speed: 0.704234535296701 7Frn5h:3167:13
+Track view - showing marker with speed: 0.08167938822733606 7Frn5h:3167:13
+Track view - showing marker with speed: 0.21197114129370603 7Frn5h:3167:13
+Track view - showing marker with speed: 0.617335231262862 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6628556230791951 7Frn5h:3167:13
+Track view - showing marker with speed: 0.4565253894850624 7Frn5h:3167:13
+Track view - showing marker with speed: 0.4134445389443078 7Frn5h:3167:13
+Track view - showing marker with speed: 0.07412995106722987 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5197655433809636 7Frn5h:3167:13
+Track view - showing marker with speed: 0.3898363917938552 7Frn5h:3167:13
+Track view - showing marker with speed: 0.2057808449777779 7Frn5h:3167:13
+Track view - showing marker with speed: 0.251261876045403 7Frn5h:3167:13
+Track view - showing marker with speed: 0.20199340740221236 7Frn5h:3167:13
+Track view - showing marker with speed: 0.4301762930179381 7Frn5h:3167:13
+Track view - showing marker with speed: 0.9596934325742366 7Frn5h:3167:13
+Track view - showing marker with speed: 1.20710216632082 7Frn5h:3167:13
+Track view - showing marker with speed: 2.760079546889624 7Frn5h:3167:13
+Track view - showing marker with speed: 3.9261534877084485 7Frn5h:3167:13
+Track view - showing marker with speed: 0.457870641208991 7Frn5h:3167:13
+Track view - showing marker with speed: 2.1978096357787162 7Frn5h:3167:13
+Track view - showing marker with speed: 2.7586895961527835 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5049833733962447 7Frn5h:3167:13
+Track view - showing marker with speed: 0.19761171051004536 7Frn5h:3167:13
+Track view - showing marker with speed: 2.6570008814094423 7Frn5h:3167:13
+Track view - showing marker with speed: 1.2026738470323122 7Frn5h:3167:13
+Track view - showing marker with speed: 2.2009443439225658 7Frn5h:3167:13
+Track view - showing marker with speed: 2.4144978464778273 7Frn5h:3167:13
+Track view - showing marker with speed: 1.547565323412303 7Frn5h:3167:13
+Track view - showing marker with speed: 3.740004765429967 7Frn5h:3167:13
+Track view - showing marker with speed: 3.560461406115491 7Frn5h:3167:13
+Track view - showing marker with speed: 2.3026639840596053 7Frn5h:3167:13
+Track view - showing marker with speed: 1.3697238879862792 7Frn5h:3167:13
+Track view - showing marker with speed: 1.5577673998508732 7Frn5h:3167:13
+Track view - showing marker with speed: 1.7121554237166752 7Frn5h:3167:13
+Track view - showing marker with speed: 2.309448410264284 7Frn5h:3167:13
+Track view - showing marker with speed: 4.216268388753763 7Frn5h:3167:13
+Track view - showing marker with speed: 7.112501246239963 7Frn5h:3167:13
+Track view - showing marker with speed: 8.909627576625116 7Frn5h:3167:13
+Track view - showing marker with speed: 1.7944280358524014 7Frn5h:3167:13
+Track view - showing marker with speed: 10.993902619465702 7Frn5h:3167:13
+Track view - showing marker with speed: 4.144709289143968 7Frn5h:3167:13
+Track view - showing marker with speed: 0.25126233571855516 7Frn5h:3167:13
+Track view - showing marker with speed: 0.3844796677421579 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6069953602633721 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7496776999516882 7Frn5h:3167:13
+Track view - showing marker with speed: 0.15593477159155117 7Frn5h:3167:13
+Track view - showing marker with speed: 1.3246343300703924 2 7Frn5h:3167:13
+Track view - showing marker with speed: 5.29853732028157 7Frn5h:3167:13
+Track view - showing marker with speed: 2.435153964726574 7Frn5h:3167:13
+Track view - showing marker with speed: 0.2768670645565453 7Frn5h:3167:13
+Track view - showing marker with speed: 0.19761175953820584 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6676410478550141 3 7Frn5h:3167:13
+Track view - showing marker with speed: 16.691026196375354 7Frn5h:3167:13
+Track view - showing marker with speed: 2.116392598000073 7Frn5h:3167:13
+Track view - showing marker with speed: 1.4517410513472275 7Frn5h:3167:13
+Track view - showing marker with speed: 2.0097903278729943 7Frn5h:3167:13
+Track view - showing marker with speed: 1.4035494323109194 7Frn5h:3167:13
+Track view - showing marker with speed: 4.121070186118531 7Frn5h:3167:13
+Track view - showing marker with speed: 2.2531480555492673 2 7Frn5h:3167:13
+Track view - showing marker with speed: 11.71636988885619 7Frn5h:3167:13
+Track view - showing marker with speed: 0.9950400936021119 7Frn5h:3167:13
+Track view - showing marker with speed: 5.525258306902682 7Frn5h:3167:13
+Track view - showing marker with speed: 2.9920914619261385 7Frn5h:3167:13
+Track view - showing marker with speed: 1.0936270152631136 7Frn5h:3167:13
+Track view - showing marker with speed: 1.584116182782418 7Frn5h:3167:13
+Track view - showing marker with speed: 0.06859345597101188 7Frn5h:3167:13
+Track view - showing marker with speed: 0.20160488160292553 5 7Frn5h:3167:13
+Track view - showing marker with speed: 11.088268488160903 7Frn5h:3167:13
+Track view - showing marker with speed: 2.447206619611319 7Frn5h:3167:13
+Track view - showing marker with speed: 3.557009242929902 7Frn5h:3167:13
+Track view - showing marker with speed: 0.2808268815226282 7Frn5h:3167:13
+Track view - showing marker with speed: 0.2090912627208655 7Frn5h:3167:13
+Track view - showing marker with speed: 0.102889922498047 7Frn5h:3167:13
+Track view - showing marker with speed: 0.1559339706380547 7Frn5h:3167:13
+Track view - showing marker with speed: 0.10099647646337306 7Frn5h:3167:13
+Track view - showing marker with speed: 0.29349099588475047 7Frn5h:3167:13
+Track view - showing marker with speed: 1.7626729376041324 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8804731502764321 7Frn5h:3167:13
+Track view - showing marker with speed: 0.3110037976994261 7Frn5h:3167:13
+Track view - showing marker with speed: 0.42049692130954364 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5570314663216371 7Frn5h:3167:13
+Track view - showing marker with speed: 0.9842628545572399 7Frn5h:3167:13
+Track view - showing marker with speed: 1.0709102444951326 7Frn5h:3167:13
+Track view - showing marker with speed: 2.5526662455998697 7Frn5h:3167:13
+Track view - showing marker with speed: 3.383819208836461 7Frn5h:3167:13
+Track view - showing marker with speed: 2.5662279863864157 7Frn5h:3167:13
+Track view - showing marker with speed: 1.3655622642470258 7Frn5h:3167:13
+Track view - showing marker with speed: 1.2952319815493594 7Frn5h:3167:13
+Track view - showing marker with speed: 1.312092954070584 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8264532412116097 7Frn5h:3167:13
+Track view - showing marker with speed: 1.0295698227933356 7Frn5h:3167:13
+Track view - showing marker with speed: 1.1328641515810642 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6981839733392681 7Frn5h:3167:13
+Track view - showing marker with speed: 0.2524916083257781 7Frn5h:3167:13
+Track view - showing marker with speed: 0.969166449687347 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7921998064887544 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7966246427900059 7Frn5h:3167:13
+Track view - showing marker with speed: 2.5259401220544326 7Frn5h:3167:13
+Track view - showing marker with speed: 1.6980983062715886 7Frn5h:3167:13
+Track view - showing marker with speed: 2.15501999059432 7Frn5h:3167:13
+Track view - showing marker with speed: 1.1871065361599278 7Frn5h:3167:13
+Track view - showing marker with speed: 1.581564290031919 7Frn5h:3167:13
+Track view - showing marker with speed: 1.3718700770094583 7Frn5h:3167:13
+Track view - showing marker with speed: 1.4863591356452706 7Frn5h:3167:13
+Track view - showing marker with speed: 1.440940444013758 7Frn5h:3167:13
+Track view - showing marker with speed: 1.2763355611221605 7Frn5h:3167:13
+Track view - showing marker with speed: 1.4214040812663173 7Frn5h:3167:13
+Track view - showing marker with speed: 0.9326649032630885 7Frn5h:3167:13
+Track view - showing marker with speed: 0.331098878198946 7Frn5h:3167:13
+Track view - showing marker with speed: 2.0433813452002014 7Frn5h:3167:13
+Track view - showing marker with speed: 2.4094574599415677 7Frn5h:3167:13
+Track view - showing marker with speed: 2.265627110330431 7Frn5h:3167:13
+Track view - showing marker with speed: 1.5433567250043834 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5457710346704359 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7608817091530827 7Frn5h:3167:13
+Track view - showing marker with speed: 1.1830741988003606 7Frn5h:3167:13
+Track view - showing marker with speed: 1.8221350940848993 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7581630458356426 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7811744531780265 7Frn5h:3167:13
+Track view - showing marker with speed: 1.3627707165494138 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5367379069029038 7Frn5h:3167:13
+Track view - showing marker with speed: 0.9367246677523106 7Frn5h:3167:13
+Track view - showing marker with speed: 1.5136844970640513 7Frn5h:3167:13
+Track view - showing marker with speed: 1.5652679544129875 7Frn5h:3167:13
+Track view - showing marker with speed: 1.8712133948086123 7Frn5h:3167:13
+Track view - showing marker with speed: 1.1233090640586336 7Frn5h:3167:13
+Track view - showing marker with speed: 0.4374512212764673 7Frn5h:3167:13
+Track view - showing marker with speed: 0.902322092489632 7Frn5h:3167:13
+Track view - showing marker with speed: 1.2239323359539533 7Frn5h:3167:13
+Track view - showing marker with speed: 1.6840238090125061 7Frn5h:3167:13
+Track view - showing marker with speed: 1.9010545682547082 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8829573030902296 7Frn5h:3167:13
+Track view - showing marker with speed: 0.671889684275094 7Frn5h:3167:13
+Track view - showing marker with speed: 0.38983546771882255 7Frn5h:3167:13
+Track view - showing marker with speed: 0.13718680622633567 7Frn5h:3167:13
+Track view - showing marker with speed: 0.594030505200878 7Frn5h:3167:13
+Track view - showing marker with speed: 0.44230971090971105 7Frn5h:3167:13
+Track view - showing marker with speed: 2.0756386306725227 7Frn5h:3167:13
+Track view - showing marker with speed: 1.0636049083205559 7Frn5h:3167:13
+Track view - showing marker with speed: 1.3622420463622875 7Frn5h:3167:13
+Track view - showing marker with speed: 1.573235020016119 7Frn5h:3167:13
+Track view - showing marker with speed: 1.2789494772006311 7Frn5h:3167:13
+Track view - showing marker with speed: 0.9932942683478613 7Frn5h:3167:13
+Track view - showing marker with speed: 1.1946016661904386 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6397911563416653 7Frn5h:3167:13
+Track view - showing marker with speed: 0.3552637989747345 7Frn5h:3167:13
+Track view - showing marker with speed: 0.1765912739244077 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6037750452021591 7Frn5h:3167:13
+Track view - showing marker with speed: 1.6672979393117793 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8500363957990166 7Frn5h:3167:13
+Track view - showing marker with speed: 1.2801349451234598 7Frn5h:3167:13
+Track view - showing marker with speed: 1.3697179709696041 7Frn5h:3167:13
+Track view - showing marker with speed: 0.2821660602456201 7Frn5h:3167:13
+Track view - showing marker with speed: 1.1089722961019919 7Frn5h:3167:13
+Track view - showing marker with speed: 1.7028200232788602 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6055942872900866 7Frn5h:3167:13
+Track view - showing marker with speed: 0.2683688494929224 7Frn5h:3167:13
+Track view - showing marker with speed: 0.2179323336022446 2 7Frn5h:3167:13
+Track view - showing marker with speed: 4.576579005647137 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7287611714913736 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5025206781700701 7Frn5h:3167:13
+Track view - showing marker with speed: 0.31186749761073285 7Frn5h:3167:13
+Track view - showing marker with speed: 1.1136712165205969 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8161503917827165 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6237347310698635 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6774754483625355 7Frn5h:3167:13
+Track view - showing marker with speed: 0.28216563939083544 7Frn5h:3167:13
+Track view - showing marker with speed: 0.12484571216867889 20 7Frn5h:3167:13
+Track view - showing marker with speed: 15.031423745108938 7Frn5h:3167:13
+Track view - showing marker with speed: 0.9596919046259114 7Frn5h:3167:13
+Track view - showing marker with speed: 1.1051760278962477 7Frn5h:3167:13
+Track view - showing marker with speed: 1.4894281202612683 7Frn5h:3167:13
+Track view - showing marker with speed: 0.579321639401932 7Frn5h:3167:13
+Track view - showing marker with speed: 1.4901980310438 7Frn5h:3167:13
+Track view - showing marker with speed: 0.9569564192731915 7Frn5h:3167:13
+Track view - showing marker with speed: 5.349002060516397 7Frn5h:3167:13
+Track view - showing marker with speed: 2.290599896709454 7Frn5h:3167:13
+Track view - showing marker with speed: 0.47082666586057875 2 7Frn5h:3167:13
+Track view - showing marker with speed: 8.474879985490418 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8134442546776451 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5234236291888681 7Frn5h:3167:13
+Track view - showing marker with speed: 1.2026722325381698 7Frn5h:3167:13
+Track view - showing marker with speed: 1.2308135413392896 7Frn5h:3167:13
+Track view - showing marker with speed: 2.2546319952206297 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8603524782646502 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7048650383567742 7Frn5h:3167:13
+Track view - showing marker with speed: 2.304417853606139 7Frn5h:3167:13
+Track view - showing marker with speed: 1.4181008167348457 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7117111234856516 7Frn5h:3167:13
+Track view - showing marker with speed: 0.08167938084330487 7Frn5h:3167:13
+Track view - showing marker with speed: 5.260284197466253 7Frn5h:3167:13
+Track view - showing marker with speed: 1.9515147647720696 7Frn5h:3167:13
+Track view - showing marker with speed: 1.415134410990089 7Frn5h:3167:13
+Track view - showing marker with speed: 1.463540777356046 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8145480083903305 7Frn5h:3167:13
+Track view - showing marker with speed: 1.5292580629421464 7Frn5h:3167:13
+Track view - showing marker with speed: 1.2235799130304348 7Frn5h:3167:13
+Track view - showing marker with speed: 1.1136754039920267 7Frn5h:3167:13
+Track view - showing marker with speed: 2.55689829001346 7Frn5h:3167:13
+Track view - showing marker with speed: 2.3970165491976636 7Frn5h:3167:13
+Track view - showing marker with speed: 1.0580239530661086 7Frn5h:3167:13
+Track view - showing marker with speed: 2.756980717857443 7Frn5h:3167:13
+Track view - showing marker with speed: 1.8209816092350901 7Frn5h:3167:13
+Track view - showing marker with speed: 1.1074654631389844 7Frn5h:3167:13
+Track view - showing marker with speed: 3.897494915883164 7Frn5h:3167:13
+Track view - showing marker with speed: 1.9582650942513973 7Frn5h:3167:13
+Track view - showing marker with speed: 2.9404381153112897 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6220078917492863 7Frn5h:3167:13
+Track view - showing marker with speed: 1.793797232700112 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7846591582907682 7Frn5h:3167:13
+Track view - showing marker with speed: 0.7655395126316401 7Frn5h:3167:13
+Track view - showing marker with speed: 1.5095122862854753 7Frn5h:3167:13
+Track view - showing marker with speed: 0.2043795322797181 7Frn5h:3167:13
+Track view - showing marker with speed: 3.1472107954003397 7Frn5h:3167:13
+Track view - showing marker with speed: 1.886319714916771 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5291551747139558 7Frn5h:3167:13
+Track view - showing marker with speed: 2.164186005524161 7Frn5h:3167:13
+Track view - showing marker with speed: 3.5252752302395907 7Frn5h:3167:13
+Track view - showing marker with speed: 1.758828002366154 7Frn5h:3167:13
+Track view - showing marker with speed: 5.385732771618121 7Frn5h:3167:13
+Track view - showing marker with speed: 1.6373095070344021 7Frn5h:3167:13
+Track view - showing marker with speed: 1.1013687891593882 7Frn5h:3167:13
+Track view - showing marker with speed: 1.7701180421850462 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5877376280971647 7Frn5h:3167:13
+Track view - showing marker with speed: 2.1523324941965467 7Frn5h:3167:13
+Track view - showing marker with speed: 17.218659953572374 7Frn5h:3167:13
+Track view - showing marker with speed: 0.2512603143338303 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5383407854469604 7Frn5h:3167:13
+Track view - showing marker with speed: 0.9857187804061256 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5468114740699831 7Frn5h:3167:13
+Track view - showing marker with speed: 0.12681304281444972 7Frn5h:3167:13
+Track view - showing marker with speed: 0.3425352251608595 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8478831320314606 7Frn5h:3167:13
+Track view - showing marker with speed: 0.2821658220226738 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8218950761692337 7Frn5h:3167:13
+Track view - showing marker with speed: 1.4635384242092273 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8922000794699325 7Frn5h:3167:13
+Track view - showing marker with speed: 1.648434870813805 7Frn5h:3167:13
+Track view - showing marker with speed: 1.144467314940996 7Frn5h:3167:13
+Track view - showing marker with speed: 1.1836399320754594 7Frn5h:3167:13
+Track view - showing marker with speed: 1.2841088805965142 7Frn5h:3167:13
+Track view - showing marker with speed: 0.0685933412603503 7Frn5h:3167:13
+Track view - showing marker with speed: 1.109638257273018 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8219870006763283 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5465105683007672 7Frn5h:3167:13
+Track view - showing marker with speed: 1.1295385928494737 7Frn5h:3167:13
+Track view - showing marker with speed: 1.3861709388851133 7Frn5h:3167:13
+Track view - showing marker with speed: 1.177252776761897 7Frn5h:3167:13
+Track view - showing marker with speed: 2.33866348060391 7Frn5h:3167:13
+Track view - showing marker with speed: 1.3869760183697297 7Frn5h:3167:13
+Track view - showing marker with speed: 0.49270752102193055 7Frn5h:3167:13
+Track view - showing marker with speed: 0.21872553212980286 7Frn5h:3167:13
+Track view - showing marker with speed: 0.2223898534387158 7Frn5h:3167:13
+Track view - showing marker with speed: 0.15149493737324157 7Frn5h:3167:13
+Track view - showing marker with speed: 0.14210590126654754 7Frn5h:3167:13
+Track view - showing marker with speed: 0.4087590427221148 7Frn5h:3167:13
+Track view - showing marker with speed: 1.0031023452882297 7Frn5h:3167:13
+Track view - showing marker with speed: 1.0769200644169632 7Frn5h:3167:13
+Track view - showing marker with speed: 1.5479091866283339 7Frn5h:3167:13
+Track view - showing marker with speed: 0.816793364897055 7Frn5h:3167:13
+Track view - showing marker with speed: 0.25945482889332194 7Frn5h:3167:13
+Track view - showing marker with speed: 0.4115604443796805 7Frn5h:3167:13
+Track view - showing marker with speed: 0.29604931631911413 7Frn5h:3167:13
+Track view - showing marker with speed: 0.9784142313061095 7Frn5h:3167:13
+Track view - showing marker with speed: 0.827625087217922 7Frn5h:3167:13
+Track view - showing marker with speed: 0.2327279481962102 7Frn5h:3167:13
+Track view - showing marker with speed: 0.2683688866387128 7Frn5h:3167:13
+Track view - showing marker with speed: 0.1754433941858065 7Frn5h:3167:13
+Track view - showing marker with speed: 0.8276250199334125 7Frn5h:3167:13
+Track view - showing marker with speed: 0.5798013417369811 7Frn5h:3167:13
+Track view - showing marker with speed: 0.31088753722441115 7Frn5h:3167:13
+Track view - showing marker with speed: 0.27686567758520747 7Frn5h:3167:13
+Track view - showing marker with speed: 0.17544335850564247 7Frn5h:3167:13
+Track view - showing marker with speed: 0.23057647262354677 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6850709844887514 7Frn5h:3167:13
+Track view - showing marker with speed: 1.80192320980205 7Frn5h:3167:13
+Track view - showing marker with speed: 1.346192537644234 7Frn5h:3167:13
+Track view - showing marker with speed: 0.21197098040564133 7Frn5h:3167:13
+Track view - showing marker with speed: 0.11119492652183605 7Frn5h:3167:13
+Track view - showing marker with speed: 0.14825990229247718 7Frn5h:3167:13
+Track view - showing marker with speed: 0.677870212231371 7Frn5h:3167:13
+Track view - showing marker with speed: 0.18847168561986824 7Frn5h:3167:13
+Track view - showing marker with speed: 0.18847168591417388 7Frn5h:3167:13
+Track view - showing marker with speed: 0.2250189171510105 7Frn5h:3167:13
+Track view - showing marker with speed: 0.1163639896150855 7Frn5h:3167:13
+Track view - showing marker with speed: 0.08167934913515242 7Frn5h:3167:13
+Track view - showing marker with speed: 0.10099661196966066 7Frn5h:3167:13
+Track view - showing marker with speed: 0.6055946353417735 7Frn5h:3167:13
+Track view - showing marker with speed: 0.197611685890905 7Frn5h:3167:13
+Track view - showing marker with speed: 0.15593435623127466 7Frn5h:3167:13
+Track view - showing marker with speed: 0.1028902533738117 7Frn5h:3167:13
+Track view - showing marker with speed: 0.07796717923227305 7Frn5h:3167:13
+Track view - showing marker with speed: 0.37762138840086 7Frn5h:3167:13
+Track view - showing marker with speed: 0.23390155696993187 7Frn5h:3167:13
+Track view - showing marker with speed: 0.4091547011960883 7Frn5h:3167:13
+Track view - showing marker with speed: 0.07796719426419922 7Frn5h:3167:13
+Track view - showing marker with speed: 0.034296759612880076 7Frn5h:3167:13
+Track view - showing marker with speed: 0.13064984796146462 7Frn5h:3167:13
+Track view - showing marker with speed: 0.310888249924976 7Frn5h:3167:13
+[Performance] Redraw complete: 811 markers in 245ms 7Frn5h:5525:13
+  └─ Network: 204ms (time to first marker) 7Frn5h:5526:13
+  └─ Streaming: 41ms 7Frn5h:5527:13
+  └─ JSON parse: 1ms (0.00ms avg) 7Frn5h:5528:13
+  └─ Marker create: 7ms (0.01ms avg) 7Frn5h:5529:13
+  └─ Final batch flush: 16ms 7Frn5h:5530:13
+URL bounds present, using those instead of auto-fit 7Frn5h:5571:17
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+Speed filter changed - cleared all markers, batch queue, and cache 7Frn5h:5082:13
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+Track view - showing marker with speed: -1 124 7Frn5h:3167:13
+Track view - showing marker with speed: 1.7442
+
+[Message truncated - exceeded 50,000 character limit]
+
+---
+
+Much better on the map chat , buttons are there and downlaod works.!!! 
+
+Can we instead of showing the Map link colomn, make the Decice ID filed a cliackbale link in that cell? So the table will not be that wide.
+
+But on the asistant page no table format now, no link and no downlaod buttons.
+
+---
+
+Now checking  the map chat... Noticed this in the console before I enter the chat..Is thta helpfull
+
+TypeError: can't access property "includes", autofillFieldData.autoCompleteType is null 4 bootstrap-autofill-overlay.js:9562:13
+
+---
+
+Mapchat NG
+Assistant also NG..
+
+---
+
+both NG..
+
+---
+
+can we continue?
+
+---
+
+Suddenly it ocured to me that maybe the AI bot get confused by the JSON button and tries to show the JSON. For a test can we disable the JSON button and download icon and see that would make the AI bot behave better?
+
+---
+
+Table format in Map chat is fine, but no links to the devices?
+Table format in the assist page is NG (still JSON)
+
+---
+
+<ide_opened_file>The user opened the file /home/rob/Documents/Safecast/safecast-new-map/cmd/unified-server/mcp_register.go in the IDE. This may or may not be related to the current task.</ide_opened_file>
+The map chat  and the assistant page are working now!!!
+ Only issue I have the excel extention of the downlaod file should be .xlsx indtead of .excel.
+Before fixing the file extention, pleaes commit/push/PR and merg in the main branch.
