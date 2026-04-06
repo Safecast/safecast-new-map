@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "f80d5c3e2c84",
+  "session_id": "df33b53b-e58c-4a3b-b24e-45647292d52b",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-06T20:45:51.052168313Z",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "cmd/unified-server/duckdb_analytics.go"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-sonnet-4-6",
+  "turn_id": "5093f3cd73fb",
+  "token_usage": {
+    "input_tokens": 344,
+    "cache_creation_tokens": 499006,
+    "cache_read_tokens": 21286529,
+    "output_tokens": 109648,
+    "api_call_count": 253
+  },
+  "session_metrics": {
+    "turn_count": 33
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-06T20:45:44.639343374Z",
+    "agent_lines": 0,
+    "human_added": 9176,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 9176,
+    "agent_percentage": 0
+  }
+}
