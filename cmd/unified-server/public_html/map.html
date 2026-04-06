@@ -10174,6 +10174,42 @@ function selectHomeSearchResult(result, query) {
       background-color: var(--control-bg);
     }
 
+    /* Table download button in chat responses */
+    .table-download-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid var(--border, #2e3540);
+    }
+    .table-download-btn {
+      background: transparent;
+      color: var(--text, #e4e8ef);
+      border: 1px solid var(--border, #2e3540);
+      border-radius: 4px;
+      padding: 4px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all .15s;
+    }
+    .table-download-btn:hover {
+      background: var(--green, #1e88e5);
+      border-color: var(--green, #1e88e5);
+      color: #fff;
+    }
+    .table-download-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+    .table-rows-info {
+      color: var(--muted, #7a8494);
+      font-size: 11px;
+    }
+
     /* Feedback buttons */
     .ai-feedback-row {
       display: flex;
@@ -10513,6 +10549,51 @@ function selectHomeSearchResult(result, query) {
 
       closeBtn.addEventListener('click', closePanel);
 
+      // Handle table download button clicks (delegated event)
+      messagesEl.addEventListener('click', function(e) {
+        const downloadBtn = e.target.closest('.table-download-btn');
+        if (!downloadBtn) return;
+
+        e.preventDefault();
+
+        // Find the table data in the same table container
+        const tableContainer = downloadBtn.closest('.ai-table-container');
+        const dataScript = tableContainer.querySelector('script.table-data');
+
+        if (!dataScript) {
+          console.error('Table data not found');
+          return;
+        }
+
+        try {
+          const tableData = JSON.parse(dataScript.textContent);
+          const { headers, rows } = tableData;
+
+          // Convert to CSV
+          const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.map(cell => {
+              const escaped = String(cell).replace(/"/g, '""');
+              return escaped.includes(',') ? `"${escaped}"` : escaped;
+            }).join(','))
+          ].join('\n');
+
+          // Create download link
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `table_${new Date().toISOString().slice(0,10)}_${new Date().toISOString().slice(11,19).replace(/:/g,'-')}.csv`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        } catch (err) {
+          console.error('Error downloading table:', err);
+          alert('Failed to download table: ' + err.message);
+        }
+      });
+
       // Click outside to close
       document.addEventListener('click', (e) => {
         if (!panel.classList.contains('open')) return;
@@ -10617,7 +10698,7 @@ function selectHomeSearchResult(result, query) {
         }
       }
 
-      function markdownToHTML(text) {
+      function markdownToHTML(text, enableTableDownload = false) {
         if (!text) return '';
 
         let html = text
@@ -10638,7 +10719,6 @@ function selectHomeSearchResult(result, query) {
           let rows = match.trim().split('\n').map(r => r.trim()).filter(r => r.length > 0);
           if (rows.length < 2) return match;
 
-          let out = '<div class="ai-table-container"><table class="ai-table">';
           let bodyRows = [];
 
           rows.forEach((row) => {
@@ -10650,6 +10730,29 @@ function selectHomeSearchResult(result, query) {
             if (row.endsWith('|')) cols.pop();
             bodyRows.push(cols.map(c => c.trim()));
           });
+
+          // Store table data for export
+          const headers = bodyRows[0] || [];
+          const dataRows = bodyRows.slice(1) || [];
+
+          let out = '<div class="ai-table-container">';
+
+          // Add download button if enabled
+          if (enableTableDownload && dataRows.length > 0) {
+            out += '<div class="table-download-bar">';
+            out += '<button class="table-download-btn" title="Download table as CSV">';
+            out += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>';
+            out += ' Download Table';
+            out += '</button>';
+            out += '<span class="table-rows-info">' + dataRows.length + ' rows</span>';
+            out += '</div>';
+            // Store table data in a script tag for later retrieval
+            out += '<script type="application/json" class="table-data">';
+            out += JSON.stringify({ headers: headers, rows: dataRows });
+            out += '<\/script>';
+          }
+
+          out += '<table class="ai-table">';
 
           bodyRows.forEach((cols, rowIndex) => {
             out += '<tr>';
@@ -10693,7 +10796,8 @@ function selectHomeSearchResult(result, query) {
         bubble.className = 'ai-bubble';
 
         if (role === 'bot') {
-          bubble.innerHTML = markdownToHTML(text);
+          // Enable table downloads for bot messages
+          bubble.innerHTML = markdownToHTML(text, true);
         } else {
           bubble.textContent = text;
         }
