@@ -800,3 +800,10 @@ Suddenly it ocured to me that maybe the AI bot get confused by the JSON button a
 
 Table format in Map chat is fine, but no links to the devices?
 Table format in the assist page is NG (still JSON)
+
+---
+
+<ide_opened_file>The user opened the file /home/rob/Documents/Safecast/safecast-new-map/cmd/unified-server/mcp_register.go in the IDE. This may or may not be related to the current task.</ide_opened_file>
+The map chat  and the assistant page are working now!!!
+ Only issue I have the excel extention of the downlaod file should be .xlsx indtead of .excel.
+Before fixing the file extention, pleaes commit/push/PR and merg in the main branch.
