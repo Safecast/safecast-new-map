@@ -1,0 +1,36 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "40926d2b4334",
+  "session_id": "7469df6d-212e-4a44-8ec3-1d5b88c43b85",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-06T23:57:16.042825599Z",
+  "branch": "fix/table-download-and-duckdb-build-tags",
+  "checkpoints_count": 5,
+  "files_touched": [
+    "cmd/unified-server/duckdb_analytics.go",
+    "cmd/unified-server/duckdb_stub.go",
+    "cmd/unified-server/public_html/map.html",
+    "cmd/web-chat/index.html"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "d4acebf73a6e",
+  "token_usage": {
+    "input_tokens": 164,
+    "cache_creation_tokens": 105007,
+    "cache_read_tokens": 8537403,
+    "output_tokens": 53820,
+    "api_call_count": 140
+  },
+  "session_metrics": {
+    "turn_count": 8
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-06T23:57:10.048138325Z",
+    "agent_lines": 121,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 121,
+    "agent_percentage": 100
+  }
+}
