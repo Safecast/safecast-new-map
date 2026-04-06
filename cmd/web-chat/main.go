@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strings"
 
 	mcpclient "github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -283,9 +284,79 @@ type anthropicResponse struct {
 // ── Streaming helpers (chunked HTTP / NDJSON) ──────────────────────────────
 
 type chunk struct {
-	Type  string `json:"type"`
-	Text  string `json:"text,omitempty"`
-	Error string `json:"error,omitempty"`
+	Type        string          `json:"type"`
+	Text        string          `json:"text,omitempty"`
+	Error       string          `json:"error,omitempty"`
+	DataPreview json.RawMessage `json:"data_preview,omitempty"`
+}
+
+// extractDataPreview looks for a data_preview JSON object in the AI response text.
+// Returns the raw JSON bytes if found, nil otherwise.
+func extractDataPreview(text string) json.RawMessage {
+	if !strings.Contains(text, `"data_preview"`) {
+		return nil
+	}
+	marker := strings.Index(text, `"type":"data_preview"`)
+	if marker == -1 {
+		marker = strings.Index(text, `"type": "data_preview"`)
+	}
+	if marker == -1 {
+		return nil
+	}
+
+	jsonObjectEnd := func(start int) int {
+		depth := 0
+		inStr := false
+		escape := false
+		for i := start; i < len(text); i++ {
+			c := text[i]
+			if escape {
+				escape = false
+				continue
+			}
+			if c == '\\' && inStr {
+				escape = true
+				continue
+			}
+			if c == '"' {
+				inStr = !inStr
+				continue
+			}
+			if inStr {
+				continue
+			}
+			if c == '{' {
+				depth++
+			} else if c == '}' {
+				depth--
+				if depth == 0 {
+					return i
+				}
+			}
+		}
+		return -1
+	}
+
+	for i := 0; i < marker; i++ {
+		if text[i] != '{' {
+			continue
+		}
+		objEnd := jsonObjectEnd(i)
+		if objEnd == -1 || objEnd < marker {
+			continue
+		}
+		candidate := text[i : objEnd+1]
+		var obj map[string]json.RawMessage
+		if err := json.Unmarshal([]byte(candidate), &obj); err != nil {
+			continue
+		}
+		var typeVal string
+		if err := json.Unmarshal(obj["type"], &typeVal); err != nil || typeVal != "data_preview" {
+			continue
+		}
+		return json.RawMessage(candidate)
+	}
+	return nil
 }
 
 func writeChunk(w http.ResponseWriter, c chunk) {
@@ -470,18 +541,34 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 			})
 
 			var toolUses []contentBlock
+			var textBlocks []string
 			for _, block := range resp.Content {
 				switch block.Type {
 				case "text":
-					// Stream each text block as it arrives (or buffer if CloudFront)
-					writeChunkBuffered(w, chunk{Type: "text", Text: block.Text}, &buffer, isCloudfFront)
+					textBlocks = append(textBlocks, block.Text)
 				case "tool_use":
 					toolUses = append(toolUses, block)
 				}
 			}
 
-			if resp.StopReason == "end_turn" || len(toolUses) == 0 {
+			isFinal := resp.StopReason == "end_turn" || len(toolUses) == 0
+			if isFinal {
+				// On the final turn, check if the combined text contains a data_preview
+				// JSON blob. If so, send a structured data_preview event so the client
+				// renders a table. Otherwise stream the text blocks as-is.
+				fullText := strings.Join(textBlocks, "")
+				if dp := extractDataPreview(fullText); dp != nil {
+					writeChunkBuffered(w, chunk{Type: "data_preview", DataPreview: dp}, &buffer, isCloudfFront)
+				} else {
+					for _, t := range textBlocks {
+						writeChunkBuffered(w, chunk{Type: "text", Text: t}, &buffer, isCloudfFront)
+					}
+				}
 				break
+			}
+			// Non-final iteration (tool calls pending): stream text blocks normally
+			for _, t := range textBlocks {
+				writeChunkBuffered(w, chunk{Type: "text", Text: t}, &buffer, isCloudfFront)
 			}
 
 			// ── Execute tool calls via MCP ─────────────────────────────────
