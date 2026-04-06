@@ -187,6 +187,26 @@
     .bubble table br { display: none; } /* Remove line breaks inside tables */
     .bubble table + br { display: none; } /* Remove line breaks after tables */
 
+    /* Table download bar */
+    .table-wrap { margin: 12px 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+    .table-download-bar {
+      display: flex; align-items: center; gap: 12px;
+      padding: 7px 12px;
+      background: rgba(255,255,255,0.04);
+      border-bottom: 1px solid var(--border);
+    }
+    .table-download-btn {
+      display: flex; align-items: center; gap: 6px;
+      background: #2e7d32; color: #fff;
+      border: 1px solid #2e7d32; border-radius: 4px;
+      padding: 4px 10px; font-size: 12px; cursor: pointer;
+      transition: all .15s;
+    }
+    .table-download-btn:hover { background: #1b5e20; border-color: #1b5e20; }
+    .table-download-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+    .table-rows-info { font-size: 11px; opacity: 0.5; }
+    .table-wrap table { margin: 0; border-radius: 0; border: none; }
+
     /* Markdown lists */
     .bubble ul {
       margin: 10px 0;
@@ -332,6 +352,37 @@
   const msgEl      = document.getElementById('msg');
   const sendBtn    = document.getElementById('send');
 
+  // Delegated CSV download for tables in AI responses
+  messagesEl.addEventListener('click', function(e) {
+    const btn = e.target.closest('.table-download-btn');
+    if (!btn) return;
+    e.preventDefault();
+    const bar = btn.closest('.table-download-bar');
+    if (!bar) return;
+    try {
+      const tableData = JSON.parse(bar.getAttribute('data-table'));
+      const { headers, rows } = tableData;
+      const csvLines = [
+        headers.map(h => /,|"/.test(h) ? '"' + h.replace(/"/g, '""') + '"' : h).join(','),
+        ...rows.map(row => row.map(cell => {
+          const s = String(cell);
+          return /,|"/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+        }).join(','))
+      ];
+      const blob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'safecast_data_' + new Date().toISOString().slice(0,10) + '.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch(err) {
+      console.error('CSV export failed:', err);
+    }
+  });
+
   let busy = false;
   let conversationHistory = []; // Track conversation for context
 
@@ -373,19 +424,42 @@
     // Horizontal rules
     html = html.replace(/^---+$/gm, '<hr>');
 
-    // Tables (simple approach - detect table rows)
+    // Tables — parse into rows, then wrap with download bar
+    const tableBlocks = [];
     html = html.replace(/^\|(.+)\|$/gm, function(match, content) {
       const cells = content.split('|').map(c => c.trim());
       const cellTags = cells.map(c => {
-        // Check if this is a separator row (--|---|---)
         if (/^:?-+:?$/.test(c)) return null;
         return `<td>${c}</td>`;
       }).filter(Boolean);
       if (cellTags.length === 0) return '';
       return '<tr>' + cellTags.join('') + '</tr>';
     });
-    // Wrap table rows in table tags
-    html = html.replace(/(<tr>.+<\/tr>\n?)+/g, '<table>$&</table>');
+    html = html.replace(/(<tr>.+<\/tr>\n?)+/g, function(match) {
+      // Extract header and data rows for the download bar
+      const allRows = match.trim().split('\n').filter(r => r.trim());
+      const headers = [];
+      const dataRows = [];
+      allRows.forEach((row, i) => {
+        const cells = [];
+        row.replace(/<td>([\s\S]*?)<\/td>/g, (_, c) => cells.push(c));
+        if (i === 0) headers.push(...cells);
+        else dataRows.push(cells);
+      });
+      const tableJson = JSON.stringify({ headers, rows: dataRows })
+        .replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+      let out = '<div class="table-wrap">';
+      if (dataRows.length > 0) {
+        out += '<div class="table-download-bar" data-table="' + tableJson + '">';
+        out += '<button class="table-download-btn" title="Download as CSV">';
+        out += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+        out += ' Download CSV</button>';
+        out += '<span class="table-rows-info">' + dataRows.length + ' rows</span>';
+        out += '</div>';
+      }
+      out += '<table>' + match + '</table></div>';
+      return out;
+    });
 
     // Unordered lists (lines starting with - or *)
     html = html.replace(/^[*-] (.+)$/gm, '<li>$1</li>');
@@ -418,7 +492,7 @@
     html = html.replace(/\n/g, (match, offset, string) => {
       // Don't add <br> after closing block tags
       const beforeContext = string.substring(Math.max(0, offset - 50), offset);
-      if (/<\/(table|ul|h[123]|tr)>\s*$/.test(beforeContext)) return '';
+      if (/<\/(table|ul|h[123]|tr|div)>\s*$/.test(beforeContext)) return '';
       // Don't add <br> before opening table rows
       const afterContext = string.substring(offset + 1, Math.min(string.length, offset + 10));
       if (/^\s*<tr>/.test(afterContext)) return '';
