@@ -3,7 +3,7 @@
   "checkpoint_id": "ed5ac7018697",
   "strategy": "manual-commit",
   "branch": "fix/export-table-links",
-  "checkpoints_count": 0,
+  "checkpoints_count": 1,
   "files_touched": [
     "cmd/unified-server/mcp_register.go"
   ],
@@ -13,13 +13,19 @@
       "transcript": "/ed/5ac7018697/0/full.jsonl",
       "content_hash": "/ed/5ac7018697/0/content_hash.txt",
       "prompt": ""
+    },
+    {
+      "metadata": "/ed/5ac7018697/1/metadata.json",
+      "transcript": "/ed/5ac7018697/1/full.jsonl",
+      "content_hash": "/ed/5ac7018697/1/content_hash.txt",
+      "prompt": "/ed/5ac7018697/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 0,
-    "cache_creation_tokens": 0,
-    "cache_read_tokens": 0,
-    "output_tokens": 0,
-    "api_call_count": 0
+    "input_tokens": 427,
+    "cache_creation_tokens": 700116,
+    "cache_read_tokens": 28546420,
+    "output_tokens": 132401,
+    "api_call_count": 324
   }
 }
