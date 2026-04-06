@@ -1,0 +1,16 @@
+<ide_opened_file>The user opened the file /home/rob/Documents/Safecast/safecast-new-map/public_html/map.html in the IDE. This may or may not be related to the current task.</ide_opened_file>
+can you fix the current commit/push/PR and merge for GitHub and Codeberg?
+
+---
+
+please do that for me.
+
+---
+
+Can you check this issue? rob@rob-GS66-Stealth-10UG:~/Documents/Safecast/safecast-new-map$ /usr/local/go/bin/go build -o safecast-new-map ./cmd/unified-server/ && bash local-server-config.sh
+# safecast-new-map/cmd/unified-server
+cmd/unified-server/duckdb_stub.go:10:6: initDuckDBAnalytics redeclared in this block
+        cmd/unified-server/duckdb_analytics.go:20:6: other declaration of initDuckDBAnalytics
+cmd/unified-server/duckdb_stub.go:15:6: duckDBAvailable redeclared in this block
+        cmd/unified-server/duckdb_analytics.go:196:6: other declaration of duckDBAvailable
+rob@rob-GS66-Stealth-10UG:~/Documents/Safecast/safecast-new-map$
