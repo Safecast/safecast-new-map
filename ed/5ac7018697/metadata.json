@@ -1,0 +1,25 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "ed5ac7018697",
+  "strategy": "manual-commit",
+  "branch": "fix/export-table-links",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "cmd/unified-server/mcp_register.go"
+  ],
+  "sessions": [
+    {
+      "metadata": "/ed/5ac7018697/0/metadata.json",
+      "transcript": "/ed/5ac7018697/0/full.jsonl",
+      "content_hash": "/ed/5ac7018697/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  }
+}
