@@ -3,7 +3,7 @@
   "checkpoint_id": "dff10db389a4",
   "strategy": "manual-commit",
   "branch": "feat/chat-data-export-map-widget",
-  "checkpoints_count": 0,
+  "checkpoints_count": 1,
   "files_touched": [
     "WIKI_UPLOAD_INSTRUCTIONS.md",
     "cmd/unified-server/mcp_register.go",
@@ -32,13 +32,19 @@
       "transcript": "/df/f10db389a4/0/full.jsonl",
       "content_hash": "/df/f10db389a4/0/content_hash.txt",
       "prompt": ""
+    },
+    {
+      "metadata": "/df/f10db389a4/1/metadata.json",
+      "transcript": "/df/f10db389a4/1/full.jsonl",
+      "content_hash": "/df/f10db389a4/1/content_hash.txt",
+      "prompt": "/df/f10db389a4/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 0,
-    "cache_creation_tokens": 0,
-    "cache_read_tokens": 0,
-    "output_tokens": 0,
-    "api_call_count": 0
+    "input_tokens": 397,
+    "cache_creation_tokens": 485746,
+    "cache_read_tokens": 26088066,
+    "output_tokens": 117363,
+    "api_call_count": 300
   }
 }
