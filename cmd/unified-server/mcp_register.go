@@ -180,6 +180,72 @@ type chunk struct {
 	DataPreview json.RawMessage `json:"data_preview,omitempty"`
 }
 
+// sanitizeJSON replaces non-standard JSON values the AI sometimes emits so that
+// json.Unmarshal succeeds: NaN/Infinity → null, trailing commas removed,
+// literal control characters inside strings escaped properly.
+func sanitizeJSON(s string) string {
+	s = strings.NewReplacer(
+		": NaN", ": null",
+		":NaN", ":null",
+		": Infinity", ": null",
+		":Infinity", ":null",
+		": -Infinity", ": null",
+		":-Infinity", ":null",
+	).Replace(s)
+	var out []byte
+	inStr := false
+	esc := false
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if esc {
+			esc = false
+			out = append(out, c)
+			continue
+		}
+		if c == '\\' && inStr {
+			esc = true
+			out = append(out, c)
+			continue
+		}
+		if c == '"' {
+			inStr = !inStr
+			out = append(out, c)
+			continue
+		}
+		if inStr {
+			// Escape literal control characters that are invalid in JSON strings
+			switch c {
+			case '\n':
+				out = append(out, '\\', 'n')
+				continue
+			case '\r':
+				out = append(out, '\\', 'r')
+				continue
+			case '\t':
+				out = append(out, '\\', 't')
+				continue
+			default:
+				if c < 0x20 {
+					continue // drop other control chars
+				}
+			}
+		} else {
+			// Outside strings: strip trailing commas before } or ]
+			if c == ',' {
+				j := i + 1
+				for j < len(s) && (s[j] == ' ' || s[j] == '\t' || s[j] == '\n' || s[j] == '\r') {
+					j++
+				}
+				if j < len(s) && (s[j] == '}' || s[j] == ']') {
+					continue
+				}
+			}
+		}
+		out = append(out, c)
+	}
+	return string(out)
+}
+
 // extractDataPreview looks for a data_preview JSON object in the AI response text.
 // Returns the raw JSON bytes if found, nil otherwise.
 func extractDataPreview(text string) json.RawMessage {
@@ -244,16 +310,18 @@ func extractDataPreview(text string) json.RawMessage {
 		}
 		// This object's span [i, objEnd] contains the marker — try to parse it
 		candidate := text[i : objEnd+1]
+		// Sanitize non-standard JSON values the AI sometimes emits (NaN, Infinity, trailing commas)
+		sanitized := sanitizeJSON(candidate)
 		var obj map[string]json.RawMessage
-		if err := json.Unmarshal([]byte(candidate), &obj); err != nil {
-			log.Printf("[extractDataPreview] JSON parse failed: %v (len=%d)", err, len(candidate))
+		if err := json.Unmarshal([]byte(sanitized), &obj); err != nil {
+			log.Printf("[extractDataPreview] JSON parse failed: %v (len=%d)", err, len(sanitized))
 			continue
 		}
 		var typeVal string
 		if err := json.Unmarshal(obj["type"], &typeVal); err != nil || typeVal != "data_preview" {
 			continue
 		}
-		return json.RawMessage(candidate)
+		return json.RawMessage(sanitized)
 	}
 	log.Printf("[extractDataPreview] no containing object found for marker at %d, text len=%d", marker, len(text))
 	return nil
