@@ -1,0 +1,37 @@
+NG.. still no table?
+
+---
+
+screen
+
+---
+
+GET
+http://localhost:8765/assistant/
+[HTTP/1.1 200 OK 0ms]
+
+GET
+http://localhost:8765/assistant/safecast-square-ct.png
+[HTTP/1.1 200 OK 0ms]
+
+GET
+http://localhost:8765/assistant/favicon-16x16.png
+[HTTP/1.1 200 OK 0ms]
+
+GET
+http://localhost:8765/assistant/safecast-square-ct.png
+[HTTP/1.1 200 OK 0ms]
+
+GET
+http://localhost:8765/assistant/safecast-square-ct.png
+[HTTP/1.1 200 OK 0ms]
+
+---
+
+I refershed.. No erros..
+
+---
+
+Kill first with:
+
+pkill -f safecast-new-map
