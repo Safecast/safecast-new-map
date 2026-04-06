@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "40926d2b4334",
+  "strategy": "manual-commit",
+  "branch": "fix/table-download-and-duckdb-build-tags",
+  "checkpoints_count": 5,
+  "files_touched": [
+    "cmd/unified-server/duckdb_analytics.go",
+    "cmd/unified-server/duckdb_stub.go",
+    "cmd/unified-server/public_html/map.html",
+    "cmd/web-chat/index.html"
+  ],
+  "sessions": [
+    {
+      "metadata": "/40/926d2b4334/0/metadata.json",
+      "transcript": "/40/926d2b4334/0/full.jsonl",
+      "content_hash": "/40/926d2b4334/0/content_hash.txt",
+      "prompt": "/40/926d2b4334/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 164,
+    "cache_creation_tokens": 105007,
+    "cache_read_tokens": 8537403,
+    "output_tokens": 53820,
+    "api_call_count": 140
+  }
+}
