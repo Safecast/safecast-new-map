@@ -1,0 +1,14 @@
+3 out of 4 ok...
+Only assistant on production (through Cloudfront) is showing JSON in the assistand. All others seems to be fine. Mayb I should just wait. Please do not do any thing yet. Let me just check.
+
+---
+
+Still on the production the assistant is sending only JSON.. and on localhost the first reguest all was fine, but second and tird requests nt See .md file.
+
+---
+
+Interresting that the map chat ai bot gives two differnt naswers to the same question..
+
+---
+
+No, do not add that. One way I like that.. please continue fixing the JSON table and downlaod buttons..
