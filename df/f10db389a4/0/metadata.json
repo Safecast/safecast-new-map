@@ -1,0 +1,54 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "dff10db389a4",
+  "session_id": "3e759521-ebac-4543-809c-818fb66dd7ee",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-06T01:37:37.170860059Z",
+  "branch": "feat/chat-data-export-map-widget",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "wiki/Admin-Panel.md",
+    "wiki/Data-Import-Export.md",
+    "wiki/Deployment.md",
+    "wiki/Development.md",
+    "wiki/MCP-Server-AI-Integration.md",
+    "wiki/WIKI-STRUCTURE.md",
+    "wiki/API-Documentation.md",
+    "wiki/Database-Maintenance.md",
+    "wiki/Configuration-Reference.md",
+    "wiki/Internationalization.md",
+    "wiki/User-Authentication.md",
+    "cmd/unified-server/mcp_register.go",
+    "wiki/Database-Setup.md",
+    "wiki/Getting-Started.md",
+    "wiki/Home.md",
+    "wiki/Map-Features.md",
+    "wiki/README.md",
+    "wiki/Spectral-Analysis.md",
+    "WIKI_UPLOAD_INSTRUCTIONS.md",
+    "cmd/unified-server/static/index.html"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "03ea19a8d931",
+  "checkpoint_transcript_start": 60,
+  "transcript_lines_at_start": 60,
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  },
+  "session_metrics": {
+    "turn_count": 1
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-06T01:37:37.128092612Z",
+    "agent_lines": 0,
+    "human_added": 9144,
+    "human_modified": 7,
+    "human_removed": 0,
+    "total_committed": 9144,
+    "agent_percentage": 0
+  }
+}
