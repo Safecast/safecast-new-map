@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "13a2721e1c43",
+  "session_id": "8ce07268-a8da-4456-aa05-8f730289850d",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-06T10:12:20.525480626Z",
+  "branch": "fix/excel-extension",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "cmd/web-chat/index.html"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "bb0b2e7f854d",
+  "token_usage": {
+    "input_tokens": 17,
+    "cache_creation_tokens": 22323,
+    "cache_read_tokens": 364844,
+    "output_tokens": 4463,
+    "api_call_count": 13
+  },
+  "session_metrics": {
+    "turn_count": 1
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-06T10:12:20.468352572Z",
+    "agent_lines": 20,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 20,
+    "agent_percentage": 100
+  }
+}
