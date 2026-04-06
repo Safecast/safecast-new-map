@@ -41,7 +41,7 @@
           }
         }
       ],
-      "output_hints": "Present results in a markdown table with columns: Location, Dose Rate (µSv/h), Date, Detector. Every coordinate must be a clickable map link: [lat°N, lon°E](https://simplemap.safecast.org/?lat=LAT&lon=LON&zoom=15). Include context about whether readings are elevated compared to typical background (0.05-0.20 µSv/h).",
+      "output_hints": "Present results in a markdown table with columns: Location, Dose Rate (µSv/h), Date, Detector. Every coordinate must be a clickable map link: [lat°N, lon°E](https://simplemap.safecast.org/?lat=LAT&lon=LON&zoom=15). Every device_id MUST also be a clickable map link: [device_id](https://simplemap.safecast.org/?lat=LAT&lon=LON&zoom=15). Include context about whether readings are elevated compared to typical background (0.05-0.20 µSv/h). Always inform users that tables can be downloaded using the download button above each table.",
       "warnings": [
         "Never report 'no real-time data' without first calling sensor_current",
         "Distinguish between CPM (counts per minute) and µSv/h (dose rate)",
