@@ -512,13 +512,33 @@
   const dlSVG = '<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>';
 
   function extractJSON(text) {
-    const stripped = text.trim()
-      .replace(/^```(?:json)?\s*/i, '')
-      .replace(/\s*```\s*$/, '');
-    const start = stripped.indexOf('{');
-    const end = stripped.lastIndexOf('}');
-    if (start !== -1 && end > start) {
-      try { return JSON.parse(stripped.slice(start, end + 1)); } catch (e) {}
+    // Find the data_preview marker first (both compact and spaced key formats)
+    let m = text.indexOf('"type":"data_preview"');
+    if (m === -1) m = text.indexOf('"type": "data_preview"');
+    if (m === -1) return null;
+
+    // Bracket-counting helper: returns index of matching } for the { at start
+    const matchingBrace = (t, s) => {
+      let depth = 0, inStr = false, esc = false;
+      for (let i = s; i < t.length; i++) {
+        const c = t[i];
+        if (esc) { esc = false; continue; }
+        if (c === '\\' && inStr) { esc = true; continue; }
+        if (c === '"') { inStr = !inStr; continue; }
+        if (inStr) continue;
+        if (c === '{') depth++;
+        else if (c === '}') { depth--; if (depth === 0) return i; }
+      }
+      return -1;
+    };
+
+    // Scan forward to find the first { whose matching } spans the marker
+    for (let i = 0; i < m; i++) {
+      if (text[i] !== '{') continue;
+      const end = matchingBrace(text, i);
+      if (end !== -1 && end >= m) {
+        try { return JSON.parse(text.slice(i, end + 1)); } catch (_) { continue; }
+      }
     }
     return null;
   }
