@@ -1,0 +1,23 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "2a024779f21e",
+  "session_id": "fdaaa736-904a-4a0c-958c-b0ff6f936ce9",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-06T00:14:43.933544108Z",
+  "branch": "feat/chat-data-export-map-widget",
+  "checkpoints_count": 1,
+  "files_touched": [],
+  "agent": "Claude Code",
+  "model": "claude-sonnet-4-6",
+  "turn_id": "23c15e85cc3b",
+  "token_usage": {
+    "input_tokens": 315,
+    "cache_creation_tokens": 251695,
+    "cache_read_tokens": 20704804,
+    "output_tokens": 86891,
+    "api_call_count": 228
+  },
+  "session_metrics": {
+    "turn_count": 19
+  }
+}
