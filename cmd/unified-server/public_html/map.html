@@ -10174,6 +10174,32 @@ function selectHomeSearchResult(result, query) {
       background-color: var(--control-bg);
     }
 
+    /* Table download button in chat responses */
+    .table-download-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.04);
+      border-bottom: 1px solid var(--modal-border);
+    }
+    .table-download-btn {
+      background: #2e7d32;
+      color: #fff;
+      border: 1px solid #2e7d32;
+      border-radius: 4px;
+      padding: 4px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all .15s;
+    }
+    .table-download-btn:hover { background: #1b5e20; border-color: #1b5e20; }
+    .table-download-btn svg { width: 14px; height: 14px; }
+    .table-rows-info { color: var(--modal-text); opacity: 0.5; font-size: 11px; }
+
     /* Feedback buttons */
     .ai-feedback-row {
       display: flex;
@@ -10513,6 +10539,37 @@ function selectHomeSearchResult(result, query) {
 
       closeBtn.addEventListener('click', closePanel);
 
+      // Delegated CSV download for tables in AI responses
+      messagesEl.addEventListener('click', function(e) {
+        const btn = e.target.closest('.table-download-btn');
+        if (!btn) return;
+        e.preventDefault();
+        const bar = btn.closest('.table-download-bar');
+        if (!bar) return;
+        try {
+          const tableData = JSON.parse(bar.getAttribute('data-table'));
+          const { headers, rows } = tableData;
+          const csvLines = [
+            headers.map(h => /,|"/.test(h) ? '"' + h.replace(/"/g, '""') + '"' : h).join(','),
+            ...rows.map(row => row.map(cell => {
+              const s = String(cell);
+              return /,|"/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+            }).join(','))
+          ];
+          const blob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'safecast_data_' + new Date().toISOString().slice(0,10) + '.csv';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        } catch(err) {
+          console.error('CSV export failed:', err);
+        }
+      });
+
       // Click outside to close
       document.addEventListener('click', (e) => {
         if (!panel.classList.contains('open')) return;
@@ -10617,7 +10674,7 @@ function selectHomeSearchResult(result, query) {
         }
       }
 
-      function markdownToHTML(text) {
+      function markdownToHTML(text, enableTableDownload) {
         if (!text) return '';
 
         let html = text
@@ -10638,7 +10695,6 @@ function selectHomeSearchResult(result, query) {
           let rows = match.trim().split('\n').map(r => r.trim()).filter(r => r.length > 0);
           if (rows.length < 2) return match;
 
-          let out = '<div class="ai-table-container"><table class="ai-table">';
           let bodyRows = [];
 
           rows.forEach((row) => {
@@ -10650,6 +10706,25 @@ function selectHomeSearchResult(result, query) {
             if (row.endsWith('|')) cols.pop();
             bodyRows.push(cols.map(c => c.trim()));
           });
+
+          const headers = bodyRows[0] || [];
+          const dataRows = bodyRows.slice(1);
+
+          let out = '<div class="ai-table-container">';
+
+          if (enableTableDownload && dataRows.length > 0) {
+            // Encode table data into a data attribute for CSV export
+            const tableJson = JSON.stringify({ headers: headers, rows: dataRows })
+              .replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+            out += '<div class="table-download-bar" data-table="' + tableJson + '">';
+            out += '<button class="table-download-btn" title="Download as CSV">';
+            out += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+            out += ' Download CSV</button>';
+            out += '<span class="table-rows-info">' + dataRows.length + ' rows</span>';
+            out += '</div>';
+          }
+
+          out += '<table class="ai-table">';
 
           bodyRows.forEach((cols, rowIndex) => {
             out += '<tr>';
@@ -10801,6 +10876,10 @@ function selectHomeSearchResult(result, query) {
           if (finished) return;
           finished = true;
           botBubble.classList.remove('ai-thinking');
+          // Re-render with download buttons now that the full response is in
+          if (success && accumulated) {
+            botBubble.innerHTML = markdownToHTML(accumulated, true);
+          }
           busy = false;
           sendBtn.disabled = false;
           msgInput.focus();
