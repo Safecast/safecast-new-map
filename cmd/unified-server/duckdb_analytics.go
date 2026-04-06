@@ -1,3 +1,5 @@
+//go:build duckdb
+
 // DuckDB Analytics Initialization for Unified Server
 // Uses DuckLake with PostgreSQL catalog for shared analytics across all services
 
