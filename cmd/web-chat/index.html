@@ -421,6 +421,38 @@
     msgEl.style.height = 'auto';
   }
 
+  // Robust JSON extractor: finds the first { whose matching } spans the
+  // "type":"data_preview" marker. Uses bracket counting so it works even
+  // when the AI puts summary fields before "type" or adds preamble text.
+  function extractJSON(text) {
+    let m = text.indexOf('"type":"data_preview"');
+    if (m === -1) m = text.indexOf('"type": "data_preview"');
+    if (m === -1) return null;
+
+    const matchingBrace = (t, s) => {
+      let depth = 0, inStr = false, esc = false;
+      for (let i = s; i < t.length; i++) {
+        const c = t[i];
+        if (esc) { esc = false; continue; }
+        if (c === '\\' && inStr) { esc = true; continue; }
+        if (c === '"') { inStr = !inStr; continue; }
+        if (inStr) continue;
+        if (c === '{') depth++;
+        else if (c === '}') { depth--; if (depth === 0) return i; }
+      }
+      return -1;
+    };
+
+    for (let i = 0; i < m; i++) {
+      if (text[i] !== '{') continue;
+      const end = matchingBrace(text, i);
+      if (end !== -1 && end >= m) {
+        try { return JSON.parse(text.slice(i, end + 1)); } catch (_) { continue; }
+      }
+    }
+    return null;
+  }
+
   // Convert markdown to HTML
   function markdownToHTML(text) {
     let html = text;
@@ -664,24 +696,13 @@
     // User messages are plain text, bot messages support markdown
     if (role === 'bot') {
       // Try to parse as data-aware JSON first
-      let isDataAware = false;
-      try {
-          const stripped = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
-          const s = stripped.indexOf('{'), e = stripped.lastIndexOf('}');
-          if (s !== -1 && e > s) {
-              const data = JSON.parse(stripped.slice(s, e + 1));
-              if (data.type === 'data_preview') {
-                  renderDataPreview(data, bubble);
-                  isDataAware = true;
-              } else if (data.type === 'export_request') {
-                  handleExportRequest(data, bubble);
-                  isDataAware = true;
-              }
-          }
-      } catch (e) { /* fallback to markdown */ }
-
-      if (!isDataAware) {
-          bubble.innerHTML = markdownToHTML(text);
+      const jsonData = extractJSON(text);
+      if (jsonData && jsonData.type === 'data_preview') {
+        renderDataPreview(jsonData, bubble);
+      } else if (jsonData && jsonData.type === 'export_request') {
+        handleExportRequest(jsonData, bubble);
+      } else {
+        bubble.innerHTML = markdownToHTML(text);
       }
 
       // Add copy button for bot messages
@@ -780,23 +801,12 @@
 
       // Add AI disclaimer to successful bot messages
       if (success && accumulated) {
-        // Check if accumulated content is a data_preview — if so, re-render as table
-        let isDataPreview = false;
-        try {
-          const stripped = accumulated.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
-          const s = stripped.indexOf('{'), e = stripped.lastIndexOf('}');
-          if (s !== -1 && e > s) {
-            const data = JSON.parse(stripped.slice(s, e + 1));
-            if (data.type === 'data_preview') {
-              botBubble.innerHTML = '';
-              renderDataPreview(data, botBubble);
-              isDataPreview = true;
-            }
-          }
-        } catch (_) {}
-
-        if (!isDataPreview) {
-          // Re-render with disclaimer
+        // Re-render final state: table if data_preview detected, markdown otherwise
+        const jsonData = extractJSON(accumulated);
+        if (jsonData && jsonData.type === 'data_preview') {
+          botBubble.innerHTML = '';
+          renderDataPreview(jsonData, botBubble);
+        } else {
           const disclaimerText = '\n\n---\n\n_Note: AI-generated response using data from the Safecast radiation monitoring network. For critical safety decisions, please consult official sources._';
           botBubble.innerHTML = markdownToHTML(accumulated + disclaimerText);
         }
