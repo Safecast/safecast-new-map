@@ -10786,7 +10786,13 @@ function selectHomeSearchResult(result, query) {
               const td = document.createElement('td');
               let val = row[k];
               if (typeof val === 'object' && val !== null) val = JSON.stringify(val);
-              td.textContent = val;
+              val = String(val == null ? '' : val);
+              const mdLink = val.match(/^\[(.+?)\]\((https?:\/\/[^\s)]+)\)$/);
+              if (mdLink) {
+                const a = document.createElement('a');
+                a.href = mdLink[2]; a.textContent = mdLink[1]; a.target = '_blank'; a.rel = 'noopener';
+                td.appendChild(a);
+              } else { td.textContent = val; }
               tr.appendChild(td);
             });
             tbody.appendChild(tr);

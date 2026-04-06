@@ -565,7 +565,13 @@
           const td = document.createElement('td');
           let v = row[k];
           if (typeof v === 'object' && v !== null) v = JSON.stringify(v);
-          td.textContent = v;
+          v = String(v == null ? '' : v);
+          const mdLink = v.match(/^\[(.+?)\]\((https?:\/\/[^\s)]+)\)$/);
+          if (mdLink) {
+            const a = document.createElement('a');
+            a.href = mdLink[2]; a.textContent = mdLink[1]; a.target = '_blank'; a.rel = 'noopener';
+            td.appendChild(a);
+          } else { td.textContent = v; }
           tr.appendChild(td);
         });
         tbody.appendChild(tr);
