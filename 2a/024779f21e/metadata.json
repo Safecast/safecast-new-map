@@ -3,7 +3,7 @@
   "checkpoint_id": "2a024779f21e",
   "strategy": "manual-commit",
   "branch": "feat/chat-data-export-map-widget",
-  "checkpoints_count": 0,
+  "checkpoints_count": 1,
   "files_touched": [
     "cmd/unified-server/mcp_register.go",
     "cmd/unified-server/public_html/map.html",
@@ -16,13 +16,19 @@
       "transcript": "/2a/024779f21e/0/full.jsonl",
       "content_hash": "/2a/024779f21e/0/content_hash.txt",
       "prompt": ""
+    },
+    {
+      "metadata": "/2a/024779f21e/1/metadata.json",
+      "transcript": "/2a/024779f21e/1/full.jsonl",
+      "content_hash": "/2a/024779f21e/1/content_hash.txt",
+      "prompt": "/2a/024779f21e/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 0,
-    "cache_creation_tokens": 0,
-    "cache_read_tokens": 0,
-    "output_tokens": 0,
-    "api_call_count": 0
+    "input_tokens": 315,
+    "cache_creation_tokens": 251695,
+    "cache_read_tokens": 20704804,
+    "output_tokens": 86891,
+    "api_call_count": 228
   }
 }
