@@ -11057,7 +11057,7 @@ function selectHomeSearchResult(result, query) {
                     accumulated += ev.text;
                     // During streaming: show markdown. If it looks like JSON,
                     // show a neutral placeholder to avoid raw JSON flicker.
-                    const looksLikeJSON = accumulated.trim().replace(/^```(?:json)?\s*/i,'').trimStart().startsWith('{');
+                    const looksLikeJSON = accumulated.includes('"type": "data_preview"') || accumulated.includes('"type":"data_preview"');
                     if (looksLikeJSON) {
                       botBubble.innerHTML = '<em style="color:var(--text-muted,#888);font-size:13px">Loading data...</em>';
                     } else {
