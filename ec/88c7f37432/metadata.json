@@ -1,0 +1,25 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "ec88c7f37432",
+  "strategy": "manual-commit",
+  "branch": "fix/web-chat-data-preview",
+  "checkpoints_count": 5,
+  "files_touched": [
+    "cmd/unified-server/static/index.html"
+  ],
+  "sessions": [
+    {
+      "metadata": "/ec/88c7f37432/0/metadata.json",
+      "transcript": "/ec/88c7f37432/0/full.jsonl",
+      "content_hash": "/ec/88c7f37432/0/content_hash.txt",
+      "prompt": "/ec/88c7f37432/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 46,
+    "cache_creation_tokens": 52452,
+    "cache_read_tokens": 1760910,
+    "output_tokens": 31215,
+    "api_call_count": 31
+  }
+}
