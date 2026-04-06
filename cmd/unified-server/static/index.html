@@ -622,7 +622,8 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `safecast_export_${new Date().toISOString().slice(0,10)}.${config.format || 'csv'}`;
+      const ext = config.format === 'excel' ? 'xlsx' : (config.format || 'csv');
+      a.download = `safecast_export_${new Date().toISOString().slice(0,10)}.${ext}`;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       URL.revokeObjectURL(url);
       if (statusEl) statusEl.innerHTML = '<span style="color:var(--green)">✓ Download started.</span>';
