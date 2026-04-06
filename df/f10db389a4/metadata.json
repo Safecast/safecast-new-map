@@ -1,0 +1,44 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "dff10db389a4",
+  "strategy": "manual-commit",
+  "branch": "feat/chat-data-export-map-widget",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "WIKI_UPLOAD_INSTRUCTIONS.md",
+    "cmd/unified-server/mcp_register.go",
+    "cmd/unified-server/static/index.html",
+    "wiki/API-Documentation.md",
+    "wiki/Admin-Panel.md",
+    "wiki/Configuration-Reference.md",
+    "wiki/Data-Import-Export.md",
+    "wiki/Database-Maintenance.md",
+    "wiki/Database-Setup.md",
+    "wiki/Deployment.md",
+    "wiki/Development.md",
+    "wiki/Getting-Started.md",
+    "wiki/Home.md",
+    "wiki/Internationalization.md",
+    "wiki/MCP-Server-AI-Integration.md",
+    "wiki/Map-Features.md",
+    "wiki/README.md",
+    "wiki/Spectral-Analysis.md",
+    "wiki/User-Authentication.md",
+    "wiki/WIKI-STRUCTURE.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/df/f10db389a4/0/metadata.json",
+      "transcript": "/df/f10db389a4/0/full.jsonl",
+      "content_hash": "/df/f10db389a4/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  }
+}
