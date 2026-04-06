@@ -1,0 +1,19 @@
+Currently the production server Map AI chat an dthe Assistant are not working correctly. To many chnages had been made with the table formating and download the resposnces.To have a functional server again for the users, I like production to be rolled back to Commit: bafc9b740e2b8aabae6470aad9b69539332f0236.  Can you do that for me?
+
+---
+
+go ahead
+
+---
+
+<task-notification>
+<task-id>bc96jk8av</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-1000/-home-rob-Documents-Safecast-safecast-new-map/7c463737-9f41-48ca-9aae-27d613161014/tasks/bc96jk8av.output</output-file>
+<status>completed</status>
+<summary>Background command "Sync binary to production" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+Yes, that seems to me the corrcet way to do that.

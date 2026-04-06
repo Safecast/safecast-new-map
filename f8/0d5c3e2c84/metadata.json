@@ -1,0 +1,36 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "f80d5c3e2c84",
+  "strategy": "manual-commit",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "README.md",
+    "cmd/safecast-new-map/main.go",
+    "cmd/unified-server/duckdb_analytics.go",
+    "cmd/unified-server/main.go",
+    "cmd/unified-server/mcp_register.go",
+    "cmd/unified-server/public_html/map.html",
+    "cmd/unified-server/static/index.html",
+    "cmd/web-chat/index.html",
+    "cmd/web-chat/main.go",
+    "go.mod",
+    "go.sum",
+    "main.go",
+    "public_html/map.html"
+  ],
+  "sessions": [
+    {
+      "metadata": "/f8/0d5c3e2c84/0/metadata.json",
+      "transcript": "/f8/0d5c3e2c84/0/full.jsonl",
+      "content_hash": "/f8/0d5c3e2c84/0/content_hash.txt",
+      "prompt": "/f8/0d5c3e2c84/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 22,
+    "cache_creation_tokens": 21154,
+    "cache_read_tokens": 326255,
+    "output_tokens": 4177,
+    "api_call_count": 14
+  }
+}
