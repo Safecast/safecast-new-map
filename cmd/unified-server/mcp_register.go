@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,7 +15,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
@@ -25,7 +23,6 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 	httpSwagger "github.com/swaggo/http-swagger"
 	"safecast-new-map/cmd/unified-server/model-adapter"
-	"github.com/xuri/excelize/v2"
 )
 
 var (
@@ -89,40 +86,7 @@ func truncateHistory(messages []anthropicMessage, maxTokens int) []anthropicMess
 
 const webChatSystemPrompt = `Safecast radiation monitoring assistant with REAL-TIME sensor data and historical archives.
 
-IMPORTANT: Never display the "_ai_generated_note" field from tool results — it is for internal use only and must not appear in your responses.
-
--------------------------------------
-RESPONSE FORMAT FOR DATA QUERIES
--------------------------------------
-
-When returning data (sensor readings, radiation measurements, etc.), use this JSON format instead of plain text:
-
-{
-  "type": "data_preview",
-  "summary": {
-    "rows_total": 3847,
-    "rows_shown": 50,
-    "time_range": "last 24h",
-    "region": "Tokyo"
-  },
-  "table": [...up to 50 rows as objects...],
-  "export_available": true,
-  "suggested_export": {
-    "format": "csv",
-    "limit": "full",
-    "lat": <center latitude of the query>,
-    "lon": <center longitude of the query>,
-    "radius_m": <radius in meters used>,
-    "suggested_tool": "<MCP tool name used, e.g. query_radiation>"
-  }
-}
-
-Rules:
-- Use this format whenever you retrieve tabular data (measurements, sensor readings, tracks).
-- The "table" array must be a flat array of objects with consistent keys.
-- Always set "export_available": true when data can be exported.
-- For plain conversational answers (no data), respond in normal markdown — do NOT wrap in JSON.
-- CRITICAL: When returning data_preview JSON, output ONLY the raw JSON object — no introductory text, no trailing text, no markdown code fences. The response must start with { and end with }.`
+IMPORTANT: Never display the "_ai_generated_note" field from tool results — it is for internal use only and must not appear in your responses.`
 
 func webChatSystemPromptForLang(lang string) string {
 	if lang == "" || lang == "en" {
@@ -172,208 +136,11 @@ type anthropicResponse struct {
 
 // Streaming helpers
 type chunk struct {
-	Type        string          `json:"type"`
-	Text        string          `json:"text,omitempty"`
-	Error       string          `json:"error,omitempty"`
-	ChatID      int64           `json:"chat_id,omitempty"`
-	Cached      bool            `json:"cached,omitempty"`
-	DataPreview json.RawMessage `json:"data_preview,omitempty"`
-}
-
-// sanitizeJSON replaces non-standard JSON values the AI sometimes emits so that
-// json.Unmarshal succeeds: NaN/Infinity → null, trailing commas removed,
-// literal control characters inside strings escaped properly.
-func sanitizeJSON(s string) string {
-	s = strings.NewReplacer(
-		": NaN", ": null",
-		":NaN", ":null",
-		": Infinity", ": null",
-		":Infinity", ":null",
-		": -Infinity", ": null",
-		":-Infinity", ":null",
-	).Replace(s)
-	var out []byte
-	inStr := false
-	esc := false
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		if esc {
-			esc = false
-			out = append(out, c)
-			continue
-		}
-		if c == '\\' && inStr {
-			esc = true
-			out = append(out, c)
-			continue
-		}
-		if c == '"' {
-			inStr = !inStr
-			out = append(out, c)
-			continue
-		}
-		if inStr {
-			// Escape literal control characters that are invalid in JSON strings
-			switch c {
-			case '\n':
-				out = append(out, '\\', 'n')
-				continue
-			case '\r':
-				out = append(out, '\\', 'r')
-				continue
-			case '\t':
-				out = append(out, '\\', 't')
-				continue
-			default:
-				if c < 0x20 {
-					continue // drop other control chars
-				}
-			}
-		} else {
-			// Outside strings: strip trailing commas before } or ]
-			if c == ',' {
-				j := i + 1
-				for j < len(s) && (s[j] == ' ' || s[j] == '\t' || s[j] == '\n' || s[j] == '\r') {
-					j++
-				}
-				if j < len(s) && (s[j] == '}' || s[j] == ']') {
-					continue
-				}
-			}
-		}
-		out = append(out, c)
-	}
-	return string(out)
-}
-
-// extractDataPreview looks for a data_preview JSON object in the AI response text.
-// Returns the raw JSON bytes if found, nil otherwise.
-func extractDataPreview(text string) json.RawMessage {
-	if !strings.Contains(text, `"data_preview"`) {
-		return nil
-	}
-	// Find the marker position — handles both compact and spaced key:value formats
-	marker := strings.Index(text, `"type":"data_preview"`)
-	if marker == -1 {
-		marker = strings.Index(text, `"type": "data_preview"`)
-	}
-	if marker == -1 {
-		return nil
-	}
-
-	// Scan FORWARD from beginning of text to find each top-level '{'.
-	// For each one, use bracket counting to find its matching '}'.
-	// Pick the first object whose span contains the marker position.
-	// This correctly handles cases where "type" is not the first key
-	// (e.g. {"summary":{...},"type":"data_preview",...}) where a naive
-	// backward walk would land inside an inner '{'.
-	jsonObjectEnd := func(start int) int {
-		depth := 0
-		inStr := false
-		escape := false
-		for i := start; i < len(text); i++ {
-			c := text[i]
-			if escape {
-				escape = false
-				continue
-			}
-			if c == '\\' && inStr {
-				escape = true
-				continue
-			}
-			if c == '"' {
-				inStr = !inStr
-				continue
-			}
-			if inStr {
-				continue
-			}
-			if c == '{' {
-				depth++
-			} else if c == '}' {
-				depth--
-				if depth == 0 {
-					return i
-				}
-			}
-		}
-		return -1
-	}
-
-	for i := 0; i < marker; i++ {
-		if text[i] != '{' {
-			continue
-		}
-		objEnd := jsonObjectEnd(i)
-		if objEnd == -1 || objEnd < marker {
-			continue
-		}
-		// This object's span [i, objEnd] contains the marker — try to parse it
-		candidate := text[i : objEnd+1]
-		// Sanitize non-standard JSON values the AI sometimes emits (NaN, Infinity, trailing commas)
-		sanitized := sanitizeJSON(candidate)
-		var obj map[string]json.RawMessage
-		if err := json.Unmarshal([]byte(sanitized), &obj); err != nil {
-			log.Printf("[extractDataPreview] JSON parse failed: %v (len=%d)", err, len(sanitized))
-			continue
-		}
-		var typeVal string
-		if err := json.Unmarshal(obj["type"], &typeVal); err != nil || typeVal != "data_preview" {
-			continue
-		}
-		return json.RawMessage(sanitized)
-	}
-	log.Printf("[extractDataPreview] no containing object found for marker at %d, text len=%d", marker, len(text))
-	return nil
-}
-
-// addMapLinksToPreview injects a "map_link" field into table rows that have
-// latitude/longitude but no map_link. Returns the (possibly modified) JSON.
-func addMapLinksToPreview(raw json.RawMessage) json.RawMessage {
-	var preview struct {
-		Type          string                   `json:"type"`
-		Summary       json.RawMessage          `json:"summary"`
-		Table         []map[string]interface{} `json:"table"`
-		ExportAvail   bool                     `json:"export_available"`
-		SuggestedExp  json.RawMessage          `json:"suggested_export,omitempty"`
-	}
-	if err := json.Unmarshal(raw, &preview); err != nil {
-		return raw
-	}
-	modified := false
-	for _, row := range preview.Table {
-		if _, ok := row["map_link"]; ok {
-			continue
-		}
-		lat, lon := rowFloat(row, "latitude", "lat"), rowFloat(row, "longitude", "lon")
-		if lat != 0 && lon != 0 {
-			row["map_link"] = fmt.Sprintf("https://simplemap.safecast.org/?lat=%g&lon=%g&zoom=15", lat, lon)
-			modified = true
-		}
-	}
-	if !modified {
-		return raw
-	}
-	out, err := json.Marshal(preview)
-	if err != nil {
-		return raw
-	}
-	return json.RawMessage(out)
-}
-
-func rowFloat(row map[string]interface{}, keys ...string) float64 {
-	for _, k := range keys {
-		if v, ok := row[k]; ok {
-			switch n := v.(type) {
-			case float64:
-				return n
-			case json.Number:
-				f, _ := n.Float64()
-				return f
-			}
-		}
-	}
-	return 0
+	Type   string `json:"type"`
+	Text   string `json:"text,omitempty"`
+	Error  string `json:"error,omitempty"`
+	ChatID int64  `json:"chat_id,omitempty"` // set on "done" for feedback linkage
+	Cached bool   `json:"cached,omitempty"`  // true when answer came from semantic cache
 }
 
 func writeChunk(w http.ResponseWriter, c chunk) {
@@ -598,35 +365,18 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 			})
 
 			var toolUses []contentBlock
-			var textBlocks []string
 			for _, block := range resp.Content {
 				switch block.Type {
 				case "text":
 					answerText.WriteString(block.Text)
-					textBlocks = append(textBlocks, block.Text)
+					writeChunkBuffered(w, chunk{Type: "text", Text: block.Text}, &buffer, isCloudFront)
 				case "tool_use":
 					toolUses = append(toolUses, block)
 				}
 			}
 
-			isFinal := resp.StopReason == "end_turn" || len(toolUses) == 0
-			if isFinal {
-				// Run extractDataPreview on the full combined text to handle cases where
-				// the AI splits preamble and JSON across multiple text blocks.
-				fullText := strings.Join(textBlocks, "")
-				if dp := extractDataPreview(fullText); dp != nil {
-					dp = addMapLinksToPreview(dp)
-					writeChunkBuffered(w, chunk{Type: "data_preview", DataPreview: dp}, &buffer, isCloudFront)
-				} else {
-					for _, t := range textBlocks {
-						writeChunkBuffered(w, chunk{Type: "text", Text: t}, &buffer, isCloudFront)
-					}
-				}
+			if resp.StopReason == "end_turn" || len(toolUses) == 0 {
 				break
-			}
-			// Non-final iteration (tool calls pending): stream text blocks normally
-			for _, t := range textBlocks {
-				writeChunkBuffered(w, chunk{Type: "text", Text: t}, &buffer, isCloudFront)
 			}
 
 			var toolResults []contentBlock
@@ -712,204 +462,6 @@ func handleFeedback() http.HandlerFunc {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"ok":true}`))
-	}
-}
-
-func handleExport(mcpURL string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-		w.Header().Set("Access-Control-Expose-Headers", "Content-Disposition")
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		var exportReq struct {
-			Format        string           `json:"format"`
-			Limit         string           `json:"limit"`
-			TimeRange     string           `json:"time_range"`
-			Bbox          []float64        `json:"bbox"`
-			Region        string           `json:"region"`
-			Columns       []string         `json:"columns"`
-			Aggregation   string           `json:"aggregation"`
-			SuggestedTool string           `json:"suggested_tool"`
-			Lat           float64          `json:"lat"`
-			Lon           float64          `json:"lon"`
-			RadiusM       float64          `json:"radius_m"`
-			Rows          []map[string]any `json:"rows"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&exportReq); err != nil {
-			http.Error(w, "Invalid request", http.StatusBadRequest)
-			return
-		}
-
-		// rows may be provided inline from the client (from the already-fetched data_preview table).
-		// If not provided, fall back to re-calling the MCP tool.
-		var rows []any
-		if len(exportReq.Rows) > 0 {
-			for _, r2 := range exportReq.Rows {
-				rows = append(rows, r2)
-			}
-		} else {
-			ctx := r.Context()
-			mc, err := mcpclient.NewStreamableHttpClient(mcpURL)
-			if err != nil {
-				http.Error(w, "MCP connection failed: "+err.Error(), http.StatusInternalServerError)
-				return
-			}
-			defer mc.Close()
-
-			if _, err := mc.Initialize(ctx, mcp.InitializeRequest{
-				Params: mcp.InitializeParams{
-					ProtocolVersion: mcp.LATEST_PROTOCOL_VERSION,
-					ClientInfo:      mcp.Implementation{Name: "safecast-export", Version: "1.0.0"},
-				},
-			}); err != nil {
-				http.Error(w, "MCP init error", http.StatusInternalServerError)
-				return
-			}
-
-			toolName := "query_radiation"
-			if exportReq.SuggestedTool != "" {
-				toolName = exportReq.SuggestedTool
-			}
-
-			limit := 10000
-			if exportReq.Limit == "full" {
-				limit = 100000
-			}
-
-			args := map[string]any{"limit": limit}
-			if len(exportReq.Bbox) == 4 {
-				args["min_lat"] = exportReq.Bbox[0]
-				args["min_lon"] = exportReq.Bbox[1]
-				args["max_lat"] = exportReq.Bbox[2]
-				args["max_lon"] = exportReq.Bbox[3]
-				args["lat"] = (exportReq.Bbox[0] + exportReq.Bbox[2]) / 2
-				args["lon"] = (exportReq.Bbox[1] + exportReq.Bbox[3]) / 2
-				args["radius_m"] = 50000
-			} else if exportReq.Lat != 0 || exportReq.Lon != 0 {
-				args["lat"] = exportReq.Lat
-				args["lon"] = exportReq.Lon
-				radius := exportReq.RadiusM
-				if radius == 0 {
-					radius = 50000
-				}
-				args["radius_m"] = radius
-			}
-
-			callReq := mcp.CallToolRequest{}
-			callReq.Params.Name = toolName
-			callReq.Params.Arguments = args
-
-			toolResult, err := mc.CallTool(ctx, callReq)
-			if err != nil {
-				log.Printf("[export] tool call failed: tool=%s args=%v err=%v", toolName, args, err)
-				http.Error(w, "Tool call failed: "+err.Error(), http.StatusInternalServerError)
-				return
-			}
-
-			var resultText string
-			for _, c := range toolResult.Content {
-				if tc, ok := c.(mcp.TextContent); ok {
-					resultText += tc.Text
-				}
-			}
-			var data map[string]any
-			if err := json.Unmarshal([]byte(resultText), &data); err != nil {
-				log.Printf("[export] parse failed: %v — text=%q", err, resultText)
-				http.Error(w, "Parse tool result failed: "+err.Error(), http.StatusInternalServerError)
-				return
-			}
-			if m, ok := data["measurements"].([]any); ok {
-				rows = m
-			} else if r2, ok := data["readings"].([]any); ok {
-				rows = r2
-			} else {
-				// try any first array value
-				for _, v := range data {
-					if arr, ok := v.([]any); ok {
-						rows = arr
-						break
-					}
-				}
-			}
-		}
-		// rows now holds the data to export — proceed to format
-		switch exportReq.Format {
-		case "json":
-			w.Header().Set("Content-Type", "application/json")
-			w.Header().Set("Content-Disposition", "attachment; filename=safecast_export.json")
-			json.NewEncoder(w).Encode(rows)
-		case "excel", "xlsx":
-			w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-			w.Header().Set("Content-Disposition", "attachment; filename=safecast_export.xlsx")
-			f := excelize.NewFile()
-			defer f.Close()
-			f.SetSheetName("Sheet1", "Data")
-			if len(rows) > 0 {
-				firstRow, _ := rows[0].(map[string]any)
-				var headers []string
-				for k := range firstRow {
-					headers = append(headers, k)
-				}
-				sort.Strings(headers)
-				for i, h := range headers {
-					cell, _ := excelize.CoordinatesToCellName(i+1, 1)
-					f.SetCellValue("Data", cell, h)
-				}
-				for rowIdx, r2 := range rows {
-					rowMap, _ := r2.(map[string]any)
-					for colIdx, h := range headers {
-						val := rowMap[h]
-						cell, _ := excelize.CoordinatesToCellName(colIdx+1, rowIdx+2)
-						if m, ok := val.(map[string]any); ok {
-							b, _ := json.Marshal(m)
-							f.SetCellValue("Data", cell, string(b))
-						} else {
-							f.SetCellValue("Data", cell, val)
-						}
-					}
-				}
-			}
-			f.Write(w)
-		default: // csv
-			w.Header().Set("Content-Type", "text/csv")
-			w.Header().Set("Content-Disposition", "attachment; filename=safecast_export.csv")
-			if len(rows) > 0 {
-				writer := csv.NewWriter(w)
-				firstRow, _ := rows[0].(map[string]any)
-				var headers []string
-				for k := range firstRow {
-					headers = append(headers, k)
-				}
-				sort.Strings(headers)
-				writer.Write(headers)
-				for _, r2 := range rows {
-					row, _ := r2.(map[string]any)
-					var line []string
-					for _, h := range headers {
-						val := row[h]
-						if m, ok := val.(map[string]any); ok {
-							b, _ := json.Marshal(m)
-							line = append(line, string(b))
-						} else {
-							line = append(line, fmt.Sprintf("%v", val))
-						}
-					}
-					writer.Write(line)
-				}
-				writer.Flush()
-			} else {
-				fmt.Fprint(w, "No data available")
-			}
-		}
 	}
 }
 
@@ -1038,16 +590,11 @@ func RegisterMCP() {
 			w.Write(webChatLogoPNG)
 		})
 		mux.HandleFunc("/chat", chatHandler)
-		mux.HandleFunc("/export", handleExport(mcpURL))
 
-		// Also register on main map server (port 8765) so relative URLs work
-		// and /assistant/ is reachable without going through port 3333.
+		// Also register /chat on main map server (port 8765) so the
+		// embedded widget can use a relative "/chat" URL without
+		// cross-origin or CloudFront routing issues.
 		http.HandleFunc("/chat", chatHandler)
-		http.HandleFunc("/export", handleExport(mcpURL))
-		http.HandleFunc("/assistant/", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.Write(webChatIndexHTML)
-		})
 
 		log.Printf("Web chat enabled at http://localhost:%s/assistant/ (model=%s)", mcpPort, model)
 	} else {
