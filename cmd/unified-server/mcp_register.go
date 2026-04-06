@@ -542,107 +542,125 @@ func handleExport(mcpURL string) http.HandlerFunc {
 		}
 
 		var exportReq struct {
-			Format        string    `json:"format"`
-			Limit         string    `json:"limit"`
-			TimeRange     string    `json:"time_range"`
-			Bbox          []float64 `json:"bbox"`
-			Region        string    `json:"region"`
-			Columns       []string  `json:"columns"`
-			Aggregation   string    `json:"aggregation"`
-			SuggestedTool string    `json:"suggested_tool"`
-			Lat           float64   `json:"lat"`
-			Lon           float64   `json:"lon"`
-			RadiusM       float64   `json:"radius_m"`
+			Format        string           `json:"format"`
+			Limit         string           `json:"limit"`
+			TimeRange     string           `json:"time_range"`
+			Bbox          []float64        `json:"bbox"`
+			Region        string           `json:"region"`
+			Columns       []string         `json:"columns"`
+			Aggregation   string           `json:"aggregation"`
+			SuggestedTool string           `json:"suggested_tool"`
+			Lat           float64          `json:"lat"`
+			Lon           float64          `json:"lon"`
+			RadiusM       float64          `json:"radius_m"`
+			Rows          []map[string]any `json:"rows"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&exportReq); err != nil {
 			http.Error(w, "Invalid request", http.StatusBadRequest)
 			return
 		}
 
-		var data map[string]any
-
-		ctx := r.Context()
-		mc, err := mcpclient.NewStreamableHttpClient(mcpURL)
-		if err != nil {
-			http.Error(w, "MCP connection failed: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		defer mc.Close()
-
-		if _, err := mc.Initialize(ctx, mcp.InitializeRequest{
-			Params: mcp.InitializeParams{
-				ProtocolVersion: mcp.LATEST_PROTOCOL_VERSION,
-				ClientInfo:      mcp.Implementation{Name: "safecast-export", Version: "1.0.0"},
-			},
-		}); err != nil {
-			http.Error(w, "MCP init error", http.StatusInternalServerError)
-			return
-		}
-
-		toolName := "query_radiation"
-		if exportReq.SuggestedTool != "" {
-			toolName = exportReq.SuggestedTool
-		}
-
-		limit := 10000
-		if exportReq.Limit == "full" {
-			limit = 100000
-		}
-
-		args := map[string]any{"limit": limit}
-		if len(exportReq.Bbox) == 4 {
-			args["min_lat"] = exportReq.Bbox[0]
-			args["min_lon"] = exportReq.Bbox[1]
-			args["max_lat"] = exportReq.Bbox[2]
-			args["max_lon"] = exportReq.Bbox[3]
-			args["lat"] = (exportReq.Bbox[0] + exportReq.Bbox[2]) / 2
-			args["lon"] = (exportReq.Bbox[1] + exportReq.Bbox[3]) / 2
-			args["radius_m"] = 50000
-		} else if exportReq.Lat != 0 || exportReq.Lon != 0 {
-			args["lat"] = exportReq.Lat
-			args["lon"] = exportReq.Lon
-			radius := exportReq.RadiusM
-			if radius == 0 {
-				radius = 50000
+		// rows may be provided inline from the client (from the already-fetched data_preview table).
+		// If not provided, fall back to re-calling the MCP tool.
+		var rows []any
+		if len(exportReq.Rows) > 0 {
+			for _, r2 := range exportReq.Rows {
+				rows = append(rows, r2)
 			}
-			args["radius_m"] = radius
-		}
-
-		callReq := mcp.CallToolRequest{}
-		callReq.Params.Name = toolName
-		callReq.Params.Arguments = args
-
-		toolResult, err := mc.CallTool(ctx, callReq)
-		if err != nil {
-			http.Error(w, "Tool call failed: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		var resultText string
-		for _, c := range toolResult.Content {
-			if tc, ok := c.(mcp.TextContent); ok {
-				resultText += tc.Text
+		} else {
+			ctx := r.Context()
+			mc, err := mcpclient.NewStreamableHttpClient(mcpURL)
+			if err != nil {
+				http.Error(w, "MCP connection failed: "+err.Error(), http.StatusInternalServerError)
+				return
 			}
-		}
-		if err := json.Unmarshal([]byte(resultText), &data); err != nil {
-			http.Error(w, "Parse tool result failed", http.StatusInternalServerError)
-			return
-		}
+			defer mc.Close()
 
-		switch exportReq.Format {
-		case "json":
-			w.Header().Set("Content-Type", "application/json")
-			w.Header().Set("Content-Disposition", "attachment; filename=safecast_export.json")
-			json.NewEncoder(w).Encode(data)
-		case "excel", "xlsx":
-			w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-			w.Header().Set("Content-Disposition", "attachment; filename=safecast_export.xlsx")
-			var rows []any
+			if _, err := mc.Initialize(ctx, mcp.InitializeRequest{
+				Params: mcp.InitializeParams{
+					ProtocolVersion: mcp.LATEST_PROTOCOL_VERSION,
+					ClientInfo:      mcp.Implementation{Name: "safecast-export", Version: "1.0.0"},
+				},
+			}); err != nil {
+				http.Error(w, "MCP init error", http.StatusInternalServerError)
+				return
+			}
+
+			toolName := "query_radiation"
+			if exportReq.SuggestedTool != "" {
+				toolName = exportReq.SuggestedTool
+			}
+
+			limit := 10000
+			if exportReq.Limit == "full" {
+				limit = 100000
+			}
+
+			args := map[string]any{"limit": limit}
+			if len(exportReq.Bbox) == 4 {
+				args["min_lat"] = exportReq.Bbox[0]
+				args["min_lon"] = exportReq.Bbox[1]
+				args["max_lat"] = exportReq.Bbox[2]
+				args["max_lon"] = exportReq.Bbox[3]
+				args["lat"] = (exportReq.Bbox[0] + exportReq.Bbox[2]) / 2
+				args["lon"] = (exportReq.Bbox[1] + exportReq.Bbox[3]) / 2
+				args["radius_m"] = 50000
+			} else if exportReq.Lat != 0 || exportReq.Lon != 0 {
+				args["lat"] = exportReq.Lat
+				args["lon"] = exportReq.Lon
+				radius := exportReq.RadiusM
+				if radius == 0 {
+					radius = 50000
+				}
+				args["radius_m"] = radius
+			}
+
+			callReq := mcp.CallToolRequest{}
+			callReq.Params.Name = toolName
+			callReq.Params.Arguments = args
+
+			toolResult, err := mc.CallTool(ctx, callReq)
+			if err != nil {
+				log.Printf("[export] tool call failed: tool=%s args=%v err=%v", toolName, args, err)
+				http.Error(w, "Tool call failed: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			var resultText string
+			for _, c := range toolResult.Content {
+				if tc, ok := c.(mcp.TextContent); ok {
+					resultText += tc.Text
+				}
+			}
+			var data map[string]any
+			if err := json.Unmarshal([]byte(resultText), &data); err != nil {
+				log.Printf("[export] parse failed: %v — text=%q", err, resultText)
+				http.Error(w, "Parse tool result failed: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
 			if m, ok := data["measurements"].([]any); ok {
 				rows = m
 			} else if r2, ok := data["readings"].([]any); ok {
 				rows = r2
+			} else {
+				// try any first array value
+				for _, v := range data {
+					if arr, ok := v.([]any); ok {
+						rows = arr
+						break
+					}
+				}
 			}
+		}
+		// rows now holds the data to export — proceed to format
+		switch exportReq.Format {
+		case "json":
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Content-Disposition", "attachment; filename=safecast_export.json")
+			json.NewEncoder(w).Encode(rows)
+		case "excel", "xlsx":
+			w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+			w.Header().Set("Content-Disposition", "attachment; filename=safecast_export.xlsx")
 			f := excelize.NewFile()
 			defer f.Close()
 			f.SetSheetName("Sheet1", "Data")
@@ -675,12 +693,6 @@ func handleExport(mcpURL string) http.HandlerFunc {
 		default: // csv
 			w.Header().Set("Content-Type", "text/csv")
 			w.Header().Set("Content-Disposition", "attachment; filename=safecast_export.csv")
-			var rows []any
-			if m, ok := data["measurements"].([]any); ok {
-				rows = m
-			} else if r2, ok := data["readings"].([]any); ok {
-				rows = r2
-			}
 			if len(rows) > 0 {
 				writer := csv.NewWriter(w)
 				firstRow, _ := rows[0].(map[string]any)

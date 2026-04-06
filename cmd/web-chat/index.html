@@ -516,6 +516,7 @@
         btn.onclick = () => {
              const expConfig = Object.assign({}, data.suggested_export || { limit: 'full' });
              expConfig.format = formatId;
+             expConfig.rows = data.table;
              triggerExport(expConfig, btn);
         };
         btnGroup.appendChild(btn);

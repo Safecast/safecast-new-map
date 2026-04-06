@@ -10754,6 +10754,7 @@ function selectHomeSearchResult(result, query) {
             btn.onclick = () => {
               const cfg = Object.assign({}, data.suggested_export || { limit: 'full' });
               cfg.format = f.toLowerCase();
+              cfg.rows = data.table;
               triggerExport(cfg, btn);
             };
             btnGroup.appendChild(btn);
