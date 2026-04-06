@@ -1,0 +1,38 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "b06312082edf",
+  "session_id": "8ce07268-a8da-4456-aa05-8f730289850d",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-06T11:59:34.343260694Z",
+  "branch": "fix/web-chat-data-preview",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "cmd/unified-server/mcp_register.go",
+    "cmd/unified-server/static/index.html",
+    "cmd/web-chat/index.html",
+    "cmd/web-chat/main.go"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "75e4728982f3",
+  "checkpoint_transcript_start": 223,
+  "transcript_lines_at_start": 223,
+  "token_usage": {
+    "input_tokens": 58,
+    "cache_creation_tokens": 208284,
+    "cache_read_tokens": 6518371,
+    "output_tokens": 46881,
+    "api_call_count": 44
+  },
+  "session_metrics": {
+    "turn_count": 10
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-06T11:59:33.537873971Z",
+    "agent_lines": 44,
+    "human_added": 114,
+    "human_modified": 39,
+    "human_removed": 0,
+    "total_committed": 197,
+    "agent_percentage": 22.33502538071066
+  }
+}
