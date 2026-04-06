@@ -562,8 +562,11 @@
       const end = matchingBrace(text, i);
       if (end !== -1 && end >= m) {
         const slice = text.slice(i, end + 1);
-        try { return JSON.parse(slice); } catch (_) {
-          try { return JSON.parse(sanitizeForParse(slice)); } catch (_) { continue; }
+        try { return JSON.parse(slice); } catch (e1) {
+          try { return JSON.parse(sanitizeForParse(slice)); } catch (e2) {
+            console.error('[extractJSON] parse failed:', e1.message, '| sanitized failed:', e2.message, '| slice[0..200]:', JSON.stringify(slice.slice(0, 200)));
+            continue;
+          }
         }
       }
     }
@@ -866,7 +869,7 @@
       sendBtn.disabled = false;
       msgEl.focus();
 
-      if (success && accumulated) {
+      if (success && accumulated && !botBubble.querySelector('.data-card')) {
         renderBotBubble(botBubble, accumulated);
 
         // Re-add copy button
@@ -922,10 +925,11 @@
             try {
               const ev = JSON.parse(line);
               if (ev.type === 'data_preview') {
+                console.log('[chat] got data_preview SSE event');
                 botBubble.classList.remove('thinking');
                 botBubble.innerHTML = '';
                 renderDataPreview(ev.data_preview, botBubble);
-                accumulated = JSON.stringify(ev.data_preview);
+                accumulated = JSON.stringify(Object.assign({type: 'data_preview'}, ev.data_preview));
                 messagesEl.scrollTop = messagesEl.scrollHeight;
               } else if (ev.type === 'text') {
                 if (botBubble.classList.contains('thinking')) {
