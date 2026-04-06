@@ -183,21 +183,129 @@ type chunk struct {
 // extractDataPreview looks for a data_preview JSON object in the AI response text.
 // Returns the raw JSON bytes if found, nil otherwise.
 func extractDataPreview(text string) json.RawMessage {
-	start := strings.Index(text, "{")
-	end := strings.LastIndex(text, "}")
-	if start == -1 || end <= start {
+	if !strings.Contains(text, `"data_preview"`) {
 		return nil
 	}
-	candidate := text[start : end+1]
-	var obj map[string]json.RawMessage
-	if err := json.Unmarshal([]byte(candidate), &obj); err != nil {
+	// Find the marker position — handles both compact and spaced key:value formats
+	marker := strings.Index(text, `"type":"data_preview"`)
+	if marker == -1 {
+		marker = strings.Index(text, `"type": "data_preview"`)
+	}
+	if marker == -1 {
 		return nil
 	}
-	var typeVal string
-	if err := json.Unmarshal(obj["type"], &typeVal); err != nil || typeVal != "data_preview" {
-		return nil
+
+	// Scan FORWARD from beginning of text to find each top-level '{'.
+	// For each one, use bracket counting to find its matching '}'.
+	// Pick the first object whose span contains the marker position.
+	// This correctly handles cases where "type" is not the first key
+	// (e.g. {"summary":{...},"type":"data_preview",...}) where a naive
+	// backward walk would land inside an inner '{'.
+	jsonObjectEnd := func(start int) int {
+		depth := 0
+		inStr := false
+		escape := false
+		for i := start; i < len(text); i++ {
+			c := text[i]
+			if escape {
+				escape = false
+				continue
+			}
+			if c == '\\' && inStr {
+				escape = true
+				continue
+			}
+			if c == '"' {
+				inStr = !inStr
+				continue
+			}
+			if inStr {
+				continue
+			}
+			if c == '{' {
+				depth++
+			} else if c == '}' {
+				depth--
+				if depth == 0 {
+					return i
+				}
+			}
+		}
+		return -1
 	}
-	return json.RawMessage(candidate)
+
+	for i := 0; i < marker; i++ {
+		if text[i] != '{' {
+			continue
+		}
+		objEnd := jsonObjectEnd(i)
+		if objEnd == -1 || objEnd < marker {
+			continue
+		}
+		// This object's span [i, objEnd] contains the marker — try to parse it
+		candidate := text[i : objEnd+1]
+		var obj map[string]json.RawMessage
+		if err := json.Unmarshal([]byte(candidate), &obj); err != nil {
+			log.Printf("[extractDataPreview] JSON parse failed: %v (len=%d)", err, len(candidate))
+			continue
+		}
+		var typeVal string
+		if err := json.Unmarshal(obj["type"], &typeVal); err != nil || typeVal != "data_preview" {
+			continue
+		}
+		return json.RawMessage(candidate)
+	}
+	log.Printf("[extractDataPreview] no containing object found for marker at %d, text len=%d", marker, len(text))
+	return nil
+}
+
+// addMapLinksToPreview injects a "map_link" field into table rows that have
+// latitude/longitude but no map_link. Returns the (possibly modified) JSON.
+func addMapLinksToPreview(raw json.RawMessage) json.RawMessage {
+	var preview struct {
+		Type          string                   `json:"type"`
+		Summary       json.RawMessage          `json:"summary"`
+		Table         []map[string]interface{} `json:"table"`
+		ExportAvail   bool                     `json:"export_available"`
+		SuggestedExp  json.RawMessage          `json:"suggested_export,omitempty"`
+	}
+	if err := json.Unmarshal(raw, &preview); err != nil {
+		return raw
+	}
+	modified := false
+	for _, row := range preview.Table {
+		if _, ok := row["map_link"]; ok {
+			continue
+		}
+		lat, lon := rowFloat(row, "latitude", "lat"), rowFloat(row, "longitude", "lon")
+		if lat != 0 && lon != 0 {
+			row["map_link"] = fmt.Sprintf("https://simplemap.safecast.org/?lat=%g&lon=%g&zoom=15", lat, lon)
+			modified = true
+		}
+	}
+	if !modified {
+		return raw
+	}
+	out, err := json.Marshal(preview)
+	if err != nil {
+		return raw
+	}
+	return json.RawMessage(out)
+}
+
+func rowFloat(row map[string]interface{}, keys ...string) float64 {
+	for _, k := range keys {
+		if v, ok := row[k]; ok {
+			switch n := v.(type) {
+			case float64:
+				return n
+			case json.Number:
+				f, _ := n.Float64()
+				return f
+			}
+		}
+	}
+	return 0
 }
 
 func writeChunk(w http.ResponseWriter, c chunk) {
@@ -439,6 +547,7 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 				// the AI splits preamble and JSON across multiple text blocks.
 				fullText := strings.Join(textBlocks, "")
 				if dp := extractDataPreview(fullText); dp != nil {
+					dp = addMapLinksToPreview(dp)
 					writeChunkBuffered(w, chunk{Type: "data_preview", DataPreview: dp}, &buffer, isCloudFront)
 				} else {
 					for _, t := range textBlocks {

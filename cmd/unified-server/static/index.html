@@ -553,14 +553,19 @@
     const table = document.createElement('table');
     table.className = 'data-table';
     if (data.table && data.table.length > 0) {
-      const keys = Object.keys(data.table[0]);
+      const skipCols = new Set(['map_link','latitude','longitude','lat','lon']);
+      const keys = Object.keys(data.table[0]).filter(k => !skipCols.has(k));
       const thead = document.createElement('thead');
       const hr = document.createElement('tr');
-      keys.forEach(k => { const th = document.createElement('th'); th.textContent = k.charAt(0).toUpperCase() + k.slice(1).replace('_',' '); hr.appendChild(th); });
+      keys.forEach(k => { const th = document.createElement('th'); th.textContent = k.charAt(0).toUpperCase() + k.slice(1).replace(/_/g,' '); hr.appendChild(th); });
       thead.appendChild(hr); table.appendChild(thead);
       const tbody = document.createElement('tbody');
       data.table.forEach(row => {
         const tr = document.createElement('tr');
+        // Build map URL from map_link field or lat/lon
+        const mapUrl = row.map_link || (row.latitude && row.longitude
+          ? `https://simplemap.safecast.org/?lat=${row.latitude}&lon=${row.longitude}&zoom=15`
+          : (row.lat && row.lon ? `https://simplemap.safecast.org/?lat=${row.lat}&lon=${row.lon}&zoom=15` : null));
         keys.forEach(k => {
           const td = document.createElement('td');
           let v = row[k];
@@ -570,6 +575,10 @@
           if (mdLink) {
             const a = document.createElement('a');
             a.href = mdLink[2]; a.textContent = mdLink[1]; a.target = '_blank'; a.rel = 'noopener';
+            td.appendChild(a);
+          } else if ((k === 'device_id' || k === 'id') && mapUrl) {
+            const a = document.createElement('a');
+            a.href = mapUrl; a.textContent = v; a.target = '_blank'; a.rel = 'noopener';
             td.appendChild(a);
           } else { td.textContent = v; }
           tr.appendChild(td);
