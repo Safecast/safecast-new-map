@@ -511,6 +511,30 @@
 
   const dlSVG = '<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>';
 
+  function sanitizeForParse(s) {
+    // Fix NaN/Infinity, trailing commas, and literal control chars inside strings
+    let out = '', inStr = false, esc = false;
+    for (let i = 0; i < s.length; i++) {
+      const c = s[i];
+      if (esc) { esc = false; out += c; continue; }
+      if (c === '\\' && inStr) { esc = true; out += c; continue; }
+      if (c === '"') { inStr = !inStr; out += c; continue; }
+      if (inStr) {
+        if (c === '\n') { out += '\\n'; continue; }
+        if (c === '\r') { out += '\\r'; continue; }
+        if (c === '\t') { out += '\\t'; continue; }
+        if (c.charCodeAt(0) < 0x20) continue;
+      } else {
+        if (c === ',' && /^[ \t\r\n]*[}\]]/.test(s.slice(i + 1))) continue;
+      }
+      out += c;
+    }
+    return out
+      .replace(/:[ \t]*NaN\b/g, ': null')
+      .replace(/:[ \t]*Infinity\b/g, ': null')
+      .replace(/:[ \t]*-Infinity\b/g, ': null');
+  }
+
   function extractJSON(text) {
     // Find the data_preview marker first (both compact and spaced key formats)
     let m = text.indexOf('"type":"data_preview"');
@@ -537,7 +561,10 @@
       if (text[i] !== '{') continue;
       const end = matchingBrace(text, i);
       if (end !== -1 && end >= m) {
-        try { return JSON.parse(text.slice(i, end + 1)); } catch (_) { continue; }
+        const slice = text.slice(i, end + 1);
+        try { return JSON.parse(slice); } catch (_) {
+          try { return JSON.parse(sanitizeForParse(slice)); } catch (_) { continue; }
+        }
       }
     }
     return null;
@@ -583,9 +610,13 @@
       data.table.forEach(row => {
         const tr = document.createElement('tr');
         // Build map URL from map_link field or lat/lon
-        const mapUrl = row.map_link || (row.latitude && row.longitude
-          ? `https://simplemap.safecast.org/?lat=${row.latitude}&lon=${row.longitude}&zoom=15`
-          : (row.lat && row.lon ? `https://simplemap.safecast.org/?lat=${row.lat}&lon=${row.lon}&zoom=15` : null));
+        let mapUrl = row.map_link ||
+          (row.latitude && row.longitude ? `https://simplemap.safecast.org/?lat=${row.latitude}&lon=${row.longitude}&zoom=15` :
+          (row.lat && row.lon ? `https://simplemap.safecast.org/?lat=${row.lat}&lon=${row.lon}&zoom=15` : null));
+        if (!mapUrl && row.location) {
+          const m = String(row.location).match(/([-\d.]+)[°\s]*[Nn][,\s]+([-\d.]+)[°\s]*[Ee]/);
+          if (m) mapUrl = `https://simplemap.safecast.org/?lat=${m[1]}&lon=${m[2]}&zoom=15`;
+        }
         keys.forEach(k => {
           const td = document.createElement('td');
           let v = row[k];
