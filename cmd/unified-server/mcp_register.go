@@ -426,9 +426,7 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 				switch block.Type {
 				case "text":
 					answerText.WriteString(block.Text)
-					dp := extractDataPreview(block.Text)
-					log.Printf("[chat] text block len=%d, extractDataPreview=%v", len(block.Text), dp != nil)
-					if dp != nil {
+					if dp := extractDataPreview(block.Text); dp != nil {
 						writeChunkBuffered(w, chunk{Type: "data_preview", DataPreview: dp}, &buffer, isCloudFront)
 					} else {
 						writeChunkBuffered(w, chunk{Type: "text", Text: block.Text}, &buffer, isCloudFront)

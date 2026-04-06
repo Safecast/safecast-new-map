@@ -800,8 +800,7 @@
       msgEl.focus();
 
       if (success && accumulated) {
-        console.log('[chat] finish() accumulated starts with:', accumulated.slice(0,80));
-        try { renderBotBubble(botBubble, accumulated); } catch(e) { console.error('[chat] renderBotBubble error', e); }
+        renderBotBubble(botBubble, accumulated);
 
         // Re-add copy button
         const copyBtn = document.createElement('button');
@@ -856,10 +855,9 @@
             try {
               const ev = JSON.parse(line);
               if (ev.type === 'data_preview') {
-                console.log('[chat] data_preview event received', ev.data_preview);
                 botBubble.classList.remove('thinking');
                 botBubble.innerHTML = '';
-                try { renderDataPreview(ev.data_preview, botBubble); } catch(e) { console.error('[chat] renderDataPreview error', e); botBubble.textContent = JSON.stringify(ev.data_preview); }
+                renderDataPreview(ev.data_preview, botBubble);
                 accumulated = JSON.stringify(ev.data_preview);
                 messagesEl.scrollTop = messagesEl.scrollHeight;
               } else if (ev.type === 'text') {
