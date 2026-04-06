@@ -6158,7 +6158,6 @@ func adminImportFromSafecastHandler(w http.ResponseWriter, r *http.Request) {
 					imp.SourceURL,
 					fmt.Sprintf("%d", imp.UserID),
 					username,
-					"import via admin tool",
 					db,
 					*dbType,
 					nil, // Use default importer
@@ -8716,7 +8715,6 @@ func main() {
 			sourceURL string,
 			userID string,
 			username string,
-			comment string,
 			db *database.Database,
 			dbType string,
 		) (trackID string, markerCount int, err error) {
@@ -8774,7 +8772,6 @@ func main() {
 				UserID:        userID,
 				Username:      username,
 				Detector:      detector,
-				Comment:       comment,
 			}
 
 			if _, err := db.InsertUpload(ctx, upload); err != nil {
