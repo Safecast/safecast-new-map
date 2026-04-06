@@ -555,13 +555,13 @@
               val = JSON.stringify(val);
           }
           // If it looks like a coordinate or map link, make it clickable
-          if (k === 'device_id' && row.lat && row.lon) {
-              td.innerHTML = `<a href="https://simplemap.safecast.org/?lat=${row.lat}&lon=${row.lon}&zoom=15" target="_blank">${val}</a>`;
-          } else if (typeof val === 'string' && val.includes('https://simplemap.safecast.org')) {
-              td.innerHTML = markdownToHTML(val);
-          } else {
-              td.textContent = val;
-          }
+          val = String(val == null ? '' : val);
+          const mdLink = val.match(/^\[(.+?)\]\((https?:\/\/[^\s)]+)\)$/);
+          if (mdLink) {
+            const a = document.createElement('a');
+            a.href = mdLink[2]; a.textContent = mdLink[1]; a.target = '_blank'; a.rel = 'noopener';
+            td.appendChild(a);
+          } else { td.textContent = val; }
           tr.appendChild(td);
         });
         tbody.appendChild(tr);
