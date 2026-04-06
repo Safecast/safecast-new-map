@@ -360,7 +360,6 @@ var (
 )
 
 var db *database.Database
-var duckDB *sql.DB
 
 // Upload progress tracking
 type UploadProgress struct {
