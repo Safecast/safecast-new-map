@@ -640,7 +640,7 @@
     /* Container for geolocation button */
     .locate-btn-container {
       position: absolute;
-      top: 95px;
+      top: 128px;
       right: 20px;
       z-index: 1000;
       display: flex;
@@ -743,32 +743,74 @@
       transform: translateY(-1px);
     }
 
-    /* Dedicated download container lives under the back button so
-           track view controls remain grouped for quick access. */
+    /* Dedicated download container lives under the upload button for quick access. */
     .download-track-container {
       position: absolute;
-      top: 225px;
-      /* keep consistent spacing below the back button */
+      top: 88px;
       right: 20px;
       z-index: 1000;
       display: none;
     }
 
     .download-track-btn {
-      background-color: var(--control-bg);
-      border: var(--legend-border);
-      border-radius: 4px;
-      padding: 5px 10px;
-      cursor: pointer;
-      font-size: var(--font-size-base);
-      color: var(--modal-text);
-      box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
-      text-decoration: none;
       display: inline-block;
+      background-color: var(--upload-btn-bg);
+      border: var(--legend-border);
+      border-radius: var(--btn-border-radius);
+      padding: 6px 0;
+      width: 100px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      color: #ffffff;
+      box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
+      box-sizing: border-box;
+      position: relative;
+      user-select: none;
     }
 
     .download-track-btn:hover {
-      background-color: var(--control-bg-hover);
+      background-color: var(--upload-btn-bg-hover);
+    }
+
+    /* Dropdown menu for download formats */
+    .download-dropdown-menu {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      margin-top: 4px;
+      background-color: var(--control-bg, #2a2a2a);
+      border: var(--legend-border, 1px solid #444);
+      border-radius: var(--btn-border-radius, 8px);
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      z-index: 1001;
+      min-width: 120px;
+    }
+
+    .download-dropdown-menu.show {
+      display: block;
+    }
+
+    .download-dropdown-menu a {
+      display: block;
+      padding: 8px 12px;
+      color: var(--modal-text, #e0e0e0);
+      text-decoration: none;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .download-dropdown-menu a:hover {
+      background-color: var(--control-bg-hover, #3a3a3a);
+      color: var(--modal-text-hover, #ffffff);
+    }
+
+    .download-dropdown-menu a:not(:last-child) {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
 
 
@@ -2005,9 +2047,17 @@
     <button id="backToAllButton" class="back-to-all-btn">{{ translate "back_to_all_tracks" }}</button>
   </div>
 
-  <!-- Track download button appears only in track view so users can retrieve the original JSON quickly. -->
+  <!-- Track download dropdown: JSON, CSV, XLSX, LOG (only shown when a track is selected) -->
   <div class="download-track-container leaflet-control" style="display: none;">
-    <a id="downloadTrackLink" class="download-track-btn" href="#">{{ translate "download_track_cim" }}</a>
+    <div id="downloadTrackBtn" class="download-track-btn">
+      {{ translate "download_button" }}
+      <div id="downloadDropdown" class="download-dropdown-menu">
+        <a href="#" id="downloadJSON" data-format="json">{{ translate "download_json" }}</a>
+        <a href="#" id="downloadCSV" data-format="csv">{{ translate "download_csv" }}</a>
+        <a href="#" id="downloadXLSX" data-format="xlsx">{{ translate "download_xlsx" }}</a>
+        <a href="#" id="downloadLOG" data-format="log" style="display:none;">{{ translate "download_log" }}</a>
+      </div>
+    </div>
   </div>
 
   <!-- File upload overlay -->
@@ -3569,6 +3619,7 @@
     var osmLayer, googleSatellite;
     var trackBounds;
     var currentTrackID = null;
+    var currentTrackSourceURL = null;  // Original LOG file URL from S3
     var currentTrackIDs = null;  // For multiple tracks view
     var lastViewportKey = null;
     var lastFilterState = null;  // Track filter state to detect changes
@@ -3933,26 +3984,75 @@
     let waitForDangerFit = false;
 
     /* ---------------------------------------------------------------
-     *  refreshDownloadLink() toggles the track download button.
-     *  We compute the href lazily so the button is only active when a
-     *  track is selected, keeping the default map uncluttered.
+     *  fetchTrackSourceURL() — loads source_url from the track-info API.
      * ---------------------------------------------------------------*/
-    function refreshDownloadLink() {
-      var link = document.getElementById('downloadTrackLink');
-      var box = document.querySelector('.download-track-container');
-      if (!link || !box) {
+    function fetchTrackSourceURL(trackID) {
+      if (!trackID) {
+        currentTrackSourceURL = null;
         return;
       }
+      fetch('/api/track-info/' + trackID)
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          currentTrackSourceURL = data.sourceURL || null;
+          refreshDownloadLink();
+        })
+        .catch(function () {
+          currentTrackSourceURL = null;
+        });
+    }
+
+    /* ---------------------------------------------------------------
+     *  refreshDownloadLink() toggles the track download dropdown.
+     *  The button appears only when a track is selected, and the
+     *  dropdown offers JSON, CSV, XLSX, and (optionally) LOG formats.
+     * ---------------------------------------------------------------*/
+    function refreshDownloadLink() {
+      var box = document.querySelector('.download-track-container');
+      var dropdown = document.getElementById('downloadDropdown');
+      var logItem = document.getElementById('downloadLOG');
+      if (!box) return;
       if (currentTrackID) {
-        link.href = '/api/track/' + currentTrackID + '.json';
-        link.setAttribute('download', currentTrackID + '.json');
         box.style.display = 'block';
+        // Set download links for each format
+        document.getElementById('downloadJSON').href = '/api/track/' + currentTrackID + '.json';
+        document.getElementById('downloadCSV').href = '/api/track/' + currentTrackID + '.csv';
+        document.getElementById('downloadXLSX').href = '/api/track/' + currentTrackID + '.xlsx';
+        // Check if original LOG is available
+        if (typeof currentTrackSourceURL === 'string' && currentTrackSourceURL) {
+          logItem.href = currentTrackSourceURL;
+          logItem.style.display = 'block';
+        } else {
+          logItem.href = '#';
+          logItem.style.display = 'none';
+        }
       } else {
-        link.href = '#';
-        link.removeAttribute('download');
         box.style.display = 'none';
+        if (dropdown) dropdown.classList.remove('show');
       }
     }
+
+    /* ---------------------------------------------------------------
+     *  Dropdown toggle: clicking the download button opens/closes menu.
+     * ---------------------------------------------------------------*/
+    (function () {
+      var btn = document.getElementById('downloadTrackBtn');
+      var dropdown = document.getElementById('downloadDropdown');
+      if (!btn || !dropdown) return;
+
+      btn.addEventListener('click', function (e) {
+        // Don't toggle if clicking a link inside the dropdown
+        if (e.target.tagName === 'A') return;
+        dropdown.classList.toggle('show');
+      });
+
+      // Close dropdown when clicking outside
+      document.addEventListener('click', function (e) {
+        if (!btn.contains(e.target)) {
+          dropdown.classList.remove('show');
+        }
+      });
+    })();
 
     // New controller to cancel previous request
     var markerStreamSource = null;
@@ -8684,6 +8784,9 @@
           window.location.href = '/' + params;
         });
       }
+
+      // Fetch original LOG file URL if this is a track page
+      fetchTrackSourceURL(currentTrackID);
 
       // Keep the download button aligned with the current track state even if
       // the DOM was injected before listeners finished binding.
