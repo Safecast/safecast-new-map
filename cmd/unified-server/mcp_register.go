@@ -14,6 +14,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -80,7 +82,9 @@ func truncateHistory(messages []anthropicMessage, maxTokens int) []anthropicMess
 
 const webChatSystemPrompt = `Safecast radiation monitoring assistant with REAL-TIME sensor data and historical archives.
 
-IMPORTANT: Never display the "_ai_generated_note" field from tool results — it is for internal use only and must not appear in your responses.`
+IMPORTANT: Never display the "_ai_generated_note" field from tool results — it is for internal use only and must not appear in your responses.
+
+`
 
 func webChatSystemPromptForLang(lang string) string {
 	if lang == "" || lang == "en" {
@@ -130,11 +134,13 @@ type anthropicResponse struct {
 
 // Streaming helpers
 type chunk struct {
-	Type   string `json:"type"`
-	Text   string `json:"text,omitempty"`
-	Error  string `json:"error,omitempty"`
-	ChatID int64  `json:"chat_id,omitempty"` // set on "done" for feedback linkage
-	Cached bool   `json:"cached,omitempty"`  // true when answer came from semantic cache
+	Type        string `json:"type"`
+	Text        string `json:"text,omitempty"`
+	Error       string `json:"error,omitempty"`
+	ChatID      int64  `json:"chat_id,omitempty"`  // set on "done" for feedback linkage
+	Cached      bool   `json:"cached,omitempty"`   // true when answer came from semantic cache
+	ExportURL   string `json:"export_url,omitempty"`  // set on "export" chunks from list_sensors
+	ExportTotal int    `json:"export_total,omitempty"` // total sensor count for the export
 }
 
 func writeChunk(w http.ResponseWriter, c chunk) {
@@ -343,6 +349,10 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 			sysPrompt = enrichSystemPrompt(sysPrompt, ragCtx, locKnowledge)
 		}
 
+		// Track export URL emitted by list_sensors tool (independent of AI text).
+		var pendingExportURL string
+		var pendingExportTotal int
+
 		for {
 			resp, err := callAnthropic(ctx, apiKey, model, sysPrompt, messages, tools)
 			if err != nil {
@@ -393,6 +403,31 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 						}
 					}
 				}
+				// Build export URL from tool call arguments (small JSON, always valid).
+				// Extract total_count via regex so it works even on truncated result text.
+				if tu.Name == "list_sensors" {
+					var toolArgs struct {
+						Type   string  `json:"type"`
+						MinLat float64 `json:"min_lat"`
+						MaxLat float64 `json:"max_lat"`
+						MinLon float64 `json:"min_lon"`
+						MaxLon float64 `json:"max_lon"`
+					}
+					toolArgs.MinLat = -90
+					toolArgs.MaxLat = 90
+					toolArgs.MinLon = -180
+					toolArgs.MaxLon = 180
+					if err := json.Unmarshal(tu.Input, &toolArgs); err == nil {
+						pendingExportURL = buildExportURL(toolArgs.Type, toolArgs.MinLat, toolArgs.MaxLat, toolArgs.MinLon, toolArgs.MaxLon)
+					} else {
+						log.Printf("list_sensors: failed to parse tool args: %v", err)
+					}
+					if m := regexp.MustCompile(`"total_count"\s*:\s*(\d+)`).FindStringSubmatch(resultText); len(m) > 1 {
+						pendingExportTotal, _ = strconv.Atoi(m[1])
+					}
+					log.Printf("list_sensors export: url=%q total=%d (result len=%d)", pendingExportURL, pendingExportTotal, len(resultText))
+				}
+
 				if len(resultText) > maxToolResultChars {
 					resultText = resultText[:maxToolResultChars] + "\n\n... [truncated — result too large. Ask the user to narrow their query or use a smaller limit.]"
 				}
@@ -416,6 +451,16 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 		// 3. Async: store Q&A + embedding in semantic cache for future lookups.
 		if len(embedding) > 0 && finalAnswer != "" {
 			storeQAEmbeddingAsync(ctx, embeddingChatID, chatQuestion, finalAnswer, embedding)
+		}
+
+		// If list_sensors was called and returned an export URL, send it to the
+		// client so the download buttons can fetch the full dataset from the server.
+		if pendingExportURL != "" {
+			writeChunkBuffered(w, chunk{
+				Type:        "export",
+				ExportURL:   pendingExportURL,
+				ExportTotal: pendingExportTotal,
+			}, &buffer, isCloudFront)
 		}
 
 		writeChunkBuffered(w, chunk{Type: "done", ChatID: embeddingChatID}, &buffer, isCloudFront)
@@ -564,6 +609,18 @@ func RegisterMCP() {
 	// so the endpoint is always reachable even if chat is reconfigured.
 	mux.HandleFunc("/api/feedback", feedbackHandler)
 	http.HandleFunc("/api/feedback", feedbackHandler)
+
+	// Register sensor REST endpoints on both mux (port 3333) and main mux (port 8765)
+	// so the AI chat download buttons can use relative URLs like /api/sensors/export.
+	// (Other REST routes like /api/radiation, /api/tracks, etc. are already
+	// handled by httpapi or registerSwaggerDocs on port 8765.)
+	restH := &RESTHandler{}
+	mux.HandleFunc("/api/sensors", restH.handleSensors)
+	mux.HandleFunc("/api/sensors/export", restH.handleSensorsExport)
+	mux.HandleFunc("/api/sensor/", restH.handleSensor)
+	http.HandleFunc("/api/sensors", restH.handleSensors)
+	http.HandleFunc("/api/sensors/export", restH.handleSensorsExport)
+	http.HandleFunc("/api/sensor/", restH.handleSensor)
 
 	// Track insights: register on main mux (port 8765) using Go 1.22 pattern routing.
 	// The specific pattern "GET /api/track/{id}/insights" takes precedence over the
