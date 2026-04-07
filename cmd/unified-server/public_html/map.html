@@ -9857,6 +9857,31 @@ function selectHomeSearchResult(result, query) {
       left: 10px;
     }
 
+    /* Phones: full-width panel, no margin gap */
+    @media (max-width: 600px) {
+      #safecast-ai-panel {
+        top: 0;
+        left: -100vw;
+        width: 100vw;
+        max-width: 100vw;
+        height: 100%;
+        margin-left: 0;
+        border-radius: 0;
+      }
+      #safecast-ai-panel.open { left: 0; }
+      #ai-panel-resize-handle { display: none; }
+      .ai-msg-row.user .ai-bubble { max-width: 90%; }
+      .ai-panel-messages { padding: 12px; }
+    }
+
+    /* Tablets: wider panel that fits the viewport better */
+    @media (min-width: 601px) and (max-width: 900px) {
+      #safecast-ai-panel {
+        width: min(92vw, 520px);
+        max-width: 92vw;
+      }
+    }
+
     /* Drag handle on the right edge */
     #ai-panel-resize-handle {
       position: absolute;
@@ -10174,14 +10199,15 @@ function selectHomeSearchResult(result, query) {
       background-color: var(--control-bg);
     }
 
-    /* Table download button in chat responses */
+    /* Table download bar in chat responses */
     .table-download-bar {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 8px;
       padding: 8px 12px;
       background: rgba(255,255,255,0.04);
       border-bottom: 1px solid var(--modal-border);
+      flex-wrap: wrap;
     }
     .table-download-btn {
       background: #2e7d32;
@@ -10193,12 +10219,16 @@ function selectHomeSearchResult(result, query) {
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
       transition: all .15s;
     }
     .table-download-btn:hover { background: #1b5e20; border-color: #1b5e20; }
-    .table-download-btn svg { width: 14px; height: 14px; }
-    .table-rows-info { color: var(--modal-text); opacity: 0.5; font-size: 11px; }
+    .table-download-btn.excel { background: #1565c0; border-color: #1565c0; }
+    .table-download-btn.excel:hover { background: #0d47a1; border-color: #0d47a1; }
+    .table-download-btn.json  { background: #6a1b9a; border-color: #6a1b9a; }
+    .table-download-btn.json:hover  { background: #4a148c; border-color: #4a148c; }
+    .table-download-btn svg { width: 13px; height: 13px; }
+    .table-rows-info { color: var(--modal-text); opacity: 0.5; font-size: 11px; margin-left: 4px; }
 
     /* Feedback buttons */
     .ai-feedback-row {
@@ -10539,7 +10569,7 @@ function selectHomeSearchResult(result, query) {
 
       closeBtn.addEventListener('click', closePanel);
 
-      // Delegated CSV download for tables in AI responses
+      // Delegated table download (CSV / Excel / JSON)
       messagesEl.addEventListener('click', function(e) {
         const btn = e.target.closest('.table-download-btn');
         if (!btn) return;
@@ -10547,26 +10577,42 @@ function selectHomeSearchResult(result, query) {
         const bar = btn.closest('.table-download-bar');
         if (!bar) return;
         try {
-          const tableData = JSON.parse(bar.getAttribute('data-table'));
-          const { headers, rows } = tableData;
-          const csvLines = [
-            headers.map(h => /,|"/.test(h) ? '"' + h.replace(/"/g, '""') + '"' : h).join(','),
-            ...rows.map(row => row.map(cell => {
-              const s = String(cell);
-              return /,|"/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-            }).join(','))
-          ];
-          const blob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+          const { headers, rows } = JSON.parse(bar.getAttribute('data-table'));
+          const fmt = btn.dataset.fmt || 'csv';
+          const date = new Date().toISOString().slice(0,10);
+          let blob, filename;
+
+          if (fmt === 'csv') {
+            const esc = s => /,|"|\n/.test(s) ? '"' + String(s).replace(/"/g,'""') + '"' : String(s);
+            const lines = [headers.map(esc).join(','), ...rows.map(r => r.map(esc).join(','))];
+            blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+            filename = 'safecast_' + date + '.csv';
+
+          } else if (fmt === 'excel') {
+            const xmlEsc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            const cell = s => '<Cell><Data ss:Type="String">' + xmlEsc(s) + '</Data></Cell>';
+            const row  = cells => '<Row>' + cells.map(cell).join('') + '</Row>';
+            const xml = '<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?>' +
+              '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">' +
+              '<Worksheet ss:Name="Safecast"><Table>' +
+              row(headers) + rows.map(r => row(r)).join('') +
+              '</Table></Worksheet></Workbook>';
+            blob = new Blob([xml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+            filename = 'safecast_' + date + '.xls';
+
+          } else { // json
+            const objects = rows.map(r => Object.fromEntries(headers.map((h,i) => [h, r[i]])));
+            blob = new Blob([JSON.stringify(objects, null, 2)], { type: 'application/json' });
+            filename = 'safecast_' + date + '.json';
+          }
+
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
-          a.href = url;
-          a.download = 'safecast_data_' + new Date().toISOString().slice(0,10) + '.csv';
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
+          a.href = url; a.download = filename;
+          document.body.appendChild(a); a.click();
+          document.body.removeChild(a); URL.revokeObjectURL(url);
         } catch(err) {
-          console.error('CSV export failed:', err);
+          console.error('Table export failed:', err);
         }
       });
 
@@ -10716,10 +10762,11 @@ function selectHomeSearchResult(result, query) {
             // Encode table data into a data attribute for CSV export
             const tableJson = JSON.stringify({ headers: headers, rows: dataRows })
               .replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+            const dlSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
             out += '<div class="table-download-bar" data-table="' + tableJson + '">';
-            out += '<button class="table-download-btn" title="Download as CSV">';
-            out += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
-            out += ' Download CSV</button>';
+            out += '<button class="table-download-btn" data-fmt="csv" title="Download as CSV">' + dlSvg + ' CSV</button>';
+            out += '<button class="table-download-btn excel" data-fmt="excel" title="Download as Excel">' + dlSvg + ' Excel</button>';
+            out += '<button class="table-download-btn json" data-fmt="json" title="Download as JSON">' + dlSvg + ' JSON</button>';
             out += '<span class="table-rows-info">' + dataRows.length + ' rows</span>';
             out += '</div>';
           }
