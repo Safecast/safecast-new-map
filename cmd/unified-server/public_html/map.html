@@ -10755,11 +10755,14 @@ function selectHomeSearchResult(result, query) {
 
           const headers = bodyRows[0] || [];
           const dataRows = bodyRows.slice(1);
+          const maxDisplay = 10;
+          const visibleRows = dataRows.slice(0, maxDisplay);
+          const truncated = dataRows.length > maxDisplay;
 
           let out = '<div class="ai-table-container">';
 
           if (enableTableDownload && dataRows.length > 0) {
-            // Encode table data into a data attribute for CSV export
+            // Store ALL rows in data attribute so downloads get the full table
             const tableJson = JSON.stringify({ headers: headers, rows: dataRows })
               .replace(/&/g, '&amp;').replace(/"/g, '&quot;');
             const dlSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
@@ -10767,23 +10770,31 @@ function selectHomeSearchResult(result, query) {
             out += '<button class="table-download-btn" data-fmt="csv" title="Download as CSV">' + dlSvg + ' CSV</button>';
             out += '<button class="table-download-btn excel" data-fmt="excel" title="Download as Excel">' + dlSvg + ' Excel</button>';
             out += '<button class="table-download-btn json" data-fmt="json" title="Download as JSON">' + dlSvg + ' JSON</button>';
-            out += '<span class="table-rows-info">' + dataRows.length + ' rows</span>';
+            if (truncated) {
+              out += '<span class="table-rows-info">showing ' + maxDisplay + ' of ' + dataRows.length + ' rows — download for all</span>';
+            } else {
+              out += '<span class="table-rows-info">' + dataRows.length + ' rows</span>';
+            }
             out += '</div>';
           }
 
           out += '<table class="ai-table">';
 
-          bodyRows.forEach((cols, rowIndex) => {
+          // Header row
+          out += '<tr>';
+          headers.forEach(col => { out += `<th>${col}</th>`; });
+          out += '</tr>';
+
+          // Data rows — only show up to maxDisplay
+          visibleRows.forEach(cols => {
             out += '<tr>';
-            cols.forEach(col => {
-              if (rowIndex === 0) {
-                out += `<th>${col}</th>`;
-              } else {
-                out += `<td>${col}</td>`;
-              }
-            });
+            cols.forEach(col => { out += `<td>${col}</td>`; });
             out += '</tr>';
           });
+
+          if (truncated) {
+            out += `<tr><td colspan="${headers.length}" style="text-align:center;opacity:0.5;font-style:italic;padding:8px;">… ${dataRows.length - maxDisplay} more rows — download to see all</td></tr>`;
+          }
 
           out += '</table></div>';
           return out;
