@@ -292,3 +292,7 @@ One more thing.. This eems incorrect to me?
 ---
 
 The first sentence seems also wrong.. It mentiones the table below is 100 sensors and only 10 showing?
+
+---
+
+Please commit/push/PR and merge.. for GitHub and Codeberg..
