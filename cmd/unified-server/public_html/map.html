@@ -10326,7 +10326,7 @@ function selectHomeSearchResult(result, query) {
     }
     .table-download-btn {
       background: #2e7d32;
-      color: #fff;
+      color: #fff !important;
       border: 1px solid #2e7d32;
       border-radius: 4px;
       padding: 4px 10px;
@@ -10688,13 +10688,19 @@ function selectHomeSearchResult(result, query) {
       messagesEl.addEventListener('click', function(e) {
         const btn = e.target.closest('.table-download-btn');
         if (!btn) return;
+
+        // Sensor export buttons are <a> tags — let the browser follow the href.
+        if (btn.tagName === 'A') return;
+
         e.preventDefault();
         const bar = btn.closest('.table-download-bar');
         if (!bar) return;
         try {
-          const { headers, rows } = JSON.parse(bar.getAttribute('data-table'));
           const fmt = btn.dataset.fmt || 'csv';
           const date = new Date().toISOString().slice(0,10);
+
+          // Build download from inline table data
+          const { headers, rows } = JSON.parse(bar.getAttribute('data-table'));
           let blob, filename;
 
           if (fmt === 'csv') {
@@ -10838,6 +10844,16 @@ function selectHomeSearchResult(result, query) {
       function markdownToHTML(text, enableTableDownload) {
         if (!text) return '';
 
+        // Extract sensor export marker BEFORE HTML escaping so the URL is intact.
+        // The AI emits: ⬇ export:/api/sensors/export?... total:N
+        let exportUrl = null;
+        let exportTotal = null;
+        text = text.replace(/^⬇ export:(\S+)\s+total:(\d+)\s*$/m, function(_, url, total) {
+          exportUrl = url;
+          exportTotal = parseInt(total, 10);
+          return ''; // remove this line from displayed text
+        });
+
         let html = text
           .replace(/&/g, '&amp;')
           .replace(/</g, '&lt;')
@@ -10877,18 +10893,33 @@ function selectHomeSearchResult(result, query) {
           let out = '<div class="ai-table-container">';
 
           if (enableTableDownload && dataRows.length > 0) {
-            // Store ALL rows in data attribute so downloads get the full table
             const tableJson = JSON.stringify({ headers: headers, rows: dataRows })
               .replace(/&/g, '&amp;').replace(/"/g, '&quot;');
             const dlSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+
+            // Detect sensor tables by header — render <a> links pointing directly
+            // to /api/sensors/export (same pattern as track downloads).
+            // For all other tables keep blob-based <button> downloads.
+            const isSensorTable = headers.some(h => /device.?id/i.test(h.trim()));
+            const date = new Date().toISOString().slice(0, 10);
+
             out += '<div class="table-download-bar" data-table="' + tableJson + '">';
-            out += '<button class="table-download-btn" data-fmt="csv" title="Download as CSV">' + dlSvg + ' CSV</button>';
-            out += '<button class="table-download-btn excel" data-fmt="excel" title="Download as Excel">' + dlSvg + ' Excel</button>';
-            out += '<button class="table-download-btn json" data-fmt="json" title="Download as JSON">' + dlSvg + ' JSON</button>';
-            if (truncated) {
-              out += '<span class="table-rows-info">showing ' + maxDisplay + ' of ' + dataRows.length + ' rows — download for all</span>';
+            if (isSensorTable) {
+              // <a> tags → server handles format + filename (no JS state needed).
+              // Default to world-bounds; export chunk will refine href if needed.
+              out += '<a class="table-download-btn" data-fmt="csv" href="/api/sensors/export?format=csv" download="safecast_sensors_' + date + '.csv" title="Download as CSV">' + dlSvg + ' CSV</a>';
+              out += '<a class="table-download-btn excel" data-fmt="excel" href="/api/sensors/export?format=xlsx" download="safecast_sensors_' + date + '.xls" title="Download as Excel">' + dlSvg + ' Excel</a>';
+              out += '<a class="table-download-btn json" data-fmt="json" href="/api/sensors/export?format=json" download="safecast_sensors_' + date + '.json" title="Download as JSON">' + dlSvg + ' JSON</a>';
+              out += '<span class="table-rows-info">showing ' + Math.min(maxDisplay, dataRows.length) + ' of … rows — download for all</span>';
             } else {
-              out += '<span class="table-rows-info">' + dataRows.length + ' rows</span>';
+              out += '<button class="table-download-btn" data-fmt="csv" title="Download as CSV">' + dlSvg + ' CSV</button>';
+              out += '<button class="table-download-btn excel" data-fmt="excel" title="Download as Excel">' + dlSvg + ' Excel</button>';
+              out += '<button class="table-download-btn json" data-fmt="json" title="Download as JSON">' + dlSvg + ' JSON</button>';
+              if (dataRows.length > maxDisplay) {
+                out += '<span class="table-rows-info">showing ' + maxDisplay + ' of ' + dataRows.length + ' rows — download for all</span>';
+              } else {
+                out += '<span class="table-rows-info">' + dataRows.length + ' rows</span>';
+              }
             }
             out += '</div>';
           }
@@ -10907,7 +10938,7 @@ function selectHomeSearchResult(result, query) {
             out += '</tr>';
           });
 
-          if (truncated) {
+          if (truncated && !isSensorTable) {
             out += `<tr><td colspan="${headers.length}" style="text-align:center;opacity:0.5;font-style:italic;padding:8px;">… ${dataRows.length - maxDisplay} more rows — download to see all</td></tr>`;
           }
 
@@ -11045,6 +11076,7 @@ function selectHomeSearchResult(result, query) {
         let chatID = 0;
         let isCached = false;
         let finished = false;
+        let pendingExportChunk = null; // stored when server sends export chunk
         function finish(success) {
           if (finished) return;
           finished = true;
@@ -11052,6 +11084,30 @@ function selectHomeSearchResult(result, query) {
           // Re-render with download buttons now that the full response is in
           if (success && accumulated) {
             botBubble.innerHTML = markdownToHTML(accumulated, true);
+            // Refine sensor <a> download links with the specific export URL
+            // (bounds the AI actually used). Falls back to world-bounds default
+            // already set in the href. Also updates the row count label.
+            if (pendingExportChunk) {
+              const date = new Date().toISOString().slice(0, 10);
+              botBubble.querySelectorAll('a.table-download-btn[data-fmt]').forEach(function(a) {
+                const fmt = a.dataset.fmt || 'csv';
+                const serverFmt = fmt === 'excel' ? 'xlsx' : fmt;
+                const ext = fmt === 'excel' ? 'xls' : fmt;
+                const base = pendingExportChunk.export_url || '/api/sensors/export';
+                a.href = base + '&format=' + serverFmt;
+                a.download = 'safecast_sensors_' + date + '.' + ext;
+              });
+              const total = pendingExportChunk.export_total;
+              if (total) {
+                const info = botBubble.querySelector('.table-rows-info');
+                if (info) {
+                  info.textContent = total > 10
+                    ? 'showing 10 of ' + total + ' rows — download for all'
+                    : total + ' rows';
+                }
+              }
+              pendingExportChunk = null;
+            }
           }
           busy = false;
           sendBtn.disabled = false;
@@ -11113,6 +11169,10 @@ function selectHomeSearchResult(result, query) {
                     messagesEl.scrollTop = messagesEl.scrollHeight;
                   } else if (ev.type === 'action' || ev.action) {
                     executeMapAction(ev);
+                  } else if (ev.type === 'export') {
+                    // Save for after finish() re-renders innerHTML with enableTableDownload=true
+                    console.log('[export chunk]', ev);
+                    pendingExportChunk = ev;
                   } else if (ev.type === 'done') {
                     if (ev.chat_id) { chatID = ev.chat_id; isCached = !!ev.cached; }
                     finish(true);
