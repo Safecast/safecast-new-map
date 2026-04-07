@@ -1,0 +1,78 @@
+<ide_opened_file>The user opened the file /home/rob/Documents/Safecast/safecast-new-map/public_html/map.html in the IDE. This may or may not be related to the current task.</ide_opened_file>
+can you fix the current commit/push/PR and merge for GitHub and Codeberg?
+
+---
+
+please do that for me.
+
+---
+
+Can you check this issue? rob@rob-GS66-Stealth-10UG:~/Documents/Safecast/safecast-new-map$ /usr/local/go/bin/go build -o safecast-new-map ./cmd/unified-server/ && bash local-server-config.sh
+# safecast-new-map/cmd/unified-server
+cmd/unified-server/duckdb_stub.go:10:6: initDuckDBAnalytics redeclared in this block
+        cmd/unified-server/duckdb_analytics.go:20:6: other declaration of initDuckDBAnalytics
+cmd/unified-server/duckdb_stub.go:15:6: duckDBAvailable redeclared in this block
+        cmd/unified-server/duckdb_analytics.go:196:6: other declaration of duckDBAvailable
+rob@rob-GS66-Stealth-10UG:~/Documents/Safecast/safecast-new-map$
+
+---
+
+Before you fixed the DuckDB analytics the tables had download buttons on top and  all worked as expected. Not that does not work any more ​Can you check why after the commit the table with download buttons does not work any more?
+
+---
+
+Before commiting/pushing, pr etc.. I like to test it..
+
+---
+
+Does not work.. The latest commit that works as expected was Commit: 8de133023e2026a13124d3da94cd29193b
+
+---
+
+That did not work..
+
+---
+
+The assistant page  also does not work any more..
+
+---
+
+Bothe NG..assistant page and the map AI bot do not show the downalod buttons any more?..
+
+---
+
+Please continue..
+
+---
+
+But we need  Excel and JSON  download buttons too.. But wait with that I will first check/test if all works as expected..
+
+---
+
+The ai map chat works great the assiatnd now. We can do thta later. Please commit/psuh/PR and merge to main on GitHub and Codeberg.
+
+---
+
+Yes, do that now
+
+---
+
+Sees good.. 
+
+One more things. Can we have the width of the map AI chat box in replies  fit the responce  text width on phones ad tablets?
+
+---
+
+can yuo commit/push/PR and merge?
+
+---
+
+The code in main has now the chnages we made?
+
+---
+
+Two things:
+
+1- Can we , if  big table is in  a response it should show only the first 10 rows and then when you download it will get the whole table. Can you make that ?
+
+2- remove the assistant  page and the code . It is confusing and a lot more extra code. since the functionality is also in the Map AI-chat.

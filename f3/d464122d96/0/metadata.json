@@ -1,0 +1,22 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "f3d464122d96",
+  "session_id": "7469df6d-212e-4a44-8ec3-1d5b88c43b85",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-07T05:43:30.821395522Z",
+  "branch": "feat/remove-assistant-and-table-truncation",
+  "checkpoints_count": 1,
+  "files_touched": [],
+  "agent": "Claude Code",
+  "turn_id": "0a2ef67121c1",
+  "token_usage": {
+    "input_tokens": 236,
+    "cache_creation_tokens": 257844,
+    "cache_read_tokens": 16521476,
+    "output_tokens": 74055,
+    "api_call_count": 202
+  },
+  "session_metrics": {
+    "turn_count": 13
+  }
+}
