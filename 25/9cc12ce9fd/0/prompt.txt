@@ -60,3 +60,7 @@ Yes, do that now
 Sees good.. 
 
 One more things. Can we have the width of the map AI chat box in replies  fit the responce  text width on phones ad tablets?
+
+---
+
+can yuo commit/push/PR and merge?
