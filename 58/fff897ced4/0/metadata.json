@@ -1,0 +1,38 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "58fff897ced4",
+  "session_id": "71a6aa1d-05cc-4efb-ae8e-f29a1ad70e9e",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-07T23:03:40.554863297Z",
+  "branch": "feat/remove-assistant-and-table-truncation",
+  "checkpoints_count": 19,
+  "files_touched": [
+    "cmd/unified-server/mcp_register.go",
+    "cmd/unified-server/public_html/map.html",
+    "cmd/unified-server/rest.go",
+    "cmd/unified-server/rest_sensors.go",
+    "cmd/unified-server/tool_list_sensors.go"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-sonnet-4-6",
+  "turn_id": "b9336082fc76",
+  "token_usage": {
+    "input_tokens": 262,
+    "cache_creation_tokens": 1228245,
+    "cache_read_tokens": 14009906,
+    "output_tokens": 142285,
+    "api_call_count": 198
+  },
+  "session_metrics": {
+    "turn_count": 20
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-07T23:03:31.054484717Z",
+    "agent_lines": 404,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 404,
+    "agent_percentage": 100
+  }
+}

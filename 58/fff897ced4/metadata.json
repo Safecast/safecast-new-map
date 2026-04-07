@@ -1,0 +1,29 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "58fff897ced4",
+  "strategy": "manual-commit",
+  "branch": "feat/remove-assistant-and-table-truncation",
+  "checkpoints_count": 19,
+  "files_touched": [
+    "cmd/unified-server/mcp_register.go",
+    "cmd/unified-server/public_html/map.html",
+    "cmd/unified-server/rest.go",
+    "cmd/unified-server/rest_sensors.go",
+    "cmd/unified-server/tool_list_sensors.go"
+  ],
+  "sessions": [
+    {
+      "metadata": "/58/fff897ced4/0/metadata.json",
+      "transcript": "/58/fff897ced4/0/full.jsonl",
+      "content_hash": "/58/fff897ced4/0/content_hash.txt",
+      "prompt": "/58/fff897ced4/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 262,
+    "cache_creation_tokens": 1228245,
+    "cache_read_tokens": 14009906,
+    "output_tokens": 142285,
+    "api_call_count": 198
+  }
+}
