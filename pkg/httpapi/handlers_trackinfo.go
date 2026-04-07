@@ -42,5 +42,6 @@ func (s *Server) trackInfo(w http.ResponseWriter, r *http.Request) {
 		"username":      info.Username,
 		"detector":      info.Detector,
 		"recordingDate": info.RecordingDate,
+		"sourceURL":     info.SourceURL,
 	})
 }

@@ -12,10 +12,11 @@ type TrackInfo struct {
 	Username      string
 	Detector      string
 	RecordingDate int64
+	SourceURL     string
 	Found         bool
 }
 
-// GetTrackInfo returns username/detector/date metadata for a track upload.
+// GetTrackInfo returns username/detector/date/sourceURL metadata for a track upload.
 func (db *Database) GetTrackInfo(ctx context.Context, trackID string) (TrackInfo, error) {
 	out := TrackInfo{}
 	if strings.TrimSpace(trackID) == "" {
@@ -26,15 +27,17 @@ func (db *Database) GetTrackInfo(ctx context.Context, trackID string) (TrackInfo
 	switch db.Driver {
 	case "pgx", "duckdb":
 		query = `SELECT COALESCE(username, ''), COALESCE(detector, ''),
-		         COALESCE(EXTRACT(EPOCH FROM recording_date)::BIGINT, 0)
+		         COALESCE(EXTRACT(EPOCH FROM recording_date)::BIGINT, 0),
+		         COALESCE(source_url, '')
 		         FROM uploads WHERE track_id = $1 LIMIT 1`
 	default:
 		query = `SELECT COALESCE(username, ''), COALESCE(detector, ''),
-		         COALESCE(recording_date, 0)
+		         COALESCE(recording_date, 0),
+		         COALESCE(source_url, '')
 		         FROM uploads WHERE track_id = ? LIMIT 1`
 	}
 
-	err := db.DB.QueryRowContext(ctx, query, trackID).Scan(&out.Username, &out.Detector, &out.RecordingDate)
+	err := db.DB.QueryRowContext(ctx, query, trackID).Scan(&out.Username, &out.Detector, &out.RecordingDate, &out.SourceURL)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return out, nil

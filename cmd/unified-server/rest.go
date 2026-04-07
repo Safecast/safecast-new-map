@@ -55,6 +55,7 @@ func (h *RESTHandler) Register(mux *http.ServeMux) {
 
 	// Real-time sensors
 	mux.HandleFunc("/api/sensors", h.handleSensors)
+	mux.HandleFunc("/api/sensors/export", h.handleSensorsExport)
 	mux.HandleFunc("/api/sensor/", h.handleSensor) // /api/sensor/{id}/current or /history
 
 	// Spectroscopy
