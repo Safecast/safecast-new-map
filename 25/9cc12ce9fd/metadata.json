@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "259cc12ce9fd",
+  "strategy": "manual-commit",
+  "branch": "feat/table-export-buttons-and-mobile-panel",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "cmd/unified-server/public_html/map.html",
+    "cmd/web-chat/index.html"
+  ],
+  "sessions": [
+    {
+      "metadata": "/25/9cc12ce9fd/0/metadata.json",
+      "transcript": "/25/9cc12ce9fd/0/full.jsonl",
+      "content_hash": "/25/9cc12ce9fd/0/content_hash.txt",
+      "prompt": "/25/9cc12ce9fd/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 197,
+    "cache_creation_tokens": 121515,
+    "cache_read_tokens": 11852104,
+    "output_tokens": 64503,
+    "api_call_count": 167
+  }
+}
