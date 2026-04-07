@@ -7,7 +7,6 @@ package main
 import (
 	"bytes"
 	"context"
-	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -30,11 +29,6 @@ var (
 	mcpHintsLoader  *modeladapter.HintsLoader
 )
 
-//go:embed static/index.html
-var webChatIndexHTML []byte
-
-//go:embed static/safecast-square-ct.png
-var webChatLogoPNG []byte
 
 // Maximum tokens for the prompt sent to Claude. Leave headroom for tool results.
 const maxPromptTokens = 150000
@@ -579,26 +573,15 @@ func RegisterMCP() {
 	if apiKey != "" {
 		chatHandler := handleWebChat(mcpURL, apiKey, model)
 
-		// Register on MCP mux (port 3333)
-		mux.HandleFunc("/assistant/", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.Write(webChatIndexHTML)
-		})
-		mux.HandleFunc("/safecast-square-ct.png", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "image/png")
-			w.Header().Set("Cache-Control", "public, max-age=86400")
-			w.Write(webChatLogoPNG)
-		})
+		// Register /chat on MCP mux (port 3333)
 		mux.HandleFunc("/chat", chatHandler)
 
 		// Also register /chat on main map server (port 8765) so the
 		// embedded widget can use a relative "/chat" URL without
 		// cross-origin or CloudFront routing issues.
 		http.HandleFunc("/chat", chatHandler)
-
-		log.Printf("Web chat enabled at http://localhost:%s/assistant/ (model=%s)", mcpPort, model)
 	} else {
-		log.Println("Web chat disabled: ANTHROPIC_API_KEY not set")
+		log.Println("AI chat disabled: ANTHROPIC_API_KEY not set")
 	}
 
 	log.Printf("MCP Server starting on port %s", mcpPort)
@@ -607,9 +590,6 @@ func RegisterMCP() {
 	log.Printf("  Hints directory: %s", hintsDir)
 	log.Println("  REST API: /api/...")
 	log.Println("  Swagger UI: /mcp-api/")
-	if apiKey != "" {
-		log.Printf("  Web Chat: http://localhost:%s/assistant/", mcpPort)
-	}
 
 	// Start MCP server on separate port
 	go func() {
@@ -763,8 +743,7 @@ func registerSwaggerDocs(mux *http.ServeMux) {
 					'<p style="margin:0 0 16px;font-size:15px;color:#555;">' +
 						'This API is designed for AI assistants and automated tools. It exposes the Safecast radiation dataset ' +
 						'as a set of callable functions (MCP tools) and standard REST endpoints, so that language models and ' +
-						'applications can query radiation data programmatically. If you want to ask questions about the data ' +
-						'in plain English instead, try the <a href="/assistant/" style="color:#0d9488;">AI web chat</a>.' +
+						'applications can query radiation data programmatically. Use the map AI chat panel to query data in plain English.' +
 					'</p>' +
 					'<details style="margin-bottom:16px;">' +
 						'<summary style="cursor:pointer;font-weight:600;font-size:14px;color:#0f3d38;user-select:none;">For developers &mdash; transports &amp; tools overview</summary>' +
@@ -782,14 +761,13 @@ func registerSwaggerDocs(mux *http.ServeMux) {
 								'<p style="margin:4px 0 0;font-size:13px;color:#555;">All MCP tools are also accessible as plain HTTP GET/POST calls under <code>/api/</code>.</p>' +
 							'</div>' +
 							'<div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:12px;">' +
-								'<strong style="color:#0f3d38;">AI Web Chat</strong>' +
-								'<p style="margin:4px 0 0;font-size:13px;color:#555;">Human-friendly interface at <code>/assistant/</code> for querying data with natural language.</p>' +
+								'<strong style="color:#0f3d38;">AI Map Chat</strong>' +
+								'<p style="margin:4px 0 0;font-size:13px;color:#555;">Open the map and use the AI chat panel to query data with natural language.</p>' +
 							'</div>' +
 						'</div>' +
 						'<p style="margin:12px 0 0;font-size:13px;color:#777;">No authentication required. All data is CC0 licensed.</p>' +
 					'</details>' +
 					'<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">' +
-						'<a href="/assistant/" style="display:inline-block;padding:7px 16px;background:#0f3d38;color:#fff;border-radius:6px;font:600 13px/1.4 sans-serif;text-decoration:none;">Open AI Chat</a>' +
 						'<a href="' + mapDocsURL + '" style="display:inline-block;padding:7px 16px;background:#1a3a5c;color:#fff;border-radius:6px;font:600 13px/1.4 sans-serif;text-decoration:none;">\u2190 Switch to Map API</a>' +
 					'</div>' +
 				'</div>';
