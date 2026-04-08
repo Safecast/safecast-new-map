@@ -198,9 +198,17 @@ body, html {
            filter: brightness(1.5) contrast(0.85);
         }
 
+        /* White circle border for help button in dark mode */
+        :root[data-theme='dark'] #persistent-help-btn {
+          border: 2px solid rgba(255, 255, 255, 0.7);
+        }
+
         @media (prefers-color-scheme: dark) {
           .leaflet-tile-pane {
             filter: brightness(1.5) contrast(0.85);
+          }
+          #persistent-help-btn {
+            border: 2px solid rgba(255, 255, 255, 0.7);
           }
         }
         
@@ -1714,8 +1722,9 @@ body, html {
 
         #persistent-help-btn {
           position: fixed;
-          bottom: 20px;
-          right: 20px; /* Adjust if it conflicts with Leaflet controls / legend */
+          bottom: 60px;
+          right: 120px;
+          transform: none;
           width: 40px;
           height: 40px;
           border-radius: 50%;
@@ -2147,12 +2156,6 @@ body, html {
     <div id="legend-bar" style="width:24px; margin-right:8px; border-radius:12px; border: 1px solid rgba(0,0,0,0.2);"></div>
     <div id="legend-labels" style="display:flex; flex-direction:column; justify-content:space-between; height:100%; font-weight:bold; min-width:35px; text-align:left;">
     </div>
-    <!-- Beautiful Legend tooltip replacement -->
-    <div class="annotation-typical-bg" style="position:absolute; bottom: 26%; right: 100%; margin-right: 12px; white-space: nowrap; pointer-events: none; background: var(--control-bg, rgba(255,255,255,0.85)); padding: 8px 12px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); color: var(--modal-text, #333); text-align: right; display: flex; flex-direction: column; gap: 3px;">
-      <div style="font-size: 12px; font-weight: bold;">Typical (~5-20 μR/h)</div>
-      <div style="font-size: 11px; color: #666; font-weight: normal;">Avg background: ~10</div>
-      <div style="position:absolute; right:-5px; top:50%; width:0; height:0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 5px solid var(--control-bg, rgba(255,255,255,0.85)); transform: translateY(-50%);"></div>
-    </div>
     <div style="position:absolute; top:-26px; right:0; width:100%; text-align:center; font-size:14px; font-weight:bold; color:var(--modal-text); background: var(--control-bg, rgba(255,255,255,0.85)); padding: 2px 4px; border-radius: 4px; box-sizing: border-box; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
        <span id="legend-unit-label">µSv/h</span>
     </div>
@@ -2335,7 +2338,7 @@ body, html {
   </div>
 </div>
 
-<div id="persistent-help-btn" title="Tutorial & Help">?</div>
+<div id="persistent-help-btn" title="Tutorial &amp; Help">?</div>
 
 <!-- Modal with Grafana-style stacked charts for Safecast realtime sensors -->
 
@@ -8798,12 +8801,9 @@ function initializeUIElements() {
 
   // Initialize search functionality
   initializeSearch();
-  
+
   // Initialize home overlay
   initializeHomeOverlay();
-  
-  // Initialize Tutorial Phase 2
-  initializeTutorial();
 }
 
 // Search functionality using Nominatim geocoding
@@ -10229,7 +10229,7 @@ function selectHomeSearchResult(result, query) {
       const grid = document.getElementById('story-wall-grid');
       if (!grid) return;
       
-      fetch('/data/stories.json')
+      fetch('/static/data/stories.json')
         .then(res => res.json())
         .then(data => {
           const topStories = data.slice(0, 3);
