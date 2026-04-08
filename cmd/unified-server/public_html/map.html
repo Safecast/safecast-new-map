@@ -10057,6 +10057,21 @@ function selectHomeSearchResult(result, query) {
       opacity: 1;
     }
 
+    #ai-download-chat {
+      background: none;
+      border: none;
+      color: var(--modal-text); opacity: 0.7;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.2s;
+    }
+    #ai-download-chat:hover { opacity: 1; }
+    #ai-download-chat svg { width: 16px; height: 16px; }
+
     .ai-panel-messages {
       flex: 1;
       overflow-y: auto;
@@ -10617,6 +10632,9 @@ function selectHomeSearchResult(result, query) {
         <span>{{translate "ai_subtitle"}}</span>
       </div>
       <div class="ai-header-actions">
+        <button id="ai-download-chat" title="Download conversation" aria-label="Download conversation">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </button>
         <button id="safecast-ai-close" title="{{translate "ai_close"}}" aria-label="{{translate "ai_close"}}">&times;</button>
       </div>
     </div>
@@ -10683,6 +10701,31 @@ function selectHomeSearchResult(result, query) {
       }
 
       closeBtn.addEventListener('click', closePanel);
+
+      // Download full conversation as Markdown
+      document.getElementById('ai-download-chat').addEventListener('click', function() {
+        const messages = messagesEl.querySelectorAll('.ai-msg-row');
+        if (!messages.length) { alert('No conversation to download yet!'); return; }
+        let md = '# Safecast AI Chat Conversation\n\nDate: ' + new Date().toLocaleString() + '\n\n---\n\n';
+        messages.forEach(function(msg) {
+          const isUser = msg.classList.contains('user');
+          const role = isUser ? 'You' : 'Safecast AI';
+          const bubble = msg.querySelector('.ai-bubble');
+          if (!bubble) return;
+          // Get plain text — strip HTML tags so markdown stays clean
+          const content = (bubble.innerText || bubble.textContent || '').trim();
+          md += '## ' + role + '\n\n' + content + '\n\n---\n\n';
+        });
+        const blob = new Blob([md], { type: 'text/markdown' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'safecast-chat-' + new Date().toISOString().slice(0, 10) + '.md';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
 
       // Delegated table download (CSV / Excel / JSON)
       messagesEl.addEventListener('click', function(e) {
