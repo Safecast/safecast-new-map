@@ -57,13 +57,23 @@ func handleListSensors(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallT
 }
 
 // findRealtimeTable discovers the realtime sensor table in the database.
+// cachedRealtimeTable caches the discovered table name after the first lookup.
+var cachedRealtimeTable string
+
 // Returns (tableName, availableTables, error). tableName is "" if not found.
 func findRealtimeTable(ctx context.Context) (string, []string, error) {
+	// Return cached result — the table name never changes at runtime.
+	if cachedRealtimeTable != "" {
+		return cachedRealtimeTable, nil, nil
+	}
+
+	// Use pg_tables instead of information_schema.tables — the latter can take
+	// minutes on databases with many objects due to complex system-catalog joins.
 	tablesQuery := `
-		SELECT table_name
-		FROM information_schema.tables
-		WHERE table_schema = 'public'
-		ORDER BY table_name
+		SELECT tablename AS table_name
+		FROM pg_tables
+		WHERE schemaname = 'public'
+		ORDER BY tablename
 	`
 	tableRows, err := queryRows(ctx, tablesQuery)
 	if err != nil {
@@ -83,6 +93,7 @@ func findRealtimeTable(ctx context.Context) (string, []string, error) {
 			}
 		}
 	}
+	cachedRealtimeTable = realtimeTable
 	return realtimeTable, availableTables, nil
 }
 

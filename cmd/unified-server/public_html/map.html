@@ -10866,11 +10866,27 @@ function selectHomeSearchResult(result, query) {
           .replace(/`([^`]+)`/g, '<code style="background: var(--control-bg); padding: 2px 5px; border-radius: 4px; font-size: 0.9em;">$1</code>')
           .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank">$1</a>');
 
-        // Robust Markdown Table parser
-        // We match from the first pipe to the last pipe in a greedy block
-        html = html.replace(/((^|\n)\|[\s\S]*?\|($|\n(?![| \t]*\|)))/g, function (match) {
-          let rows = match.trim().split('\n').map(r => r.trim()).filter(r => r.length > 0);
-          if (rows.length < 2) return match;
+        // Markdown Table parser — line-by-line to avoid regex stack overflow on large tables.
+        // Finds consecutive lines starting with | and renders them as HTML tables.
+        // Handles incomplete/truncated tables (e.g. cut off mid-row by token limit).
+        const lines = html.split('\n');
+        const tableBlocks = []; // [{start, end}] indices into lines[]
+        let tStart = -1;
+        for (let i = 0; i <= lines.length; i++) {
+          const isTableLine = i < lines.length && lines[i].trimStart().startsWith('|');
+          if (isTableLine && tStart === -1) { tStart = i; }
+          else if (!isTableLine && tStart !== -1) {
+            if (i - tStart >= 2) tableBlocks.push({start: tStart, end: i});
+            tStart = -1;
+          }
+        }
+        // Process blocks in reverse so indices stay valid as we splice
+        for (let b = tableBlocks.length - 1; b >= 0; b--) {
+          const {start, end} = tableBlocks[b];
+          const tableLines = lines.slice(start, end);
+          const rendered = (function(tableLines) {
+          let rows = tableLines.map(r => r.trim()).filter(r => r.length > 0);
+          if (rows.length < 2) return rows.join('\n');
 
           let bodyRows = [];
 
@@ -10889,6 +10905,7 @@ function selectHomeSearchResult(result, query) {
           const maxDisplay = 10;
           const visibleRows = dataRows.slice(0, maxDisplay);
           const truncated = dataRows.length > maxDisplay;
+          const isSensorTable = headers.some(h => /device.?id/i.test(h.trim()));
 
           let out = '<div class="ai-table-container">';
 
@@ -10900,7 +10917,6 @@ function selectHomeSearchResult(result, query) {
             // Detect sensor tables by header — render <a> links pointing directly
             // to /api/sensors/export (same pattern as track downloads).
             // For all other tables keep blob-based <button> downloads.
-            const isSensorTable = headers.some(h => /device.?id/i.test(h.trim()));
             const date = new Date().toISOString().slice(0, 10);
 
             out += '<div class="table-download-bar" data-table="' + tableJson + '">';
@@ -10944,7 +10960,10 @@ function selectHomeSearchResult(result, query) {
 
           out += '</table></div>';
           return out;
-        });
+          })(tableLines);
+          lines.splice(start, end - start, rendered);
+        }
+        html = lines.join('\n');
 
         // Handle line breaks ONLY if they are not inside a table-container
         let parts = html.split(/(<div class="ai-table-container">[\s\S]*?<\/div>)/g);

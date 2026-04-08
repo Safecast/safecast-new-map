@@ -205,7 +205,7 @@ func storeQAEmbeddingAsync(ctx context.Context, embeddingChatID int64, question,
 		if err != nil {
 			return
 		}
-		id := time.Now().UnixNano()
+		id := time.Now().UnixMilli() // UnixNano exceeds JS MAX_SAFE_INTEGER
 		if _, err := duckDB.Exec(
 			`INSERT INTO qa_embeddings (id, chat_id, question, answer, embedding, feedback_score) VALUES (?, ?, ?, ?, ?, 0)`,
 			id, embeddingChatID, question, answer, string(embJSON),
@@ -273,7 +273,7 @@ func extractLocationKnowledge(chatID int64) {
 	if math.Abs(lat) > 90 || math.Abs(lon) > 180 {
 		return
 	}
-	id := time.Now().UnixNano()
+	id := time.Now().UnixMilli() // UnixNano exceeds JS MAX_SAFE_INTEGER
 	if _, err := duckDB.Exec(
 		`INSERT INTO location_knowledge (id, lat, lon, radius_m, note, source_chat_id) VALUES (?, ?, ?, 1000, ?, ?)`,
 		id, lat, lon, answer, chatID,
