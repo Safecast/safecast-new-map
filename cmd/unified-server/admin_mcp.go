@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // adminMCPDataHandler returns JSON data for MCP analytics tables.
@@ -380,7 +382,9 @@ func adminMCPDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		query := fmt.Sprintf("DELETE FROM %s %s", tableName, whereSQL)
-		result, err := duckDB.Exec(query)
+		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+		defer cancel()
+		result, err := duckDB.ExecContext(ctx, query)
 		if err != nil {
 			log.Printf("admin mcp delete all error: %v", err)
 			http.Error(w, "Delete failed", http.StatusInternalServerError)
@@ -399,21 +403,48 @@ func adminMCPDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Integer key columns: use numeric IN list (avoids CAST issues in DuckLake
+	// and keeps IDs within JS MAX_SAFE_INTEGER range).
+	// Timestamp key columns: fall back to string CAST comparison.
+	integerKeyCols := map[string]bool{"id": true}
+
 	idList := strings.Split(ids, ",")
-	placeholders := make([]string, len(idList))
-	for i := range idList {
-		placeholders[i] = "'" + escapeLike(strings.TrimSpace(idList[i])) + "'"
+	var query string
+	if integerKeyCols[keyCol] {
+		nums := make([]string, 0, len(idList))
+		for _, raw := range idList {
+			raw = strings.TrimSpace(raw)
+			if _, err := strconv.ParseInt(raw, 10, 64); err == nil {
+				nums = append(nums, raw)
+			}
+		}
+		if len(nums) == 0 {
+			http.Error(w, "No valid integer IDs provided", http.StatusBadRequest)
+			return
+		}
+		query = fmt.Sprintf("DELETE FROM %s WHERE %s IN (%s)",
+			tableName, keyCol, strings.Join(nums, ","))
+	} else {
+		placeholders := make([]string, len(idList))
+		for i, raw := range idList {
+			placeholders[i] = "'" + escapeLike(strings.TrimSpace(raw)) + "'"
+		}
+		query = fmt.Sprintf("DELETE FROM %s WHERE CAST(%s AS VARCHAR) IN (%s)",
+			tableName, keyCol, strings.Join(placeholders, ","))
 	}
 
-	query := fmt.Sprintf("DELETE FROM %s WHERE CAST(%s AS VARCHAR) IN (%s)",
-		tableName, keyCol, strings.Join(placeholders, ","))
-	result, err := duckDB.Exec(query)
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+	result, err := duckDB.ExecContext(ctx, query)
 	if err != nil {
 		log.Printf("admin mcp delete error: %v", err)
 		http.Error(w, "Delete failed", http.StatusInternalServerError)
 		return
 	}
 	affected, _ := result.RowsAffected()
+	if affected < 0 {
+		affected = int64(len(idList)) // DuckDB doesn't always report rows affected
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{"deleted": affected})
 }
