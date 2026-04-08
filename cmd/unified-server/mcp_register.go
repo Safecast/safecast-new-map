@@ -446,15 +446,10 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 		}
 
 		finalAnswer := strings.TrimSpace(answerText.String())
-		logChatQuestionWithAnswer(chatReqRef, chatQuestion, chatSource, chatModel, "", chatHistory, chatClientTS, finalAnswer, embeddingChatID)
 
-		// 3. Async: store Q&A + embedding in semantic cache for future lookups.
-		if len(embedding) > 0 && finalAnswer != "" {
-			storeQAEmbeddingAsync(ctx, embeddingChatID, chatQuestion, finalAnswer, embedding)
-		}
-
-		// If list_sensors was called and returned an export URL, send it to the
-		// client so the download buttons can fetch the full dataset from the server.
+		// Send export URL (if list_sensors was used) and done chunk BEFORE any
+		// DuckDB logging so the client always receives finish signal promptly.
+		// DuckLake writes can be slow (Parquet flush) and must never block the response.
 		if pendingExportURL != "" {
 			writeChunkBuffered(w, chunk{
 				Type:        "export",
@@ -466,6 +461,14 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 		writeChunkBuffered(w, chunk{Type: "done", ChatID: embeddingChatID}, &buffer, isCloudFront)
 		if isCloudFront {
 			flushBuffer(w, buffer)
+		}
+
+		// Log and store asynchronously — must not block after done is sent.
+		go logChatQuestionWithAnswer(chatReqRef, chatQuestion, chatSource, chatModel, "", chatHistory, chatClientTS, finalAnswer, embeddingChatID)
+
+		// 3. Async: store Q&A + embedding in semantic cache for future lookups.
+		if len(embedding) > 0 && finalAnswer != "" {
+			storeQAEmbeddingAsync(ctx, embeddingChatID, chatQuestion, finalAnswer, embedding)
 		}
 	}
 }
