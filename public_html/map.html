@@ -4876,8 +4876,7 @@
       // Track view initialization
       // Inject markers as literal JSON so the first render avoids the template parse error
       // and the frontend can inspect the slice immediately.
-      var initialMarkers = {{ .MarkersJSON }
-    };
+      var initialMarkers = {{ .MarkersJSON }};
     if (Array.isArray(initialMarkers) && initialMarkers.length > 0) {
       isTrackView = true;
 
