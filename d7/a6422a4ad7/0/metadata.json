@@ -1,0 +1,23 @@
+{
+  "cli_version": "0.5.2",
+  "checkpoint_id": "d7a6422a4ad7",
+  "session_id": "71a6aa1d-05cc-4efb-ae8e-f29a1ad70e9e",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-08T00:57:15.754462662Z",
+  "branch": "feat/download-chat-button",
+  "checkpoints_count": 1,
+  "files_touched": [],
+  "agent": "Claude Code",
+  "model": "claude-sonnet-4-6",
+  "turn_id": "6516d586d58c",
+  "token_usage": {
+    "input_tokens": 447,
+    "cache_creation_tokens": 1894576,
+    "cache_read_tokens": 27651340,
+    "output_tokens": 235130,
+    "api_call_count": 351
+  },
+  "session_metrics": {
+    "turn_count": 30
+  }
+}
