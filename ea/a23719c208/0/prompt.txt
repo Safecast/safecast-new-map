@@ -332,3 +332,7 @@ restarted... but still no responce after 2 minutes.?
 ---
 
 Seems the bot has issues with "Can you give me a table with all the real-time devices" but when Ia sked about a track it works fast and resuts are correct.. Now 3 minutes waitng..
+
+---
+
+That seems to worked.. But no proper tables?
