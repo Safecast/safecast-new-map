@@ -2213,19 +2213,19 @@
   <script>
     const defaultCfg = {
       lat: {{ printf "%.6f" .DefaultLat }},
-    lon: { { printf "%.6f".DefaultLon } },
-    zoom: { { .DefaultZoom } },
-    layer: { { printf "%q".DefaultLayer } },
-    autoLocate: { { if .AutoLocateDefault } } true{ { else } } false{ { end } }
+    lon: {{ printf "%.6f" .DefaultLon }},
+    zoom: {{ .DefaultZoom }},
+    layer: {{ printf "%q" .DefaultLayer }},
+    autoLocate: {{ if .AutoLocateDefault }}true{{ else }}false{{ end }}
     };
   </script>
   <script>
     // Surface the configured support e-mail so the legal dialog can show a contact when available.
-    window.supportEmail = {{ if .SupportEmail }}{ { printf "%q".SupportEmail } } { { else } } ""{ { end } };
+    window.supportEmail = {{ if .SupportEmail }}{{ printf "%q" .SupportEmail }}{{ else }}""{{ end }};
   </script>
   <script>
     // Expose the realtime flag so the UI can hide controls when the backend keeps the feature off.
-    window.safecastRealtimeEnabled = {{ if .RealtimeAvailable}}true{ {else } } false{ { end } };
+    window.safecastRealtimeEnabled = {{ if .RealtimeAvailable }}true{{ else }}false{{ end }};
   </script>
 
 </head>
