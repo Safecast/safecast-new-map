@@ -10105,6 +10105,27 @@ func main() {
 	http.HandleFunc("/mcp-api/", serveMCPAPIPage)
 
 	http.HandleFunc("/home", homeHandler)
+
+	// Stories page and its data feed
+	http.HandleFunc("/stories.html", func(w http.ResponseWriter, r *http.Request) {
+		data, err := content.ReadFile("public_html/stories.html")
+		if err != nil {
+			http.Error(w, "Not found", http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write(data)
+	})
+	http.HandleFunc("/data/stories.json", func(w http.ResponseWriter, r *http.Request) {
+		data, err := content.ReadFile("public_html/data/stories.json")
+		if err != nil {
+			http.Error(w, "Not found", http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(data)
+	})
+
 	http.HandleFunc("/", mapHandler)
 
 	// Register authentication routes if auth system is enabled

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Start MCP server with database connection
+# Start unified server with MCP endpoints enabled
 
 DB_HOST="${DB_HOST:-127.0.0.1}"
 DB_PORT="${DB_PORT:-5432}"
@@ -14,27 +14,27 @@ else
 fi
 
 export DATABASE_URL
-export MCP_HINTS_DIR="$PWD/cmd/mcp-server/hints"
+export MCP_HINTS_DIR="$PWD/cmd/unified-server/hints"
 
-echo "🚀 Starting MCP server..."
+echo "🚀 Starting unified server (map + MCP)..."
 echo "   Database: ${DB_HOST}:${DB_PORT}/${DB_NAME}"
 echo "   Hints: $MCP_HINTS_DIR"
 echo ""
 
 # Kill existing
-pkill -f "mcp-server" 2>/dev/null || true
+pkill -f "safecast-new-map" 2>/dev/null || true
 sleep 1
 
-./bin/mcp-server-test &
+./bin/safecast-new-map-test &
 MCP_PID=$!
 
 sleep 3
 
 if kill -0 $MCP_PID 2>/dev/null; then
-    echo "✅ MCP server running on :3333 (PID: $MCP_PID)"
+    echo "✅ Unified server running on :8765 (PID: $MCP_PID)"
     echo ""
     echo "Test with:"
-    echo "  curl http://localhost:3333/api/sensors"
+    echo "  curl http://localhost:8765/api/sensors"
     echo "  ./bin/test-mcp-ai"
 else
     echo "❌ Failed to start"
