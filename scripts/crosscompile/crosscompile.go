@@ -8,7 +8,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -41,16 +40,7 @@ func main() {
 		fmt.Printf("go mod tidy - failed: %s\n;", err)
 	}
 
-	// Step 1: Automatically find the main Go file
-	goSourceFile, err := findMainGoFile()
-
-	if err != nil {
-		log.Fatalf("Error finding main Go file: %v", err)
-	}
-
-	// Extract the base name of the source file
-	baseName := filepath.Base(goSourceFile)
-	executionFile := strings.TrimSuffix(baseName, filepath.Ext(baseName))
+	executionFile := "safecast-new-map"
 
 	// Get the current Git version
 	gitVersion, err := getGitVersion()
@@ -106,7 +96,7 @@ func main() {
 			results := make(chan buildResult, len(jobs))
 			for _, job := range jobs {
 				go func(j buildJob) {
-					err := buildBinary(j, goSourceFile, executionFile, binariesPath, version)
+					err := buildBinary(j, executionFile, binariesPath, version)
 					results <- buildResult{job: j, err: err}
 				}(job)
 			}
@@ -171,7 +161,7 @@ func runCommand(name string, args ...string) error {
 
 // buildBinary compiles a single target and writes it into a variant-specific directory.
 // When job.duckdb is true, we enable CGO and build with the "duckdb" tag.
-func buildBinary(job buildJob, goSourceFile, executionFile, binariesPath, version string) error {
+func buildBinary(job buildJob, executionFile, binariesPath, version string) error {
 	targetOSName := job.osName
 	execFileName := executionFile
 
@@ -198,7 +188,7 @@ func buildBinary(job buildJob, goSourceFile, executionFile, binariesPath, versio
 	if job.duckdb {
 		args = append(args, "-tags", "duckdb")
 	}
-	args = append(args, "-o", outputPath, goSourceFile)
+	args = append(args, "-o", outputPath, "./cmd/unified-server")
 	buildCmd := exec.Command("go", args...)
 
 	env := append(os.Environ(), "GOOS="+job.osName, "GOARCH="+job.arch)
@@ -306,26 +296,6 @@ func getGitVersion() (string, error) {
 		runNumber += "-dirty"
 	}
 	return runNumber, nil
-}
-
-// ----- File helpers -----
-// Helper function to find the main Go file
-func findMainGoFile() (string, error) {
-	files, err := filepath.Glob("*.go")
-	if err != nil {
-		return "", err
-	}
-
-	for _, file := range files {
-		content, err := ioutil.ReadFile(file)
-		if err != nil {
-			continue
-		}
-		if strings.Contains(string(content), "package main") && strings.Contains(string(content), "func main()") {
-			return file, nil
-		}
-	}
-	return "", fmt.Errorf("No main Go file found in the current directory")
 }
 
 // ----- Version helpers -----
