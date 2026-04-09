@@ -10,13 +10,11 @@ This guide covers deploying to the production server at simplemap.safecast.org.
 
 ### Services
 
-All three services are built from this repo and deployed by the same GitHub Actions workflow:
+The unified service is built from this repo and deployed by the GitHub Actions workflow:
 
 | Service | Binary | Port | Location on VPS |
 |---------|--------|------|-----------------|
-| Map server | `safecast-new-map` | 8765 | `/usr/local/bin/safecast-new-map` |
-| MCP server | `safecast-mcp` | 3333 | `/root/safecast-mcp-server/safecast-mcp` |
-| Web-chat | `safecast-web-chat` | 3334 | `/root/safecast-web-chat-server/safecast-web-chat` |
+| Unified server (Map + MCP + chat) | `safecast-new-map` | 8765 | `/usr/local/bin/safecast-new-map` |
 
 ### Traffic Flow
 
@@ -64,9 +62,7 @@ ssh -i ~/.ssh/safecast-deploy root@simplemap.safecast.org  # CloudFront can't ha
 1. **SSH Key:** `~/.ssh/safecast-deploy` (private key)
 2. **Binaries built:**
    ```bash
-   go build -o safecast-new-map .
-   go build -o safecast-mcp ./cmd/mcp-server/
-   go build -o safecast-web-chat ./cmd/web-chat/
+   go build -o safecast-new-map ./cmd/unified-server
    ```
 3. **Server access:** Ability to SSH to 65.108.24.131
 
@@ -76,22 +72,6 @@ ssh -i ~/.ssh/safecast-deploy root@simplemap.safecast.org  # CloudFront can't ha
 ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl stop safecast-new-map"
 rsync -avP -e "ssh -i ~/.ssh/safecast-deploy" ./safecast-new-map root@65.108.24.131:/usr/local/bin/
 ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl start safecast-new-map && systemctl status safecast-new-map"
-```
-
-### Deployment Steps — MCP Server
-
-```bash
-ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl stop safecast-mcp"
-rsync -avP -e "ssh -i ~/.ssh/safecast-deploy" ./safecast-mcp root@65.108.24.131:/root/safecast-mcp-server/safecast-mcp
-ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl start safecast-mcp && systemctl status safecast-mcp"
-```
-
-### Deployment Steps — Web-chat
-
-```bash
-ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl stop safecast-web-chat"
-rsync -avP -e "ssh -i ~/.ssh/safecast-deploy" ./safecast-web-chat root@65.108.24.131:/root/safecast-web-chat-server/safecast-web-chat
-ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl start safecast-web-chat && systemctl status safecast-web-chat"
 ```
 
 ### Invalidate CloudFront cache (optional)
@@ -124,7 +104,7 @@ aws cloudfront create-invalidation --distribution-id E12FYIQ8RRXOJ1 --paths "/*"
 | `DEPLOY_SSH_KEY` | SSH key for deploying to 65.108.24.131 |
 | `AWS_ACCESS_KEY_ID` | CloudFront cache invalidation |
 | `AWS_SECRET_ACCESS_KEY` | CloudFront cache invalidation |
-| `DATABASE_URL` | Postgres connection string for MCP server |
+| `DATABASE_URL` | Postgres connection string for unified server |
 | `DUCKLAKE_PG_URL` | DuckLake PostgreSQL catalog connection (e.g., `dbname=ducklake_catalog host=localhost user=ducklake_rw`) |
 | `DUCKLAKE_DATA_PATH` | Path for DuckLake Parquet data files (e.g., `/var/lib/safecast/ducklake/`) |
 | `ANTHROPIC_API_KEY` | Claude API key for web-chat service |
@@ -132,13 +112,11 @@ aws cloudfront create-invalidation --distribution-id E12FYIQ8RRXOJ1 --paths "/*"
 ### Workflow Steps
 
 ```
-1. Build all 3 binaries (safecast-new-map, safecast-mcp, safecast-web-chat)
+1. Build unified binary (`safecast-new-map`)
 2. Setup SSH
 3. Stop → rsync → start: safecast-new-map
-4. Stop → rsync → start: safecast-mcp  (also writes /root/safecast-mcp-server/.env)
-5. Stop → rsync → start: safecast-web-chat  (also writes /root/safecast-web-chat-server/.env)
-6. Invalidate CloudFront cache (/*)
-7. Cleanup SSH keys
+4. Invalidate CloudFront cache (/*)
+5. Cleanup SSH keys
 ```
 
 **Note:** The workflow correctly uses the IP address (65.108.24.131) for all SSH operations.
@@ -178,7 +156,7 @@ AWS WAF protects against:
 
 ## Analytics (DuckLake)
 
-Both the unified server and MCP server use DuckLake for analytics (tool usage logs, chat questions). Architecture: in-memory DuckDB attaches a shared DuckLake catalog backed by PostgreSQL + Parquet files, allowing concurrent access from multiple services.
+The unified server uses DuckLake for analytics (tool usage logs, chat questions). Architecture: in-memory DuckDB attaches a shared DuckLake catalog backed by PostgreSQL + Parquet files.
 
 **Required env vars** (set in `.env` files or systemd service):
 - `DUCKLAKE_PG_URL` — PostgreSQL connection for DuckLake catalog (e.g., `dbname=ducklake_catalog host=localhost user=ducklake_rw`)
@@ -232,9 +210,7 @@ Then restart the service to reload: `systemctl restart safecast-new-map`
 
 | Service | systemd name | Binary | Config |
 |---------|-------------|--------|--------|
-| Map server | `safecast-new-map` | `/usr/local/bin/safecast-new-map` | flags + `Environment=` lines in service file |
-| MCP server | `safecast-mcp` | `/root/safecast-mcp-server/safecast-mcp` | `/root/safecast-mcp-server/.env` |
-| Web-chat | `safecast-web-chat` | `/root/safecast-web-chat-server/safecast-web-chat` | `/root/safecast-web-chat-server/.env` |
+| Unified server | `safecast-new-map` | `/usr/local/bin/safecast-new-map` | flags + `Environment=` lines in service file |
 
 ### Required Environment Variables — safecast-new-map service
 
@@ -268,12 +244,9 @@ ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 \
 ```bash
 # View service status (replace service name as needed)
 ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl status safecast-new-map"
-ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl status safecast-mcp"
-ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl status safecast-web-chat"
 
 # View logs
 ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "journalctl -u safecast-new-map -f"
-ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "journalctl -u safecast-mcp -f"
 
 # Restart service
 ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl restart safecast-new-map"
@@ -451,7 +424,7 @@ location /mcp-api/  { proxy_pass http://localhost:8765/mcp-api/; ... }
 location /map-api/  { ... }  # falls through to the default location / block → 8765
 ```
 
-**Note:** `/mcp-api/` requires an explicit nginx `location` block — it does NOT fall through to the default `location /` block because that block also goes to 8765 but earlier nginx configs had it pointing to port 3333 by mistake.
+**Note:** `/mcp-api/` requires an explicit nginx `location` block.
 
 ### Combined docs page (`/docs/`)
 

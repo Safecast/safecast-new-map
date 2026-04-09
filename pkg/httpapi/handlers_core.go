@@ -1259,10 +1259,10 @@ func (h *Handler) handleCacheError(w http.ResponseWriter, label string, err erro
 		return
 	}
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-		http.Error(w, "request cancelled", http.StatusRequestTimeout)
+		writeJSONError(w, http.StatusRequestTimeout, "request cancelled")
 		return
 	}
-	http.Error(w, "internal error", http.StatusInternalServerError)
+	writeJSONError(w, http.StatusInternalServerError, "internal error")
 	if h.Logf != nil {
 		h.Logf("%s: %v", label, err)
 	}
@@ -1272,7 +1272,7 @@ func (h *Handler) respondAPIError(w http.ResponseWriter, apiErr *apiError) {
 	if apiErr == nil {
 		return
 	}
-	http.Error(w, apiErr.Message, apiErr.Status)
+	writeJSONError(w, apiErr.Status, apiErr.Message)
 	if h.Logf != nil && apiErr.Err != nil {
 		if strings.TrimSpace(apiErr.LogMessage) != "" {
 			h.Logf("%s: %v", apiErr.LogMessage, apiErr.Err)

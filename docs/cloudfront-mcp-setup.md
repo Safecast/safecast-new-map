@@ -203,11 +203,11 @@ aws cloudfront get-distribution-config --id E12FYIQ8RRXOJ1 > /tmp/cf.json
   aws cloudfront create-invalidation --distribution-id E12FYIQ8RRXOJ1 --paths "/*"
   ```
 
-- **Swagger Documentation (source of truth):** The MCP server's API docs at `/mcp-api/` are generated from Swaggo annotations in `cmd/mcp-server/rest.go` and `cmd/mcp-server/rest_*.go`. The map/unified API docs at `/map-api/` are generated from annotations in `cmd/unified-server/`, `pkg/httpapi/`, and `pkg/auth/`.
+- **Swagger Documentation (source of truth):** MCP and map docs are generated from annotations in `cmd/unified-server/`, `pkg/httpapi/`, `pkg/mcpserver/`, and `pkg/auth/`.
   - Host: `simplemap.safecast.org`
   - Base Path: `/api`
 
-  If these values need updating, edit `cmd/mcp-server/rest.go` annotations, regenerate with `swag init -g rest.go` from inside `cmd/mcp-server/`, rebuild, and invalidate CloudFront cache for `/mcp-api/*`.
+  If these values need updating, edit unified-server and shared package annotations, regenerate docs from `cmd/unified-server`, rebuild, and invalidate CloudFront cache for `/mcp-api/*`.
 
 - **Nginx routing pitfall:** Do NOT use a broad `location /api/` rule pointing to port 3333. This breaks map-server routes (`/api/auth/`, `/api/spectrum/`, etc.). Always use specific `location = /api/endpoint` or `location /api/prefix/` rules for MCP endpoints.
 

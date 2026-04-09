@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/csv"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -40,7 +39,7 @@ const latestPerDeviceCTE = `WITH latest AS (
 // @Router      /api/admin/realtime/data [get]
 func adminRealtimeDataHandler(w http.ResponseWriter, r *http.Request) {
 	if db == nil {
-		http.Error(w, "Database not available", http.StatusServiceUnavailable)
+		writeError(w, http.StatusServiceUnavailable, "Database not available")
 		return
 	}
 
@@ -70,9 +69,7 @@ func adminRealtimeDataHandler(w http.ResponseWriter, r *http.Request) {
 	var total int
 	if err := db.DB.QueryRow(countQuery, args...).Scan(&total); err != nil {
 		log.Printf("admin realtime count error: %v", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		writeJSON(w, http.StatusInternalServerError, map[string]interface{}{
 			"error": fmt.Sprintf("Query failed: %v", err),
 			"data":  []interface{}{},
 			"total": 0,
@@ -88,7 +85,7 @@ func adminRealtimeDataHandler(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.DB.Query(dataQuery, args...)
 	if err != nil {
 		log.Printf("admin realtime query error: %v", err)
-		http.Error(w, "Query failed", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "Query failed")
 		return
 	}
 	defer rows.Close()
@@ -115,8 +112,7 @@ func adminRealtimeDataHandler(w http.ResponseWriter, r *http.Request) {
 		results = append(results, row)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"data":    results,
 		"total":   total,
 		"limit":   limit,
@@ -138,7 +134,7 @@ func adminRealtimeDataHandler(w http.ResponseWriter, r *http.Request) {
 // @Router      /api/admin/realtime/export [get]
 func adminRealtimeExportHandler(w http.ResponseWriter, r *http.Request) {
 	if db == nil {
-		http.Error(w, "Database not available", http.StatusServiceUnavailable)
+		writeError(w, http.StatusServiceUnavailable, "Database not available")
 		return
 	}
 
@@ -152,7 +148,7 @@ func adminRealtimeExportHandler(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.DB.Query(query, args...)
 	if err != nil {
 		log.Printf("admin realtime export error: %v", err)
-		http.Error(w, "Query failed", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "Query failed")
 		return
 	}
 	defer rows.Close()
@@ -205,11 +201,11 @@ func adminRealtimeExportHandler(w http.ResponseWriter, r *http.Request) {
 // @Router      /api/admin/realtime/delete [post]
 func adminRealtimeDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete && r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 	if db == nil {
-		http.Error(w, "Database not available", http.StatusServiceUnavailable)
+		writeError(w, http.StatusServiceUnavailable, "Database not available")
 		return
 	}
 
@@ -221,18 +217,17 @@ func adminRealtimeDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		result, err := db.DB.Exec(query, args...)
 		if err != nil {
 			log.Printf("admin realtime delete all error: %v", err)
-			http.Error(w, "Delete failed", http.StatusInternalServerError)
+			writeError(w, http.StatusInternalServerError, "Delete failed")
 			return
 		}
 		affected, _ := result.RowsAffected()
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"deleted": affected})
+		writeJSON(w, http.StatusOK, map[string]interface{}{"deleted": affected})
 		return
 	}
 
 	ids := r.URL.Query().Get("ids")
 	if ids == "" {
-		http.Error(w, "Missing ids parameter", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "Missing ids parameter")
 		return
 	}
 
@@ -248,12 +243,11 @@ func adminRealtimeDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	result, err := db.DB.Exec(query, args...)
 	if err != nil {
 		log.Printf("admin realtime delete error: %v", err)
-		http.Error(w, "Delete failed", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "Delete failed")
 		return
 	}
 	affected, _ := result.RowsAffected()
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"deleted": affected})
+	writeJSON(w, http.StatusOK, map[string]interface{}{"deleted": affected})
 }
 
 // realtimeSearchWhere builds a WHERE clause with parameterized search for PostgreSQL.

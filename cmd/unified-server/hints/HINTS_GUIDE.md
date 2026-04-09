@@ -7,7 +7,7 @@ AI hints are JSON configuration files that provide model-specific guidance to AI
 ## File Structure
 
 ```
-cmd/mcp-server/hints/
+cmd/unified-server/hints/
 ├── claude.json    - Claude (Anthropic)
 ├── gpt.json       - GPT-4 / ChatGPT (OpenAI)
 ├── qwen.json      - Qwen (Alibaba)
@@ -79,14 +79,14 @@ cmd/mcp-server/hints/
 
 ```bash
 # Validate JSON
-python -m json.tool cmd/mcp-server/hints/your-model.json
+python -m json.tool cmd/unified-server/hints/your-model.json
 
 # Test loading
-export MCP_HINTS_DIR=./cmd/mcp-server/hints
-./bin/mcp-server 2>&1 | grep "Loaded hints"
+export MCP_HINTS_DIR=./cmd/unified-server/hints
+./bin/safecast-new-map 2>&1 | grep "Loaded hints"
 
 # Run tests
-go test ./cmd/mcp-server/model-adapter/... -v
+go test ./cmd/unified-server -v
 ```
 
 ## Common Mistakes

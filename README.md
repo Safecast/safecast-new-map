@@ -254,11 +254,11 @@ Regenerate documentation after API changes:
 # Main app API docs (canonical map docs for both binaries)
 (cd cmd/unified-server && swag init -g doc.go -o docs/api --parseDependency --parseInternal --parseDependencyLevel 2 --instanceName unifiedapi)
 
-# MCP server API docs
-cd cmd/mcp-server && swag init -g rest.go
+# MCP API docs are generated from `cmd/unified-server` annotations and shared
+# MCP registrars under `pkg/mcpserver`.
 ```
 
-CI verifies generated output is committed for `cmd/unified-server/docs/api` and `cmd/mcp-server/docs`.
+CI verifies generated output is committed for `cmd/unified-server/docs/api`.
 
 ---
 

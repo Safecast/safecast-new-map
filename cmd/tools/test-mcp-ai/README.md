@@ -2,19 +2,19 @@
 
 ## Files
 
-- `start-mcp.sh` - Start MCP server with database connection
+- `start-mcp.sh` - Start unified server with MCP endpoints
 - `test-mcp-ai` - Main integration test (MCP + AI + Hints)
 - `test-nvidia-models` - Test NVIDIA API models directly
 
 ## Quick Start
 
-### 1. Start MCP Server
+### 1. Start Unified Server
 
 ```bash
 ./start-mcp.sh
 ```
 
-This starts the MCP server on port 3333 with database connection.
+This starts the unified server on port 8765 with database connection.
 
 ### 2. Test AI Integration
 
@@ -43,4 +43,4 @@ When running `test-mcp-ai`, try these:
 
 - NVIDIA API key (get from https://build.nvidia.com)
 - PostgreSQL database with Safecast data
-- MCP server running on port 3333
+- Unified server running on port 8765

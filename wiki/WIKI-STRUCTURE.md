@@ -73,7 +73,7 @@ This document describes the wiki structure created for the Safecast New Map proj
 - Semantic caching with RAG
 - DuckLake analytics
 - AI query logging
-- MCP transports (HTTP, SSE, stdio)
+- MCP transports (HTTP, SSE)
 - Best practices
 
 ### 6. Database-Setup.md

@@ -53,7 +53,7 @@ jobs:
 
       - name: Deploy hints
         run: |
-          rsync -avP -e "ssh -i ~/.ssh/deploy_key" ./hints/ root@65.108.24.131:/root/safecast-mcp-server/hints/
+          rsync -avP -e "ssh -i ~/.ssh/deploy_key" ./hints/ root@65.108.24.131:/root/safecast-unified-server/hints/
 
       - name: Start service
         run: |
@@ -71,7 +71,7 @@ jobs:
           DUCKLAKE_DATA_PATH: ${{ secrets.DUCKLAKE_DATA_PATH }}
         run: |
           ssh -i ~/.ssh/deploy_key root@65.108.24.131 \
-            "printf 'DATABASE_URL=${DATABASE_URL}\nDUCKLAKE_PG_URL=${DUCKLAKE_PG_URL}\nDUCKLAKE_DATA_PATH=${DUCKLAKE_DATA_PATH}\nMCP_HINTS_DIR=/root/safecast-mcp-server/hints\nANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}\nCLAUDE_MODEL=claude-haiku-4-5-20251001\nMCP_BASE_URL=https://simplemap.safecast.org/mcp\n' > /root/safecast-mcp-server/.env"
+            "printf 'DATABASE_URL=${DATABASE_URL}\nDUCKLAKE_PG_URL=${DUCKLAKE_PG_URL}\nDUCKLAKE_DATA_PATH=${DUCKLAKE_DATA_PATH}\nMCP_HINTS_DIR=/root/safecast-unified-server/hints\nANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}\nCLAUDE_MODEL=claude-haiku-4-5-20251001\nMCP_BASE_URL=https://simplemap.safecast.org/mcp\n' > /root/safecast-unified-server/.env"
 
       - name: Restart service with new config
         run: |

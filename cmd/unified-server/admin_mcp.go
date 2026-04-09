@@ -31,14 +31,14 @@ import (
 // @Router      /api/admin/mcp/data [get]
 func adminMCPDataHandler(w http.ResponseWriter, r *http.Request) {
 	if !duckDBAvailable() {
-		http.Error(w, "Analytics not available", http.StatusServiceUnavailable)
+		writeError(w, http.StatusServiceUnavailable, "Analytics not available")
 		return
 	}
 
 	tableName := r.URL.Query().Get("table")
 	columns, ok := mcpTableColumns[tableName]
 	if !ok {
-		http.Error(w, "Invalid table name", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "Invalid table name")
 		return
 	}
 
@@ -89,9 +89,7 @@ func adminMCPDataHandler(w http.ResponseWriter, r *http.Request) {
 	var total int
 	if err := duckDB.QueryRow(countQuery).Scan(&total); err != nil {
 		log.Printf("admin mcp count error (table=%s): %v", tableName, err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		writeJSON(w, http.StatusInternalServerError, map[string]interface{}{
 			"error": fmt.Sprintf("DuckDB query failed: %v", err),
 			"data":  []interface{}{},
 			"total": 0,
@@ -158,7 +156,7 @@ func adminMCPDataHandler(w http.ResponseWriter, r *http.Request) {
 	rows, err := duckDB.Query(dataQuery)
 	if err != nil {
 		log.Printf("admin mcp query error: %v", err)
-		http.Error(w, "Query failed", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "Query failed")
 		return
 	}
 	defer rows.Close()
@@ -187,8 +185,7 @@ func adminMCPDataHandler(w http.ResponseWriter, r *http.Request) {
 		results = append(results, row)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"data":    results,
 		"total":   total,
 		"limit":   limit,
@@ -212,14 +209,14 @@ func adminMCPDataHandler(w http.ResponseWriter, r *http.Request) {
 // @Router      /api/admin/mcp/export [get]
 func adminMCPExportHandler(w http.ResponseWriter, r *http.Request) {
 	if !duckDBAvailable() {
-		http.Error(w, "Analytics not available", http.StatusServiceUnavailable)
+		writeError(w, http.StatusServiceUnavailable, "Analytics not available")
 		return
 	}
 
 	tableName := r.URL.Query().Get("table")
 	columns, ok := mcpTableColumns[tableName]
 	if !ok {
-		http.Error(w, "Invalid table name", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "Invalid table name")
 		return
 	}
 
@@ -260,7 +257,7 @@ func adminMCPExportHandler(w http.ResponseWriter, r *http.Request) {
 	rows, err := duckDB.Query(query)
 	if err != nil {
 		log.Printf("admin mcp export error: %v", err)
-		http.Error(w, "Query failed", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "Query failed")
 		return
 	}
 	defer rows.Close()
@@ -349,18 +346,18 @@ func isValidColumn(col string, validCols []string) bool {
 // @Router      /api/admin/mcp/delete [post]
 func adminMCPDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete && r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 	if !duckDBAvailable() {
-		http.Error(w, "Analytics not available", http.StatusServiceUnavailable)
+		writeError(w, http.StatusServiceUnavailable, "Analytics not available")
 		return
 	}
 
 	tableName := r.URL.Query().Get("table")
 	columns, ok := mcpTableColumns[tableName]
 	if !ok {
-		http.Error(w, "Invalid table name", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "Invalid table name")
 		return
 	}
 
@@ -387,19 +384,18 @@ func adminMCPDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		result, err := duckDB.ExecContext(ctx, query)
 		if err != nil {
 			log.Printf("admin mcp delete all error: %v", err)
-			http.Error(w, "Delete failed", http.StatusInternalServerError)
+			writeError(w, http.StatusInternalServerError, "Delete failed")
 			return
 		}
 		affected, _ := result.RowsAffected()
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"deleted": affected})
+		writeJSON(w, http.StatusOK, map[string]interface{}{"deleted": affected})
 		return
 	}
 
 	// Delete specific rows by key values
 	ids := r.URL.Query().Get("ids")
 	if ids == "" {
-		http.Error(w, "Missing ids parameter", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "Missing ids parameter")
 		return
 	}
 
@@ -438,23 +434,22 @@ func adminMCPDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	result, err := duckDB.ExecContext(ctx, query)
 	if err != nil {
 		log.Printf("admin mcp delete error: %v", err)
-		http.Error(w, "Delete failed", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "Delete failed")
 		return
 	}
 	affected, _ := result.RowsAffected()
 	if affected < 0 {
 		affected = int64(len(idList)) // DuckDB doesn't always report rows affected
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"deleted": affected})
+	writeJSON(w, http.StatusOK, map[string]interface{}{"deleted": affected})
 }
 
 // mcpTableKeyColumn maps each table to its primary key / unique identifier column
 var mcpTableKeyColumn = map[string]string{
-	"chat_questions":   "id",
-	"mcp_query_log":    "created_at",
-	"mcp_ai_query_log": "timestamp",
-	"qa_embeddings":    "id",
+	"chat_questions":     "id",
+	"mcp_query_log":      "created_at",
+	"mcp_ai_query_log":   "timestamp",
+	"qa_embeddings":      "id",
 	"location_knowledge": "id",
 }
 
@@ -462,10 +457,10 @@ var mcpTableKeyColumn = map[string]string{
 // Only text/content fields are included — IDs, timestamps, and computed
 // columns (thumbs_up/thumbs_down) are intentionally excluded.
 var mcpEditableColumns = map[string][]string{
-	"chat_questions":   {"question", "answer", "source", "model", "country", "browser", "os"},
-	"mcp_query_log":    {"params", "client_info"},
-	"mcp_ai_query_log": {"generated_query", "error"},
-	"qa_embeddings":    {"question", "answer"},
+	"chat_questions":     {"question", "answer", "source", "model", "country", "browser", "os"},
+	"mcp_query_log":      {"params", "client_info"},
+	"mcp_ai_query_log":   {"generated_query", "error"},
+	"qa_embeddings":      {"question", "answer"},
 	"location_knowledge": {"note", "lat", "lon", "radius_m"},
 }
 
