@@ -53,9 +53,11 @@ jobs:
 
       - name: Deploy hints
         run: |
+          ssh -i ~/.ssh/deploy_key root@65.108.24.131 "mkdir -p /root/safecast-unified-server/hints"
           rsync -avP -e "ssh -i ~/.ssh/deploy_key" ./hints/ root@65.108.24.131:/root/safecast-unified-server/hints/
 
       - name: Start service
+        if: always()
         run: |
           ssh -i ~/.ssh/deploy_key root@65.108.24.131 "systemctl start safecast-new-map"
 
