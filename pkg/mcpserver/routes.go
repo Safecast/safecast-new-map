@@ -4,21 +4,22 @@ package mcpserver
 type RouteKey string
 
 const (
-	RouteRadiation    RouteKey = "radiation"
-	RouteArea         RouteKey = "area"
-	RouteTracks       RouteKey = "tracks"
-	RouteTrackByID    RouteKey = "track_by_id"
-	RouteDevice       RouteKey = "device"
-	RouteSensors      RouteKey = "sensors"
-	RouteSensorByID   RouteKey = "sensor_by_id"
-	RouteSpectra      RouteKey = "spectra"
-	RouteSpectrumByID RouteKey = "spectrum_by_id"
-	RouteStats        RouteKey = "stats"
-	RouteExtreme      RouteKey = "extreme"
-	RouteInfo         RouteKey = "info"
-	RouteGPTRadiation RouteKey = "gpt_radiation"
-	RouteGPTArea      RouteKey = "gpt_area"
-	RouteGPTStats     RouteKey = "gpt_stats"
+	RouteRadiation     RouteKey = "radiation"
+	RouteArea          RouteKey = "area"
+	RouteTracks        RouteKey = "tracks"
+	RouteTrackByID     RouteKey = "track_by_id"
+	RouteDevice        RouteKey = "device"
+	RouteSensors       RouteKey = "sensors"
+	RouteSensorsExport RouteKey = "sensors_export"
+	RouteSensorByID    RouteKey = "sensor_by_id"
+	RouteSpectra       RouteKey = "spectra"
+	RouteSpectrumByID  RouteKey = "spectrum_by_id"
+	RouteStats         RouteKey = "stats"
+	RouteExtreme       RouteKey = "extreme"
+	RouteInfo          RouteKey = "info"
+	RouteGPTRadiation  RouteKey = "gpt_radiation"
+	RouteGPTArea       RouteKey = "gpt_area"
+	RouteGPTStats      RouteKey = "gpt_stats"
 )
 
 var defaultRESTRouteOrder = []RouteKey{
@@ -28,6 +29,7 @@ var defaultRESTRouteOrder = []RouteKey{
 	RouteTrackByID,
 	RouteDevice,
 	RouteSensors,
+	RouteSensorsExport,
 	RouteSensorByID,
 	RouteSpectra,
 	RouteSpectrumByID,

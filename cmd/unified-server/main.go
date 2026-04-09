@@ -26,7 +26,6 @@ import (
 	"flag"
 	"fmt"
 	lru "github.com/hashicorp/golang-lru/v2"
-	httpSwagger "github.com/swaggo/http-swagger"
 	"github.com/vmihailenco/msgpack/v5"
 	"html"
 	"html/template"
@@ -55,7 +54,6 @@ import (
 	"golang.org/x/crypto/acme/autocert"
 
 	_ "safecast-new-map/cmd/unified-server/docs/api"
-	"github.com/swaggo/swag"
 	"safecast-new-map/pkg/auth"
 	"safecast-new-map/pkg/countryresolver"
 	"safecast-new-map/pkg/database"
@@ -9937,172 +9935,7 @@ func main() {
 	}
 	mcpDocsURL := strings.TrimRight(mcpBaseForDocs, "/") + "/mcp-api/"
 
-	// Combined API docs page (Map API + MCP API tabs)
-	http.HandleFunc("/docs/", serveAPIDocsPage)
-	http.HandleFunc("/docs", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/docs/", http.StatusMovedPermanently)
-	})
-
-	// Register Map API favicon and theme CSS endpoints
-	http.HandleFunc("/map-api/favicon.ico", serveFavicon)
-	http.HandleFunc("/map-api/favicon-16x16.png", serveFavicon16)
-	http.HandleFunc("/map-api/favicon-32x32.png", serveFavicon32)
-	http.HandleFunc("/map-api/swagger-theme.css", serveMapSwaggerTheme)
-
-	mapAPINavScript := fmt.Sprintf(`function() {
-				document.title = 'Safecast Map API Docs';
-				const mcpDocsURL = %q;
-
-				// ── Favicons ──
-				const link16 = document.createElement('link');
-				link16.rel = 'icon'; link16.type = 'image/png'; link16.sizes = '16x16';
-				link16.href = '/map-api/favicon-16x16.png';
-				document.head.appendChild(link16);
-				const link32 = document.createElement('link');
-				link32.rel = 'icon'; link32.type = 'image/png'; link32.sizes = '32x32';
-				link32.href = '/map-api/favicon-32x32.png';
-				document.head.appendChild(link32);
-				const linkICO = document.createElement('link');
-				linkICO.rel = 'shortcut icon'; linkICO.href = '/map-api/favicon.ico';
-				document.head.appendChild(linkICO);
-
-				// ── Theme CSS ──
-				const style = document.createElement('link');
-				style.rel = 'stylesheet'; style.href = '/map-api/swagger-theme.css';
-				document.head.appendChild(style);
-
-				// ── Remove Swagger logo ──
-				const swaggerLogo = document.querySelector('.topbar-wrapper .link');
-				if (swaggerLogo) swaggerLogo.remove();
-				document.querySelectorAll('.topbar-wrapper img').forEach(img => img.remove());
-
-				// ── Inject "Switch to MCP API" button into topbar ──
-				const topbar = document.querySelector('.swagger-ui .topbar');
-				if (topbar) {
-					const existingBtn = document.getElementById('safecast-switch-btn');
-					if (existingBtn) existingBtn.remove();
-					const switchBtn = document.createElement('a');
-					switchBtn.id = 'safecast-switch-btn';
-					switchBtn.href = mcpDocsURL;
-					switchBtn.textContent = 'Switch to MCP API \u2192';
-					switchBtn.style.cssText = 'display:inline-block;margin-left:auto;margin-right:16px;padding:6px 14px;background:#0a4f8a;color:#fff;border-radius:6px;font:600 13px/1.4 -apple-system,BlinkMacSystemFont,sans-serif;text-decoration:none;border:1px solid rgba(255,255,255,0.25);white-space:nowrap;';
-					switchBtn.onmouseover = function() { this.style.background = '#083d6e'; };
-					switchBtn.onmouseout  = function() { this.style.background = '#0a4f8a'; };
-					const wrapper = topbar.querySelector('.topbar-wrapper');
-					if (wrapper) {
-						wrapper.style.display = 'flex';
-						wrapper.style.alignItems = 'center';
-						wrapper.style.width = '100%%';
-						wrapper.appendChild(switchBtn);
-					} else {
-						topbar.appendChild(switchBtn);
-					}
-				}
-
-				// ── Dark mode toggle ──
-				const btn = document.createElement('button');
-				btn.id = 'dark-mode-toggle';
-				btn.textContent = '\u{1F319} Dark Mode';
-				const isDark = localStorage.getItem('safecastMapDarkMode') === 'true';
-				if (isDark) { document.body.classList.add('dark-mode'); btn.textContent = '\u2600\uFE0F Light Mode'; }
-				btn.onclick = function() {
-					document.body.classList.toggle('dark-mode');
-					const nowDark = document.body.classList.contains('dark-mode');
-					btn.textContent = nowDark ? '\u2600\uFE0F Light Mode' : '\u{1F319} Dark Mode';
-					localStorage.setItem('safecastMapDarkMode', nowDark);
-				};
-				document.body.appendChild(btn);
-
-				// ── Dark-mode styles for preamble ──
-				const dmStyle = document.createElement('style');
-				dmStyle.textContent = [
-					'body.dark-mode #safecast-preamble { background: #1a2535 !important; border-bottom-color: #0d9488 !important; }',
-					'body.dark-mode #safecast-preamble h2 { color: #93c5fd !important; }',
-					'body.dark-mode #safecast-preamble > div > p { color: #b0b8c8 !important; }',
-					'body.dark-mode #safecast-preamble a[href*="creativecommons"] { color: #5eead4 !important; }',
-					'body.dark-mode #safecast-preamble summary { color: #93c5fd !important; }',
-					'body.dark-mode #safecast-preamble details > div > div { background: #0f1c2e !important; border-color: #2a3f5f !important; }',
-					'body.dark-mode #safecast-preamble details > div > div strong { color: #93c5fd !important; }',
-					'body.dark-mode #safecast-preamble details > div > div p { color: #8899aa !important; }',
-					'body.dark-mode #safecast-preamble details > div > p { color: #6b7a8d !important; }',
-					'body.dark-mode #safecast-preamble code { background: #0f1c2e !important; color: #5eead4 !important; }',
-				].join('\n');
-				document.head.appendChild(dmStyle);
-
-				// ── Preamble section (inserted before #swagger-ui) ──
-				const existing = document.getElementById('safecast-preamble');
-				if (existing) existing.remove();
-				const preamble = document.createElement('div');
-				preamble.id = 'safecast-preamble';
-				preamble.style.cssText = 'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#fff;border-bottom:3px solid #0066cc;padding:28px 32px 24px;line-height:1.6;';
-				preamble.innerHTML = '<div style="max-width:900px;margin:0 auto;">' +
-					'<h2 style="margin:0 0 6px;font-size:22px;color:#1a3a5c;">Safecast Map API</h2>' +
-					'<p style="margin:0 0 16px;font-size:15px;color:#555;">' +
-						'Safecast has collected over 200 million radiation measurements from sensors carried by volunteers ' +
-						'and fixed monitoring stations around the world. This page is the technical interface that lets software ' +
-						'applications query, filter and download all of that data. You do not need an account or API key &mdash; ' +
-						'all data is <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" style="color:#0066cc;">CC0 licensed</a> and freely accessible.' +
-					'</p>' +
-					'<details style="margin-bottom:16px;">' +
-						'<summary style="cursor:pointer;font-weight:600;font-size:14px;color:#1a3a5c;user-select:none;">For developers &mdash; endpoint overview</summary>' +
-						'<div style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;">' +
-							'<div style="background:#f0f6ff;border:1px solid #c8ddf8;border-radius:8px;padding:12px;">' +
-								'<strong style="color:#1a3a5c;">Historical</strong>' +
-								'<p style="margin:4px 0 0;font-size:13px;color:#555;">bGeigie mobile track measurements from citizen scientists worldwide.</p>' +
-							'</div>' +
-							'<div style="background:#f0f6ff;border:1px solid #c8ddf8;border-radius:8px;padding:12px;">' +
-								'<strong style="color:#1a3a5c;">Realtime Sensors</strong>' +
-								'<p style="margin:4px 0 0;font-size:13px;color:#555;">Fixed Pointcast / Solarcast station readings &mdash; current &amp; history.</p>' +
-							'</div>' +
-							'<div style="background:#f0f6ff;border:1px solid #c8ddf8;border-radius:8px;padding:12px;">' +
-								'<strong style="color:#1a3a5c;">Spectroscopy</strong>' +
-								'<p style="margin:4px 0 0;font-size:13px;color:#555;">Gamma spectroscopy records linked to measurement markers.</p>' +
-							'</div>' +
-							'<div style="background:#f0f6ff;border:1px solid #c8ddf8;border-radius:8px;padding:12px;">' +
-								'<strong style="color:#1a3a5c;">Stats &amp; Reference</strong>' +
-								'<p style="margin:4px 0 0;font-size:13px;color:#555;">Aggregate stats, extreme readings, and dataset metadata.</p>' +
-							'</div>' +
-						'</div>' +
-						'<p style="margin:12px 0 0;font-size:13px;color:#777;">All endpoints return JSON. Base path: <code style="background:#f0f6ff;padding:1px 5px;border-radius:4px;">/api</code>. No authentication required.</p>' +
-					'</details>' +
-					'<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">' +
-						'<a href="/" style="display:inline-block;padding:7px 16px;background:#1a3a5c;color:#fff;border-radius:6px;font:600 13px/1.4 sans-serif;text-decoration:none;">\u2190 Back to Map</a>' +
-						'<a href="' + mcpDocsURL + '" style="display:inline-block;padding:7px 16px;background:#0d9488;color:#fff;border-radius:6px;font:600 13px/1.4 sans-serif;text-decoration:none;">Switch to MCP API \u2192</a>' +
-					'</div>' +
-				'</div>';
-				const swaggerUIEl = document.getElementById('swagger-ui');
-				if (swaggerUIEl) {
-					document.body.insertBefore(preamble, swaggerUIEl);
-				} else {
-					document.body.prepend(preamble);
-				}
-			}`, mcpDocsURL)
-	http.Handle("/map-api/", httpSwagger.Handler(
-		httpSwagger.URL("/map-api/doc.json"),
-		httpSwagger.InstanceName("unifiedapi"),
-		httpSwagger.UIConfig(map[string]string{
-			"onComplete": mapAPINavScript,
-		}),
-	))
-
-	// Serve MCP API spec JSON directly (avoids sharing swaggerFiles.Handler singleton
-	// with the /map-api/ swagger instance, which causes a prefix conflict).
-	http.HandleFunc("/mcp-api/doc.json", func(w http.ResponseWriter, r *http.Request) {
-		doc, err := swag.ReadDoc("swagger")
-		if err != nil {
-			http.Error(w, "swagger spec unavailable", http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(doc))
-	})
-	// Standalone /mcp-api/ page: custom HTML that loads assets from /map-api/
-	// (single swagger static-file handler on this port — avoids prefix conflict).
-	http.HandleFunc("/mcp-api/favicon.ico", serveFavicon)
-	http.HandleFunc("/mcp-api/favicon-16x16.png", serveFavicon16)
-	http.HandleFunc("/mcp-api/favicon-32x32.png", serveFavicon32)
-	http.HandleFunc("/mcp-api/swagger-theme.css", serveSwaggerTheme)
-	http.HandleFunc("/mcp-api/", serveMCPAPIPage)
+	registerMainAPIDocsRoutes(http.DefaultServeMux, mcpDocsURL)
 
 	http.HandleFunc("/home", homeHandler)
 
@@ -10235,31 +10068,6 @@ func main() {
 			w.Write(data)
 		}))
 
-		// MCP analytics API endpoints
-		http.HandleFunc("/api/admin/mcp/data", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
-			if !checkAdminAccess(w, r) {
-				return
-			}
-			adminMCPDataHandler(w, r)
-		}))
-		http.HandleFunc("/api/admin/mcp/export", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
-			if !checkAdminAccess(w, r) {
-				return
-			}
-			adminMCPExportHandler(w, r)
-		}))
-		http.HandleFunc("/api/admin/mcp/delete", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
-			if !checkAdminAccess(w, r) {
-				return
-			}
-			adminMCPDeleteHandler(w, r)
-		}))
-		http.HandleFunc("/api/admin/mcp/update", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
-			if !checkAdminAccess(w, r) {
-				return
-			}
-			adminMCPUpdateHandler(w, r)
-		}))
 		// Serve admin Realtime page and API endpoints
 		http.HandleFunc("/admin/realtime", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
@@ -10318,6 +10126,7 @@ func main() {
 	var adminMCPDataAPIHandler http.HandlerFunc
 	var adminMCPExportAPIHandler http.HandlerFunc
 	var adminMCPDeleteAPIHandler http.HandlerFunc
+	var adminMCPUpdateAPIHandler http.HandlerFunc
 	var adminRealtimeDataAPIHandler http.HandlerFunc
 	var adminRealtimeExportAPIHandler http.HandlerFunc
 	var adminRealtimeDeleteAPIHandler http.HandlerFunc
@@ -10328,6 +10137,7 @@ func main() {
 		adminMCPDataAPIHandler = adminMCPDataHandler
 		adminMCPExportAPIHandler = adminMCPExportHandler
 		adminMCPDeleteAPIHandler = adminMCPDeleteHandler
+		adminMCPUpdateAPIHandler = adminMCPUpdateHandler
 		adminRealtimeDataAPIHandler = adminRealtimeDataHandler
 		adminRealtimeExportAPIHandler = adminRealtimeExportHandler
 		adminRealtimeDeleteAPIHandler = adminRealtimeDeleteHandler
@@ -10376,6 +10186,7 @@ func main() {
 		AdminMCPDataHandler:              adminMCPDataAPIHandler,
 		AdminMCPExportHandler:            adminMCPExportAPIHandler,
 		AdminMCPDeleteHandler:            adminMCPDeleteAPIHandler,
+		AdminMCPUpdateHandler:            adminMCPUpdateAPIHandler,
 		AdminRealtimeDataHandler:         adminRealtimeDataAPIHandler,
 		AdminRealtimeExportHandler:       adminRealtimeExportAPIHandler,
 		AdminRealtimeDeleteHandler:       adminRealtimeDeleteAPIHandler,

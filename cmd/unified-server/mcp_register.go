@@ -31,6 +31,43 @@ var (
 	mcpHintsLoader  *modeladapter.HintsLoader
 )
 
+type companionRoutesConfig struct {
+	MainMux             *http.ServeMux
+	MCPMux              *http.ServeMux
+	RESTHandler         *RESTHandler
+	FeedbackHandler     http.HandlerFunc
+	TrackInsightsHandle http.HandlerFunc
+	ChatHandler         http.HandlerFunc
+}
+
+// registerCompanionRoutes keeps cross-listener API parity explicit for routes
+// that must exist on both the MCP and main listeners.
+func registerCompanionRoutes(cfg companionRoutesConfig) {
+	if cfg.MCPMux != nil && cfg.FeedbackHandler != nil {
+		cfg.MCPMux.HandleFunc("/api/feedback", cfg.FeedbackHandler)
+	}
+	if cfg.MainMux != nil && cfg.FeedbackHandler != nil {
+		cfg.MainMux.HandleFunc("/api/feedback", cfg.FeedbackHandler)
+	}
+
+	if cfg.MainMux != nil && cfg.RESTHandler != nil {
+		cfg.MainMux.HandleFunc("/api/sensors", cfg.RESTHandler.handleSensors)
+		cfg.MainMux.HandleFunc("/api/sensors/export", cfg.RESTHandler.handleSensorsExport)
+		cfg.MainMux.HandleFunc("/api/sensor/", cfg.RESTHandler.handleSensor)
+	}
+
+	if cfg.MainMux != nil && cfg.TrackInsightsHandle != nil {
+		cfg.MainMux.HandleFunc("GET /api/track/{id}/insights", cfg.TrackInsightsHandle)
+	}
+
+	if cfg.MCPMux != nil && cfg.ChatHandler != nil {
+		cfg.MCPMux.HandleFunc("/chat", cfg.ChatHandler)
+	}
+	if cfg.MainMux != nil && cfg.ChatHandler != nil {
+		cfg.MainMux.HandleFunc("/chat", cfg.ChatHandler)
+	}
+}
+
 // Maximum tokens for the prompt sent to Claude. Leave headroom for tool results.
 const maxPromptTokens = 150000
 
@@ -629,37 +666,23 @@ func RegisterMCP() {
 	mcpURL := fmt.Sprintf("http://localhost:%s/mcp-http", mcpPort)
 
 	feedbackHandler := handleFeedback()
-	// Register feedback on both mux and main mux regardless of apiKey,
-	// so the endpoint is always reachable even if chat is reconfigured.
-	mux.HandleFunc("/api/feedback", feedbackHandler)
-	http.HandleFunc("/api/feedback", feedbackHandler)
-
-	// Register sensor REST endpoints on both mux (port 3333) and main mux (port 8765)
-	// so the AI chat download buttons can use relative URLs like /api/sensors/export.
-	// (Other REST routes like /api/radiation, /api/tracks, etc. are already
-	// handled by httpapi or registerSwaggerDocs on port 8765.)
+	// Keep companion routes explicit so main and MCP listeners stay aligned.
 	restH := &RESTHandler{}
-	// Sensors endpoints are already registered on MCP mux via registerAPIRoutes(mux).
-	// Keep explicit registrations on main mux for relative URL usage from web chat.
-	http.HandleFunc("/api/sensors", restH.handleSensors)
-	http.HandleFunc("/api/sensors/export", restH.handleSensorsExport)
-	http.HandleFunc("/api/sensor/", restH.handleSensor)
-
-	// Track insights: register on main mux (port 8765) using Go 1.22 pattern routing.
-	// The specific pattern "GET /api/track/{id}/insights" takes precedence over the
-	// pkg/httpapi catch-all "/api/track/" handler.
-	http.HandleFunc("GET /api/track/{id}/insights", trackInsightsHandler)
+	registerCompanionRoutes(companionRoutesConfig{
+		MainMux:             http.DefaultServeMux,
+		MCPMux:              mux,
+		RESTHandler:         restH,
+		FeedbackHandler:     feedbackHandler,
+		TrackInsightsHandle: trackInsightsHandler,
+	})
 
 	if apiKey != "" {
 		chatHandler := handleWebChat(mcpURL, apiKey, model)
-
-		// Register /chat on MCP mux (port 3333)
-		mux.HandleFunc("/chat", chatHandler)
-
-		// Also register /chat on main map server (port 8765) so the
-		// embedded widget can use a relative "/chat" URL without
-		// cross-origin or CloudFront routing issues.
-		http.HandleFunc("/chat", chatHandler)
+		registerCompanionRoutes(companionRoutesConfig{
+			MainMux:     http.DefaultServeMux,
+			MCPMux:      mux,
+			ChatHandler: chatHandler,
+		})
 	} else {
 		log.Println("AI chat disabled: ANTHROPIC_API_KEY not set")
 	}
