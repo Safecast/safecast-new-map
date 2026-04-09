@@ -58,7 +58,7 @@ jobs:
       - name: Build application
         run: |
           go mod tidy
-          GOOS=linux GOARCH=amd64 go build -o safecast-new-map .  # Linux x64 binary; adjust GOARCH for your VPS
+          GOOS=linux GOARCH=amd64 go build -o safecast-new-map ./cmd/unified-server  # Linux x64 binary; adjust GOARCH for your VPS
 
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.0.3
@@ -84,7 +84,7 @@ jobs:
 
 - **Key Notes**:
   - Replace `/path/to/your/app/` with your actual VPS app directory.
-  - The build step creates a Linux binary. Test locally: `GOOS=linux GOARCH=amd64 go build -o safecast-new-map .`
+  - The build step creates a Linux binary. Test locally: `GOOS=linux GOARCH=amd64 go build -o safecast-new-map ./cmd/unified-server`
   - Deployment uses SSH/SCP. If your VPS uses password auth, replace `key` with `password: ${{ secrets.VPS_PASSWORD }}`.
 
 ### 2. Commit and Push
