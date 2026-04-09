@@ -1,0 +1,32 @@
+[
+  {
+    "id": "1",
+    "name": "Alex Volunteer",
+    "location": "Tokyo, Japan",
+    "hardware": "bGeigie Nano",
+    "photo_url": "",
+    "excerpt": "This story is coming soon...",
+    "full_story_url": "",
+    "is_placeholder": true
+  },
+  {
+    "id": "2",
+    "name": "Sam Explorer",
+    "location": "Los Angeles, USA",
+    "hardware": "bGeigie Zen",
+    "photo_url": "",
+    "excerpt": "This story is coming soon...",
+    "full_story_url": "",
+    "is_placeholder": true
+  },
+  {
+    "id": "3",
+    "name": "Jordan Citizen",
+    "location": "Berlin, Germany",
+    "hardware": "kGeigie",
+    "photo_url": "",
+    "excerpt": "This story is coming soon...",
+    "full_story_url": "",
+    "is_placeholder": true
+  }
+]
