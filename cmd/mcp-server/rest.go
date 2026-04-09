@@ -24,15 +24,14 @@ package main
 import (
 	_ "embed"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	httpSwagger "github.com/swaggo/http-swagger"
 	_ "safecast-new-map/cmd/mcp-server/docs"
+	"safecast-new-map/pkg/mcpserver"
 )
 
 //go:embed static/favicon.ico
@@ -49,160 +48,55 @@ type RESTHandler struct{}
 
 // Register attaches all /api/* routes and the /mcp-api/ Swagger UI to mux.
 func (h *RESTHandler) Register(mux *http.ServeMux) {
-	// Historical data
-	mux.HandleFunc("/api/radiation", h.handleRadiation)
-	mux.HandleFunc("/api/area", h.handleArea)
-	mux.HandleFunc("/api/tracks", h.handleTracks)
-	mux.HandleFunc("/api/track/", h.handleTrack)   // /api/track/{id}
-	mux.HandleFunc("/api/device/", h.handleDevice) // /api/device/{id}/history
-
-	// Real-time sensors
-	mux.HandleFunc("/api/sensors", h.handleSensors)
-	mux.HandleFunc("/api/sensor/", h.handleSensor) // /api/sensor/{id}/current or /history
-
-	// Spectroscopy
-	mux.HandleFunc("/api/spectra", h.handleSpectra)
-	mux.HandleFunc("/api/spectrum/", h.handleSpectrum) // /api/spectrum/{marker_id}
-
-	// Reference / stats
-	mux.HandleFunc("/api/stats", h.handleStats)
-	mux.HandleFunc("/api/extreme", handleRESTExtremeReadings)
-	mux.HandleFunc("/api/info/", h.handleInfo) // /api/info/{topic}
-
-	// GPT-optimised compact endpoints (for Custom GPT Actions)
-	h.RegisterGPT(mux)
+	mcpserver.RegisterRESTRoutes(func(route mcpserver.RouteKey) {
+		switch route {
+		case mcpserver.RouteRadiation:
+			mux.HandleFunc("/api/radiation", h.handleRadiation)
+		case mcpserver.RouteArea:
+			mux.HandleFunc("/api/area", h.handleArea)
+		case mcpserver.RouteTracks:
+			mux.HandleFunc("/api/tracks", h.handleTracks)
+		case mcpserver.RouteTrackByID:
+			mux.HandleFunc("/api/track/", h.handleTrack) // /api/track/{id}
+		case mcpserver.RouteDevice:
+			mux.HandleFunc("/api/device/", h.handleDevice) // /api/device/{id}/history
+		case mcpserver.RouteSensors:
+			mux.HandleFunc("/api/sensors", h.handleSensors)
+		case mcpserver.RouteSensorByID:
+			mux.HandleFunc("/api/sensor/", h.handleSensor) // /api/sensor/{id}/current or /history
+		case mcpserver.RouteSpectra:
+			mux.HandleFunc("/api/spectra", h.handleSpectra)
+		case mcpserver.RouteSpectrumByID:
+			mux.HandleFunc("/api/spectrum/", h.handleSpectrum) // /api/spectrum/{marker_id}
+		case mcpserver.RouteStats:
+			mux.HandleFunc("/api/stats", h.handleStats)
+		case mcpserver.RouteExtreme:
+			mux.HandleFunc("/api/extreme", handleRESTExtremeReadings)
+		case mcpserver.RouteInfo:
+			mux.HandleFunc("/api/info/", h.handleInfo) // /api/info/{topic}
+		case mcpserver.RouteGPTRadiation:
+			mux.HandleFunc("/api/gpt/radiation", h.handleGPTRadiation)
+		case mcpserver.RouteGPTArea:
+			mux.HandleFunc("/api/gpt/area", h.handleGPTArea)
+		case mcpserver.RouteGPTStats:
+			mux.HandleFunc("/api/gpt/stats", h.handleGPTStats)
+		}
+	})
 
 	mapBaseForDocs := strings.TrimSpace(os.Getenv("MAP_BASE_URL"))
 	if mapBaseForDocs == "" {
 		mapBaseForDocs = "http://localhost:8765"
 	}
 	mapDocsURL := strings.TrimRight(mapBaseForDocs, "/") + "/map-api/"
-	mcpAPINavScript := fmt.Sprintf(`function() {
-				document.title = 'Safecast MCP API Docs';
-				const mapDocsURL = %q;
-
-				// ── Favicons ──
-				const link16 = document.createElement('link');
-				link16.rel = 'icon'; link16.type = 'image/png'; link16.sizes = '16x16';
-				link16.href = '/mcp-api/favicon-16x16.png';
-				document.head.appendChild(link16);
-				const link32 = document.createElement('link');
-				link32.rel = 'icon'; link32.type = 'image/png'; link32.sizes = '32x32';
-				link32.href = '/mcp-api/favicon-32x32.png';
-				document.head.appendChild(link32);
-				const linkICO = document.createElement('link');
-				linkICO.rel = 'shortcut icon'; linkICO.href = '/mcp-api/favicon.ico';
-				document.head.appendChild(linkICO);
-
-				// ── Theme CSS ──
-				const style = document.createElement('link');
-				style.rel = 'stylesheet'; style.href = '/mcp-api/swagger-theme.css';
-				document.head.appendChild(style);
-
-				// ── Remove Swagger logo ──
-				const swaggerLogo = document.querySelector('.topbar-wrapper .link');
-				if (swaggerLogo) swaggerLogo.remove();
-				document.querySelectorAll('.topbar-wrapper img').forEach(img => img.remove());
-
-				// ── Inject "Switch to Map API" button into topbar ──
-				const topbar = document.querySelector('.swagger-ui .topbar');
-				if (topbar) {
-					const existingBtn = document.getElementById('safecast-switch-btn');
-					if (existingBtn) existingBtn.remove();
-					const switchBtn = document.createElement('a');
-					switchBtn.id = 'safecast-switch-btn';
-					switchBtn.href = mapDocsURL;
-					switchBtn.textContent = '\u2190 Switch to Map API';
-					switchBtn.style.cssText = 'display:inline-block;margin-left:auto;margin-right:16px;padding:6px 14px;background:#085e58;color:#fff;border-radius:6px;font:600 13px/1.4 -apple-system,BlinkMacSystemFont,sans-serif;text-decoration:none;border:1px solid rgba(255,255,255,0.25);white-space:nowrap;';
-					switchBtn.onmouseover = function() { this.style.background = '#064a45'; };
-					switchBtn.onmouseout  = function() { this.style.background = '#085e58'; };
-					const wrapper = topbar.querySelector('.topbar-wrapper');
-					if (wrapper) {
-						wrapper.style.display = 'flex';
-						wrapper.style.alignItems = 'center';
-						wrapper.style.width = '100%%';
-						wrapper.appendChild(switchBtn);
-					} else {
-						topbar.appendChild(switchBtn);
-					}
-				}
-
-				// ── Dark mode toggle ──
-				const btn = document.createElement('button');
-				btn.id = 'dark-mode-toggle';
-				btn.textContent = '\u{1F319} Dark Mode';
-				const isDark = localStorage.getItem('safecastMCPDarkMode') === 'true';
-				if (isDark) { document.body.classList.add('dark-mode'); btn.textContent = '\u2600\uFE0F Light Mode'; }
-				btn.onclick = function() {
-					document.body.classList.toggle('dark-mode');
-					const nowDark = document.body.classList.contains('dark-mode');
-					btn.textContent = nowDark ? '\u2600\uFE0F Light Mode' : '\u{1F319} Dark Mode';
-					localStorage.setItem('safecastMCPDarkMode', nowDark);
-				};
-				document.body.appendChild(btn);
-
-				// ── Preamble section (inserted before #swagger-ui) ──
-				const existing = document.getElementById('safecast-preamble');
-				if (existing) existing.remove();
-				const preamble = document.createElement('div');
-				preamble.id = 'safecast-preamble';
-				preamble.style.cssText = 'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#fff;border-bottom:3px solid #0d9488;padding:28px 32px 24px;line-height:1.6;';
-				preamble.innerHTML = '<div style="max-width:900px;margin:0 auto;">' +
-					'<h2 style="margin:0 0 6px;font-size:22px;color:#0f3d38;">Safecast MCP API</h2>' +
-					'<p style="margin:0 0 16px;font-size:15px;color:#555;">' +
-						'This API is designed for AI assistants and automated tools. It exposes the Safecast radiation dataset ' +
-						'as a set of callable functions (MCP tools) and standard REST endpoints, so that language models and ' +
-						'applications can query radiation data programmatically. If you want to ask questions about the data ' +
-						'in plain English instead, try the <a href="/assistant/" style="color:#0d9488;">AI web chat</a>.' +
-					'</p>' +
-					'<details style="margin-bottom:16px;">' +
-						'<summary style="cursor:pointer;font-weight:600;font-size:14px;color:#0f3d38;user-select:none;">For developers &mdash; transports &amp; tools overview</summary>' +
-						'<div style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;">' +
-							'<div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:12px;">' +
-								'<strong style="color:#0f3d38;">MCP Streamable HTTP</strong>' +
-								'<p style="margin:4px 0 0;font-size:13px;color:#555;">Primary MCP transport at <code>/mcp-http</code>. Compatible with Claude, GPT, and most MCP clients.</p>' +
-							'</div>' +
-							'<div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:12px;">' +
-								'<strong style="color:#0f3d38;">MCP SSE</strong>' +
-								'<p style="margin:4px 0 0;font-size:13px;color:#555;">Server-Sent Events transport at <code>/mcp/sse</code> for streaming-capable clients.</p>' +
-							'</div>' +
-							'<div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:12px;">' +
-								'<strong style="color:#0f3d38;">REST Endpoints</strong>' +
-								'<p style="margin:4px 0 0;font-size:13px;color:#555;">All MCP tools are also accessible as plain HTTP GET/POST calls under <code>/api/</code>.</p>' +
-							'</div>' +
-							'<div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:12px;">' +
-								'<strong style="color:#0f3d38;">AI Web Chat</strong>' +
-								'<p style="margin:4px 0 0;font-size:13px;color:#555;">Human-friendly interface at <code>/assistant/</code> for querying data with natural language.</p>' +
-							'</div>' +
-						'</div>' +
-						'<p style="margin:12px 0 0;font-size:13px;color:#777;">No authentication required. All data is CC0 licensed.</p>' +
-					'</details>' +
-					'<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">' +
-						'<a href="/assistant/" style="display:inline-block;padding:7px 16px;background:#0f3d38;color:#fff;border-radius:6px;font:600 13px/1.4 sans-serif;text-decoration:none;">Open AI Chat</a>' +
-						'<a href="' + mapDocsURL + '" style="display:inline-block;padding:7px 16px;background:#1a3a5c;color:#fff;border-radius:6px;font:600 13px/1.4 sans-serif;text-decoration:none;">\u2190 Switch to Map API</a>' +
-					'</div>' +
-				'</div>';
-				const swaggerUIEl = document.getElementById('swagger-ui');
-				if (swaggerUIEl) {
-					document.body.insertBefore(preamble, swaggerUIEl);
-				} else {
-					document.body.prepend(preamble);
-				}
-			}`, mapDocsURL)
-
-	// Favicon endpoints
-	mux.HandleFunc("/mcp-api/favicon.ico", serveFavicon)
-	mux.HandleFunc("/mcp-api/favicon-16x16.png", serveFavicon16)
-	mux.HandleFunc("/mcp-api/favicon-32x32.png", serveFavicon32)
-
-	// Swagger UI — teal theme for MCP API
-	mux.HandleFunc("/mcp-api/swagger-theme.css", serveSwaggerTheme)
-	mux.Handle("/mcp-api/", httpSwagger.Handler(
-		httpSwagger.URL("/mcp-api/doc.json"),
-		httpSwagger.UIConfig(map[string]string{
-			"onComplete": mcpAPINavScript,
-		}),
-	))
+	mcpserver.RegisterMCPDocs(mcpserver.DocsConfig{
+		Mux:              mux,
+		MapDocsURL:       mapDocsURL,
+		IncludeAssistant: true,
+		FaviconICO:       serveFavicon,
+		Favicon16:        serveFavicon16,
+		Favicon32:        serveFavicon32,
+		ThemeCSS:         serveSwaggerTheme,
+	})
 }
 
 // writeJSON writes v as a JSON response with the given HTTP status code.

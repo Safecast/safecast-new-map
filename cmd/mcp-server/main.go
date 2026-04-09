@@ -11,6 +11,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"safecast-new-map/cmd/mcp-server/model-adapter"
+	"safecast-new-map/pkg/mcpserver"
 )
 
 // aiGeneratedNote is the disclaimer appended to every tool response.
@@ -70,31 +71,51 @@ func main() {
 	}
 
 	// Register tools
-	mcpServer.AddTool(
-		mcp.NewTool("ping",
-			mcp.WithDescription("Health check tool"),
-		),
-		instrument("ping", pingHandler),
-	)
-
-	mcpServer.AddTool(queryRadiationToolDef, instrument("query_radiation", handleQueryRadiation))
-	mcpServer.AddTool(searchAreaToolDef, instrument("search_area", handleSearchArea))
-	mcpServer.AddTool(listTracksToolDef, instrument("list_tracks", handleListTracks))
-	mcpServer.AddTool(getTrackToolDef, instrument("get_track", handleGetTrack))
-	mcpServer.AddTool(deviceHistoryToolDef, instrument("device_history", handleDeviceHistory))
-	mcpServer.AddTool(getSpectrumToolDef, instrument("get_spectrum", handleGetSpectrum))
-	mcpServer.AddTool(listSpectraToolDef, instrument("list_spectra", handleListSpectra))
-	mcpServer.AddTool(radiationInfoToolDef, instrument("radiation_info", handleRadiationInfo))
-	mcpServer.AddTool(dbInfoToolDef, instrument("db_info", handleDBInfo))
-	mcpServer.AddTool(listSensorsToolDef, instrument("list_sensors", handleListSensors))
-	mcpServer.AddTool(sensorCurrentToolDef, instrument("sensor_current", handleSensorCurrent))
-	mcpServer.AddTool(sensorHistoryToolDef, instrument("sensor_history", handleSensorHistory))
-	mcpServer.AddTool(queryAnalyticsToolDef, instrument("query_analytics", handleQueryAnalytics))
-	mcpServer.AddTool(radiationStatsToolDef, instrument("radiation_stats", handleRadiationStats))
-	mcpServer.AddTool(queryDuckDBLogsToolDef, instrument("query_duckdb_logs", handleQueryDuckDBLogs))
-	mcpServer.AddTool(queryExtremeReadingsToolDef, instrument("query_extreme_readings", handleQueryExtremeReadings))
-	mcpServer.AddTool(topUploadersToolDef, instrument("top_uploaders", handleTopUploaders))
-	mcpServer.AddTool(searchTracksLocationToolDef, instrument("search_tracks_by_location", handleSearchTracksByLocation))
+	mcpserver.RegisterTools(func(tool mcpserver.ToolKey) {
+		switch tool {
+		case mcpserver.ToolPing:
+			mcpServer.AddTool(
+				mcp.NewTool("ping", mcp.WithDescription("Health check tool")),
+				instrument("ping", pingHandler),
+			)
+		case mcpserver.ToolQueryRadiation:
+			mcpServer.AddTool(queryRadiationToolDef, instrument("query_radiation", handleQueryRadiation))
+		case mcpserver.ToolSearchArea:
+			mcpServer.AddTool(searchAreaToolDef, instrument("search_area", handleSearchArea))
+		case mcpserver.ToolListTracks:
+			mcpServer.AddTool(listTracksToolDef, instrument("list_tracks", handleListTracks))
+		case mcpserver.ToolGetTrack:
+			mcpServer.AddTool(getTrackToolDef, instrument("get_track", handleGetTrack))
+		case mcpserver.ToolDeviceHistory:
+			mcpServer.AddTool(deviceHistoryToolDef, instrument("device_history", handleDeviceHistory))
+		case mcpserver.ToolGetSpectrum:
+			mcpServer.AddTool(getSpectrumToolDef, instrument("get_spectrum", handleGetSpectrum))
+		case mcpserver.ToolListSpectra:
+			mcpServer.AddTool(listSpectraToolDef, instrument("list_spectra", handleListSpectra))
+		case mcpserver.ToolRadiationInfo:
+			mcpServer.AddTool(radiationInfoToolDef, instrument("radiation_info", handleRadiationInfo))
+		case mcpserver.ToolDBInfo:
+			mcpServer.AddTool(dbInfoToolDef, instrument("db_info", handleDBInfo))
+		case mcpserver.ToolListSensors:
+			mcpServer.AddTool(listSensorsToolDef, instrument("list_sensors", handleListSensors))
+		case mcpserver.ToolSensorCurrent:
+			mcpServer.AddTool(sensorCurrentToolDef, instrument("sensor_current", handleSensorCurrent))
+		case mcpserver.ToolSensorHistory:
+			mcpServer.AddTool(sensorHistoryToolDef, instrument("sensor_history", handleSensorHistory))
+		case mcpserver.ToolQueryAnalytics:
+			mcpServer.AddTool(queryAnalyticsToolDef, instrument("query_analytics", handleQueryAnalytics))
+		case mcpserver.ToolRadiationStats:
+			mcpServer.AddTool(radiationStatsToolDef, instrument("radiation_stats", handleRadiationStats))
+		case mcpserver.ToolQueryDuckDBLogs:
+			mcpServer.AddTool(queryDuckDBLogsToolDef, instrument("query_duckdb_logs", handleQueryDuckDBLogs))
+		case mcpserver.ToolQueryExtremeReadings:
+			mcpServer.AddTool(queryExtremeReadingsToolDef, instrument("query_extreme_readings", handleQueryExtremeReadings))
+		case mcpserver.ToolTopUploaders:
+			mcpServer.AddTool(topUploadersToolDef, instrument("top_uploaders", handleTopUploaders))
+		case mcpserver.ToolSearchTracksByLocation:
+			mcpServer.AddTool(searchTracksLocationToolDef, instrument("search_tracks_by_location", handleSearchTracksByLocation))
+		}
+	})
 
 	// TRANSPORT SWITCH
 	if os.Getenv("MCP_TRANSPORT") == "stdio" {
@@ -122,20 +143,13 @@ func main() {
 		baseURL = "http://localhost:3333"
 	}
 
-	sseServer := server.NewSSEServer(mcpServer,
-		server.WithBaseURL(baseURL),
-		server.WithStaticBasePath("/mcp"),
-	)
-
-	httpServer := server.NewStreamableHTTPServer(mcpServer,
-		server.WithEndpointPath("/mcp-http"),
-	)
-
 	mux := http.NewServeMux()
-
-	// Wrap MCP handlers with model detection middleware
-	mux.Handle("/mcp-http", modeladapter.ModelDetectionMiddleware(httpServer))
-	mux.Handle("/mcp/", modeladapter.ModelDetectionMiddleware(sseServer))
+	mcpserver.RegisterTransports(mcpserver.TransportConfig{
+		Mux:        mux,
+		MCPServer:  mcpServer,
+		BaseURL:    baseURL,
+		Middleware: modeladapter.ModelDetectionMiddleware,
+	})
 
 	rest := &RESTHandler{}
 	rest.Register(mux)
