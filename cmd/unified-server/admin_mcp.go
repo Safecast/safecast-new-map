@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -445,10 +446,10 @@ func adminMCPDeleteHandler(w http.ResponseWriter, r *http.Request) {
 
 // mcpTableKeyColumn maps each table to its primary key / unique identifier column
 var mcpTableKeyColumn = map[string]string{
-	"chat_questions":   "id",
-	"mcp_query_log":    "created_at",
-	"mcp_ai_query_log": "timestamp",
-	"qa_embeddings":    "id",
+	"chat_questions":     "id",
+	"mcp_query_log":      "created_at",
+	"mcp_ai_query_log":   "timestamp",
+	"qa_embeddings":      "id",
 	"location_knowledge": "id",
 }
 
@@ -456,10 +457,10 @@ var mcpTableKeyColumn = map[string]string{
 // Only text/content fields are included — IDs, timestamps, and computed
 // columns (thumbs_up/thumbs_down) are intentionally excluded.
 var mcpEditableColumns = map[string][]string{
-	"chat_questions":   {"question", "answer", "source", "model", "country", "browser", "os"},
-	"mcp_query_log":    {"params", "client_info"},
-	"mcp_ai_query_log": {"generated_query", "error"},
-	"qa_embeddings":    {"question", "answer"},
+	"chat_questions":     {"question", "answer", "source", "model", "country", "browser", "os"},
+	"mcp_query_log":      {"params", "client_info"},
+	"mcp_ai_query_log":   {"generated_query", "error"},
+	"qa_embeddings":      {"question", "answer"},
 	"location_knowledge": {"note", "lat", "lon", "radius_m"},
 }
 
