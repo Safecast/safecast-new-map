@@ -25,8 +25,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	lru "github.com/hashicorp/golang-lru/v2"
-	"github.com/vmihailenco/msgpack/v5"
 	"html"
 	"html/template"
 	"io"
@@ -50,6 +48,9 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	lru "github.com/hashicorp/golang-lru/v2"
+	"github.com/vmihailenco/msgpack/v5"
 
 	"golang.org/x/crypto/acme/autocert"
 
@@ -6136,6 +6137,7 @@ func adminImportFromSafecastHandler(w http.ResponseWriter, r *http.Request) {
 					imp.SourceURL,
 					fmt.Sprintf("%d", imp.UserID),
 					username,
+					"", // comment
 					db,
 					*dbType,
 					nil, // Use default importer
@@ -8633,6 +8635,7 @@ func main() {
 			sourceURL string,
 			userID string,
 			username string,
+			comment string,
 			db *database.Database,
 			dbType string,
 		) (trackID string, markerCount int, err error) {

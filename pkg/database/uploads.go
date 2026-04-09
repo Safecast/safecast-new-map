@@ -24,6 +24,9 @@ type Upload struct {
 	Username       string `json:"username,omitempty"`       // Username from source (fetched from API)
 	InternalUserID string `json:"internalUserID,omitempty"` // Internal user ID from users table (for authenticated uploads)
 	Detector       string `json:"detector,omitempty"`       // Detector info from track_statistics
+	Name           string `json:"name,omitempty"`           // Display name (admin-editable)
+	Notes          string `json:"notes,omitempty"`          // Admin notes
+	Comment        string `json:"comment,omitempty"`        // User-supplied description from Safecast API
 }
 
 // InsertUpload records a file upload in the uploads table.
@@ -40,8 +43,8 @@ func (db *Database) InsertUpload(ctx context.Context, upload Upload) (int64, err
 	switch db.Driver {
 	case "pgx":
 		query = `
-			INSERT INTO uploads (filename, file_type, track_id, file_size, upload_ip, created_at, recording_date, source, source_id, source_url, user_id, username, internal_user_id, detector)
-			VALUES ($1, $2, $3, $4, $5, to_timestamp($6), to_timestamp($7), $8, $9, $10, $11, $12, $13, $14)
+			INSERT INTO uploads (filename, file_type, track_id, file_size, upload_ip, created_at, recording_date, source, source_id, source_url, user_id, username, internal_user_id, detector, comment)
+			VALUES ($1, $2, $3, $4, $5, to_timestamp($6), to_timestamp($7), $8, $9, $10, $11, $12, $13, $14, $15)
 			RETURNING id
 		`
 		recordingDateArg := upload.RecordingDate
@@ -51,15 +54,15 @@ func (db *Database) InsertUpload(ctx context.Context, upload Upload) (int64, err
 		args = []interface{}{
 			upload.Filename, upload.FileType, upload.TrackID,
 			upload.FileSize, upload.UploadIP, createdAt, recordingDateArg,
-			upload.Source, upload.SourceID, upload.SourceURL, upload.UserID, upload.Username, upload.InternalUserID, upload.Detector,
+			upload.Source, upload.SourceID, upload.SourceURL, upload.UserID, upload.Username, upload.InternalUserID, upload.Detector, upload.Comment,
 		}
 		err := db.DB.QueryRowContext(ctx, query, args...).Scan(&id)
 		return id, err
 
 	case "duckdb":
 		query = `
-			INSERT INTO uploads (filename, file_type, track_id, file_size, upload_ip, created_at, recording_date, source, source_id, source_url, user_id, username, internal_user_id, detector)
-			VALUES ($1, $2, $3, $4, $5, to_timestamp($6), to_timestamp($7), $8, $9, $10, $11, $12, $13, $14)
+			INSERT INTO uploads (filename, file_type, track_id, file_size, upload_ip, created_at, recording_date, source, source_id, source_url, user_id, username, internal_user_id, detector, comment)
+			VALUES ($1, $2, $3, $4, $5, to_timestamp($6), to_timestamp($7), $8, $9, $10, $11, $12, $13, $14, $15)
 			RETURNING id
 		`
 		recordingDateArg := upload.RecordingDate
@@ -69,15 +72,15 @@ func (db *Database) InsertUpload(ctx context.Context, upload Upload) (int64, err
 		args = []interface{}{
 			upload.Filename, upload.FileType, upload.TrackID,
 			upload.FileSize, upload.UploadIP, createdAt, recordingDateArg,
-			upload.Source, upload.SourceID, upload.SourceURL, upload.UserID, upload.Username, upload.InternalUserID, upload.Detector,
+			upload.Source, upload.SourceID, upload.SourceURL, upload.UserID, upload.Username, upload.InternalUserID, upload.Detector, upload.Comment,
 		}
 		err := db.DB.QueryRowContext(ctx, query, args...).Scan(&id)
 		return id, err
 
 	case "sqlite", "chai":
 		query = `
-			INSERT INTO uploads (filename, file_type, track_id, file_size, upload_ip, created_at, recording_date, source, source_id, source_url, user_id, username, internal_user_id, detector)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			INSERT INTO uploads (filename, file_type, track_id, file_size, upload_ip, created_at, recording_date, source, source_id, source_url, user_id, username, internal_user_id, detector, comment)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		`
 		recordingDateArg := upload.RecordingDate
 		if recordingDateArg == 0 {
@@ -86,7 +89,7 @@ func (db *Database) InsertUpload(ctx context.Context, upload Upload) (int64, err
 		args = []interface{}{
 			upload.Filename, upload.FileType, upload.TrackID,
 			upload.FileSize, upload.UploadIP, createdAt, recordingDateArg,
-			upload.Source, upload.SourceID, upload.SourceURL, upload.UserID, upload.Username, upload.InternalUserID, upload.Detector,
+			upload.Source, upload.SourceID, upload.SourceURL, upload.UserID, upload.Username, upload.InternalUserID, upload.Detector, upload.Comment,
 		}
 		result, err := db.DB.ExecContext(ctx, query, args...)
 		if err != nil {
@@ -133,12 +136,12 @@ func (db *Database) GetUploadsPaginated(ctx context.Context, limit int, offset i
 		if db.Driver == "pgx" || db.Driver == "duckdb" {
 			// PostgreSQL: use ILIKE for case-insensitive search, also search numeric fields by converting to text
 			whereConditions = append(whereConditions, fmt.Sprintf(
-				"(u.track_id ILIKE $%d OR u.filename ILIKE $%d OR u.file_type ILIKE $%d OR COALESCE(u.user_id, '') ILIKE $%d OR COALESCE(u.username, '') ILIKE $%d OR COALESCE(u.source, '') ILIKE $%d OR COALESCE(u.source_id, '') ILIKE $%d OR COALESCE(u.detector, '') ILIKE $%d OR CAST(u.id AS TEXT) ILIKE $%d OR TO_CHAR(u.recording_date, 'YYYY-MM-DD HH24:MI:SS') ILIKE $%d)",
-				paramCount, paramCount, paramCount, paramCount, paramCount, paramCount, paramCount, paramCount, paramCount, paramCount))
+				"(u.track_id ILIKE $%d OR u.filename ILIKE $%d OR u.file_type ILIKE $%d OR COALESCE(u.user_id, '') ILIKE $%d OR COALESCE(u.username, '') ILIKE $%d OR COALESCE(u.source, '') ILIKE $%d OR COALESCE(u.source_id, '') ILIKE $%d OR COALESCE(u.detector, '') ILIKE $%d OR CAST(u.id AS TEXT) ILIKE $%d OR TO_CHAR(u.recording_date, 'YYYY-MM-DD HH24:MI:SS') ILIKE $%d OR COALESCE(u.comment, '') ILIKE $%d)",
+				paramCount, paramCount, paramCount, paramCount, paramCount, paramCount, paramCount, paramCount, paramCount, paramCount, paramCount))
 		} else {
 			// SQLite: use LIKE (case-insensitive by default), also search numeric fields by converting to text
 			whereConditions = append(whereConditions,
-				"(u.track_id LIKE ? OR u.filename LIKE ? OR u.file_type LIKE ? OR COALESCE(u.user_id, '') LIKE ? OR COALESCE(u.username, '') LIKE ? OR COALESCE(u.source, '') LIKE ? OR COALESCE(u.source_id, '') LIKE ? OR COALESCE(u.detector, '') LIKE ? OR CAST(u.id AS TEXT) LIKE ? OR strftime('%Y-%m-%d %H:%M:%S', u.recording_date, 'unixepoch') LIKE ?)")
+				"(u.track_id LIKE ? OR u.filename LIKE ? OR u.file_type LIKE ? OR COALESCE(u.user_id, '') LIKE ? OR COALESCE(u.username, '') LIKE ? OR COALESCE(u.source, '') LIKE ? OR COALESCE(u.source_id, '') LIKE ? OR COALESCE(u.detector, '') LIKE ? OR CAST(u.id AS TEXT) LIKE ? OR strftime('%Y-%m-%d %H:%M:%S', u.recording_date, 'unixepoch') LIKE ? OR COALESCE(u.comment, '') LIKE ?)")
 		}
 	}
 
@@ -153,7 +156,9 @@ func (db *Database) GetUploadsPaginated(ctx context.Context, limit int, offset i
 		       COALESCE(EXTRACT(EPOCH FROM u.recording_date)::BIGINT, 0) as recording_date,
 		       u.source, u.source_id, u.source_url, u.user_id, u.username,
 		       COALESCE(u.detector, '') as detector, u.internal_user_id,
-		       usr.username as internal_username, usr.email as internal_email
+		       usr.username as internal_username, usr.email as internal_email,
+		       COALESCE(u.name, '') as name, COALESCE(u.notes, '') as notes,
+		       COALESCE(u.comment, '') as comment
 		FROM uploads u
 		LEFT JOIN users usr ON u.internal_user_id = usr.id::text`
 	} else {
@@ -162,7 +167,9 @@ func (db *Database) GetUploadsPaginated(ctx context.Context, limit int, offset i
 		       COALESCE(u.recording_date, 0) as recording_date,
 		       u.source, u.source_id, u.source_url, u.user_id, u.username,
 		       COALESCE(u.detector, '') as detector, u.internal_user_id,
-		       usr.username as internal_username, usr.email as internal_email
+		       usr.username as internal_username, usr.email as internal_email,
+		       COALESCE(u.name, '') as name, COALESCE(u.notes, '') as notes,
+		       COALESCE(u.comment, '') as comment
 		FROM uploads u
 		LEFT JOIN users usr ON u.internal_user_id = CAST(usr.id AS TEXT)`
 	}
@@ -199,8 +206,8 @@ func (db *Database) GetUploadsPaginated(ctx context.Context, limit int, offset i
 		if db.Driver == "pgx" || db.Driver == "duckdb" {
 			args = append(args, searchPattern)
 		} else {
-			// SQLite needs the pattern repeated 10 times (for each field: track_id, filename, file_type, user_id, username, source, source_id, detector, id, recording_date)
-			for i := 0; i < 10; i++ {
+			// SQLite needs the pattern repeated once per ? placeholder (track_id, filename, file_type, user_id, username, source, source_id, detector, id, recording_date, comment)
+			for i := 0; i < 11; i++ {
 				args = append(args, searchPattern)
 			}
 		}
@@ -217,11 +224,12 @@ func (db *Database) GetUploadsPaginated(ctx context.Context, limit int, offset i
 	for rows.Next() {
 		var u Upload
 		var source, sourceID, sourceURL, userID, username, detector, internalUserID, internalUsername, internalEmail *string
+		var name, notes, comment *string
 		err := rows.Scan(
 			&u.ID, &u.Filename, &u.FileType, &u.TrackID,
 			&u.FileSize, &u.UploadIP, &u.CreatedAt, &u.RecordingDate,
 			&source, &sourceID, &sourceURL, &userID, &username, &detector, &internalUserID,
-			&internalUsername, &internalEmail,
+			&internalUsername, &internalEmail, &name, &notes, &comment,
 		)
 		if err != nil {
 			continue
@@ -250,6 +258,15 @@ func (db *Database) GetUploadsPaginated(ctx context.Context, limit int, offset i
 		// If we have an internal user, prefer their username over the external one
 		if internalUsername != nil && *internalUsername != "" {
 			u.Username = *internalUsername
+		}
+		if name != nil {
+			u.Name = *name
+		}
+		if notes != nil {
+			u.Notes = *notes
+		}
+		if comment != nil {
+			u.Comment = *comment
 		}
 		uploads = append(uploads, u)
 	}

@@ -51,7 +51,7 @@ func handleListSensors(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallT
 	if dbAvailable() {
 		return listSensorsDB(ctx, sensorType, minLat, maxLat, minLon, maxLon, limit)
 	}
-	
+
 	// Fallback to API if database not available
 	return mcp.NewToolResultError("Database connection required for list_sensors tool. Please ensure DATABASE_URL is set to access real-time sensor data."), nil
 }
@@ -64,12 +64,12 @@ func listSensorsDB(ctx context.Context, sensorType string, minLat, maxLat, minLo
 		WHERE table_schema = 'public'
 		ORDER BY table_name
 	`
-	
+
 	tableRows, err := queryRows(ctx, tablesQuery)
 	if err != nil {
 		return mcp.NewToolResultError("Could not query database schema: " + err.Error()), nil
 	}
-	
+
 	// Look for tables that might contain real-time sensor data
 	availableTables := make([]string, len(tableRows))
 	realtimeTable := ""
@@ -77,25 +77,25 @@ func listSensorsDB(ctx context.Context, sensorType string, minLat, maxLat, minLo
 		if tableName, ok := row["table_name"].(string); ok {
 			availableTables[i] = tableName
 			// Check for possible real-time sensor data tables
-			if tableName == "realtime_measurements" || 
-			   tableName == "measurements_realtime" || 
-			   tableName == "sensors" ||
-			   tableName == "devices" {
+			if tableName == "realtime_measurements" ||
+				tableName == "measurements_realtime" ||
+				tableName == "sensors" ||
+				tableName == "devices" {
 				realtimeTable = tableName
 			}
 		}
 	}
-	
+
 	if realtimeTable == "" {
 		// If no real-time table found, return available tables for debugging
 		result := map[string]any{
-			"message": "No known real-time sensor data tables found in database.",
+			"message":          "No known real-time sensor data tables found in database.",
 			"available_tables": availableTables,
-			"suggestion": "Real-time sensor data may not be available through this database connection.",
+			"suggestion":       "Real-time sensor data may not be available through this database connection.",
 		}
 		return jsonResult(result)
 	}
-	
+
 	// Query the appropriate real-time table to find unique devices/sensors
 	var query string
 	var args []interface{}
@@ -158,9 +158,9 @@ func listSensorsDB(ctx context.Context, sensorType string, minLat, maxLat, minLo
 	sensors := make([]map[string]any, len(rows))
 	for i, r := range rows {
 		sensors[i] = map[string]any{
-			"device_id":       r["device_id"],
-			"device_name":     r["device_name"],
-			"type":            r["transport"],
+			"device_id":   r["device_id"],
+			"device_name": r["device_name"],
+			"type":        r["transport"],
 			"location": map[string]any{
 				"latitude":  r["latitude"],
 				"longitude": r["longitude"],
@@ -170,12 +170,12 @@ func listSensorsDB(ctx context.Context, sensorType string, minLat, maxLat, minLo
 	}
 
 	result := map[string]any{
-		"count":   len(sensors),
-		"source":  "database",
-		"sensors": sensors,
-		"table_used": realtimeTable,
-		"available_tables": availableTables,
-		"_ai_hint": "CRITICAL INSTRUCTIONS: (1) The 'unit' field indicates measurement units - CPM means 'counts per minute' NOT 'counts per second'. Always interpret and report CPM values as counts per minute. (2) Present all data in a purely scientific, factual manner. NEVER use personal pronouns (I, we, I'll, I'm, you, your), exclamations (!, Perfect, Great, Excellent), or conversational phrases. Format responses as objective statements: 'Latest reading: X CPM at location Y' NOT 'I found a reading of X CPM' or 'Perfect! The sensor shows...'. State only objective facts and measurements. (3) **FORMATTING — REQUIRED**: Always present results in a markdown table. Every device_id MUST be a clickable map link: [device_id](https://simplemap.safecast.org/?lat=LATITUDE&lon=LONGITUDE&zoom=15) using the actual lat/lon from the location field. Never show plain device IDs without a link.",
+		"count":              len(sensors),
+		"source":             "database",
+		"sensors":            sensors,
+		"table_used":         realtimeTable,
+		"available_tables":   availableTables,
+		"_ai_hint":           "CRITICAL INSTRUCTIONS: (1) The 'unit' field indicates measurement units - CPM means 'counts per minute' NOT 'counts per second'. Always interpret and report CPM values as counts per minute. (2) Present all data in a purely scientific, factual manner. NEVER use personal pronouns (I, we, I'll, I'm, you, your), exclamations (!, Perfect, Great, Excellent), or conversational phrases. Format responses as objective statements: 'Latest reading: X CPM at location Y' NOT 'I found a reading of X CPM' or 'Perfect! The sensor shows...'. State only objective facts and measurements. (3) **FORMATTING — REQUIRED**: Always present results in a markdown table. Every device_id MUST be a clickable map link: [device_id](https://simplemap.safecast.org/?lat=LATITUDE&lon=LONGITUDE&zoom=15) using the actual lat/lon from the location field. Never show plain device IDs without a link. (4) **MANDATORY DOWNLOAD**: When presenting tables, always include a note at the end: 'This table can be downloaded using the download button above the table.'",
 		"_ai_generated_note": aiGeneratedNote,
 	}
 

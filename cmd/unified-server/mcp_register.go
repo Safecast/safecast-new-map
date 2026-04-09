@@ -7,7 +7,6 @@ package main
 import (
 	"bytes"
 	"context"
-	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,6 +14,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -30,15 +31,60 @@ var (
 	mcpHintsLoader  *modeladapter.HintsLoader
 )
 
-//go:embed static/index.html
-var webChatIndexHTML []byte
 
-//go:embed static/safecast-square-ct.png
-var webChatLogoPNG []byte
+// Maximum tokens for the prompt sent to Claude. Leave headroom for tool results.
+const maxPromptTokens = 150000
+
+// Maximum characters for a single tool result (~30K tokens).
+// Prevents one large MCP response from blowing up the prompt.
+const maxToolResultChars = 80000
+
+// estimateTokens approximates token count (Claude averages ~4 chars/token).
+func estimateTokens(s string) int {
+	if len(s) == 0 {
+		return 0
+	}
+	return len(s) / 4
+}
+
+// truncateHistory drops oldest messages until the estimated prompt fits within maxTokens.
+func truncateHistory(messages []anthropicMessage, maxTokens int) []anthropicMessage {
+	if len(messages) == 0 {
+		return messages
+	}
+	total := 0
+	for _, msg := range messages {
+		switch c := msg.Content.(type) {
+		case string:
+			total += estimateTokens(c)
+		case []contentBlock:
+			for _, b := range c {
+				total += estimateTokens(b.Text + b.Content)
+			}
+		}
+		total += 10 // role metadata overhead
+	}
+	for len(messages) > 1 && total > maxTokens {
+		removed := messages[0]
+		switch c := removed.Content.(type) {
+		case string:
+			total -= estimateTokens(c) + 10
+		case []contentBlock:
+			for _, b := range c {
+				total -= estimateTokens(b.Text + b.Content)
+			}
+			total -= 10
+		}
+		messages = messages[1:]
+	}
+	return messages
+}
 
 const webChatSystemPrompt = `Safecast radiation monitoring assistant with REAL-TIME sensor data and historical archives.
 
-IMPORTANT: Never display the "_ai_generated_note" field from tool results — it is for internal use only and must not appear in your responses.`
+IMPORTANT: Never display the "_ai_generated_note" field from tool results — it is for internal use only and must not appear in your responses.
+
+`
 
 func webChatSystemPromptForLang(lang string) string {
 	if lang == "" || lang == "en" {
@@ -88,9 +134,13 @@ type anthropicResponse struct {
 
 // Streaming helpers
 type chunk struct {
-	Type  string `json:"type"`
-	Text  string `json:"text,omitempty"`
-	Error string `json:"error,omitempty"`
+	Type        string `json:"type"`
+	Text        string `json:"text,omitempty"`
+	Error       string `json:"error,omitempty"`
+	ChatID      int64  `json:"chat_id,omitempty"`  // set on "done" for feedback linkage
+	Cached      bool   `json:"cached,omitempty"`   // true when answer came from semantic cache
+	ExportURL   string `json:"export_url,omitempty"`  // set on "export" chunks from list_sensors
+	ExportTotal int    `json:"export_total,omitempty"` // total sensor count for the export
 }
 
 func writeChunk(w http.ResponseWriter, c chunk) {
@@ -201,6 +251,7 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 			Source          string             `json:"source,omitempty"`
 			Lang            string             `json:"lang,omitempty"`
 			ClientTimestamp string             `json:"client_timestamp,omitempty"`
+			TrackID         string             `json:"track_id,omitempty"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&chatReq); err != nil || chatReq.Message == "" {
 			w.WriteHeader(http.StatusBadRequest)
@@ -224,6 +275,28 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 		chatHistory := len(chatReq.History)
 		chatClientTS := chatReq.ClientTimestamp
 		var answerText strings.Builder
+
+		// Assign a stable ID for this exchange (used by both chat_questions and qa_embeddings).
+		embeddingChatID := time.Now().UnixMilli() // UnixNano exceeds JS MAX_SAFE_INTEGER
+
+		// --- Semantic cache + RAG layer (requires OPENAI_API_KEY) ---
+		embedding, embErr := getEmbedding(ctx, chatReq.Message)
+		if embErr != nil {
+			log.Printf("embedding error (continuing without cache): %v", embErr)
+		}
+
+		if len(embedding) > 0 {
+			// 1. Check semantic cache: high-similarity + positive feedback → return instantly.
+			if cachedAnswer, _ := checkSemanticCache(embedding, chatReq.Message, chatReq.TrackID); cachedAnswer != "" {
+				writeChunkBuffered(w, chunk{Type: "text", Text: cachedAnswer}, &buffer, isCloudFront)
+				writeChunkBuffered(w, chunk{Type: "done", ChatID: embeddingChatID, Cached: true}, &buffer, isCloudFront)
+				if isCloudFront {
+					flushBuffer(w, buffer)
+				}
+				logChatQuestionWithAnswer(chatReqRef, chatQuestion, chatSource, chatModel, "", chatHistory, chatClientTS, cachedAnswer, embeddingChatID)
+				return
+			}
+		}
 
 		mc, err := mcpclient.NewStreamableHttpClient(mcpURL)
 		if err != nil {
@@ -263,8 +336,22 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 			messages = []anthropicMessage{}
 		}
 		messages = append(messages, anthropicMessage{Role: "user", Content: chatReq.Message})
+		messages = truncateHistory(messages, maxPromptTokens)
 
+		// 2. Build RAG context from similar past Q&A + location knowledge.
 		sysPrompt := webChatSystemPromptForLang(chatReq.Lang)
+		if chatReq.TrackID != "" {
+			sysPrompt = "The user is currently viewing track " + chatReq.TrackID + " on the Safecast map. When the user refers to 'this track', 'the track', or similar, they mean track " + chatReq.TrackID + ".\n\n" + sysPrompt
+		}
+		if len(embedding) > 0 {
+			ragCtx := buildRAGContext(embedding)
+			locKnowledge := getLocationKnowledge()
+			sysPrompt = enrichSystemPrompt(sysPrompt, ragCtx, locKnowledge)
+		}
+
+		// Track export URL emitted by list_sensors tool (independent of AI text).
+		var pendingExportURL string
+		var pendingExportTotal int
 
 		for {
 			resp, err := callAnthropic(ctx, apiKey, model, sysPrompt, messages, tools)
@@ -316,6 +403,34 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 						}
 					}
 				}
+				// Build export URL from tool call arguments (small JSON, always valid).
+				// Extract total_count via regex so it works even on truncated result text.
+				if tu.Name == "list_sensors" {
+					var toolArgs struct {
+						Type   string  `json:"type"`
+						MinLat float64 `json:"min_lat"`
+						MaxLat float64 `json:"max_lat"`
+						MinLon float64 `json:"min_lon"`
+						MaxLon float64 `json:"max_lon"`
+					}
+					toolArgs.MinLat = -90
+					toolArgs.MaxLat = 90
+					toolArgs.MinLon = -180
+					toolArgs.MaxLon = 180
+					if err := json.Unmarshal(tu.Input, &toolArgs); err == nil {
+						pendingExportURL = buildExportURL(toolArgs.Type, toolArgs.MinLat, toolArgs.MaxLat, toolArgs.MinLon, toolArgs.MaxLon)
+					} else {
+						log.Printf("list_sensors: failed to parse tool args: %v", err)
+					}
+					if m := regexp.MustCompile(`"total_count"\s*:\s*(\d+)`).FindStringSubmatch(resultText); len(m) > 1 {
+						pendingExportTotal, _ = strconv.Atoi(m[1])
+					}
+					log.Printf("list_sensors export: url=%q total=%d (result len=%d)", pendingExportURL, pendingExportTotal, len(resultText))
+				}
+
+				if len(resultText) > maxToolResultChars {
+					resultText = resultText[:maxToolResultChars] + "\n\n... [truncated — result too large. Ask the user to narrow their query or use a smaller limit.]"
+				}
 
 				toolResults = append(toolResults, contentBlock{
 					Type:      "tool_result",
@@ -330,12 +445,65 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 			})
 		}
 
-		logChatQuestionWithAnswer(chatReqRef, chatQuestion, chatSource, chatModel, "", chatHistory, chatClientTS, strings.TrimSpace(answerText.String()))
+		finalAnswer := strings.TrimSpace(answerText.String())
 
-		writeChunkBuffered(w, chunk{Type: "done"}, &buffer, isCloudFront)
+		// Send export URL (if list_sensors was used) and done chunk BEFORE any
+		// DuckDB logging so the client always receives finish signal promptly.
+		// DuckLake writes can be slow (Parquet flush) and must never block the response.
+		if pendingExportURL != "" {
+			writeChunkBuffered(w, chunk{
+				Type:        "export",
+				ExportURL:   pendingExportURL,
+				ExportTotal: pendingExportTotal,
+			}, &buffer, isCloudFront)
+		}
+
+		writeChunkBuffered(w, chunk{Type: "done", ChatID: embeddingChatID}, &buffer, isCloudFront)
 		if isCloudFront {
 			flushBuffer(w, buffer)
 		}
+
+		// Log and store asynchronously — must not block after done is sent.
+		go logChatQuestionWithAnswer(chatReqRef, chatQuestion, chatSource, chatModel, "", chatHistory, chatClientTS, finalAnswer, embeddingChatID)
+
+		// 3. Async: store Q&A + embedding in semantic cache for future lookups.
+		if len(embedding) > 0 && finalAnswer != "" {
+			storeQAEmbeddingAsync(ctx, embeddingChatID, chatQuestion, finalAnswer, embedding)
+		}
+	}
+}
+
+// handleFeedback accepts a thumbs-up (+1) or thumbs-down (-1) for a chat response.
+// The frontend sends: POST /api/feedback {"chat_id": <int>, "score": 1|-1}
+func handleFeedback() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		var req struct {
+			ChatID int64 `json:"chat_id"`
+			Score  int   `json:"score"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ChatID == 0 {
+			http.Error(w, "invalid request: chat_id required", http.StatusBadRequest)
+			return
+		}
+		if err := RecordFeedback(req.ChatID, req.Score); err != nil {
+			log.Printf("feedback error: %v", err)
+			http.Error(w, "failed to record feedback", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"ok":true}`))
 	}
 }
 
@@ -444,29 +612,41 @@ func RegisterMCP() {
 	}
 	mcpURL := fmt.Sprintf("http://localhost:%s/mcp-http", mcpPort)
 
+	feedbackHandler := handleFeedback()
+	// Register feedback on both mux and main mux regardless of apiKey,
+	// so the endpoint is always reachable even if chat is reconfigured.
+	mux.HandleFunc("/api/feedback", feedbackHandler)
+	http.HandleFunc("/api/feedback", feedbackHandler)
+
+	// Register sensor REST endpoints on both mux (port 3333) and main mux (port 8765)
+	// so the AI chat download buttons can use relative URLs like /api/sensors/export.
+	// (Other REST routes like /api/radiation, /api/tracks, etc. are already
+	// handled by httpapi or registerSwaggerDocs on port 8765.)
+	restH := &RESTHandler{}
+	mux.HandleFunc("/api/sensors", restH.handleSensors)
+	mux.HandleFunc("/api/sensors/export", restH.handleSensorsExport)
+	mux.HandleFunc("/api/sensor/", restH.handleSensor)
+	http.HandleFunc("/api/sensors", restH.handleSensors)
+	http.HandleFunc("/api/sensors/export", restH.handleSensorsExport)
+	http.HandleFunc("/api/sensor/", restH.handleSensor)
+
+	// Track insights: register on main mux (port 8765) using Go 1.22 pattern routing.
+	// The specific pattern "GET /api/track/{id}/insights" takes precedence over the
+	// pkg/httpapi catch-all "/api/track/" handler.
+	http.HandleFunc("GET /api/track/{id}/insights", trackInsightsHandler)
+
 	if apiKey != "" {
 		chatHandler := handleWebChat(mcpURL, apiKey, model)
 
-		// Register on MCP mux (port 3333)
-		mux.HandleFunc("/assistant/", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.Write(webChatIndexHTML)
-		})
-		mux.HandleFunc("/safecast-square-ct.png", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "image/png")
-			w.Header().Set("Cache-Control", "public, max-age=86400")
-			w.Write(webChatLogoPNG)
-		})
+		// Register /chat on MCP mux (port 3333)
 		mux.HandleFunc("/chat", chatHandler)
 
 		// Also register /chat on main map server (port 8765) so the
 		// embedded widget can use a relative "/chat" URL without
 		// cross-origin or CloudFront routing issues.
 		http.HandleFunc("/chat", chatHandler)
-
-		log.Printf("Web chat enabled at http://localhost:%s/assistant/ (model=%s)", mcpPort, model)
 	} else {
-		log.Println("Web chat disabled: ANTHROPIC_API_KEY not set")
+		log.Println("AI chat disabled: ANTHROPIC_API_KEY not set")
 	}
 
 	log.Printf("MCP Server starting on port %s", mcpPort)
@@ -475,9 +655,6 @@ func RegisterMCP() {
 	log.Printf("  Hints directory: %s", hintsDir)
 	log.Println("  REST API: /api/...")
 	log.Println("  Swagger UI: /mcp-api/")
-	if apiKey != "" {
-		log.Printf("  Web Chat: http://localhost:%s/assistant/", mcpPort)
-	}
 
 	// Start MCP server on separate port
 	go func() {
@@ -631,8 +808,7 @@ func registerSwaggerDocs(mux *http.ServeMux) {
 					'<p style="margin:0 0 16px;font-size:15px;color:#555;">' +
 						'This API is designed for AI assistants and automated tools. It exposes the Safecast radiation dataset ' +
 						'as a set of callable functions (MCP tools) and standard REST endpoints, so that language models and ' +
-						'applications can query radiation data programmatically. If you want to ask questions about the data ' +
-						'in plain English instead, try the <a href="/assistant/" style="color:#0d9488;">AI web chat</a>.' +
+						'applications can query radiation data programmatically. Use the map AI chat panel to query data in plain English.' +
 					'</p>' +
 					'<details style="margin-bottom:16px;">' +
 						'<summary style="cursor:pointer;font-weight:600;font-size:14px;color:#0f3d38;user-select:none;">For developers &mdash; transports &amp; tools overview</summary>' +
@@ -650,14 +826,13 @@ func registerSwaggerDocs(mux *http.ServeMux) {
 								'<p style="margin:4px 0 0;font-size:13px;color:#555;">All MCP tools are also accessible as plain HTTP GET/POST calls under <code>/api/</code>.</p>' +
 							'</div>' +
 							'<div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:12px;">' +
-								'<strong style="color:#0f3d38;">AI Web Chat</strong>' +
-								'<p style="margin:4px 0 0;font-size:13px;color:#555;">Human-friendly interface at <code>/assistant/</code> for querying data with natural language.</p>' +
+								'<strong style="color:#0f3d38;">AI Map Chat</strong>' +
+								'<p style="margin:4px 0 0;font-size:13px;color:#555;">Open the map and use the AI chat panel to query data with natural language.</p>' +
 							'</div>' +
 						'</div>' +
 						'<p style="margin:12px 0 0;font-size:13px;color:#777;">No authentication required. All data is CC0 licensed.</p>' +
 					'</details>' +
 					'<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">' +
-						'<a href="/assistant/" style="display:inline-block;padding:7px 16px;background:#0f3d38;color:#fff;border-radius:6px;font:600 13px/1.4 sans-serif;text-decoration:none;">Open AI Chat</a>' +
 						'<a href="' + mapDocsURL + '" style="display:inline-block;padding:7px 16px;background:#1a3a5c;color:#fff;border-radius:6px;font:600 13px/1.4 sans-serif;text-decoration:none;">\u2190 Switch to Map API</a>' +
 					'</div>' +
 				'</div>';

@@ -1,6 +1,9 @@
 package main
 
 import (
+	"encoding/csv"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -183,5 +186,164 @@ func (h *RESTHandler) handleSensor(w http.ResponseWriter, r *http.Request) {
 
 	default:
 		writeError(w, http.StatusNotFound, "unknown sensor endpoint: use /current or /history")
+	}
+}
+
+// handleSensorsExport handles GET /api/sensors/export
+//
+// @Summary     Export all active sensors
+// @Description Downloads all active fixed sensors matching the given filters in CSV, JSON, or Excel format. No row limit — returns up to 10 000 devices.
+// @Tags        realtime
+// @Produce     text/csv application/json application/vnd.ms-excel
+// @Param       format  query  string  false "Output format: csv (default), json, xlsx"
+// @Param       type    query  string  false "Filter by sensor type"
+// @Param       min_lat query  number  false "Southern boundary" default(-90)
+// @Param       max_lat query  number  false "Northern boundary" default(90)
+// @Param       min_lon query  number  false "Western boundary" default(-180)
+// @Param       max_lon query  number  false "Eastern boundary" default(180)
+// @Success     200 {string} string "Sensor data file"
+// @Failure     400 {object} map[string]string "Invalid parameters"
+// @Failure     503 {object} map[string]string "Database unavailable"
+// @Router      /sensors/export [get]
+func (h *RESTHandler) handleSensorsExport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	if !dbAvailable() {
+		writeError(w, http.StatusServiceUnavailable, "database connection required for sensor export")
+		return
+	}
+
+	q := r.URL.Query()
+
+	format := q.Get("format")
+	if format == "" {
+		format = "csv"
+	}
+	if format != "csv" && format != "json" && format != "xlsx" && format != "excel" {
+		writeError(w, http.StatusBadRequest, "format must be csv, json, or xlsx")
+		return
+	}
+	if format == "excel" {
+		format = "xlsx"
+	}
+
+	sensorType := q.Get("type")
+
+	minLat := -90.0
+	if s := q.Get("min_lat"); s != "" {
+		var err error
+		minLat, err = strconv.ParseFloat(s, 64)
+		if err != nil || minLat < -90 || minLat > 90 {
+			writeError(w, http.StatusBadRequest, "min_lat must be between -90 and 90")
+			return
+		}
+	}
+	maxLat := 90.0
+	if s := q.Get("max_lat"); s != "" {
+		var err error
+		maxLat, err = strconv.ParseFloat(s, 64)
+		if err != nil || maxLat < -90 || maxLat > 90 {
+			writeError(w, http.StatusBadRequest, "max_lat must be between -90 and 90")
+			return
+		}
+	}
+	minLon := -180.0
+	if s := q.Get("min_lon"); s != "" {
+		var err error
+		minLon, err = strconv.ParseFloat(s, 64)
+		if err != nil || minLon < -180 || minLon > 180 {
+			writeError(w, http.StatusBadRequest, "min_lon must be between -180 and 180")
+			return
+		}
+	}
+	maxLon := 180.0
+	if s := q.Get("max_lon"); s != "" {
+		var err error
+		maxLon, err = strconv.ParseFloat(s, 64)
+		if err != nil || maxLon < -180 || maxLon > 180 {
+			writeError(w, http.StatusBadRequest, "max_lon must be between -180 and 180")
+			return
+		}
+	}
+
+	realtimeTable, _, err := findRealtimeTable(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if realtimeTable == "" {
+		writeError(w, http.StatusServiceUnavailable, "real-time sensor table not found in database")
+		return
+	}
+
+	sensors, _, err := listSensorsQuery(r.Context(), realtimeTable, sensorType, minLat, maxLat, minLon, maxLon, 10000)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	date := time.Now().UTC().Format("2006-01-02")
+
+	switch format {
+	case "csv":
+		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="safecast_sensors_%s.csv"`, date))
+		cw := csv.NewWriter(w)
+		_ = cw.Write([]string{"Device_ID", "Type", "Latitude", "Longitude", "Last_Reading"})
+		for _, s := range sensors {
+			loc, _ := s["location"].(map[string]any)
+			lat := fmt.Sprintf("%v", loc["latitude"])
+			lon := fmt.Sprintf("%v", loc["longitude"])
+			_ = cw.Write([]string{
+				fmt.Sprintf("%v", s["device_id"]),
+				fmt.Sprintf("%v", s["type"]),
+				lat,
+				lon,
+				fmt.Sprintf("%v", s["last_reading_at"]),
+			})
+		}
+		cw.Flush()
+
+	case "json":
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="safecast_sensors_%s.json"`, date))
+		_ = json.NewEncoder(w).Encode(sensors)
+
+	case "xlsx":
+		w.Header().Set("Content-Type", "application/vnd.ms-excel; charset=utf-8")
+		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="safecast_sensors_%s.xls"`, date))
+		xmlEsc := func(s string) string {
+			s = strings.ReplaceAll(s, "&", "&amp;")
+			s = strings.ReplaceAll(s, "<", "&lt;")
+			s = strings.ReplaceAll(s, ">", "&gt;")
+			return s
+		}
+		cell := func(v string) string {
+			return `<Cell><Data ss:Type="String">` + xmlEsc(v) + `</Data></Cell>`
+		}
+		row := func(cells []string) string {
+			out := "<Row>"
+			for _, c := range cells {
+				out += cell(c)
+			}
+			return out + "</Row>"
+		}
+		fmt.Fprint(w, `<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?>`)
+		fmt.Fprint(w, `<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">`)
+		fmt.Fprint(w, `<Worksheet ss:Name="Safecast Sensors"><Table>`)
+		fmt.Fprint(w, row([]string{"Device_ID", "Type", "Latitude", "Longitude", "Last_Reading"}))
+		for _, s := range sensors {
+			loc, _ := s["location"].(map[string]any)
+			fmt.Fprint(w, row([]string{
+				fmt.Sprintf("%v", s["device_id"]),
+				fmt.Sprintf("%v", s["type"]),
+				fmt.Sprintf("%v", loc["latitude"]),
+				fmt.Sprintf("%v", loc["longitude"]),
+				fmt.Sprintf("%v", s["last_reading_at"]),
+			}))
+		}
+		fmt.Fprint(w, `</Table></Worksheet></Workbook>`)
 	}
 }

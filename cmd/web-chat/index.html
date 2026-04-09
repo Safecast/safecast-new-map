@@ -187,6 +187,30 @@
     .bubble table br { display: none; } /* Remove line breaks inside tables */
     .bubble table + br { display: none; } /* Remove line breaks after tables */
 
+    /* Table download bar */
+    .table-wrap { margin: 12px 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+    .table-download-bar {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      padding: 7px 12px;
+      background: rgba(255,255,255,0.04);
+      border-bottom: 1px solid var(--border);
+    }
+    .table-download-btn {
+      display: flex; align-items: center; gap: 5px;
+      background: #2e7d32; color: #fff;
+      border: 1px solid #2e7d32; border-radius: 4px;
+      padding: 4px 10px; font-size: 12px; cursor: pointer;
+      transition: all .15s;
+    }
+    .table-download-btn:hover { background: #1b5e20; border-color: #1b5e20; }
+    .table-download-btn.excel { background: #1565c0; border-color: #1565c0; }
+    .table-download-btn.excel:hover { background: #0d47a1; border-color: #0d47a1; }
+    .table-download-btn.json  { background: #6a1b9a; border-color: #6a1b9a; }
+    .table-download-btn.json:hover  { background: #4a148c; border-color: #4a148c; }
+    .table-download-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+    .table-rows-info { font-size: 11px; opacity: 0.5; margin-left: 4px; }
+    .table-wrap table { margin: 0; border-radius: 0; border: none; }
+
     /* Markdown lists */
     .bubble ul {
       margin: 10px 0;
@@ -332,6 +356,53 @@
   const msgEl      = document.getElementById('msg');
   const sendBtn    = document.getElementById('send');
 
+  // Delegated table download (CSV / Excel / JSON)
+  messagesEl.addEventListener('click', function(e) {
+    const btn = e.target.closest('.table-download-btn');
+    if (!btn) return;
+    e.preventDefault();
+    const bar = btn.closest('.table-download-bar');
+    if (!bar) return;
+    try {
+      const { headers, rows } = JSON.parse(bar.getAttribute('data-table'));
+      const fmt = btn.dataset.fmt || 'csv';
+      const date = new Date().toISOString().slice(0,10);
+      let blob, filename;
+
+      if (fmt === 'csv') {
+        const esc = s => /,|"|\n/.test(s) ? '"' + String(s).replace(/"/g,'""') + '"' : String(s);
+        const lines = [headers.map(esc).join(','), ...rows.map(r => r.map(esc).join(','))];
+        blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        filename = 'safecast_' + date + '.csv';
+
+      } else if (fmt === 'excel') {
+        const xmlEsc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const cell = s => '<Cell><Data ss:Type="String">' + xmlEsc(s) + '</Data></Cell>';
+        const row  = cells => '<Row>' + cells.map(cell).join('') + '</Row>';
+        const xml = '<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?>' +
+          '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">' +
+          '<Worksheet ss:Name="Safecast"><Table>' +
+          row(headers) + rows.map(r => row(r)).join('') +
+          '</Table></Worksheet></Workbook>';
+        blob = new Blob([xml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+        filename = 'safecast_' + date + '.xls';
+
+      } else { // json
+        const objects = rows.map(r => Object.fromEntries(headers.map((h,i) => [h, r[i]])));
+        blob = new Blob([JSON.stringify(objects, null, 2)], { type: 'application/json' });
+        filename = 'safecast_' + date + '.json';
+      }
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+    } catch(err) {
+      console.error('Table export failed:', err);
+    }
+  });
+
   let busy = false;
   let conversationHistory = []; // Track conversation for context
 
@@ -373,19 +444,43 @@
     // Horizontal rules
     html = html.replace(/^---+$/gm, '<hr>');
 
-    // Tables (simple approach - detect table rows)
+    // Tables — parse into rows, then wrap with download bar
+    const tableBlocks = [];
     html = html.replace(/^\|(.+)\|$/gm, function(match, content) {
       const cells = content.split('|').map(c => c.trim());
       const cellTags = cells.map(c => {
-        // Check if this is a separator row (--|---|---)
         if (/^:?-+:?$/.test(c)) return null;
         return `<td>${c}</td>`;
       }).filter(Boolean);
       if (cellTags.length === 0) return '';
       return '<tr>' + cellTags.join('') + '</tr>';
     });
-    // Wrap table rows in table tags
-    html = html.replace(/(<tr>.+<\/tr>\n?)+/g, '<table>$&</table>');
+    html = html.replace(/(<tr>.+<\/tr>\n?)+/g, function(match) {
+      // Extract header and data rows for the download bar
+      const allRows = match.trim().split('\n').filter(r => r.trim());
+      const headers = [];
+      const dataRows = [];
+      allRows.forEach((row, i) => {
+        const cells = [];
+        row.replace(/<td>([\s\S]*?)<\/td>/g, (_, c) => cells.push(c));
+        if (i === 0) headers.push(...cells);
+        else dataRows.push(cells);
+      });
+      const tableJson = JSON.stringify({ headers, rows: dataRows })
+        .replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+      let out = '<div class="table-wrap">';
+      if (dataRows.length > 0) {
+        const dlSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+        out += '<div class="table-download-bar" data-table="' + tableJson + '">';
+        out += '<button class="table-download-btn" data-fmt="csv" title="Download as CSV">' + dlSvg + ' CSV</button>';
+        out += '<button class="table-download-btn excel" data-fmt="excel" title="Download as Excel">' + dlSvg + ' Excel</button>';
+        out += '<button class="table-download-btn json" data-fmt="json" title="Download as JSON">' + dlSvg + ' JSON</button>';
+        out += '<span class="table-rows-info">' + dataRows.length + ' rows</span>';
+        out += '</div>';
+      }
+      out += '<table>' + match + '</table></div>';
+      return out;
+    });
 
     // Unordered lists (lines starting with - or *)
     html = html.replace(/^[*-] (.+)$/gm, '<li>$1</li>');
@@ -418,7 +513,7 @@
     html = html.replace(/\n/g, (match, offset, string) => {
       // Don't add <br> after closing block tags
       const beforeContext = string.substring(Math.max(0, offset - 50), offset);
-      if (/<\/(table|ul|h[123]|tr)>\s*$/.test(beforeContext)) return '';
+      if (/<\/(table|ul|h[123]|tr|div)>\s*$/.test(beforeContext)) return '';
       // Don't add <br> before opening table rows
       const afterContext = string.substring(offset + 1, Math.min(string.length, offset + 10));
       if (/^\s*<tr>/.test(afterContext)) return '';

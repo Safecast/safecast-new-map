@@ -4,6 +4,7 @@ package httpapi
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -559,7 +560,7 @@ func (h *Handler) handleTracksList(w http.ResponseWriter, r *http.Request) {
 // handleTrackData returns marker data for a single track.
 //
 // @Summary     Get track marker data
-// @Description Returns full track marker JSON for a track ID path segment.
+// @Description Returns full track data in JSON, CSV, or XLSX format.
 // @Tags        core
 // @Produce     json
 // @Param       id path string true "Track ID"
@@ -578,12 +579,24 @@ func (h *Handler) handleTrackData(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+
+	// Detect requested format from file extension
+	format := "json"
 	switch {
 	case strings.HasSuffix(trimmed, ".json"):
 		trimmed = strings.TrimSuffix(trimmed, ".json")
+		format = "json"
+	case strings.HasSuffix(trimmed, ".csv"):
+		trimmed = strings.TrimSuffix(trimmed, ".csv")
+		format = "csv"
+	case strings.HasSuffix(trimmed, ".xlsx"):
+		trimmed = strings.TrimSuffix(trimmed, ".xlsx")
+		format = "xlsx"
 	case strings.HasSuffix(trimmed, ".cim"):
 		trimmed = strings.TrimSuffix(trimmed, ".cim")
+		format = "json" // legacy alias
 	}
+
 	decoded, err := url.PathUnescape(trimmed)
 	if err != nil || strings.TrimSpace(decoded) == "" {
 		http.NotFound(w, r)
@@ -596,7 +609,15 @@ func (h *Handler) handleTrackData(w http.ResponseWriter, r *http.Request) {
 	if permit != nil {
 		defer permit.Release()
 	}
-	h.serveTrackData(w, r, decoded)
+
+	switch format {
+	case "csv":
+		h.serveTrackCSV(w, r, decoded)
+	case "xlsx":
+		h.serveTrackXLSX(w, r, decoded)
+	default:
+		h.serveTrackData(w, r, decoded)
+	}
 }
 
 // handleTrackDataByIndex resolves a numeric track number.
@@ -767,6 +788,112 @@ func (h *Handler) serveTrackData(w http.ResponseWriter, r *http.Request, trackID
 
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", trackjson.SafeExportFilename(trackID)))
 	writeJSONBytes(w, data)
+}
+
+// serveTrackCSV streams track markers as a CSV file.
+func (h *Handler) serveTrackCSV(w http.ResponseWriter, r *http.Request, trackID string) {
+	ctx := r.Context()
+
+	summary, err := h.DB.GetTrackSummary(ctx, trackID, h.DBType)
+	if err != nil {
+		h.handleCacheError(w, fmt.Sprintf("track %s summary", trackID), err)
+		return
+	}
+	if summary.MarkerCount == 0 {
+		http.NotFound(w, r)
+		return
+	}
+
+	baseName := strings.TrimSuffix(trackjson.SafeExportFilename(trackID), ".json")
+	filename := baseName + ".csv"
+	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+
+	cw := csv.NewWriter(w)
+	// Write header
+	_ = cw.Write([]string{"id", "time_utc", "lat", "lon", "altitude_m", "dose_rate_usvh", "dose_rate_uroentgenh", "count_rate_cps", "speed_ms", "speed_kmh", "temperature_c", "humidity_pct", "detector"})
+
+	markersCh, errCh := h.DB.StreamMarkersByTrackRange(ctx, trackID, summary.FirstID, summary.LastID, 0, h.DBType)
+	for marker := range markersCh {
+		ts, _ := trackjson.MakeMarkerPayload(marker)
+		altitude := ""
+		if marker.AltitudeValid {
+			altitude = fmt.Sprintf("%.1f", marker.Altitude)
+		}
+		temperature := ""
+		if marker.TemperatureValid {
+			temperature = fmt.Sprintf("%.1f", marker.Temperature)
+		}
+		humidity := ""
+		if marker.HumidityValid {
+			humidity = fmt.Sprintf("%.1f", marker.Humidity)
+		}
+		_ = cw.Write([]string{
+			fmt.Sprintf("%d", ts.ID),
+			ts.TimeUTC,
+			fmt.Sprintf("%.6f", ts.Lat),
+			fmt.Sprintf("%.6f", ts.Lon),
+			altitude,
+			fmt.Sprintf("%.4f", ts.DoseRateMicroSvH),
+			fmt.Sprintf("%.4f", ts.DoseRateMicroRoentgenH),
+			fmt.Sprintf("%.2f", ts.CountRateCPS),
+			fmt.Sprintf("%.2f", ts.SpeedMS),
+			fmt.Sprintf("%.2f", ts.SpeedKMH),
+			temperature,
+			humidity,
+			ts.DetectorName,
+		})
+	}
+	if err := <-errCh; err != nil {
+		if h.Logf != nil {
+			h.Logf("track %s CSV export error: %v", trackID, err)
+		}
+	}
+	cw.Flush()
+}
+
+// serveTrackXLSX streams track markers as a simple XML-based XLSX file.
+// This produces a minimal .xlsx (Office Open XML) that Excel and LibreOffice can open.
+func (h *Handler) serveTrackXLSX(w http.ResponseWriter, r *http.Request, trackID string) {
+	ctx := r.Context()
+
+	summary, err := h.DB.GetTrackSummary(ctx, trackID, h.DBType)
+	if err != nil {
+		h.handleCacheError(w, fmt.Sprintf("track %s summary", trackID), err)
+		return
+	}
+	if summary.MarkerCount == 0 {
+		http.NotFound(w, r)
+		return
+	}
+
+	baseName := strings.TrimSuffix(trackjson.SafeExportFilename(trackID), ".json")
+	filename := baseName + ".xlsx"
+	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+
+	// Collect markers
+	var markers []database.Marker
+	markersCh, errCh := h.DB.StreamMarkersByTrackRange(ctx, trackID, summary.FirstID, summary.LastID, 0, h.DBType)
+	for marker := range markersCh {
+		markers = append(markers, marker)
+	}
+	if err := <-errCh; err != nil {
+		if h.Logf != nil {
+			h.Logf("track %s XLSX export error: %v", trackID, err)
+		}
+	}
+
+	// Build XLSX as a ZIP with [Content_Types].xml, xl/workbook.xml, xl/worksheets/sheet1.xml
+	xlsx := &xlsxPackage{
+		SharedStrings: []string{"id", "time_utc", "lat", "lon", "altitude_m", "dose_rate_usvh", "dose_rate_uroenth", "count_rate_cps", "speed_ms", "speed_kmh", "temperature_c", "humidity_pct", "detector"},
+		Markers:       markers,
+	}
+	if err := xlsx.Write(w); err != nil {
+		if h.Logf != nil {
+			h.Logf("track %s XLSX write error: %v", trackID, err)
+		}
+	}
 }
 
 const (

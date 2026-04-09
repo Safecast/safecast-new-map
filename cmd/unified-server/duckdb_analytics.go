@@ -1,3 +1,5 @@
+//go:build duckdb
+
 // DuckDB Analytics Initialization for Unified Server
 // Uses DuckLake with PostgreSQL catalog for shared analytics across all services
 
@@ -45,7 +47,7 @@ func initDuckDBAnalytics() error {
 		}
 	}
 
-	// Attach DuckLake catalog via PostgreSQL
+	// Attach DuckLake catalog via PostgreSQL (optional — falls back to in-memory for local dev)
 	ducklakePGURL := os.Getenv("DUCKLAKE_PG_URL")
 	if ducklakePGURL == "" {
 		ducklakePGURL = "dbname=ducklake_catalog host=localhost user=ducklake_rw"
@@ -59,14 +61,19 @@ func initDuckDBAnalytics() error {
 		"ATTACH 'ducklake:postgres:%s' AS analytics (DATA_PATH '%s');",
 		ducklakePGURL, dataPath,
 	)
+	ducklakeOK := false
 	if _, err := duckDB.Exec(attachQuery); err != nil {
-		return fmt.Errorf("attach DuckLake: %w", err)
+		log.Printf("Warning: DuckLake attach failed (%v) — falling back to in-memory tables (local dev mode)", err)
+	} else {
+		log.Printf("DuckLake attached (catalog=PostgreSQL, data=%s)", dataPath)
+		if _, err := duckDB.Exec("USE analytics;"); err != nil {
+			log.Printf("Warning: USE analytics failed: %v — using in-memory tables", err)
+		} else {
+			ducklakeOK = true
+		}
 	}
-	log.Printf("DuckLake attached (catalog=PostgreSQL, data=%s)", dataPath)
-
-	// Use analytics as default database
-	if _, err := duckDB.Exec("USE analytics;"); err != nil {
-		return fmt.Errorf("USE analytics: %w", err)
+	if !ducklakeOK {
+		log.Println("DuckDB running in-memory only (analytics will not persist across restarts)")
 	}
 
 	// Also attach main Safecast PostgreSQL for cross-database queries (read-only)
@@ -128,6 +135,11 @@ func createDuckDBSchema() error {
 			commit_hash VARCHAR,
 			error VARCHAR
 		)`,
+		`CREATE TABLE IF NOT EXISTS chat_feedback (
+			chat_id    BIGINT,
+			score      INTEGER,
+			created_at TIMESTAMPTZ DEFAULT now()
+		)`,
 		`CREATE TABLE IF NOT EXISTS chat_questions (
 			id BIGINT,
 			timestamp TIMESTAMPTZ DEFAULT now(),
@@ -147,6 +159,28 @@ func createDuckDBSchema() error {
 			cloudfront BOOLEAN,
 			client_timestamp TIMESTAMPTZ,
 			answer VARCHAR
+		)`,
+		// Semantic cache: stores embeddings + user feedback for past Q&A pairs.
+		// embedding is stored as a JSON array of float32 values (VARCHAR).
+		`CREATE TABLE IF NOT EXISTS qa_embeddings (
+			id BIGINT,
+			chat_id BIGINT,
+			question VARCHAR,
+			answer VARCHAR,
+			embedding VARCHAR,
+			feedback_score INTEGER DEFAULT 0,
+			created_at TIMESTAMPTZ DEFAULT now()
+		)`,
+		// Curated geographic knowledge: confirmed explanations for elevated/unusual
+		// readings at specific locations, auto-populated from positively-rated answers.
+		`CREATE TABLE IF NOT EXISTS location_knowledge (
+			id BIGINT,
+			lat DOUBLE,
+			lon DOUBLE,
+			radius_m DOUBLE,
+			note VARCHAR,
+			source_chat_id BIGINT,
+			created_at TIMESTAMPTZ DEFAULT now()
 		)`,
 	}
 

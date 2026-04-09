@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sed *)",
+      "Bash(./safecast-new-map-build *)",
+      "Bash(sleep *)",
+      "Bash(curl *)",
+      "Bash(echo *)",
+      "Bash(grep *)",
+      "Bash(kill *)",
+      "Bash(python3 *)",
+      "Bash(pkill *)",
+      "Bash(tail *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(ss *)",
+      "Bash(ps *)",
+      "Bash(git add *)",
+      "Bash(git diff *)",
+      "Bash(git commit *)",
+      "Bash(./unified-server-build *)",
+      "Bash(wc *)",
+      "Bash(tee *)",
+      "Bash(nohup *)",
+      "Bash(xargs *)"
+    ]
+  },
+  "$version": 3
+}

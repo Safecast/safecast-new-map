@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"log"
 	"time"
 )
 
@@ -82,13 +83,14 @@ func LogQueryAsync(name string, args map[string]any, resultCount int, duration t
 		}
 	}
 
-	_, err := duckDB.Exec(`
-		INSERT INTO mcp_query_log (tool_name, duration_ms, result_count, client, user_id, user_email)
-		VALUES (?, ?, ?, ?, ?, ?)
-	`, name, duration.Milliseconds(), resultCount, client, userID, userEmail)
-
-	if err != nil {
-		// Silently ignore logging errors
-		return
-	}
+	// Run in background — DuckLake writes can be slow and must never block MCP tool responses.
+	go func() {
+		_, err := duckDB.Exec(`
+			INSERT INTO mcp_query_log (tool_name, duration_ms, result_count, client, user_id, user_email)
+			VALUES (?, ?, ?, ?, ?, ?)
+		`, name, duration.Milliseconds(), resultCount, client, userID, userEmail)
+		if err != nil {
+			log.Printf("LogQueryAsync: %v", err)
+		}
+	}()
 }

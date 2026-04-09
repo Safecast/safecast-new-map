@@ -1,0 +1,82 @@
+flowchart TD
+    Q([User Question\nmap widget or /assistant/]) --> EMB
+
+    subgraph EMB["Step 1 — Embedding (embeddings.go)"]
+        E1[Tokenise: lowercase, unigrams + bigrams]
+        E2[FNV-1a hash each token → 512-dim vector]
+        E3[L2-normalise → float32 x 512]
+        E1 --> E2 --> E3
+    end
+
+    EMB --> CACHE
+
+    subgraph CACHE["Step 2 — Semantic Cache Check (semantic_cache.go)"]
+        C1[Load qa_embeddings WHERE feedback_score > 0]
+        C2[Cosine similarity = dot product\nboth vectors L2-normalised]
+        C3{Best score ≥ 0.85?}
+        C1 --> C2 --> C3
+    end
+
+    C3 -->|Cache HIT| CACHED([Return cached answer\ndone event: chat_id, cached=true])
+    C3 -->|Cache MISS| RAG
+
+    subgraph RAG["Step 3 — RAG Context Injection (semantic_cache.go)"]
+        R1[buildRAGContext\nTop-3 past Q&A with similarity ≥ 0.50\nanswers truncated to 500 chars]
+        R2[getLocationKnowledge\nUp to 20 curated location notes\nauto-built from 👍 feedback]
+        R3[enrichSystemPrompt\nbase prompt + RAG context + location notes]
+        R1 --> R3
+        R2 --> R3
+    end
+
+    RAG --> LOOP
+
+    subgraph LOOP["Step 4 — Agentic Loop (mcp_register.go)"]
+        L1[Call Claude API\nclaude-sonnet-4-5\nwith enriched system prompt]
+        L2{Stop reason\nend_turn?}
+        L3[Execute MCP tools on port 3333\nquery_radiation, get_track\nsensor_current, search_area …]
+        L4[Feed tool results back to Claude]
+        L1 --> L2
+        L2 -->|No — tool calls| L3
+        L3 --> L4 --> L1
+        L2 -->|Yes| ANSWER
+    end
+
+    ANSWER([Final answer assembled])
+
+    LOOP --> STORE
+
+    subgraph STORE["Step 5 — Store & Log"]
+        S1[("chat_questions\n(chat_logging.go)\nid = embeddingChatID\nquestion, answer, source\ncountry, browser, model")]
+        S2[("qa_embeddings\n(async goroutine)\nchat_id = embeddingChatID\nquestion, answer\nembedding, feedback_score=0")]
+        S3[Send done event\nchat_id → browser]
+        S1 & S2 --> S3
+    end
+
+    S3 --> FB
+
+    subgraph FB["Step 6 — User Feedback (semantic_cache.go)"]
+        F1[User clicks 👍 or 👎\nPOST /api/feedback\nchat_id + score]
+        F2[("chat_feedback\nINSERT chat_id, score\n← admin dashboard")]
+        F3[UPDATE qa_embeddings\nfeedback_score += score]
+        F4{score > 0?}
+        F5[extractLocationKnowledge async\nregex lat/lon from answer]
+        F6[("location_knowledge\nINSERT lat, lon\nradius_m=1000, note")]
+        F1 --> F2
+        F1 --> F3
+        F3 --> F4
+        F4 -->|👍 Yes| F5
+        F5 --> F6
+    end
+
+    F6 -->|feeds future Step 3| R2
+    F3 -->|score > 0 makes entry\ncache-eligible| C1
+
+    style CACHED fill:#2d6a2d,color:#fff
+    style Q fill:#1a4a7a,color:#fff
+    style ANSWER fill:#1a4a7a,color:#fff
+    style EMB fill:#1e1e2e,color:#cdd6f4
+    style CACHE fill:#1e1e2e,color:#cdd6f4
+    style RAG fill:#1e1e2e,color:#cdd6f4
+    style LOOP fill:#1e1e2e,color:#cdd6f4
+    style STORE fill:#1e1e2e,color:#cdd6f4
+    style FB fill:#1e1e2e,color:#cdd6f4
