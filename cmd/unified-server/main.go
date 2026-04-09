@@ -10236,24 +10236,7 @@ func main() {
 		}))
 
 		// MCP analytics API endpoints
-		http.HandleFunc("/api/admin/mcp/data", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
-			if !checkAdminAccess(w, r) {
-				return
-			}
-			adminMCPDataHandler(w, r)
-		}))
-		http.HandleFunc("/api/admin/mcp/export", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
-			if !checkAdminAccess(w, r) {
-				return
-			}
-			adminMCPExportHandler(w, r)
-		}))
-		http.HandleFunc("/api/admin/mcp/delete", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
-			if !checkAdminAccess(w, r) {
-				return
-			}
-			adminMCPDeleteHandler(w, r)
-		}))
+		// Note: /api/admin/mcp/data, /mcp/export, /mcp/delete are registered via httpapi.Register
 		http.HandleFunc("/api/admin/mcp/update", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
 			if !checkAdminAccess(w, r) {
 				return
