@@ -1701,6 +1701,105 @@ body, html {
           color: var(--modal-text);
         }
 
+        /* --- Tutorial overlay --- */
+        #tutorial-overlay {
+          position: fixed;
+          top: 0; left: 0;
+          width: 100vw; height: 100vh;
+          background: rgba(0,0,0,0.75);
+          z-index: 10005;
+          display: none;
+          align-items: center;
+          justify-content: center;
+        }
+        #tutorial-overlay.visible { display: flex; }
+        #tutorial-modal {
+          background: var(--control-bg, #ffffff);
+          color: var(--modal-text, #333333);
+          width: 100%; max-width: 480px; border-radius: 8px;
+          padding: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+          font-family: var(--font-family-base, sans-serif); text-align: center;
+        }
+        #tutorial-modal h2 { margin-top: 0; font-size: 22px; margin-bottom: 15px; }
+        #tutorial-modal p { line-height: 1.5; margin-bottom: 25px; font-size: 16px; }
+        .tutorial-buttons { display: flex; flex-direction: column; gap: 10px; }
+        .tutorial-buttons button { padding: 12px 20px; cursor: pointer; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; }
+        #btn-start-tour { background: #007bff; color: white; }
+        #btn-start-tour:hover { background: #0056b3; }
+        #btn-dismiss-tour { background: transparent; color: var(--modal-text, #333); border: 1px solid var(--modal-text, #333); }
+        #btn-dismiss-tour:hover { background: rgba(128,128,128,0.1); }
+
+        /* --- Persistent help button --- */
+        #persistent-help-btn {
+          position: fixed; bottom: 54px; right: 95px;
+          width: 36px; height: 36px; border-radius: 50%;
+          background: var(--control-bg, #ffffff);
+          color: var(--modal-text, #333333);
+          font-weight: bold; font-size: 18px;
+          display: flex; align-items: center; justify-content: center;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+          cursor: pointer; z-index: 1000;
+          border: 2px solid rgba(255,255,255,0.85);
+          outline: 1px solid rgba(0,0,0,0.15);
+        }
+
+        /* --- Spotlight tour --- */
+        #spotlight-overlay {
+          position: fixed; background: transparent; border-radius: 8px;
+          box-shadow: 0 0 0 9999px rgba(0,0,0,0.7);
+          pointer-events: none; z-index: 10001;
+          display: none;
+        }
+        #spotlight-overlay.active { display: block; }
+        #tour-tooltip {
+          position: fixed; box-sizing: border-box;
+          background: #ffffff; color: #333;
+          padding: 24px; border-radius: 12px; width: 320px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05);
+          z-index: 10002;
+          display: none;
+          font-family: var(--font-family-base, sans-serif);
+        }
+        #tour-tooltip::before { content: '💡'; display: block; font-size: 20px; margin-bottom: 12px; }
+        #tour-tooltip.active { display: block; }
+        #tour-tooltip p { margin-top: 0; margin-bottom: 24px; font-size: 14px; line-height: 1.6; color: #444; }
+        .tour-nav { display: flex; justify-content: space-between; }
+        .tour-nav button { padding: 8px 16px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; font-size: 14px; }
+        #btn-tour-next { background: #007bff; color: white; }
+        #btn-tour-next:hover { background: #0056b3; }
+        #btn-tour-exit { background: #e0e0e0; color: #333; }
+        #btn-tour-exit:hover { background: #c8c8c8; }
+
+        /* --- Story wall --- */
+        #story-wall-modal {
+          position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+          background: rgba(0,0,0,0.85); z-index: 10005;
+          display: none; align-items: center; justify-content: center;
+        }
+        #story-wall-modal.visible { display: flex; }
+        .story-wall-content {
+          background: var(--control-bg, #ffffff); color: var(--modal-text, #333333);
+          width: 90%; max-width: 900px; border-radius: 8px; padding: 40px;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+          font-family: var(--font-family-base, sans-serif);
+        }
+        .story-wall-content h2 { text-align: center; margin-top: 0; font-size: 24px; margin-bottom: 30px; }
+        #story-wall-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
+        @media (max-width: 768px) { #story-wall-grid { grid-template-columns: 1fr; } }
+        .story-card { background: #f9f9f9; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
+        .story-photo { width: 100%; padding-top: 66.66%; background: #e0e0e0; position: relative; }
+        .story-photo::after { content: 'SAFECAST'; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); color: #999; font-weight: bold; letter-spacing: 2px; }
+        .story-card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; }
+        .story-card-name { font-weight: bold; font-size: 16px; margin: 0 0 4px 0; color: #333; }
+        .story-card-location { color: #777; font-size: 13px; margin: 0 0 10px 0; }
+        .story-card-hardware { display: inline-block; padding: 3px 8px; background: #007bff; color: white; border-radius: 12px; font-size: 11px; font-weight: bold; margin-bottom: 10px; align-self: flex-start; }
+        .story-card-excerpt { color: #555; line-height: 1.4; font-size: 13px; margin: 0; }
+        .story-wall-actions { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #ddd; padding-top: 20px; }
+        .btn-read-more { color: #007bff; text-decoration: none; font-weight: bold; font-size: 15px; }
+        .btn-read-more:hover { text-decoration: underline; }
+        #btn-start-exploring { background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px; }
+        #btn-start-exploring:hover { background: #218838; }
+
     </style>
 
     <!-- Translation script -->
@@ -1999,6 +2098,43 @@ body, html {
   `white-space:pre-wrap` preserves paragraphs and bullets from translations.json.
   Box scrolls when content is long.
 -->
+
+<!-- Spotlight tour overlay -->
+<div id="spotlight-overlay"></div>
+<div id="tour-tooltip">
+  <p id="tour-text"></p>
+  <div class="tour-nav">
+    <button id="btn-tour-next">Next</button>
+    <button id="btn-tour-exit">Exit tour</button>
+  </div>
+</div>
+
+<!-- Story wall modal -->
+<div id="story-wall-modal">
+  <div class="story-wall-content">
+    <h2>The data you're looking at was collected by people like these.</h2>
+    <div id="story-wall-grid"></div>
+    <div class="story-wall-actions">
+      <a href="/stories.html" class="btn-read-more" target="_blank">Read more stories →</a>
+      <button id="btn-start-exploring">Start exploring</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tutorial welcome overlay -->
+<div id="tutorial-overlay">
+  <div id="tutorial-modal">
+    <h2>You're looking at real radiation data...</h2>
+    <p>Safecast provides open, crowdsourced radiation data collected globally by volunteers. Would you like a quick tour on how to read the map and understand the readings?</p>
+    <div class="tutorial-buttons">
+      <button id="btn-start-tour">Show me how to read this</button>
+      <button id="btn-dismiss-tour">Explore on my own</button>
+    </div>
+  </div>
+</div>
+
+<!-- Persistent help button -->
+<div id="persistent-help-btn" title="Tutorial &amp; Help">?</div>
 
 <!-- Generic Info Modal for legal notes, data sources, and license -->
 <div id="infoModal" style="
@@ -11440,6 +11576,167 @@ function selectHomeSearchResult(result, query) {
         window._pendingInsights = null;
       }
     })();
+  </script>
+
+  <!-- Tutorial / Tour / Story Wall wiring -->
+  <script>
+  (function() {
+    var STORAGE_KEY = 'safecast_tutorial_seen';
+
+    var tutorialOverlay = document.getElementById('tutorial-overlay');
+    var storyWallModal  = document.getElementById('story-wall-modal');
+    var spotlightEl     = document.getElementById('spotlight-overlay');
+    var tourTooltip     = document.getElementById('tour-tooltip');
+    var tourText        = document.getElementById('tour-text');
+    var helpBtn         = document.getElementById('persistent-help-btn');
+
+    // --- Tour steps ---
+    var tourSteps = [
+      { selector: '#map',
+        text: 'Each coloured dot is a real radiation measurement. Green = safe background levels, yellow/orange = elevated, red = significantly above normal.' },
+      { selector: '#legend',
+        text: 'This colour scale shows the radiation dose rate. The scale adapts to the data on screen — hover it for a full explanation.' },
+      { selector: '#safecast-ai-toggle',
+        text: 'Ask our AI assistant anything about the map, the data, or radiation safety. It knows Safecast data in depth.' },
+      { selector: '#searchInput',
+        text: 'Search for any city or address to jump straight to that location on the map.' },
+    ];
+    var tourIndex = 0;
+
+    // --- Story wall helpers ---
+    function loadStories() {
+      var grid = document.getElementById('story-wall-grid');
+      if (!grid) return;
+      fetch('/data/stories.json')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          var stories = data.filter(function(s) { return !s.is_placeholder; });
+          if (stories.length === 0) {
+            grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#888;">Stories coming soon!</p>';
+            return;
+          }
+          grid.innerHTML = stories.map(function(s) {
+            var photo = s.photo_url
+              ? 'style="background-image:url(' + s.photo_url + ');background-size:cover;"'
+              : '';
+            return '<div class="story-card">' +
+              '<div class="story-photo" ' + photo + '></div>' +
+              '<div class="story-card-body">' +
+                '<div class="story-card-name">' + s.name + '</div>' +
+                '<div class="story-card-location">' + s.location + '</div>' +
+                '<div class="story-card-hardware">' + s.hardware + '</div>' +
+                '<div class="story-card-excerpt">' + s.excerpt + '</div>' +
+              '</div></div>';
+          }).join('');
+        })
+        .catch(function() {
+          if (grid) grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#888;">Stories coming soon!</p>';
+        });
+    }
+
+    // --- Spotlight helpers ---
+    function positionSpotlight(el) {
+      if (!el) { spotlightEl.style.display = 'none'; return; }
+      var r = el.getBoundingClientRect();
+      var pad = 8;
+      spotlightEl.style.top    = (r.top    - pad) + 'px';
+      spotlightEl.style.left   = (r.left   - pad) + 'px';
+      spotlightEl.style.width  = (r.width  + pad * 2) + 'px';
+      spotlightEl.style.height = (r.height + pad * 2) + 'px';
+      spotlightEl.style.display = 'block';
+    }
+
+    function positionTooltip(el) {
+      var r = el ? el.getBoundingClientRect() : { top: 40, left: 40, bottom: 80, right: 80, width: 0, height: 0 };
+      var tw = 320, margin = 12;
+      var left = r.right + margin;
+      if (left + tw > window.innerWidth - margin) left = r.left - tw - margin;
+      if (left < margin) left = margin;
+      var top = r.top;
+      if (top + 200 > window.innerHeight - margin) top = window.innerHeight - 200 - margin;
+      if (top < margin) top = margin;
+      tourTooltip.style.top  = top + 'px';
+      tourTooltip.style.left = left + 'px';
+    }
+
+    function showTourStep(index) {
+      var step = tourSteps[index];
+      var el = document.querySelector(step.selector);
+      tourText.textContent = step.text;
+      document.getElementById('btn-tour-next').textContent =
+        (index === tourSteps.length - 1) ? 'Done' : 'Next';
+      positionSpotlight(el);
+      positionTooltip(el);
+      tourTooltip.style.display = 'block';
+    }
+
+    function endTour() {
+      spotlightEl.style.display = 'none';
+      tourTooltip.style.display = 'none';
+      tourIndex = 0;
+    }
+
+    function startTour() {
+      tourIndex = 0;
+      showTourStep(0);
+    }
+
+    // --- Show/hide tutorial ---
+    function showTutorial() {
+      tutorialOverlay.style.display = 'flex';
+    }
+
+    function hideTutorial() {
+      tutorialOverlay.style.display = 'none';
+      localStorage.setItem(STORAGE_KEY, '1');
+    }
+
+    function showStoryWall() {
+      storyWallModal.style.display = 'flex';
+    }
+
+    function hideStoryWall() {
+      storyWallModal.style.display = 'none';
+    }
+
+    // --- Button wiring ---
+    document.getElementById('btn-start-tour').addEventListener('click', function() {
+      hideTutorial();
+      loadStories();
+      showStoryWall();
+    });
+
+    document.getElementById('btn-dismiss-tour').addEventListener('click', function() {
+      hideTutorial();
+    });
+
+    document.getElementById('btn-start-exploring').addEventListener('click', function() {
+      hideStoryWall();
+      startTour();
+    });
+
+    document.getElementById('btn-tour-next').addEventListener('click', function() {
+      tourIndex++;
+      if (tourIndex >= tourSteps.length) {
+        endTour();
+      } else {
+        showTourStep(tourIndex);
+      }
+    });
+
+    document.getElementById('btn-tour-exit').addEventListener('click', endTour);
+
+    helpBtn.addEventListener('click', function() {
+      endTour();
+      hideStoryWall();
+      showTutorial();
+    });
+
+    // --- Auto-show on first visit ---
+    if (!localStorage.getItem(STORAGE_KEY)) {
+      setTimeout(showTutorial, 1000);
+    }
+  })();
   </script>
 
 </body>
