@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Test Table Download</title>
+  <style>
+    body {
+      background: #1a1e24;
+      color: #e4e8ef;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      padding: 40px;
+    }
+    
+    .ai-table-container {
+      background: #242930;
+      border: 1px solid #2e3540;
+      border-radius: 8px;
+      margin: 20px 0;
+      overflow: hidden;
+    }
+    
+    .table-download-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid #2e3540;
+    }
+    
+    .table-download-btn {
+      background: transparent;
+      color: #e4e8ef;
+      border: 1px solid #2e3540;
+      border-radius: 4px;
+      padding: 4px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all .15s;
+    }
+    
+    .table-download-btn:hover {
+      background: #1e88e5;
+      border-color: #1e88e5;
+      color: #fff;
+    }
+    
+    .table-rows-info {
+      color: #7a8494;
+      font-size: 11px;
+    }
+    
+    .ai-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    .ai-table th {
+      background: rgba(255, 255, 255, 0.05);
+      color: #7a8494;
+      font-weight: 600;
+      padding: 8px 12px;
+      text-align: left;
+    }
+    
+    .ai-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #2e3540;
+    }
+    
+    .ai-table tr:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+  </style>
+</head>
+<body>
+  <h1>Test Table Download Functionality</h1>
+  
+  <div class="ai-table-container">
+    <div class="table-download-bar">
+      <button class="table-download-btn" title="Download table as CSV">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        Download Table
+      </button>
+      <span class="table-rows-info">5 rows</span>
+    </div>
+    <script type="application/json" class="table-data">
+    {"headers":["Device id","Timestamp","Lat","Lon","Cpm","Usvh","Sensor type"],"rows":[["SC-JP-0847","2026-03-03 22:14 UTC","35.6895","139.6917","28","0.193","LND 7318"],["SC-JP-0912","2026-03-03 22:10 UTC","35.6762","139.758","31","0.214","LND 7318"],["SC-JP-0445","2026-03-03 22:08 UTC","35.7189","139.7297","26","0.179","LND 7318"],["SC-JP-0623","2026-03-03 22:05 UTC","35.6549","139.7454","29","0.2","LND 7318"],["SC-JP-0778","2026-03-03 22:02 UTC","35.6814","139.7673","27","0.186","LND 7318"]]}
+    </script>
+    <table class="ai-table">
+      <thead>
+        <tr>
+          <th>Device id</th>
+          <th>Timestamp</th>
+          <th>Lat</th>
+          <th>Lon</th>
+          <th>Cpm</th>
+          <th>Usvh</th>
+          <th>Sensor type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>SC-JP-0847</td>
+          <td>2026-03-03 22:14 UTC</td>
+          <td>35.6895</td>
+          <td>139.6917</td>
+          <td>28</td>
+          <td>0.193</td>
+          <td>LND 7318</td>
+        </tr>
+        <tr>
+          <td>SC-JP-0912</td>
+          <td>2026-03-03 22:10 UTC</td>
+          <td>35.6762</td>
+          <td>139.758</td>
+          <td>31</td>
+          <td>0.214</td>
+          <td>LND 7318</td>
+        </tr>
+        <tr>
+          <td>SC-JP-0445</td>
+          <td>2026-03-03 22:08 UTC</td>
+          <td>35.7189</td>
+          <td>139.7297</td>
+          <td>26</td>
+          <td>0.179</td>
+          <td>LND 7318</td>
+        </tr>
+        <tr>
+          <td>SC-JP-0623</td>
+          <td>2026-03-03 22:05 UTC</td>
+          <td>35.6549</td>
+          <td>139.7454</td>
+          <td>29</td>
+          <td>0.2</td>
+          <td>LND 7318</td>
+        </tr>
+        <tr>
+          <td>SC-JP-0778</td>
+          <td>2026-03-03 22:02 UTC</td>
+          <td>35.6814</td>
+          <td>139.7673</td>
+          <td>27</td>
+          <td>0.186</td>
+          <td>LND 7318</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    document.addEventListener('click', function(e) {
+      const downloadBtn = e.target.closest('.table-download-btn');
+      if (!downloadBtn) return;
+
+      e.preventDefault();
+      
+      const tableContainer = downloadBtn.closest('.ai-table-container');
+      const dataScript = tableContainer.querySelector('script.table-data');
+      
+      if (!dataScript) {
+        console.error('Table data not found');
+        return;
+      }
+
+      try {
+        const tableData = JSON.parse(dataScript.textContent);
+        const { headers, rows } = tableData;
+        
+        const csvContent = [
+          headers.join(','),
+          ...rows.map(row => row.map(cell => {
+            const escaped = String(cell).replace(/"/g, '""');
+            return escaped.includes(',') ? `"${escaped}"` : escaped;
+          }).join(','))
+        ].join('\n');
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `table_${new Date().toISOString().slice(0,10)}_${new Date().toISOString().slice(11,19).replace(/:/g,'-')}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error('Error downloading table:', err);
+        alert('Failed to download table: ' + err.message);
+      }
+    });
+  </script>
+</body>
+</html>

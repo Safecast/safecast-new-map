@@ -55,6 +55,7 @@ import (
 	"golang.org/x/crypto/acme/autocert"
 
 	_ "safecast-new-map/cmd/unified-server/docs/api"
+	"github.com/swaggo/swag"
 	"safecast-new-map/pkg/auth"
 	"safecast-new-map/pkg/countryresolver"
 	"safecast-new-map/pkg/database"
@@ -5008,8 +5009,11 @@ func formatUploadRow(upload database.Upload, password string) string {
 
 	// Format recording date
 	recordingDate := "-"
+	recordingDateISO := ""
 	if upload.RecordingDate > 0 {
-		recordingDate = time.Unix(upload.RecordingDate, 0).Format("2006-01-02 15:04:05")
+		t := time.Unix(upload.RecordingDate, 0)
+		recordingDate = t.Format("2006-01-02 15:04:05")
+		recordingDateISO = t.UTC().Format("2006-01-02")
 	}
 
 	// Format detector display
@@ -5055,6 +5059,19 @@ func formatUploadRow(upload database.Upload, password string) string {
 			password, upload.UserID, userText)
 	}
 
+	// HTML-escape data attributes to prevent breaking the attribute syntax
+	escapedFilename := template.HTMLEscapeString(upload.Filename)
+	escapedUsername := template.HTMLEscapeString(upload.Username)
+	escapedDetector := template.HTMLEscapeString(upload.Detector)
+	escapedNotes := template.HTMLEscapeString(upload.Notes)
+	escapedComment := template.HTMLEscapeString(upload.Comment)
+
+	// Build optional link to original Safecast import page
+	safecastLink := ""
+	if upload.Source == "safecast-api" && upload.SourceID != "" {
+		safecastLink = fmt.Sprintf(` <a href="https://api.safecast.org/en-US/bgeigie_imports/%s" target="_blank" title="View on Safecast" style="color:var(--link-color);font-size:0.8em;">↗ Safecast</a>`, upload.SourceID)
+	}
+
 	return fmt.Sprintf(`
 			<tr>
 				<td class="checkbox-col"><input type="checkbox" class="track-checkbox" value="%s" onchange="updateDeleteButton()"></td>
@@ -5069,7 +5086,11 @@ func formatUploadRow(upload database.Upload, password string) string {
 				<td>%s</td>
 				<td>%s</td>
 				<td class="datetime">%s</td>
-				<td><button class="delete-btn" onclick="deleteTrack('%s')">Delete</button></td>
+				<td class="comment" title="%s">%s</td>
+				<td>
+					<button class="edit-btn" onclick="openEditUpload(%d,'%s','%s','%s','%s','%s','%s')">Edit</button>
+					<button class="delete-btn" onclick="deleteTrack('%s')">Delete</button>%s
+				</td>
 			</tr>`,
 		upload.TrackID,
 		upload.ID,
@@ -5083,7 +5104,10 @@ func formatUploadRow(upload database.Upload, password string) string {
 		userDisplay,
 		upload.UploadIP,
 		uploadTime,
+		escapedComment, truncateString(upload.Comment, 40),
+		upload.ID, escapedFilename, escapedUsername, escapedDetector, recordingDateISO, escapedNotes, escapedComment,
 		upload.TrackID,
+		safecastLink,
 	)
 }
 
@@ -5202,6 +5226,13 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 <html>
 <head>
 	<title>Admin - File Uploads</title>
+	<script>
+	(function() {
+		var saved = localStorage.getItem('safecastDocTheme');
+		var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+		document.documentElement.setAttribute('data-theme', saved || (prefersDark ? 'dark' : 'light'));
+	})();
+	</script>
 
 	<!-- favicon -->
 	<link rel="apple-touch-icon" sizes="180x180" href="/static/images/apple-touch-icon.png">
@@ -5238,53 +5269,63 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		:root[data-theme='light'] {
-			--bg-primary: #f5f5f5;
-			--bg-card: white;
-			--text-primary: #333;
-			--text-secondary: #666;
-			--text-muted: #999;
-			--border-color: #ddd;
-			--link-color: #0066cc;
-			--shadow: 0 1px 3px rgba(0,0,0,0.1);
-			--th-bg: #424242;
-			--hover-bg: #f9f9f9;
-			color-scheme: light;
+			--bg-primary: #f5f5f5; --bg-card: #fff; --text-primary: #333;
+			--text-secondary: #666; --text-muted: #999; --border-color: #ddd;
+			--link-color: #0066cc; --shadow: 0 1px 3px rgba(0,0,0,0.1);
+			--hover-bg: #f9f9f9; --th-bg: #424242; color-scheme: light;
 		}
 		:root[data-theme='dark'] {
-			--bg-primary: #1a1a1a;
-			--bg-card: #2b2b2b;
-			--text-primary: #eee;
-			--text-secondary: #aaa;
-			--text-muted: #777;
-			--border-color: #444;
-			--link-color: #90caf9;
-			--shadow: 0 1px 3px rgba(255,255,255,0.1);
-			--th-bg: #616161;
-			--hover-bg: #333;
-			color-scheme: dark;
+			--bg-primary: #1a1a1a; --bg-card: #2b2b2b; --text-primary: #eee;
+			--text-secondary: #aaa; --text-muted: #777; --border-color: #444;
+			--link-color: #90caf9; --shadow: 0 1px 3px rgba(255,255,255,0.07);
+			--hover-bg: #333; --th-bg: #616161; color-scheme: dark;
 		}
-		body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; margin: 20px; background: var(--bg-primary); color: var(--text-primary); }
+		body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; margin: 0; background: var(--bg-primary); color: var(--text-primary); transition: background 0.2s, color 0.2s; }
 		h1 { color: var(--text-primary); }
+		.top-nav { background: #1a3a5c; color: #fff; padding: 0 24px; display: flex; align-items: center; gap: 16px; height: 52px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); position: sticky; top: 0; z-index: 100; }
+		.nav-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; color: #fff; font-weight: 700; font-size: 17px; white-space: nowrap; }
+		.nav-logo img { height: 28px; width: 28px; object-fit: contain; }
+		.nav-sep { color: rgba(255,255,255,0.3); font-size: 18px; }
+		.nav-title { font-size: 15px; font-weight: 600; color: #d0e8ff; white-space: nowrap; }
+		.nav-spacer { flex: 1; }
+		.back-link { color: #afd4f5; text-decoration: none; font-size: 13px; white-space: nowrap; }
+		.back-link:hover { color: #fff; }
+		#theme-toggle { background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.25); border-radius: 6px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
+		#theme-toggle:hover { background: rgba(255,255,255,0.22); }
+		.page-content { padding: 20px 24px; }
 		.nav { background: var(--bg-card); padding: 15px; margin-bottom: 20px; border-radius: 5px; box-shadow: var(--shadow); display: flex; align-items: center; justify-content: space-between; }
 		.nav-left { display: flex; align-items: center; gap: 15px; }
 		.nav a { color: var(--link-color); text-decoration: none; }
 		.nav a:hover { text-decoration: underline; }
-		.back-to-map-btn { background: #2196F3 !important; color: white !important; padding: 8px 16px; border-radius: 4px; text-decoration: none !important; font-weight: 500; transition: background 0.2s; }
-		.back-to-map-btn:hover { background: #1976D2 !important; text-decoration: none !important; }
-		.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0; }
-		.page-header h1 { margin: 0; }
 		.summary { background: var(--bg-card); padding: 15px; margin-bottom: 20px; border-radius: 5px; box-shadow: var(--shadow); }
-		table { border-collapse: collapse; width: 100%; background: var(--bg-card); box-shadow: var(--shadow); }
-		th { background: var(--th-bg); color: white; padding: 12px; text-align: left; font-weight: 600; }
-		td { padding: 6px 8px; border-bottom: 1px solid var(--border-color); }
+		table { border-collapse: collapse; width: 100%; background: var(--bg-card); box-shadow: var(--shadow); table-layout: auto; }
+		th { background: var(--th-bg); color: white; padding: 12px; text-align: left; font-weight: 600; white-space: nowrap; position: relative; overflow: hidden; }
+		td { padding: 6px 8px; border-bottom: 1px solid var(--border-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+		.resize-handle { position: absolute; right: 0; top: 0; width: 5px; height: 100%; cursor: col-resize; background: transparent; z-index: 1; }
+		.resize-handle:hover, .resize-handle.active { background: rgba(255,255,255,0.3); }
 		tr:hover { background: var(--hover-bg); }
 		.empty { text-align: center; padding: 40px; color: var(--text-muted); font-style: italic; }
-		.trackid { font-family: monospace; color: var(--link-color); }
-		.filename { color: var(--text-primary); font-weight: 500; }
-		.filesize { color: var(--text-secondary); }
-		.datetime { color: var(--text-secondary); font-size: 0.9em; }
+		.trackid { font-family: monospace; color: var(--link-color); white-space: nowrap; }
+		.filename { color: var(--text-primary); font-weight: 500; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+		.filesize { color: var(--text-secondary); white-space: nowrap; }
+		.datetime { color: var(--text-secondary); font-size: 0.9em; white-space: nowrap; }
+		.comment { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); font-size: 0.9em; }
 		.delete-btn { background: #f44336; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 0.85em; }
 		.delete-btn:hover { background: #d32f2f; }
+		.edit-btn { background: #FF9800; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 0.85em; margin-right: 4px; }
+		.edit-btn:hover { background: #F57C00; }
+		.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+		.modal-overlay.open { display: flex; }
+		.modal { background: var(--bg-card); padding: 24px; border-radius: 8px; width: 480px; max-width: 95vw; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+		.modal h3 { margin: 0 0 16px; color: var(--text-primary); }
+		.modal label { display: block; margin-bottom: 4px; color: var(--text-secondary); font-size: 0.9em; font-weight: 500; }
+		.modal input, .modal textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 0.95em; box-sizing: border-box; margin-bottom: 12px; }
+		.modal textarea { min-height: 80px; resize: vertical; font-family: inherit; }
+		.modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+		.modal-save-btn { background: #4CAF50; color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer; font-size: 0.95em; font-weight: 500; }
+		.modal-save-btn:hover { background: #388E3C; }
+		.modal-cancel-btn { background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 8px 20px; border-radius: 4px; cursor: pointer; font-size: 0.95em; }
+		.modal-cancel-btn:hover { background: var(--hover-bg); }
 		.delete-selected-btn { background: #f44336; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer; font-size: 1em; margin-left: 10px; }
 		.delete-selected-btn:hover { background: #d32f2f; }
 		.delete-selected-btn:disabled { background: #ccc; cursor: not-allowed; }
@@ -5321,10 +5362,18 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 	</style>
 </head>
 <body>
-	<div class="page-header">
-		<h1>File Uploads Administration</h1>
-		<a href="/" class="back-to-map-btn">Back to Map</a>
-	</div>
+<nav class="top-nav">
+  <a href="/" class="nav-logo">
+    <img src="/static/images/safecast-logo-squared.png" alt="Safecast">
+    Safecast
+  </a>
+  <span class="nav-sep">|</span>
+  <span class="nav-title">File Uploads Administration</span>
+  <span class="nav-spacer"></span>
+  <a href="/" class="back-link">&#8592; Back to Map</a>
+  <button id="theme-toggle" onclick="toggleTheme()">&#127769; Dark Mode</button>
+</nav>
+<div class="page-content">
 	<div class="admin-tabs">
 		<a href="/admin/users` + func() string {
 		if password != "" {
@@ -5361,7 +5410,9 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		<div class="nav-left">
 			<button class="view-selected-btn" id="viewSelectedBtn" onclick="viewSelected()" disabled>View Selected on Map</button>
 			<button class="delete-selected-btn" id="deleteSelectedBtn" onclick="deleteSelected()" disabled>Delete Selected</button>
+			<button class="import-btn" onclick="importSafecastMeta()" id="importSafecastBtn" style="margin-left:10px;">Import Safecast API Metadata</button>
 		</div>
+		<div id="importMetaStatus" style="font-size:0.85em;color:var(--text-secondary);margin-top:4px;"></div>
 	</div>
 	<div class="import-form">
 		<h3>Import from Safecast API</h3>
@@ -5524,21 +5575,23 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		html += `<div class="empty">No uploads found. Upload a spectrum file (.n42 or .spe) to see it appear here.</div>`
 	} else {
 		html += `
+	<div style="overflow-x: auto;">
 	<table id="uploadsTable">
 		<thead>
 			<tr>
 				<th class="checkbox-col"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"></th>
-				<th class="sortable" onclick="sortTable(1)" data-type="number">ID</th>
-				<th class="sortable" onclick="sortTable(2)" data-type="text">Filename</th>
-				<th class="sortable" onclick="sortTable(3)" data-type="text">Type</th>
-				<th class="sortable" onclick="sortTable(4)" data-type="text">Track ID</th>
-				<th class="sortable" onclick="sortTable(5)" data-type="text">Detector</th>
-				<th class="sortable" onclick="sortTable(6)" data-type="date">Recording Date</th>
-				<th class="sortable" onclick="sortTable(7)" data-type="text">Size</th>
-				<th class="sortable" onclick="sortTable(8)" data-type="text">Source</th>
-				<th class="sortable" onclick="sortTable(9)" data-type="text">User</th>
-				<th class="sortable" onclick="sortTable(10)" data-type="text">Upload IP</th>
-				<th class="sortable" onclick="sortTable(11)" data-type="date">Upload Time</th>
+				<th class="sortable" onclick="sortTable(1)" data-type="number">ID<span class="resize-handle"></span></th>
+				<th class="sortable" onclick="sortTable(2)" data-type="text">Filename<span class="resize-handle"></span></th>
+				<th class="sortable" onclick="sortTable(3)" data-type="text">Type<span class="resize-handle"></span></th>
+				<th class="sortable" onclick="sortTable(4)" data-type="text">Track ID<span class="resize-handle"></span></th>
+				<th class="sortable" onclick="sortTable(5)" data-type="text">Detector<span class="resize-handle"></span></th>
+				<th class="sortable" onclick="sortTable(6)" data-type="date">Recording Date<span class="resize-handle"></span></th>
+				<th class="sortable" onclick="sortTable(7)" data-type="text">Size<span class="resize-handle"></span></th>
+				<th class="sortable" onclick="sortTable(8)" data-type="text">Source<span class="resize-handle"></span></th>
+				<th class="sortable" onclick="sortTable(9)" data-type="text">User<span class="resize-handle"></span></th>
+				<th class="sortable" onclick="sortTable(10)" data-type="text">Upload IP<span class="resize-handle"></span></th>
+				<th class="sortable" onclick="sortTable(11)" data-type="date">Upload Time<span class="resize-handle"></span></th>
+				<th class="sortable" onclick="sortTable(12)" data-type="text">Comment<span class="resize-handle"></span></th>
 				<th>Actions</th>
 			</tr>
 			<tr class="filter-row">
@@ -5554,6 +5607,7 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 				<th><input type="text" class="filter-input" placeholder="User..." onkeyup="filterTable()"></th>
 				<th><input type="text" class="filter-input" placeholder="IP..." onkeyup="filterTable()"></th>
 				<th><input type="text" class="filter-input" placeholder="Filter date..." onkeyup="filterTable()"></th>
+				<th><input type="text" class="filter-input" placeholder="Filter comment..." onkeyup="filterTable()"></th>
 				<th></th>
 			</tr>
 		</thead>
@@ -5607,11 +5661,38 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 
 		html += `
 		</tbody>
-	</table>`
+	</table>
+	</div>`
 	}
 
 	html += `
 	<script>
+		// Column resize handles
+		(function() {
+			let resizing = false;
+			document.querySelectorAll('#uploadsTable .resize-handle').forEach(handle => {
+				handle.addEventListener('mousedown', function(e) {
+					e.preventDefault(); e.stopPropagation();
+					resizing = true;
+					const th = this.parentElement;
+					const startX = e.pageX, startWidth = th.offsetWidth;
+					this.classList.add('active');
+					const onMove = e => { th.style.width = Math.max(40, startWidth + (e.pageX - startX)) + 'px'; };
+					const onUp = () => {
+						this.classList.remove('active');
+						document.removeEventListener('mousemove', onMove);
+						document.removeEventListener('mouseup', onUp);
+						setTimeout(() => { resizing = false; }, 50);
+					};
+					document.addEventListener('mousemove', onMove);
+					document.addEventListener('mouseup', onUp);
+				});
+			});
+			document.querySelectorAll('#uploadsTable .sortable').forEach(th => {
+				th.addEventListener('click', e => { if (resizing) e.stopImmediatePropagation(); });
+			});
+		})();
+
 		// Apply theme from sessionStorage to match map preference
 		(function() {
 			const media = window.matchMedia('(prefers-color-scheme: dark)');
@@ -5933,11 +6014,137 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 				btn.disabled = false;
 			}
 		}
+
+		let _editUploadID = 0;
+
+		function openEditUpload(id, filename, username, detector, recordingDate, notes, comment) {
+			_editUploadID = id;
+			document.getElementById('editUploadFilename').value = filename;
+			document.getElementById('editUploadUsername').value = username;
+			document.getElementById('editUploadDetector').value = detector;
+			document.getElementById('editUploadRecordingDate').value = recordingDate;
+			document.getElementById('editUploadNotes').value = notes;
+			document.getElementById('editUploadComment').value = comment || '';
+			document.getElementById('editUploadModal').classList.add('open');
+		}
+
+		function closeEditUpload() {
+			document.getElementById('editUploadModal').classList.remove('open');
+		}
+
+		function importSafecastMeta() {
+			if (!confirm('Fetch track names and comments from the old Safecast API for all imported tracks? This may take a minute.')) return;
+			const password = new URLSearchParams(window.location.search).get('password');
+			const btn = document.getElementById('importSafecastBtn');
+			const status = document.getElementById('importMetaStatus');
+			btn.disabled = true;
+			btn.textContent = 'Importing…';
+			status.textContent = 'Fetching metadata from api.safecast.org…';
+			fetch('/api/admin/tracks/import-safecast', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ password })
+			})
+			.then(r => r.json())
+			.then(data => {
+				btn.disabled = false;
+				btn.textContent = 'Import Safecast API Metadata';
+				if (data.ok) {
+					status.textContent = 'Done: ' + data.updated + ' track(s) updated.';
+					setTimeout(() => window.location.reload(), 1500);
+				} else {
+					status.textContent = 'Error: ' + (data.error || 'unknown');
+				}
+			})
+			.catch(err => {
+				btn.disabled = false;
+				btn.textContent = 'Import Safecast API Metadata';
+				status.textContent = 'Error: ' + err;
+			});
+		}
+
+		async function saveEditUpload() {
+			const password = new URLSearchParams(window.location.search).get('password');
+			const body = {
+				password: password,
+				upload_id: _editUploadID,
+				filename: document.getElementById('editUploadFilename').value,
+				username: document.getElementById('editUploadUsername').value,
+				detector: document.getElementById('editUploadDetector').value,
+				recording_date: document.getElementById('editUploadRecordingDate').value,
+				notes: document.getElementById('editUploadNotes').value,
+				comment: document.getElementById('editUploadComment').value
+			};
+			try {
+				const resp = await fetch('/api/admin/uploads/update', {
+					method: 'PUT',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(body)
+				});
+				if (!resp.ok) {
+					const text = await resp.text();
+					alert('Save failed: ' + text);
+					return;
+				}
+				closeEditUpload();
+				window.location.reload();
+			} catch (err) {
+				alert('Error: ' + err);
+			}
+		}
 	</script>
+
+	<!-- Edit Upload Modal -->
+	<div class="modal-overlay" id="editUploadModal" onclick="if(event.target===this)closeEditUpload()">
+		<div class="modal">
+			<h3>Edit Upload Metadata</h3>
+			<label>Filename</label>
+			<input type="text" id="editUploadFilename">
+			<label>Username</label>
+			<input type="text" id="editUploadUsername" placeholder="uploader username">
+			<label>Detector</label>
+			<input type="text" id="editUploadDetector" placeholder="e.g. LND7317">
+			<label>Recording Date</label>
+			<input type="date" id="editUploadRecordingDate">
+			<label>Notes</label>
+			<textarea id="editUploadNotes" placeholder="Admin notes..."></textarea>
+			<label>Comment</label>
+			<textarea id="editUploadComment" placeholder="User comment from Safecast API..."></textarea>
+			<div class="modal-btns">
+				<button class="modal-cancel-btn" onclick="closeEditUpload()">Cancel</button>
+				<button class="modal-save-btn" onclick="saveEditUpload()">Save</button>
+			</div>
+		</div>
+	</div>
+</div><!-- .page-content -->
+<script>
+(function() {
+	function applyLabel() {
+		var btn = document.getElementById('theme-toggle');
+		if (btn) btn.textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? '\u2600\uFE0F Light Mode' : '\uD83C\uDF19 Dark Mode';
+	}
+	applyLabel();
+	window.toggleTheme = function() {
+		var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+		document.documentElement.setAttribute('data-theme', next);
+		localStorage.setItem('safecastDocTheme', next);
+		applyLabel();
+	};
+})();
+</script>
 </body>
 </html>`
 
 	fmt.Fprint(w, html)
+}
+
+// truncateString shortens s to at most n runes, appending "…" if truncated.
+func truncateString(s string, n int) string {
+	runes := []rune(s)
+	if len(runes) <= n {
+		return s
+	}
+	return string(runes[:n]) + "…"
 }
 
 // formatFileSize converts bytes to human-readable format
@@ -6125,6 +6332,242 @@ func adminDeleteMultipleTracksHandler(w http.ResponseWriter, r *http.Request) {
 			"deleted": deleted,
 		})
 	}
+}
+
+// adminUpdateTrackHandler updates the editable metadata (name, username, notes) for a track.
+// PUT /api/admin/tracks/update
+// Body: {"password":"xxx","track_id":"abc","name":"...","username":"...","notes":"..."}
+func adminUpdateTrackHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if db == nil || db.DB == nil {
+		http.Error(w, "database not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	var req struct {
+		Password string `json:"password"`
+		TrackID  string `json:"track_id"`
+		Name     string `json:"name"`
+		Username string `json:"username"`
+		Notes    string `json:"notes"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.TrackID == "" {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	isSessionAdmin := false
+	if user, ok := auth.GetUserFromContext(r.Context()); ok && user.IsAdmin {
+		isSessionAdmin = true
+	}
+	if !isSessionAdmin {
+		if *adminPassword == "" {
+			http.Error(w, "admin disabled", http.StatusForbidden)
+			return
+		}
+		if req.Password != *adminPassword {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+	}
+
+	_, err := db.DB.ExecContext(r.Context(),
+		`UPDATE uploads SET name = $1, username = $2, notes = $3 WHERE track_id = $4`,
+		req.Name, req.Username, req.Notes, req.TrackID,
+	)
+	if err != nil {
+		log.Printf("adminUpdateTrack: %v", err)
+		http.Error(w, "update failed", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"ok":true}`))
+}
+
+// adminUpdateUploadHandler updates editable metadata for a single upload record.
+// PUT /api/admin/uploads/update
+// Body: {"password":"xxx","upload_id":123,"filename":"...","username":"...","detector":"...","recording_date":"YYYY-MM-DD","notes":"..."}
+func adminUpdateUploadHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if db == nil || db.DB == nil {
+		http.Error(w, "database not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	var req struct {
+		Password      string `json:"password"`
+		UploadID      int64  `json:"upload_id"`
+		Filename      string `json:"filename"`
+		Username      string `json:"username"`
+		Detector      string `json:"detector"`
+		RecordingDate string `json:"recording_date"` // "YYYY-MM-DD" or ""
+		Notes         string `json:"notes"`
+		Comment       string `json:"comment"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.UploadID == 0 {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	isSessionAdmin := false
+	if user, ok := auth.GetUserFromContext(r.Context()); ok && user.IsAdmin {
+		isSessionAdmin = true
+	}
+	if !isSessionAdmin {
+		if *adminPassword == "" {
+			http.Error(w, "admin disabled", http.StatusForbidden)
+			return
+		}
+		if req.Password != *adminPassword {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+	}
+
+	var err error
+	if req.RecordingDate != "" {
+		t, parseErr := time.Parse("2006-01-02", req.RecordingDate)
+		if parseErr != nil {
+			http.Error(w, "invalid recording_date format", http.StatusBadRequest)
+			return
+		}
+		_, err = db.DB.ExecContext(r.Context(),
+			`UPDATE uploads SET filename = $1, username = $2, detector = $3, notes = $4, recording_date = $5, comment = $6 WHERE id = $7`,
+			req.Filename, req.Username, req.Detector, req.Notes, t, req.Comment, req.UploadID,
+		)
+	} else {
+		_, err = db.DB.ExecContext(r.Context(),
+			`UPDATE uploads SET filename = $1, username = $2, detector = $3, notes = $4, comment = $5 WHERE id = $6`,
+			req.Filename, req.Username, req.Detector, req.Notes, req.Comment, req.UploadID,
+		)
+	}
+	if err != nil {
+		log.Printf("adminUpdateUpload: %v", err)
+		http.Error(w, "update failed", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"ok":true}`))
+}
+
+// adminImportSafecastMetadataHandler fetches name/metadata from the old Safecast API
+// for all uploads with source='safecast-api' and a non-empty source_id, then saves
+// the name field back to uploads.name.
+// POST /api/admin/tracks/import-safecast
+// Body: {"password":"xxx"}
+func adminImportSafecastMetadataHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if db == nil || db.DB == nil {
+		http.Error(w, "database not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	var req struct {
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	isSessionAdmin := false
+	if user, ok := auth.GetUserFromContext(r.Context()); ok && user.IsAdmin {
+		isSessionAdmin = true
+	}
+	if !isSessionAdmin {
+		if *adminPassword == "" {
+			http.Error(w, "admin disabled", http.StatusForbidden)
+			return
+		}
+		if req.Password != *adminPassword {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+	}
+
+	// Fetch all uploads from the Safecast API source that have a source_id
+	rows, err := db.DB.QueryContext(r.Context(),
+		`SELECT track_id, source_id FROM uploads WHERE source = 'safecast-api' AND source_id IS NOT NULL AND source_id != '' AND (name IS NULL OR name = '' OR name = filename OR comment IS NULL OR comment = '')`,
+	)
+	if err != nil {
+		http.Error(w, "query failed", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	type candidate struct {
+		TrackID  string
+		SourceID string
+	}
+	var candidates []candidate
+	for rows.Next() {
+		var c candidate
+		if err := rows.Scan(&c.TrackID, &c.SourceID); err == nil {
+			candidates = append(candidates, c)
+		}
+	}
+	rows.Close()
+
+	const numWorkers = 16
+	type result struct{ updated bool }
+	jobs := make(chan candidate, len(candidates))
+	results := make(chan result, len(candidates))
+
+	httpClient := &http.Client{Timeout: 10 * time.Second}
+	for i := 0; i < numWorkers; i++ {
+		go func() {
+			for c := range jobs {
+				apiURL := "https://api.safecast.org/bgeigie_imports/" + c.SourceID + ".json"
+				resp, err := httpClient.Get(apiURL)
+				if err != nil || resp.StatusCode != http.StatusOK {
+					if resp != nil {
+						resp.Body.Close()
+					}
+					results <- result{}
+					continue
+				}
+				var meta struct {
+					Name    string `json:"name"`
+					Comment string `json:"comment"`
+				}
+				decodeErr := json.NewDecoder(resp.Body).Decode(&meta)
+				resp.Body.Close()
+				if decodeErr != nil || meta.Name == "" {
+					results <- result{}
+					continue
+				}
+				_, err = db.DB.ExecContext(r.Context(),
+					`UPDATE uploads SET name = $1, comment = $2 WHERE track_id = $3`,
+					meta.Name, meta.Comment, c.TrackID,
+				)
+				results <- result{updated: err == nil}
+			}
+		}()
+	}
+
+	for _, c := range candidates {
+		jobs <- c
+	}
+	close(jobs)
+
+	updated := 0
+	for range candidates {
+		if r := <-results; r.updated {
+			updated++
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"ok": true, "updated": updated, "total": len(candidates)})
 }
 
 // adminImportFromSafecastHandler manually imports files from Safecast API for a date range.
@@ -6372,6 +6815,7 @@ func adminImportFromSafecastHandler(w http.ResponseWriter, r *http.Request) {
 					imp.SourceURL,
 					fmt.Sprintf("%d", imp.UserID),
 					username,
+					imp.Comment,
 					db,
 					*dbType,
 					nil, // Use default importer
@@ -6415,6 +6859,122 @@ func adminImportFromSafecastHandler(w http.ResponseWriter, r *http.Request) {
 	// Send done event
 	fmt.Fprintf(w, "event: done\ndata: {\"status\": \"success\", \"imported\": %d, \"skipped\": %d, \"errors\": %d, \"total\": %d}\n\n", imported, skipped, errors, len(allImports))
 	flusher.Flush()
+}
+
+// adminImportByIDHandler imports a single track from the Safecast API by its bgeigie import ID.
+// POST /api/admin/import-by-id?password=xxx
+// Body: {"id": 32558}
+func adminImportByIDHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	isSessionAdmin := false
+	if user, ok := auth.GetUserFromContext(r.Context()); ok && user.IsAdmin {
+		isSessionAdmin = true
+	}
+	if !isSessionAdmin {
+		if *adminPassword == "" {
+			http.Error(w, "Admin endpoints are disabled - please login as admin", http.StatusForbidden)
+			return
+		}
+		if r.URL.Query().Get("password") != *adminPassword {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+	}
+
+	if db == nil || db.DB == nil {
+		http.Error(w, "Database not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	var req struct {
+		ID int64 `json:"id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	if req.ID <= 0 {
+		http.Error(w, "id must be a positive integer", http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+	client := safecastfetcher.NewClient()
+
+	imp, err := client.FetchImportByID(ctx, req.ID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("fetch import: %v", err), http.StatusBadGateway)
+		return
+	}
+	if imp == nil {
+		http.Error(w, fmt.Sprintf("import #%d not found", req.ID), http.StatusNotFound)
+		return
+	}
+
+	// Check for duplicate
+	exists, err := db.CheckImportExists(ctx, safecastfetcher.SourceTypeSafecastAPI, imp.ID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("check duplicate: %v", err), http.StatusInternalServerError)
+		return
+	}
+	if exists {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"skipped": true,
+			"message": fmt.Sprintf("import #%d already exists", imp.ID),
+		})
+		return
+	}
+
+	content, filename, err := safecastfetcher.DownloadLogFile(ctx, imp.SourceURL)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("download: %v", err), http.StatusBadGateway)
+		return
+	}
+
+	username := ""
+	if imp.UserID > 0 {
+		user, err := client.FetchUser(ctx, imp.UserID)
+		if err != nil {
+			log.Printf("[admin-import-by-id] warning: failed to fetch username for user %d: %v", imp.UserID, err)
+		} else if user != nil {
+			username = user.Name
+		}
+	}
+
+	result, err := safecastfetcher.ImportSafecastFile(
+		ctx,
+		content,
+		filename,
+		imp.ID,
+		imp.SourceURL,
+		fmt.Sprintf("%d", imp.UserID),
+		username,
+		imp.Comment,
+		db,
+		*dbType,
+		nil,
+	)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("import failed: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("[admin-import-by-id] import #%d: success (track %s, %d markers)", imp.ID, result.TrackID, result.MarkerCount)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"imported":     true,
+		"track_id":     result.TrackID,
+		"marker_count": result.MarkerCount,
+		"filename":     result.Filename,
+		"comment":      imp.Comment,
+	})
 }
 
 // adminTracksHandler lists all tracks in the system with statistics.
@@ -6481,12 +7041,12 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 	var countArgs []interface{}
 	paramCount := 0
 
-	// Always exclude live tracks
+	// Always exclude live tracks (use ts. prefix since we now have a JOIN)
 	paramCount++
 	if *dbType == "pgx" {
-		whereConditions = append(whereConditions, fmt.Sprintf("trackID NOT LIKE $%d", paramCount))
+		whereConditions = append(whereConditions, fmt.Sprintf("ts.trackID NOT LIKE $%d", paramCount))
 	} else {
-		whereConditions = append(whereConditions, "trackID NOT LIKE ?")
+		whereConditions = append(whereConditions, "ts.trackID NOT LIKE ?")
 	}
 	countArgs = append(countArgs, "live:%")
 
@@ -6494,24 +7054,26 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 	if detectorFilter != "" {
 		paramCount++
 		if *dbType == "pgx" {
-			whereConditions = append(whereConditions, fmt.Sprintf("detector ILIKE $%d", paramCount))
+			whereConditions = append(whereConditions, fmt.Sprintf("ts.detector ILIKE $%d", paramCount))
 			countArgs = append(countArgs, "%"+detectorFilter+"%")
 		} else {
-			whereConditions = append(whereConditions, "detector LIKE ?")
+			whereConditions = append(whereConditions, "ts.detector LIKE ?")
 			countArgs = append(countArgs, "%"+detectorFilter+"%")
 		}
 	}
 
-	// Add search condition
+	// Add search condition (track ID, detector, name, username)
 	if search != "" {
 		paramCount++
 		if *dbType == "pgx" {
-			whereConditions = append(whereConditions, fmt.Sprintf("(trackID ILIKE $%d OR CAST(marker_count AS TEXT) ILIKE $%d OR CAST(spectra_count AS TEXT) ILIKE $%d OR COALESCE(detector, '') ILIKE $%d)", paramCount, paramCount, paramCount, paramCount))
+			whereConditions = append(whereConditions, fmt.Sprintf(
+				"(ts.trackID ILIKE $%d OR COALESCE(ts.detector,'') ILIKE $%d)",
+				paramCount, paramCount))
 			countArgs = append(countArgs, "%"+search+"%")
 		} else {
-			whereConditions = append(whereConditions, "(trackID LIKE ? OR CAST(marker_count AS TEXT) LIKE ? OR CAST(spectra_count AS TEXT) LIKE ? OR COALESCE(detector, '') LIKE ?)")
+			whereConditions = append(whereConditions, "(ts.trackID LIKE ? OR COALESCE(ts.detector,'') LIKE ?)")
 			searchPattern := "%" + search + "%"
-			for i := 0; i < 4; i++ {
+			for i := 0; i < 2; i++ {
 				countArgs = append(countArgs, searchPattern)
 			}
 		}
@@ -6524,7 +7086,7 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get total count for pagination
 	var totalCount int
-	countQuery := "SELECT COUNT(*) FROM track_statistics " + whereClause
+	countQuery := "SELECT COUNT(*) FROM track_statistics ts " + whereClause
 	err := db.DB.QueryRowContext(ctx, countQuery, countArgs...).Scan(&totalCount)
 	if err != nil {
 		log.Printf("Error counting tracks: %v", err)
@@ -6543,7 +7105,8 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 	copy(args, countArgs)
 	args = append(args, limit, offset)
 
-	// Query tracks using materialized view for performance
+	// Query tracks using materialized view for performance, joined with uploads for editable metadata.
+	// DISTINCT ON ensures one row per track even if multiple upload records exist.
 	var query string
 	if *dbType == "pgx" {
 		paramCount++
@@ -6551,17 +7114,34 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 		paramCount++
 		offsetParam := paramCount
 		query = `
-			SELECT trackID, marker_count, first_date, last_date, spectra_count, COALESCE(detector, '') as detector
-			FROM track_statistics
+			SELECT ts.trackID, ts.marker_count, ts.first_date, ts.last_date, ts.spectra_count,
+			       COALESCE(ts.detector, '') as detector,
+			       COALESCE(u.name, u.filename, '') as name,
+			       COALESCE(u.notes, '') as notes,
+			       COALESCE(u.username, '') as username,
+			       COALESCE(u.source, '') as source,
+			       COALESCE(u.source_id, '') as source_id
+			FROM track_statistics ts
+			LEFT JOIN LATERAL (
+			    SELECT filename, name, notes, username, source, source_id
+			    FROM uploads WHERE track_id = ts.trackID LIMIT 1
+			) u ON true
 			` + whereClause + `
-			ORDER BY last_date DESC
+			ORDER BY ts.last_date DESC
 			LIMIT $` + strconv.Itoa(limitParam) + ` OFFSET $` + strconv.Itoa(offsetParam)
 	} else {
 		query = `
-			SELECT trackID, marker_count, first_date, last_date, spectra_count, COALESCE(detector, '') as detector
-			FROM track_statistics
+			SELECT ts.trackID, ts.marker_count, ts.first_date, ts.last_date, ts.spectra_count,
+			       COALESCE(ts.detector, '') as detector,
+			       COALESCE(u.name, u.filename, '') as name,
+			       COALESCE(u.notes, '') as notes,
+			       COALESCE(u.username, '') as username,
+			       COALESCE(u.source, '') as source,
+			       COALESCE(u.source_id, '') as source_id
+			FROM track_statistics ts
+			LEFT JOIN uploads u ON u.track_id = ts.trackID
 			` + whereClause + `
-			ORDER BY last_date DESC
+			ORDER BY ts.last_date DESC
 			LIMIT ? OFFSET ?`
 	}
 
@@ -6580,12 +7160,18 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 		LastDate     int64  `json:"lastDate"`
 		SpectraCount int64  `json:"spectraCount"`
 		Detector     string `json:"detector"`
+		Name         string `json:"name"`
+		Notes        string `json:"notes"`
+		Username     string `json:"username"`
+		Source       string `json:"source"`
+		SourceID     string `json:"sourceID"`
 	}
 
 	var tracks []TrackInfo
 	for rows.Next() {
 		var t TrackInfo
-		if err := rows.Scan(&t.TrackID, &t.MarkerCount, &t.FirstDate, &t.LastDate, &t.SpectraCount, &t.Detector); err != nil {
+		if err := rows.Scan(&t.TrackID, &t.MarkerCount, &t.FirstDate, &t.LastDate, &t.SpectraCount, &t.Detector,
+			&t.Name, &t.Notes, &t.Username, &t.Source, &t.SourceID); err != nil {
 			log.Printf("Error scanning track row: %v", err)
 			continue
 		}
@@ -6599,6 +7185,13 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 <html>
 <head>
 	<title>Admin - All Tracks</title>
+	<script>
+	(function() {
+		var saved = localStorage.getItem('safecastDocTheme');
+		var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+		document.documentElement.setAttribute('data-theme', saved || (prefersDark ? 'dark' : 'light'));
+	})();
+	</script>
 
 	<!-- favicon -->
 	<link rel="apple-touch-icon" sizes="180x180" href="/static/images/apple-touch-icon.png">
@@ -6676,16 +7269,23 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 			--badge-spectrum-text: #81c784;
 			color-scheme: dark;
 		}
-		body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; margin: 20px; background: var(--bg-primary); color: var(--text-primary); }
+		body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; margin: 0; background: var(--bg-primary); color: var(--text-primary); transition: background 0.2s, color 0.2s; }
 		h1 { color: var(--text-primary); }
+		.top-nav { background: #1a3a5c; color: #fff; padding: 0 24px; display: flex; align-items: center; gap: 16px; height: 52px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); position: sticky; top: 0; z-index: 100; }
+		.nav-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; color: #fff; font-weight: 700; font-size: 17px; white-space: nowrap; }
+		.nav-logo img { height: 28px; width: 28px; object-fit: contain; }
+		.nav-sep { color: rgba(255,255,255,0.3); font-size: 18px; }
+		.nav-title { font-size: 15px; font-weight: 600; color: #d0e8ff; white-space: nowrap; }
+		.nav-spacer { flex: 1; }
+		.back-link { color: #afd4f5; text-decoration: none; font-size: 13px; white-space: nowrap; }
+		.back-link:hover { color: #fff; }
+		#theme-toggle { background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.25); border-radius: 6px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
+		#theme-toggle:hover { background: rgba(255,255,255,0.22); }
+		.page-content { padding: 20px 24px; }
 		.nav { background: var(--bg-card); padding: 15px; margin-bottom: 20px; border-radius: 5px; box-shadow: var(--shadow); display: flex; align-items: center; justify-content: space-between; }
 		.nav-left { display: flex; align-items: center; gap: 15px; }
 		.nav a { color: var(--link-color); text-decoration: none; }
 		.nav a:hover { text-decoration: underline; }
-		.back-to-map-btn { background: #2196F3 !important; color: white !important; padding: 8px 16px; border-radius: 4px; text-decoration: none !important; font-weight: 500; transition: background 0.2s; }
-		.back-to-map-btn:hover { background: #1976D2 !important; text-decoration: none !important; }
-		.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0; }
-		.page-header h1 { margin: 0; }
 		.summary { background: var(--bg-card); padding: 15px; margin-bottom: 20px; border-radius: 5px; box-shadow: var(--shadow); }
 		table { border-collapse: collapse; width: 100%; background: var(--bg-card); box-shadow: var(--shadow); }
 		th { background: var(--th-bg); color: white; padding: 12px; text-align: left; font-weight: 600; }
@@ -6701,6 +7301,23 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 		.datetime { color: var(--text-secondary); font-size: 0.9em; }
 		.delete-btn { background: #f44336; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 0.85em; }
 		.delete-btn:hover { background: #d32f2f; }
+		.edit-btn { background: #2196F3; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 0.85em; margin-right: 4px; }
+		.edit-btn:hover { background: #1976D2; }
+		.import-btn { background: #4caf50; color: white; border: none; padding: 8px 16px; border-radius: 3px; cursor: pointer; font-size: 0.9em; }
+		.import-btn:hover { background: #388e3c; }
+		.import-btn:disabled { background: #888; cursor: default; }
+		.modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; }
+		.modal-overlay.open { display:flex; }
+		.modal { background:var(--bg-card); border-radius:8px; padding:24px; width:480px; max-width:95vw; box-shadow:0 4px 24px rgba(0,0,0,0.3); }
+		.modal h3 { margin:0 0 16px; color:var(--text-primary); }
+		.modal label { display:block; margin-bottom:4px; font-size:0.85em; color:var(--text-secondary); }
+		.modal input, .modal textarea { width:100%; padding:8px; border:1px solid var(--border-color); border-radius:4px; background:var(--bg-primary); color:var(--text-primary); font-size:0.9em; margin-bottom:12px; box-sizing:border-box; }
+		.modal textarea { min-height:80px; resize:vertical; }
+		.modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:8px; }
+		.modal-save { background:#2196F3; color:white; border:none; padding:8px 20px; border-radius:4px; cursor:pointer; }
+		.modal-save:hover { background:#1976D2; }
+		.modal-cancel { background:var(--border-color); color:var(--text-primary); border:none; padding:8px 16px; border-radius:4px; cursor:pointer; }
+		#importStatus { margin-top:8px; font-size:0.85em; color:var(--text-secondary); }
 		.delete-selected-btn { background: #f44336; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer; font-size: 1em; margin-left: 10px; }
 		.delete-selected-btn:hover { background: #d32f2f; }
 		.delete-selected-btn:disabled { background: #ccc; cursor: not-allowed; }
@@ -6726,10 +7343,18 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 	</style>
 </head>
 <body>
-	<div class="page-header">
-		<h1>All Tracks Administration</h1>
-		<a href="/" class="back-to-map-btn">Back to Map</a>
-	</div>
+<nav class="top-nav">
+  <a href="/" class="nav-logo">
+    <img src="/static/images/safecast-logo-squared.png" alt="Safecast">
+    Safecast
+  </a>
+  <span class="nav-sep">|</span>
+  <span class="nav-title">All Tracks Administration</span>
+  <span class="nav-spacer"></span>
+  <a href="/" class="back-link">&#8592; Back to Map</a>
+  <button id="theme-toggle" onclick="toggleTheme()">&#127769; Dark Mode</button>
+</nav>
+<div class="page-content">
 	<div class="admin-tabs">
 		<a href="/admin/users` + func() string {
 		if password != "" {
@@ -6765,8 +7390,27 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 	<div class="nav">
 		<div class="nav-left">
 			<button class="backfill-btn" onclick="backfillUploads()">Backfill Upload Records</button>
+			<button class="import-btn" onclick="importSafecastMeta()" id="importSafecastBtn">Import Safecast API Metadata</button>
 			<button class="view-selected-btn" id="viewSelectedBtn" onclick="viewSelected()" disabled>View Selected on Map</button>
 			<button class="delete-selected-btn" id="deleteSelectedBtn" onclick="deleteSelected()" disabled>Delete Selected</button>
+		</div>
+	</div>
+	<div id="importStatus"></div>
+	<!-- Edit Track Modal -->
+	<div class="modal-overlay" id="editModal">
+		<div class="modal">
+			<h3>Edit Track Metadata</h3>
+			<input type="hidden" id="editTrackID">
+			<label>Name</label>
+			<input type="text" id="editName" placeholder="Display name">
+			<label>Uploader / Username</label>
+			<input type="text" id="editUsername" placeholder="Username">
+			<label>Admin Notes</label>
+			<textarea id="editNotes" placeholder="Internal notes (not shown to public)"></textarea>
+			<div class="modal-actions">
+				<button class="modal-cancel" onclick="closeEdit()">Cancel</button>
+				<button class="modal-save" onclick="saveEdit()">Save</button>
+			</div>
 		</div>
 	</div>
 	<div class="summary">
@@ -6912,20 +7556,22 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 			<tr>
 				<th class="checkbox-col"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"></th>
 				<th class="sortable" onclick="sortTable(1)" data-type="text">Track ID</th>
-				<th class="sortable" onclick="sortTable(2)" data-type="text">Detector</th>
-				<th class="sortable" onclick="sortTable(3)" data-type="number">Markers</th>
-				<th class="sortable" onclick="sortTable(4)" data-type="number">Spectra</th>
-				<th class="sortable" onclick="sortTable(5)" data-type="date">First Point</th>
-				<th class="sortable" onclick="sortTable(6)" data-type="date">Last Point</th>
+				<th class="sortable" onclick="sortTable(2)" data-type="text">Name</th>
+				<th class="sortable" onclick="sortTable(3)" data-type="text">Uploader</th>
+				<th class="sortable" onclick="sortTable(4)" data-type="text">Detector</th>
+				<th class="sortable" onclick="sortTable(5)" data-type="number">Markers</th>
+				<th class="sortable" onclick="sortTable(6)" data-type="number">Spectra</th>
+				<th class="sortable" onclick="sortTable(7)" data-type="date">Last Point</th>
 				<th>Actions</th>
 			</tr>
 			<tr class="filter-row">
 				<th></th>
 				<th><input type="text" class="filter-input" placeholder="Filter Track ID..." onkeyup="filterTable()"></th>
+				<th><input type="text" class="filter-input" placeholder="Filter Name..." onkeyup="filterTable()"></th>
+				<th><input type="text" class="filter-input" placeholder="Filter Uploader..." onkeyup="filterTable()"></th>
 				<th><input type="text" class="filter-input" placeholder="Filter Detector..." onkeyup="filterTable()"></th>
 				<th><input type="text" class="filter-input" placeholder="Min..." onkeyup="filterTable()"></th>
 				<th><input type="text" class="filter-input" placeholder="Min..." onkeyup="filterTable()"></th>
-				<th><input type="text" class="filter-input" placeholder="Filter date..." onkeyup="filterTable()"></th>
 				<th><input type="text" class="filter-input" placeholder="Filter date..." onkeyup="filterTable()"></th>
 				<th></th>
 			</tr>
@@ -6933,7 +7579,6 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 		<tbody id="tracksTableBody">`
 
 		for _, track := range tracks {
-			firstDate := time.Unix(track.FirstDate, 0).Format("2006-01-02 15:04")
 			lastDate := time.Unix(track.LastDate, 0).Format("2006-01-02 15:04")
 
 			// Format detector with link for filtering
@@ -6943,24 +7588,44 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 					password, url.QueryEscape(track.Detector), track.Detector)
 			}
 
+			nameDisplay := track.Name
+			if nameDisplay == "" {
+				nameDisplay = "-"
+			}
+			usernameDisplay := track.Username
+			if usernameDisplay == "" {
+				usernameDisplay = "-"
+			}
+
+			// Encode fields for data attributes (JS edit modal)
+			notesEsc := template.HTMLEscapeString(track.Notes)
+			nameEsc := template.HTMLEscapeString(track.Name)
+			usernameEsc := template.HTMLEscapeString(track.Username)
+
 			html += fmt.Sprintf(`
 			<tr>
 				<td class="checkbox-col"><input type="checkbox" class="track-checkbox" value="%s" onchange="updateDeleteButton()"></td>
 				<td class="trackid"><a href="/trackid/%s">%s</a></td>
+				<td>%s</td>
+				<td>%s</td>
 				<td class="detector">%s</td>
 				<td><span class="badge">%d points</span></td>
 				<td><span class="badge spectrum">%d spectra</span></td>
 				<td class="datetime">%s</td>
-				<td class="datetime">%s</td>
-				<td><button class="delete-btn" onclick="deleteTrack('%s')">Delete</button></td>
+				<td>
+					<button class="edit-btn" onclick="openEdit('%s','%s','%s','%s')">Edit</button>
+					<button class="delete-btn" onclick="deleteTrack('%s')">Delete</button>
+				</td>
 			</tr>`,
 				track.TrackID,
 				track.TrackID, track.TrackID,
+				nameDisplay,
+				usernameDisplay,
 				detectorDisplay,
 				track.MarkerCount,
 				track.SpectraCount,
-				firstDate,
 				lastDate,
+				track.TrackID, nameEsc, usernameEsc, notesEsc,
 				track.TrackID,
 			)
 		}
@@ -7098,6 +7763,81 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 			.catch(err => alert('Error: ' + err));
 		}
 
+		// ── Edit track metadata ──────────────────────────────────────
+		function openEdit(trackID, name, username, notes) {
+			document.getElementById('editTrackID').value  = trackID;
+			document.getElementById('editName').value     = name;
+			document.getElementById('editUsername').value = username;
+			document.getElementById('editNotes').value    = notes;
+			document.getElementById('editModal').classList.add('open');
+		}
+
+		function closeEdit() {
+			document.getElementById('editModal').classList.remove('open');
+		}
+
+		function saveEdit() {
+			const password  = new URLSearchParams(window.location.search).get('password');
+			const trackID   = document.getElementById('editTrackID').value;
+			const name      = document.getElementById('editName').value.trim();
+			const username  = document.getElementById('editUsername').value.trim();
+			const notes     = document.getElementById('editNotes').value.trim();
+
+			fetch('/api/admin/tracks/update', {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ password, track_id: trackID, name, username, notes })
+			})
+			.then(r => r.json())
+			.then(data => {
+				if (data.ok) {
+					closeEdit();
+					window.location.reload();
+				} else {
+					alert('Save failed: ' + (data.error || 'unknown error'));
+				}
+			})
+			.catch(err => alert('Error: ' + err));
+		}
+
+		// Close modal on overlay click
+		document.getElementById('editModal').addEventListener('click', function(e) {
+			if (e.target === this) closeEdit();
+		});
+
+		// ── Import Safecast API metadata ─────────────────────────────
+		function importSafecastMeta() {
+			if (!confirm('Fetch track names and metadata from the old Safecast API for all imported tracks? This may take a moment.')) return;
+			const password = new URLSearchParams(window.location.search).get('password');
+			const btn = document.getElementById('importSafecastBtn');
+			const status = document.getElementById('importStatus');
+			btn.disabled = true;
+			btn.textContent = 'Importing…';
+			status.textContent = 'Fetching metadata from api.safecast.org…';
+
+			fetch('/api/admin/tracks/import-safecast', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ password })
+			})
+			.then(r => r.json())
+			.then(data => {
+				btn.disabled = false;
+				btn.textContent = 'Import Safecast API Metadata';
+				if (data.ok) {
+					status.textContent = 'Done: ' + data.updated + ' track(s) updated.';
+					if (data.updated > 0) window.location.reload();
+				} else {
+					status.textContent = 'Error: ' + (data.error || 'unknown');
+				}
+			})
+			.catch(err => {
+				btn.disabled = false;
+				btn.textContent = 'Import Safecast API Metadata';
+				status.textContent = 'Error: ' + err;
+			});
+		}
+
 		// Sorting functionality
 		let sortDirection = {};
 		function sortTable(columnIndex) {
@@ -7179,6 +7919,22 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 			updateDeleteButton();
 		}
 	</script>
+</div><!-- .page-content -->
+<script>
+(function() {
+	function applyLabel() {
+		var btn = document.getElementById('theme-toggle');
+		if (btn) btn.textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? '\u2600\uFE0F Light Mode' : '\uD83C\uDF19 Dark Mode';
+	}
+	applyLabel();
+	window.toggleTheme = function() {
+		var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+		document.documentElement.setAttribute('data-theme', next);
+		localStorage.setItem('safecastDocTheme', next);
+		applyLabel();
+	};
+})();
+</script>
 </body>
 </html>`
 
@@ -7256,12 +8012,13 @@ func adminBackfillHandler(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var spectrumID int64
 		var filename, sourceFormat, trackID string
-		var createdAt int64
+		var createdAtTime time.Time
 
-		if err := rows.Scan(&spectrumID, &filename, &sourceFormat, &trackID, &createdAt); err != nil {
+		if err := rows.Scan(&spectrumID, &filename, &sourceFormat, &trackID, &createdAtTime); err != nil {
 			log.Printf("Error scanning spectrum row: %v", err)
 			continue
 		}
+		createdAt := createdAtTime.Unix()
 
 		// Generate filename for legacy records that don't have one
 		if filename == "" {
@@ -9013,6 +9770,7 @@ func main() {
 			sourceURL string,
 			userID string,
 			username string,
+			comment string,
 			db *database.Database,
 			dbType string,
 		) (trackID string, markerCount int, err error) {
@@ -9070,6 +9828,7 @@ func main() {
 				UserID:        userID,
 				Username:      username,
 				Detector:      detector,
+				Comment:       comment,
 			}
 
 			if _, err := db.InsertUpload(ctx, upload); err != nil {
@@ -9178,6 +9937,12 @@ func main() {
 	}
 	mcpDocsURL := strings.TrimRight(mcpBaseForDocs, "/") + "/mcp-api/"
 
+	// Combined API docs page (Map API + MCP API tabs)
+	http.HandleFunc("/docs/", serveAPIDocsPage)
+	http.HandleFunc("/docs", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/docs/", http.StatusMovedPermanently)
+	})
+
 	// Register Map API favicon and theme CSS endpoints
 	http.HandleFunc("/map-api/favicon.ico", serveFavicon)
 	http.HandleFunc("/map-api/favicon-16x16.png", serveFavicon16)
@@ -9248,6 +10013,22 @@ func main() {
 				};
 				document.body.appendChild(btn);
 
+				// ── Dark-mode styles for preamble ──
+				const dmStyle = document.createElement('style');
+				dmStyle.textContent = [
+					'body.dark-mode #safecast-preamble { background: #1a2535 !important; border-bottom-color: #0d9488 !important; }',
+					'body.dark-mode #safecast-preamble h2 { color: #93c5fd !important; }',
+					'body.dark-mode #safecast-preamble > div > p { color: #b0b8c8 !important; }',
+					'body.dark-mode #safecast-preamble a[href*="creativecommons"] { color: #5eead4 !important; }',
+					'body.dark-mode #safecast-preamble summary { color: #93c5fd !important; }',
+					'body.dark-mode #safecast-preamble details > div > div { background: #0f1c2e !important; border-color: #2a3f5f !important; }',
+					'body.dark-mode #safecast-preamble details > div > div strong { color: #93c5fd !important; }',
+					'body.dark-mode #safecast-preamble details > div > div p { color: #8899aa !important; }',
+					'body.dark-mode #safecast-preamble details > div > p { color: #6b7a8d !important; }',
+					'body.dark-mode #safecast-preamble code { background: #0f1c2e !important; color: #5eead4 !important; }',
+				].join('\n');
+				document.head.appendChild(dmStyle);
+
 				// ── Preamble section (inserted before #swagger-ui) ──
 				const existing = document.getElementById('safecast-preamble');
 				if (existing) existing.remove();
@@ -9303,6 +10084,25 @@ func main() {
 			"onComplete": mapAPINavScript,
 		}),
 	))
+
+	// Serve MCP API spec JSON directly (avoids sharing swaggerFiles.Handler singleton
+	// with the /map-api/ swagger instance, which causes a prefix conflict).
+	http.HandleFunc("/mcp-api/doc.json", func(w http.ResponseWriter, r *http.Request) {
+		doc, err := swag.ReadDoc("swagger")
+		if err != nil {
+			http.Error(w, "swagger spec unavailable", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(doc))
+	})
+	// Standalone /mcp-api/ page: custom HTML that loads assets from /map-api/
+	// (single swagger static-file handler on this port — avoids prefix conflict).
+	http.HandleFunc("/mcp-api/favicon.ico", serveFavicon)
+	http.HandleFunc("/mcp-api/favicon-16x16.png", serveFavicon16)
+	http.HandleFunc("/mcp-api/favicon-32x32.png", serveFavicon32)
+	http.HandleFunc("/mcp-api/swagger-theme.css", serveSwaggerTheme)
+	http.HandleFunc("/mcp-api/", serveMCPAPIPage)
 
 	http.HandleFunc("/home", homeHandler)
 	http.HandleFunc("/", mapHandler)
@@ -9414,6 +10214,31 @@ func main() {
 			w.Write(data)
 		}))
 
+		// MCP analytics API endpoints
+		http.HandleFunc("/api/admin/mcp/data", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminAccess(w, r) {
+				return
+			}
+			adminMCPDataHandler(w, r)
+		}))
+		http.HandleFunc("/api/admin/mcp/export", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminAccess(w, r) {
+				return
+			}
+			adminMCPExportHandler(w, r)
+		}))
+		http.HandleFunc("/api/admin/mcp/delete", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminAccess(w, r) {
+				return
+			}
+			adminMCPDeleteHandler(w, r)
+		}))
+		http.HandleFunc("/api/admin/mcp/update", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminAccess(w, r) {
+				return
+			}
+			adminMCPUpdateHandler(w, r)
+		}))
 		// Serve admin Realtime page and API endpoints
 		http.HandleFunc("/admin/realtime", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
@@ -9522,6 +10347,10 @@ func main() {
 		AdminDeleteTrackHandler:          adminDeleteTrackHandler,
 		AdminDeleteMultipleTracksHandler: adminDeleteMultipleTracksHandler,
 		AdminImportFromSafecastHandler:   adminImportFromSafecastHandler,
+		AdminImportByIDHandler:           adminImportByIDHandler,
+		AdminUpdateTrackHandler:          adminUpdateTrackHandler,
+		AdminUpdateUploadHandler:         adminUpdateUploadHandler,
+		AdminImportSafecastMetaHandler:   adminImportSafecastMetadataHandler,
 		AdminCacheHandler:                adminCacheHandler,
 		AdminMCPDataHandler:              adminMCPDataAPIHandler,
 		AdminMCPExportHandler:            adminMCPExportAPIHandler,

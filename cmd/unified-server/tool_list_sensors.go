@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/url"
 
 	"github.com/mark3labs/mcp-go/mcp"
 )
@@ -29,7 +30,7 @@ var listSensorsToolDef = mcp.NewTool("list_sensors",
 		mcp.Min(-180), mcp.Max(180),
 	),
 	mcp.WithNumber("limit",
-		mcp.Description("Maximum number of sensors to return (default: 50, max: 1000)"),
+		mcp.Description("Maximum number of sensors to return for display (default: 50, max: 1000). The total_count in the result always reflects ALL matching sensors regardless of this limit."),
 		mcp.Min(1), mcp.Max(1000),
 		mcp.DefaultNumber(50),
 	),
@@ -51,59 +52,92 @@ func handleListSensors(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallT
 	if dbAvailable() {
 		return listSensorsDB(ctx, sensorType, minLat, maxLat, minLon, maxLon, limit)
 	}
-	
-	// Fallback to API if database not available
+
 	return mcp.NewToolResultError("Database connection required for list_sensors tool. Please ensure DATABASE_URL is set to access real-time sensor data."), nil
 }
 
-func listSensorsDB(ctx context.Context, sensorType string, minLat, maxLat, minLon, maxLon float64, limit int) (*mcp.CallToolResult, error) {
-	// Check what tables are available in the database
+// findRealtimeTable discovers the realtime sensor table in the database.
+// cachedRealtimeTable caches the discovered table name after the first lookup.
+var cachedRealtimeTable string
+
+// Returns (tableName, availableTables, error). tableName is "" if not found.
+func findRealtimeTable(ctx context.Context) (string, []string, error) {
+	// Return cached result — the table name never changes at runtime.
+	if cachedRealtimeTable != "" {
+		return cachedRealtimeTable, nil, nil
+	}
+
+	// Use pg_tables instead of information_schema.tables — the latter can take
+	// minutes on databases with many objects due to complex system-catalog joins.
 	tablesQuery := `
-		SELECT table_name 
-		FROM information_schema.tables 
-		WHERE table_schema = 'public'
-		ORDER BY table_name
+		SELECT tablename AS table_name
+		FROM pg_tables
+		WHERE schemaname = 'public'
+		ORDER BY tablename
 	`
-	
 	tableRows, err := queryRows(ctx, tablesQuery)
 	if err != nil {
-		return mcp.NewToolResultError("Could not query database schema: " + err.Error()), nil
+		return "", nil, fmt.Errorf("could not query database schema: %w", err)
 	}
-	
-	// Look for tables that might contain real-time sensor data
-	availableTables := make([]string, len(tableRows))
+
+	availableTables := make([]string, 0, len(tableRows))
 	realtimeTable := ""
-	for i, row := range tableRows {
+	for _, row := range tableRows {
 		if tableName, ok := row["table_name"].(string); ok {
-			availableTables[i] = tableName
-			// Check for possible real-time sensor data tables
-			if tableName == "realtime_measurements" || 
-			   tableName == "measurements_realtime" || 
-			   tableName == "sensors" ||
-			   tableName == "devices" {
+			availableTables = append(availableTables, tableName)
+			if tableName == "realtime_measurements" ||
+				tableName == "measurements_realtime" ||
+				tableName == "sensors" ||
+				tableName == "devices" {
 				realtimeTable = tableName
 			}
 		}
 	}
-	
-	if realtimeTable == "" {
-		// If no real-time table found, return available tables for debugging
-		result := map[string]any{
-			"message": "No known real-time sensor data tables found in database.",
-			"available_tables": availableTables,
-			"suggestion": "Real-time sensor data may not be available through this database connection.",
-		}
-		return jsonResult(result)
+	cachedRealtimeTable = realtimeTable
+	return realtimeTable, availableTables, nil
+}
+
+// listSensorsQuery executes the sensor discovery query against realtimeTable.
+// Returns (sensors, totalCount, error). totalCount is the COUNT(*) for the
+// given filters independent of limit.
+func listSensorsQuery(ctx context.Context, realtimeTable, sensorType string, minLat, maxLat, minLon, maxLon float64, limit int) ([]map[string]any, int, error) {
+	// --- total count query ---
+	var countQuery string
+	var countArgs []interface{}
+	if sensorType != "" {
+		countQuery = fmt.Sprintf(`
+			SELECT COUNT(DISTINCT device_id) AS total
+			FROM %s
+			WHERE lat >= $1 AND lat <= $2 AND lon >= $3 AND lon <= $4
+			  AND (COALESCE(transport, '') ILIKE $5 OR COALESCE(device_name, '') ILIKE $5)`,
+			realtimeTable)
+		countArgs = []interface{}{minLat, maxLat, minLon, maxLon, "%" + sensorType + "%"}
+	} else {
+		countQuery = fmt.Sprintf(`
+			SELECT COUNT(DISTINCT device_id) AS total
+			FROM %s
+			WHERE lat >= $1 AND lat <= $2 AND lon >= $3 AND lon <= $4`,
+			realtimeTable)
+		countArgs = []interface{}{minLat, maxLat, minLon, maxLon}
 	}
-	
-	// Query the appropriate real-time table to find unique devices/sensors
+
+	totalCount := 0
+	if countRow, err := queryRow(ctx, countQuery, countArgs...); err == nil {
+		switch v := countRow["total"].(type) {
+		case int64:
+			totalCount = int(v)
+		case int32:
+			totalCount = int(v)
+		case int:
+			totalCount = v
+		}
+	}
+
+	// --- sensor rows query ---
 	var query string
 	var args []interface{}
 
 	if sensorType != "" {
-		// Filter by sensor type
-		// FIXED: Get the actual latest reading per device, not grouped by lat/lon
-		// which causes stale data when sensors move or have multiple positions
 		query = fmt.Sprintf(`
 			SELECT
 				rm.device_id,
@@ -123,11 +157,8 @@ func listSensorsDB(ctx context.Context, sensorType string, minLat, maxLat, minLo
 			WHERE rm.lat >= $1 AND rm.lat <= $2 AND rm.lon >= $3 AND rm.lon <= $4
 			ORDER BY rm.measured_at DESC
 			LIMIT $6`, realtimeTable, realtimeTable)
-
 		args = []interface{}{minLat, maxLat, minLon, maxLon, "%" + sensorType + "%", limit}
 	} else {
-		// No filter by type
-		// FIXED: Get the actual latest reading per device, not grouped by lat/lon
 		query = fmt.Sprintf(`
 			SELECT
 				rm.device_id,
@@ -146,21 +177,20 @@ func listSensorsDB(ctx context.Context, sensorType string, minLat, maxLat, minLo
 			WHERE rm.lat >= $1 AND rm.lat <= $2 AND rm.lon >= $3 AND rm.lon <= $4
 			ORDER BY rm.measured_at DESC
 			LIMIT $5`, realtimeTable, realtimeTable)
-
 		args = []interface{}{minLat, maxLat, minLon, maxLon, limit}
 	}
 
 	rows, err := queryRows(ctx, query, args...)
 	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("Error querying %s table: %v", realtimeTable, err)), nil
+		return nil, totalCount, fmt.Errorf("error querying %s: %w", realtimeTable, err)
 	}
 
 	sensors := make([]map[string]any, len(rows))
 	for i, r := range rows {
 		sensors[i] = map[string]any{
-			"device_id":       r["device_id"],
-			"device_name":     r["device_name"],
-			"type":            r["transport"],
+			"device_id":   r["device_id"],
+			"device_name": r["device_name"],
+			"type":        r["transport"],
 			"location": map[string]any{
 				"latitude":  r["latitude"],
 				"longitude": r["longitude"],
@@ -168,14 +198,56 @@ func listSensorsDB(ctx context.Context, sensorType string, minLat, maxLat, minLo
 			"last_reading_at": r["last_reading_at"],
 		}
 	}
+	return sensors, totalCount, nil
+}
+
+// buildExportURL constructs the /api/sensors/export URL with the given filters.
+func buildExportURL(sensorType string, minLat, maxLat, minLon, maxLon float64) string {
+	params := url.Values{}
+	params.Set("min_lat", fmt.Sprintf("%.6f", minLat))
+	params.Set("max_lat", fmt.Sprintf("%.6f", maxLat))
+	params.Set("min_lon", fmt.Sprintf("%.6f", minLon))
+	params.Set("max_lon", fmt.Sprintf("%.6f", maxLon))
+	if sensorType != "" {
+		params.Set("type", sensorType)
+	}
+	return "/api/sensors/export?" + params.Encode()
+}
+
+func listSensorsDB(ctx context.Context, sensorType string, minLat, maxLat, minLon, maxLon float64, limit int) (*mcp.CallToolResult, error) {
+	realtimeTable, availableTables, err := findRealtimeTable(ctx)
+	if err != nil {
+		return mcp.NewToolResultError("Could not query database schema: " + err.Error()), nil
+	}
+
+	if realtimeTable == "" {
+		result := map[string]any{
+			"message":          "No known real-time sensor data tables found in database.",
+			"available_tables": availableTables,
+			"suggestion":       "Real-time sensor data may not be available through this database connection.",
+		}
+		return jsonResult(result)
+	}
+
+	sensors, totalCount, err := listSensorsQuery(ctx, realtimeTable, sensorType, minLat, maxLat, minLon, maxLon, limit)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	exportURL := buildExportURL(sensorType, minLat, maxLat, minLon, maxLon)
 
 	result := map[string]any{
-		"count":   len(sensors),
-		"source":  "database",
-		"sensors": sensors,
-		"table_used": realtimeTable,
-		"available_tables": availableTables,
-		"_ai_hint": "CRITICAL INSTRUCTIONS: (1) The 'unit' field indicates measurement units - CPM means 'counts per minute' NOT 'counts per second'. Always interpret and report CPM values as counts per minute. (2) Present all data in a purely scientific, factual manner. NEVER use personal pronouns (I, we, I'll, I'm, you, your), exclamations (!, Perfect, Great, Excellent), or conversational phrases. Format responses as objective statements: 'Latest reading: X CPM at location Y' NOT 'I found a reading of X CPM' or 'Perfect! The sensor shows...'. State only objective facts and measurements. (3) **FORMATTING — REQUIRED**: Always present results in a markdown table. Every device_id MUST be a clickable map link: [device_id](https://simplemap.safecast.org/?lat=LATITUDE&lon=LONGITUDE&zoom=15) using the actual lat/lon from the location field. Never show plain device IDs without a link.",
+		"count":       len(sensors),
+		"total_count": totalCount,
+		"source":      "database",
+		"sensors":     sensors,
+		"table_used":  realtimeTable,
+		"_export_url": exportURL,
+		"_ai_hint": `CRITICAL INSTRUCTIONS:
+(1) CPM = counts per minute (NOT per second). Always report CPM values as counts per minute.
+(2) Present data in a purely scientific, factual manner. NEVER use personal pronouns (I, we, I'll, I'm, you, your), exclamations (!, Perfect, Great, Excellent), or conversational phrases. State only objective facts.
+(3) FORMATTING — REQUIRED: Always present results in a markdown table. Every device_id MUST be a clickable map link: [device_id](https://simplemap.safecast.org/?lat=LATITUDE&lon=LONGITUDE&zoom=15) using the actual lat/lon from the location field. Never show plain device IDs without a link.
+(4) COUNTS — When stating how many sensors exist, ALWAYS use total_count (the true database total), NOT the count field (which is just the query limit). Example: if total_count=131 and count=100, state "131 active sensors" — never mention the query limit.`,
 		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 

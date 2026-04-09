@@ -234,9 +234,17 @@
       filter: brightness(1.5) contrast(0.85);
     }
 
+    /* White circle border for help button in dark mode */
+    :root[data-theme='dark'] #persistent-help-btn {
+      border: 2px solid rgba(255, 255, 255, 0.7);
+    }
+
     @media (prefers-color-scheme: dark) {
       .leaflet-tile-pane {
         filter: brightness(1.5) contrast(0.85);
+      }
+      #persistent-help-btn {
+        border: 2px solid rgba(255, 255, 255, 0.7);
       }
     }
 
@@ -640,7 +648,7 @@
     /* Container for geolocation button */
     .locate-btn-container {
       position: absolute;
-      top: 95px;
+      top: 128px;
       right: 20px;
       z-index: 1000;
       display: flex;
@@ -743,32 +751,74 @@
       transform: translateY(-1px);
     }
 
-    /* Dedicated download container lives under the back button so
-           track view controls remain grouped for quick access. */
+    /* Dedicated download container lives under the upload button for quick access. */
     .download-track-container {
       position: absolute;
-      top: 225px;
-      /* keep consistent spacing below the back button */
+      top: 88px;
       right: 20px;
       z-index: 1000;
       display: none;
     }
 
     .download-track-btn {
-      background-color: var(--control-bg);
-      border: var(--legend-border);
-      border-radius: 4px;
-      padding: 5px 10px;
-      cursor: pointer;
-      font-size: var(--font-size-base);
-      color: var(--modal-text);
-      box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
-      text-decoration: none;
       display: inline-block;
+      background-color: var(--upload-btn-bg);
+      border: var(--legend-border);
+      border-radius: var(--btn-border-radius);
+      padding: 6px 0;
+      width: 100px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      color: #ffffff;
+      box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
+      box-sizing: border-box;
+      position: relative;
+      user-select: none;
     }
 
     .download-track-btn:hover {
-      background-color: var(--control-bg-hover);
+      background-color: var(--upload-btn-bg-hover);
+    }
+
+    /* Dropdown menu for download formats */
+    .download-dropdown-menu {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      margin-top: 4px;
+      background-color: var(--control-bg, #2a2a2a);
+      border: var(--legend-border, 1px solid #444);
+      border-radius: var(--btn-border-radius, 8px);
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      z-index: 1001;
+      min-width: 120px;
+    }
+
+    .download-dropdown-menu.show {
+      display: block;
+    }
+
+    .download-dropdown-menu a {
+      display: block;
+      padding: 8px 12px;
+      color: var(--modal-text, #e0e0e0);
+      text-decoration: none;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .download-dropdown-menu a:hover {
+      background-color: var(--control-bg-hover, #3a3a3a);
+      color: var(--modal-text-hover, #ffffff);
+    }
+
+    .download-dropdown-menu a:not(:last-child) {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
 
 
@@ -1764,6 +1814,377 @@
       font-family: inherit;
       color: var(--modal-text);
     }
+
+    /* ── Data Table & Export ── */
+    .data-card {
+      background: var(--surface, #242930);
+      border: 1px solid var(--border, #2e3540);
+      border-radius: 8px;
+      margin: 12px 0;
+      overflow: hidden;
+      color: #e4e8ef;
+    }
+    .data-header {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border, #2e3540);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .data-header .meta { font-size: 12px; color: var(--muted, #7a8494); }
+    .data-table-container {
+      overflow-x: auto;
+      max-height: 400px;
+    }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .data-table th {
+      text-align: left;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border-bottom: 1px solid var(--border, #2e3540);
+      color: var(--muted, #7a8494);
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+    }
+    .data-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border, #2e3540);
+    }
+    .data-table tr:hover { background: rgba(255, 255, 255, 0.02); }
+
+    .export-btn {
+      background: var(--green, #1e88e5);
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: background .15s;
+    }
+    .export-btn:hover { background: var(--green-dk, #1565c0); }
+    .export-btn svg { width: 12px; height: 12px; fill: #fff; }
+    .export-btn.loading { opacity: 0.7; cursor: wait; }
+
+    /* Table download button in chat responses */
+    .table-download-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid var(--border, #2e3540);
+    }
+    .table-download-btn {
+      background: transparent;
+      color: var(--text, #e4e8ef);
+      border: 1px solid var(--border, #2e3540);
+      border-radius: 4px;
+      padding: 4px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all .15s;
+    }
+    .table-download-btn:hover {
+      background: var(--green, #1e88e5);
+      border-color: var(--green, #1e88e5);
+      color: #fff;
+    }
+    .table-download-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+    .table-rows-info {
+      color: var(--muted, #7a8494);
+      font-size: 11px;
+    }
+
+    /* --- Stage 2 Tutorial CSS --- */
+    #tutorial-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.75);
+      z-index: 10005;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    #tutorial-overlay.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    #tutorial-modal {
+      background: var(--control-bg, #ffffff);
+      color: var(--modal-text, #333333);
+      width: 100%;
+      max-width: 480px;
+      border-radius: 8px;
+      padding: 30px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+      font-family: var(--font-family-base, sans-serif);
+      text-align: center;
+    }
+
+    #tutorial-modal h2 {
+      margin-top: 0;
+      font-size: 22px;
+      margin-bottom: 15px;
+    }
+
+    #tutorial-modal p {
+      line-height: 1.5;
+      margin-bottom: 25px;
+      font-size: 16px;
+    }
+
+    .tutorial-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .tutorial-buttons button {
+      padding: 12px 20px;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      font-size: 16px;
+      font-weight: bold;
+      transition: background 0.2s ease;
+    }
+
+    #btn-start-tour {
+      background: #007bff;
+      color: white;
+    }
+
+    #btn-start-tour:hover {
+      background: #0056b3;
+    }
+
+    #btn-dismiss-tour {
+      background: transparent;
+      color: var(--modal-text, #333);
+      border: 1px solid var(--modal-text, #333);
+    }
+
+    #btn-dismiss-tour:hover {
+      background: rgba(128,128,128,0.1);
+    }
+
+    #persistent-help-btn {
+      position: fixed;
+      bottom: 60px;
+      right: 120px;
+      transform: none;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--control-bg, #ffffff);
+      color: var(--modal-text, #333333);
+      font-weight: bold;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+      cursor: pointer;
+      z-index: 1000;
+      border: 1px solid rgba(0,0,0,0.2);
+      transition: transform 0.2s ease;
+    }
+
+    #persistent-help-btn:hover {
+      transform: scale(1.1);
+    }
+
+    /* --- Stage 3 Tour CSS --- */
+    #spotlight-overlay {
+      position: fixed;
+      background: transparent;
+      border-radius: 8px;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7);
+      pointer-events: none;
+      z-index: 10001;
+      transition: all 0.4s ease;
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    #spotlight-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    #tour-tooltip {
+      position: fixed;
+      box-sizing: border-box;
+      background: #ffffff;
+      color: #333;
+      padding: 24px;
+      border-radius: 12px;
+      width: 320px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05);
+      z-index: 10002;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.4s ease, visibility 0.4s ease, top 0.4s cubic-bezier(0.2,0.8,0.2,1), left 0.4s cubic-bezier(0.2,0.8,0.2,1);
+      font-family: var(--font-family-base, sans-serif);
+    }
+
+    #tour-tooltip::before {
+      content: '💡';
+      display: block;
+      font-size: 20px;
+      margin-bottom: 12px;
+    }
+
+    #tour-tooltip.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    #tour-tooltip p {
+      margin-top: 0;
+      margin-bottom: 24px;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #444;
+    }
+
+    .tour-nav {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .tour-nav button {
+      padding: 8px 16px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    #btn-tour-next {
+      background: #007bff;
+      color: white;
+    }
+
+    #btn-tour-next:hover { background: #0056b3; }
+
+    #btn-tour-exit {
+      background: #e0e0e0;
+      color: #333;
+    }
+
+    #btn-tour-exit:hover { background: #c8c8c8; }
+
+    /* --- Stage 4 Story Wall CSS --- */
+    #story-wall-modal {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 10005;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; visibility: hidden;
+      transition: opacity 0.4s ease, visibility 0.4s ease;
+    }
+
+    #story-wall-modal.visible {
+      opacity: 1; visibility: visible;
+    }
+
+    .story-wall-content {
+      background: var(--control-bg, #ffffff);
+      color: var(--modal-text, #333333);
+      width: 90%; max-width: 900px;
+      border-radius: 8px; padding: 40px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+      font-family: var(--font-family-base, sans-serif);
+    }
+
+    .story-wall-content h2 {
+      text-align: center;
+      margin-top: 0; font-size: 24px; margin-bottom: 30px;
+    }
+
+    #story-wall-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    @media (max-width: 768px) {
+      #story-wall-grid { grid-template-columns: 1fr; }
+    }
+
+    .story-card {
+      background: #f9f9f9; border-radius: 8px; overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      display: flex; flex-direction: column;
+    }
+
+    .story-photo {
+      width: 100%; padding-top: 66.66%;
+      background: #e0e0e0; position: relative;
+    }
+
+    .story-photo::after {
+      content: 'SAFECAST'; position: absolute;
+      top: 50%; left: 50%; transform: translate(-50%, -50%);
+      color: #999; font-weight: bold; letter-spacing: 2px;
+    }
+
+    .story-card-body { padding: 15px; flex-grow: 1; display:flex; flex-direction: column;}
+    .story-card-name { font-weight: bold; font-size: 16px; margin: 0 0 4px 0; color: #333; }
+    .story-card-location { color: #777; font-size: 13px; margin: 0 0 10px 0; }
+    .story-card-hardware {
+      display: inline-block; padding: 3px 8px; background: #007bff; color: white;
+      border-radius: 12px; font-size: 11px; font-weight: bold; margin-bottom: 10px; align-self: flex-start;
+    }
+    .story-card-excerpt { color: #555; line-height: 1.4; font-size: 13px; margin:0;}
+
+    .story-wall-actions {
+      display: flex; justify-content: space-between; align-items: center;
+      border-top: 1px solid #ddd; padding-top: 20px;
+    }
+
+    .btn-read-more {
+      color: #007bff; text-decoration: none; font-weight: bold; font-size: 15px;
+    }
+
+    .btn-read-more:hover { text-decoration: underline; }
+
+    #btn-start-exploring {
+      background: #28a745; color: white;
+      padding: 10px 20px; border: none; border-radius: 4px;
+      cursor: pointer; font-weight: bold; font-size: 16px;
+    }
+
+    #btn-start-exploring:hover { background: #218838; }
   </style>
 
   <!-- Translation script -->
@@ -1842,8 +2263,7 @@
       <p class="home-popup-subtitle">{{translate "home_subtitle"}}</p>
 
       <div class="home-search-wrapper">
-        <input type="text" id="homeSearchInput" class="home-search-input" placeholder="{{translate "
-          home_search_placeholder"}}" autocomplete="off" aria-label="{{translate " home_search_placeholder"}}">
+        <input type="text" id="homeSearchInput" class="home-search-input" placeholder="{{translate "home_search_placeholder"}}" autocomplete="off" aria-label="{{translate "home_search_placeholder"}}">
         <svg class="home-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="11" cy="11" r="8"></circle>
           <path d="M21 21l-4.35-4.35"></path>
@@ -1909,9 +2329,17 @@
     <button id="backToAllButton" class="back-to-all-btn">{{ translate "back_to_all_tracks" }}</button>
   </div>
 
-  <!-- Track download button appears only in track view so users can retrieve the original JSON quickly. -->
+  <!-- Track download dropdown: JSON, CSV, XLSX, LOG (only shown when a track is selected) -->
   <div class="download-track-container leaflet-control" style="display: none;">
-    <a id="downloadTrackLink" class="download-track-btn" href="#">{{ translate "download_track_cim" }}</a>
+    <div id="downloadTrackBtn" class="download-track-btn">
+      {{ translate "download_button" }}
+      <div id="downloadDropdown" class="download-dropdown-menu">
+        <a href="#" id="downloadJSON" data-format="json">{{ translate "download_json" }}</a>
+        <a href="#" id="downloadCSV" data-format="csv">{{ translate "download_csv" }}</a>
+        <a href="#" id="downloadXLSX" data-format="xlsx">{{ translate "download_xlsx" }}</a>
+        <a href="#" id="downloadLOG" data-format="log" style="display:none;">{{ translate "download_log" }}</a>
+      </div>
+    </div>
   </div>
 
   <!-- File upload overlay -->
@@ -1929,8 +2357,7 @@
   </a>
 
   <!-- Short link pill shows the shareable URL and copies it on click -->
-  <div id="shortLinkDisplay" role="button" tabindex="0" aria-live="polite" aria-label="{{translate "
-    short_link_tooltip"}}"></div>
+  <div id="shortLinkDisplay" role="button" tabindex="0" aria-live="polite" aria-label="{{translate "short_link_tooltip"}}"></div>
 
   <!-- Map container -->
   <div id="map"></div>
@@ -3473,6 +3900,7 @@
     var osmLayer, googleSatellite;
     var trackBounds;
     var currentTrackID = null;
+    var currentTrackSourceURL = null;  // Original LOG file URL from S3
     var currentTrackIDs = null;  // For multiple tracks view
     var lastViewportKey = null;
     var lastFilterState = null;  // Track filter state to detect changes
@@ -3837,26 +4265,75 @@
     let waitForDangerFit = false;
 
     /* ---------------------------------------------------------------
-     *  refreshDownloadLink() toggles the track download button.
-     *  We compute the href lazily so the button is only active when a
-     *  track is selected, keeping the default map uncluttered.
+     *  fetchTrackSourceURL() — loads source_url from the track-info API.
      * ---------------------------------------------------------------*/
-    function refreshDownloadLink() {
-      var link = document.getElementById('downloadTrackLink');
-      var box = document.querySelector('.download-track-container');
-      if (!link || !box) {
+    function fetchTrackSourceURL(trackID) {
+      if (!trackID) {
+        currentTrackSourceURL = null;
         return;
       }
+      fetch('/api/track-info/' + trackID)
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          currentTrackSourceURL = data.sourceURL || null;
+          refreshDownloadLink();
+        })
+        .catch(function () {
+          currentTrackSourceURL = null;
+        });
+    }
+
+    /* ---------------------------------------------------------------
+     *  refreshDownloadLink() toggles the track download dropdown.
+     *  The button appears only when a track is selected, and the
+     *  dropdown offers JSON, CSV, XLSX, and (optionally) LOG formats.
+     * ---------------------------------------------------------------*/
+    function refreshDownloadLink() {
+      var box = document.querySelector('.download-track-container');
+      var dropdown = document.getElementById('downloadDropdown');
+      var logItem = document.getElementById('downloadLOG');
+      if (!box) return;
       if (currentTrackID) {
-        link.href = '/api/track/' + currentTrackID + '.json';
-        link.setAttribute('download', currentTrackID + '.json');
         box.style.display = 'block';
+        // Set download links for each format
+        document.getElementById('downloadJSON').href = '/api/track/' + currentTrackID + '.json';
+        document.getElementById('downloadCSV').href = '/api/track/' + currentTrackID + '.csv';
+        document.getElementById('downloadXLSX').href = '/api/track/' + currentTrackID + '.xlsx';
+        // Check if original LOG is available
+        if (typeof currentTrackSourceURL === 'string' && currentTrackSourceURL) {
+          logItem.href = currentTrackSourceURL;
+          logItem.style.display = 'block';
+        } else {
+          logItem.href = '#';
+          logItem.style.display = 'none';
+        }
       } else {
-        link.href = '#';
-        link.removeAttribute('download');
         box.style.display = 'none';
+        if (dropdown) dropdown.classList.remove('show');
       }
     }
+
+    /* ---------------------------------------------------------------
+     *  Dropdown toggle: clicking the download button opens/closes menu.
+     * ---------------------------------------------------------------*/
+    (function () {
+      var btn = document.getElementById('downloadTrackBtn');
+      var dropdown = document.getElementById('downloadDropdown');
+      if (!btn || !dropdown) return;
+
+      btn.addEventListener('click', function (e) {
+        // Don't toggle if clicking a link inside the dropdown
+        if (e.target.tagName === 'A') return;
+        dropdown.classList.toggle('show');
+      });
+
+      // Close dropdown when clicking outside
+      document.addEventListener('click', function (e) {
+        if (!btn.contains(e.target)) {
+          dropdown.classList.remove('show');
+        }
+      });
+    })();
 
     // New controller to cancel previous request
     var markerStreamSource = null;
@@ -4399,8 +4876,7 @@
       // Track view initialization
       // Inject markers as literal JSON so the first render avoids the template parse error
       // and the frontend can inspect the slice immediately.
-      var initialMarkers = {{ .MarkersJSON }
-    };
+      var initialMarkers = {{ .MarkersJSON }};
     if (Array.isArray(initialMarkers) && initialMarkers.length > 0) {
       isTrackView = true;
 
@@ -8589,6 +9065,9 @@
         });
       }
 
+      // Fetch original LOG file URL if this is a track page
+      fetchTrackSourceURL(currentTrackID);
+
       // Keep the download button aligned with the current track state even if
       // the DOM was injected before listeners finished binding.
       refreshDownloadLink();
@@ -10354,6 +10833,52 @@
         }
       });
 
+      // Handle table download button clicks (delegated event)
+      messagesEl.addEventListener('click', function(e) {
+        const downloadBtn = e.target.closest('.table-download-btn');
+        if (!downloadBtn) return;
+
+        e.preventDefault();
+        
+        // Find the table data in the same table container
+        const tableContainer = downloadBtn.closest('.ai-table-container');
+        const dataScript = tableContainer.querySelector('script.table-data');
+        
+        if (!dataScript) {
+          console.error('Table data not found');
+          return;
+        }
+
+        try {
+          const tableData = JSON.parse(dataScript.textContent);
+          const { headers, rows } = tableData;
+          
+          // Convert to CSV
+          const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.map(cell => {
+              // Escape quotes and wrap in quotes if contains comma
+              const escaped = String(cell).replace(/"/g, '""');
+              return escaped.includes(',') ? `"${escaped}"` : escaped;
+            }).join(','))
+          ].join('\n');
+          
+          // Create download link
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `table_${new Date().toISOString().slice(0,10)}_${new Date().toISOString().slice(11,19).replace(/:/g,'-')}.csv`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        } catch (err) {
+          console.error('Error downloading table:', err);
+          alert('Failed to download table: ' + err.message);
+        }
+      });
+
       const expandBtn = document.getElementById('safecast-ai-expand');
 
       closeBtn.addEventListener('click', () => {
@@ -10457,7 +10982,7 @@
         }
       }
 
-      function markdownToHTML(text) {
+      function markdownToHTML(text, enableTableDownload = false) {
         if (!text) return '';
 
         let html = text
@@ -10478,7 +11003,7 @@
           let rows = match.trim().split('\n').map(r => r.trim()).filter(r => r.length > 0);
           if (rows.length < 2) return match;
 
-          let out = '<div class="ai-table-container"><table class="ai-table">';
+          let tableData = [];
           let bodyRows = [];
 
           rows.forEach((row) => {
@@ -10490,6 +11015,30 @@
             if (row.endsWith('|')) cols.pop();
             bodyRows.push(cols.map(c => c.trim()));
           });
+
+          // Store table data for export
+          const headers = bodyRows[0] || [];
+          const dataRows = bodyRows.slice(1) || [];
+          
+          let out = '<div class="ai-table-container">';
+          
+          // Add download button if enabled
+          if (enableTableDownload && dataRows.length > 0) {
+            out += '<div class="table-download-bar">';
+            out += '<button class="table-download-btn" data-table-index="' + (tableData.length) + '" title="Download table as CSV">';
+            out += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>';
+            out += ' Download Table';
+            out += '</button>';
+            out += '<span class="table-rows-info">' + dataRows.length + ' rows</span>';
+            out += '</div>';
+            
+            // Store table data in a script tag for later retrieval
+            out += '<script type="application/json" class="table-data">';
+            out += JSON.stringify({ headers: headers, rows: dataRows });
+            out += '</script>';
+          }
+          
+          out += '<table class="ai-table">';
 
           bodyRows.forEach((cols, rowIndex) => {
             out += '<tr>';
@@ -10533,7 +11082,8 @@
         bubble.className = 'ai-bubble';
 
         if (role === 'bot') {
-          bubble.innerHTML = markdownToHTML(text);
+          // Enable table downloads for bot messages
+          bubble.innerHTML = markdownToHTML(text, true);
         } else {
           bubble.textContent = text;
         }
@@ -10660,7 +11210,221 @@
         });
       }
     })();
+
+    // --- Stage 2 & 3 Tutorial Engine ---
+    function initializeTutorial() {
+      const overlay = document.getElementById('tutorial-overlay');
+      const btnStart = document.getElementById('btn-start-tour');
+      const btnDismiss = document.getElementById('btn-dismiss-tour');
+      const btnHelp = document.getElementById('persistent-help-btn');
+
+      function showTutorial() { if(overlay) overlay.classList.add('visible'); }
+      function hideTutorial() { if(overlay) overlay.classList.remove('visible'); }
+
+      function dismissTutorial() {
+        hideTutorial();
+        localStorage.setItem('safecast_tutorial_seen', 'true');
+      }
+
+      if (!localStorage.getItem('safecast_tutorial_seen')) {
+        showTutorial();
+      }
+
+      if (btnDismiss) btnDismiss.addEventListener('click', dismissTutorial);
+      if (overlay) overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) dismissTutorial();
+      });
+      if (btnHelp) btnHelp.addEventListener('click', showTutorial);
+
+      // Link Stage 2 to Stage 3
+      if (btnStart) btnStart.addEventListener('click', function() {
+        hideTutorial();
+        startHighlightTour();
+      });
+    }
+
+    // Initialize Stage 2 listener
+    initializeTutorial();
+
+    // Stage 3 Tour Engine
+    let currentTourStep = 0;
+    const tourSteps = [
+      { targetSelector: '#legend', text: "This legend shows how radiation levels are color-coded on the map. Blue is normal background radiation, while red/magenta indicates elevated levels." },
+      { targetSelector: '.leaflet-control-layers', text: "Use these filters to isolate data collected by walkers, cars, planes, or stationary sensors." },
+      { targetSelector: '#map', text: "Map markers represent individual data points or clusters. You can click on them to view the precise radiation measurements logged by Safecast contributors." },
+      { targetSelector: '#persistent-help-btn', text: "You can click this button anytime to restart this tutorial or view the welcome screen again. Safe exploring!" }
+    ];
+
+    function startHighlightTour() {
+      currentTourStep = 0;
+      const spotlight = document.getElementById('spotlight-overlay');
+      const tooltip = document.getElementById('tour-tooltip');
+      const btnNext = document.getElementById('btn-tour-next');
+      const btnExit = document.getElementById('btn-tour-exit');
+
+      if (!spotlight || !tooltip) return;
+
+      spotlight.classList.add('active');
+      tooltip.classList.add('active');
+
+      if (btnNext) btnNext.innerText = 'Next';
+
+      renderTourStep();
+
+      // Bind nav buttons once
+      if (btnNext) btnNext.onclick = advanceTour;
+      if (btnExit) btnExit.onclick = exitTour;
+    }
+
+    function renderTourStep() {
+      const spotlight = document.getElementById('spotlight-overlay');
+      const tooltip = document.getElementById('tour-tooltip');
+      const pText = document.getElementById('tour-text');
+      const btnNext = document.getElementById('btn-tour-next');
+
+      if (currentTourStep >= tourSteps.length) {
+        showStoryWall();
+        return;
+      }
+
+      const step = tourSteps[currentTourStep];
+      let targetEl = document.querySelector(step.targetSelector);
+
+      if (!targetEl) targetEl = document.body;
+
+      if (pText) pText.innerText = step.text;
+
+      const rect = targetEl.getBoundingClientRect();
+      const padding = 10;
+
+      spotlight.style.top = (rect.top - padding) + 'px';
+      spotlight.style.left = (rect.left - padding) + 'px';
+      spotlight.style.width = (rect.width + padding * 2) + 'px';
+      spotlight.style.height = (rect.height + padding * 2) + 'px';
+
+      let tooltipTop = rect.bottom + 20;
+      let tooltipLeft = rect.left + (rect.width / 2) - 160;
+
+      if (tooltipTop > window.innerHeight - 200) {
+        tooltipTop = rect.top - 200 - 20;
+      }
+      if (tooltipTop < 20) tooltipTop = 20;
+      if (tooltipLeft < 20) tooltipLeft = 20;
+      if (tooltipLeft > window.innerWidth - 340) tooltipLeft = window.innerWidth - 340;
+
+      tooltip.style.top = tooltipTop + 'px';
+      tooltip.style.left = tooltipLeft + 'px';
+
+      if (currentTourStep === tourSteps.length - 1) {
+        if(btnNext) btnNext.innerText = 'Finish';
+      } else {
+        if(btnNext) btnNext.innerText = 'Next';
+      }
+    }
+
+    function advanceTour() {
+      currentTourStep++;
+      renderTourStep();
+    }
+
+    function showStoryWall() {
+      const spotlight = document.getElementById('spotlight-overlay');
+      const tooltip = document.getElementById('tour-tooltip');
+      if (spotlight) spotlight.classList.remove('active');
+      if (tooltip) tooltip.classList.remove('active');
+
+      const storyModal = document.getElementById('story-wall-modal');
+      const btnExploring = document.getElementById('btn-start-exploring');
+
+      if (storyModal) {
+        storyModal.classList.add('visible');
+        fetchStories();
+      }
+
+      if (btnExploring) {
+        btnExploring.onclick = exitTour; // Final exit
+      }
+    }
+
+    function fetchStories() {
+      const grid = document.getElementById('story-wall-grid');
+      if (!grid) return;
+
+      fetch('/static/data/stories.json')
+        .then(res => res.json())
+        .then(data => {
+          const topStories = data.slice(0, 3);
+          grid.innerHTML = ''; // clear
+
+          topStories.forEach(s => {
+            grid.innerHTML += `
+              <div class="story-card">
+                <div class="story-photo"></div>
+                <div class="story-card-body">
+                  <h3 class="story-card-name">${s.name}</h3>
+                  <p class="story-card-location">${s.location}</p>
+                  <div class="story-card-hardware">${s.hardware}</div>
+                  <p class="story-card-excerpt">${s.excerpt}</p>
+                </div>
+              </div>
+            `;
+          });
+        })
+        .catch(err => {
+          console.error(err);
+          grid.innerHTML = '<p>Error loading stories.</p>';
+        });
+    }
+
+    function exitTour() {
+      const spotlight = document.getElementById('spotlight-overlay');
+      const tooltip = document.getElementById('tour-tooltip');
+      const storyModal = document.getElementById('story-wall-modal');
+      if (spotlight) spotlight.classList.remove('active');
+      if (tooltip) tooltip.classList.remove('active');
+      if (storyModal) storyModal.classList.remove('visible');
+      localStorage.setItem('safecast_tutorial_seen', 'true');
+    }
+
+    // Initialize legend display with current unit preference
+    updateLegendDisplay();
   </script>
+
+<!-- --- Stage 3 Tour HTML --- -->
+<div id="spotlight-overlay"></div>
+<div id="tour-tooltip">
+  <p id="tour-text"></p>
+  <div class="tour-nav">
+    <button id="btn-tour-next">Next</button>
+    <button id="btn-tour-exit">Exit</button>
+  </div>
+</div>
+
+<!-- --- Stage 4 Story Wall HTML --- -->
+<div id="story-wall-modal">
+  <div class="story-wall-content">
+    <h2>The data you're looking at was collected by people like these.</h2>
+    <div id="story-wall-grid"></div>
+    <div class="story-wall-actions">
+      <a href="/stories.html" class="btn-read-more" target="_blank">Read more stories →</a>
+      <button id="btn-start-exploring">Start exploring</button>
+    </div>
+  </div>
+</div>
+
+<!-- --- Stage 2 Tutorial HTML --- -->
+<div id="tutorial-overlay">
+  <div id="tutorial-modal">
+    <h2>You're looking at real radiation data...</h2>
+    <p>Safecast provides open, crowdsourced radiation data globally. Would you like a quick tour on how to read the map and understand the readings?</p>
+    <div class="tutorial-buttons">
+      <button id="btn-start-tour">Show me how to read this</button>
+      <button id="btn-dismiss-tour">Explore on my own</button>
+    </div>
+  </div>
+</div>
+
+<div id="persistent-help-btn" title="Tutorial &amp; Help">?</div>
 
 </body>
 

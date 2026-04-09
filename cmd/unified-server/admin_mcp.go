@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"encoding/csv"
 	"fmt"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // adminMCPDataHandler returns JSON data for MCP analytics tables.
@@ -50,10 +52,14 @@ func adminMCPDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	sortCol := r.URL.Query().Get("sort")
 	if !isValidColumn(sortCol, columns) {
-		// Default sort column: use "created_at" for mcp_query_log, "timestamp" for others
-		if tableName == "mcp_query_log" {
+		switch tableName {
+		case "mcp_query_log":
 			sortCol = "created_at"
-		} else {
+		case "qa_embeddings":
+			sortCol = "feedback_score"
+		case "location_knowledge":
+			sortCol = "created_at"
+		default:
 			sortCol = "timestamp"
 		}
 	}
@@ -93,18 +99,58 @@ func adminMCPDataHandler(w http.ResponseWriter, r *http.Request) {
 	// Fetch data — use LEFT() to work around DuckLake Go driver bug where large
 	// inlined VARCHAR values are truncated to a single byte on read.
 	// LEFT(col, 100000) forces DuckDB to materialize a new string that the driver reads correctly.
-	longTextCols := map[string]bool{"question": true, "answer": true, "generated_query": true, "user_agent": true, "params": true}
-	castCols := make([]string, len(columns))
-	for i, col := range columns {
-		if longTextCols[col] {
-			castCols[i] = fmt.Sprintf("LEFT(%s, 100000) AS %s", col, col)
-		} else {
-			castCols[i] = col
+	longTextCols := map[string]bool{"question": true, "answer": true, "generated_query": true, "user_agent": true, "params": true, "note": true}
+	virtualCols := map[string]bool{"thumbs_up": true, "thumbs_down": true}
+
+	var dataQuery string
+	if tableName == "chat_questions" {
+		// chat_questions uses table alias q for the LEFT JOIN
+		castCols := make([]string, 0, len(columns))
+		for _, col := range columns {
+			if virtualCols[col] {
+				continue
+			} else if longTextCols[col] {
+				castCols = append(castCols, fmt.Sprintf("LEFT(q.%s, 100000) AS %s", col, col))
+			} else {
+				castCols = append(castCols, "q."+col)
+			}
 		}
+		castCols = append(castCols,
+			"COALESCE(f.thumbs_up, 0) AS thumbs_up",
+			"COALESCE(f.thumbs_down, 0) AS thumbs_down",
+		)
+		colList := strings.Join(castCols, ", ")
+		whereForJoin := whereSQL
+		if whereForJoin != "" {
+			whereForJoin = strings.ReplaceAll(whereForJoin, "CAST(", "CAST(q.")
+		}
+		dataQuery = fmt.Sprintf(`
+			SELECT %s
+			FROM chat_questions q
+			LEFT JOIN (
+				SELECT chat_id,
+				       SUM(CASE WHEN score > 0 THEN 1 ELSE 0 END) AS thumbs_up,
+				       SUM(CASE WHEN score < 0 THEN 1 ELSE 0 END) AS thumbs_down
+				FROM chat_feedback GROUP BY chat_id
+			) f ON f.chat_id = q.id
+			%s ORDER BY q.%s %s LIMIT %d OFFSET %d`,
+			colList, whereForJoin, sortCol, order, limit, offset)
+	} else {
+		// All other tables: no alias, use bare column names
+		castCols := make([]string, 0, len(columns))
+		for _, col := range columns {
+			if virtualCols[col] {
+				continue
+			} else if longTextCols[col] {
+				castCols = append(castCols, fmt.Sprintf("LEFT(%s, 100000) AS %s", col, col))
+			} else {
+				castCols = append(castCols, col)
+			}
+		}
+		colList := strings.Join(castCols, ", ")
+		dataQuery = fmt.Sprintf("SELECT %s FROM %s %s ORDER BY %s %s LIMIT %d OFFSET %d",
+			colList, tableName, whereSQL, sortCol, order, limit, offset)
 	}
-	colList := strings.Join(castCols, ", ")
-	dataQuery := fmt.Sprintf("SELECT %s FROM %s %s ORDER BY %s %s LIMIT %d OFFSET %d",
-		colList, tableName, whereSQL, sortCol, order, limit, offset)
 
 	rows, err := duckDB.Query(dataQuery)
 	if err != nil {
@@ -199,8 +245,11 @@ func adminMCPExportHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	colList := strings.Join(exportCastCols, ", ")
 	orderCol := "timestamp"
-	if tableName == "mcp_query_log" {
+	switch tableName {
+	case "mcp_query_log", "location_knowledge":
 		orderCol = "created_at"
+	case "qa_embeddings":
+		orderCol = "feedback_score"
 	}
 	query := fmt.Sprintf("SELECT %s FROM %s %s ORDER BY %s DESC", colList, tableName, whereSQL, orderCol)
 
@@ -249,6 +298,7 @@ var mcpTableColumns = map[string][]string{
 		"ip_address", "country", "is_mobile", "os", "browser",
 		"user_agent", "accept_language", "referer",
 		"session_id", "history_length", "cloudfront", "client_timestamp",
+		"thumbs_up", "thumbs_down",
 	},
 	"mcp_query_log": {
 		"tool_name", "created_at", "duration_ms", "result_count",
@@ -258,6 +308,12 @@ var mcpTableColumns = map[string][]string{
 		"user_id", "user_email", "session_id", "timestamp",
 		"tool_name", "generated_query", "duration_ms",
 		"commit_hash", "error",
+	},
+	"qa_embeddings": {
+		"id", "chat_id", "question", "answer", "feedback_score",
+	},
+	"location_knowledge": {
+		"id", "lat", "lon", "radius_m", "note", "source_chat_id", "created_at",
 	},
 }
 
@@ -322,7 +378,9 @@ func adminMCPDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		query := fmt.Sprintf("DELETE FROM %s %s", tableName, whereSQL)
-		result, err := duckDB.Exec(query)
+		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+		defer cancel()
+		result, err := duckDB.ExecContext(ctx, query)
 		if err != nil {
 			log.Printf("admin mcp delete all error: %v", err)
 			writeError(w, http.StatusInternalServerError, "Delete failed")
@@ -340,21 +398,48 @@ func adminMCPDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Integer key columns: use numeric IN list (avoids CAST issues in DuckLake
+	// and keeps IDs within JS MAX_SAFE_INTEGER range).
+	// Timestamp key columns: fall back to string CAST comparison.
+	integerKeyCols := map[string]bool{"id": true}
+
 	idList := strings.Split(ids, ",")
-	placeholders := make([]string, len(idList))
-	for i := range idList {
-		placeholders[i] = "'" + escapeLike(strings.TrimSpace(idList[i])) + "'"
+	var query string
+	if integerKeyCols[keyCol] {
+		nums := make([]string, 0, len(idList))
+		for _, raw := range idList {
+			raw = strings.TrimSpace(raw)
+			if _, err := strconv.ParseInt(raw, 10, 64); err == nil {
+				nums = append(nums, raw)
+			}
+		}
+		if len(nums) == 0 {
+			http.Error(w, "No valid integer IDs provided", http.StatusBadRequest)
+			return
+		}
+		query = fmt.Sprintf("DELETE FROM %s WHERE %s IN (%s)",
+			tableName, keyCol, strings.Join(nums, ","))
+	} else {
+		placeholders := make([]string, len(idList))
+		for i, raw := range idList {
+			placeholders[i] = "'" + escapeLike(strings.TrimSpace(raw)) + "'"
+		}
+		query = fmt.Sprintf("DELETE FROM %s WHERE CAST(%s AS VARCHAR) IN (%s)",
+			tableName, keyCol, strings.Join(placeholders, ","))
 	}
 
-	query := fmt.Sprintf("DELETE FROM %s WHERE CAST(%s AS VARCHAR) IN (%s)",
-		tableName, keyCol, strings.Join(placeholders, ","))
-	result, err := duckDB.Exec(query)
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+	result, err := duckDB.ExecContext(ctx, query)
 	if err != nil {
 		log.Printf("admin mcp delete error: %v", err)
 		writeError(w, http.StatusInternalServerError, "Delete failed")
 		return
 	}
 	affected, _ := result.RowsAffected()
+	if affected < 0 {
+		affected = int64(len(idList)) // DuckDB doesn't always report rows affected
+	}
 	writeJSON(w, http.StatusOK, map[string]interface{}{"deleted": affected})
 }
 
@@ -363,6 +448,78 @@ var mcpTableKeyColumn = map[string]string{
 	"chat_questions":   "id",
 	"mcp_query_log":    "created_at",
 	"mcp_ai_query_log": "timestamp",
+	"qa_embeddings":    "id",
+	"location_knowledge": "id",
+}
+
+// mcpEditableColumns defines which columns can be edited per table.
+// Only text/content fields are included — IDs, timestamps, and computed
+// columns (thumbs_up/thumbs_down) are intentionally excluded.
+var mcpEditableColumns = map[string][]string{
+	"chat_questions":   {"question", "answer", "source", "model", "country", "browser", "os"},
+	"mcp_query_log":    {"params", "client_info"},
+	"mcp_ai_query_log": {"generated_query", "error"},
+	"qa_embeddings":    {"question", "answer"},
+	"location_knowledge": {"note", "lat", "lon", "radius_m"},
+}
+
+// adminMCPUpdateHandler updates editable fields of a single row.
+// PUT /api/admin/mcp/update?table=chat_questions&id=<key_value>
+// Body: JSON object with field names → new string values.
+func adminMCPUpdateHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut && r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !duckDBAvailable() {
+		http.Error(w, "Analytics not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	tableName := r.URL.Query().Get("table")
+	if _, ok := mcpTableColumns[tableName]; !ok {
+		http.Error(w, "Invalid table name", http.StatusBadRequest)
+		return
+	}
+	keyVal := r.URL.Query().Get("id")
+	if keyVal == "" {
+		http.Error(w, "Missing id parameter", http.StatusBadRequest)
+		return
+	}
+
+	var payload map[string]string
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	// Build SET clause using only whitelisted editable columns.
+	var setClauses []string
+	var args []interface{}
+	for _, col := range mcpEditableColumns[tableName] {
+		if val, ok := payload[col]; ok {
+			setClauses = append(setClauses, fmt.Sprintf("%s = ?", col))
+			args = append(args, val)
+		}
+	}
+	if len(setClauses) == 0 {
+		http.Error(w, "No editable fields provided", http.StatusBadRequest)
+		return
+	}
+
+	keyCol := mcpTableKeyColumn[tableName]
+	args = append(args, keyVal)
+	query := fmt.Sprintf("UPDATE %s SET %s WHERE CAST(%s AS VARCHAR) = ?",
+		tableName, strings.Join(setClauses, ", "), keyCol)
+
+	if _, err := duckDB.Exec(query, args...); err != nil {
+		log.Printf("admin mcp update error: %v", err)
+		http.Error(w, "Update failed", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"}) //nolint:errcheck
 }
 
 func escapeLike(s string) string {

@@ -124,6 +124,41 @@
     .msg.bot .copy-btn:hover { color: var(--green); border-color: var(--green); }
     .msg.bot .copy-btn.copied { color: var(--green); opacity: 1; }
 
+    /* Feedback buttons (thumbs up / down) */
+    .feedback-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+      padding: 0 2px;
+      opacity: 0;
+      transition: opacity .15s;
+    }
+    .msg.bot:hover .feedback-row { opacity: 1; }
+    .feedback-row.voted { opacity: 1; }
+    .feedback-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 13px;
+      cursor: pointer;
+      color: #c9a227;
+      line-height: 0;
+      transition: color .15s, border-color .15s, background .15s;
+    }
+    .feedback-btn:hover:not(:disabled) { color: #f9c74f; border-color: #f9c74f; }
+    .feedback-btn.up.active   { color: #f9c74f; border-color: #f9c74f; }
+    .feedback-btn.down.active { color: #f9c74f; border-color: #f9c74f; }
+    .feedback-btn:disabled { cursor: default; opacity: 0.5; }
+    .cached-badge {
+      font-size: 11px;
+      color: var(--muted);
+      padding: 2px 6px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      align-self: center;
+    }
+
     .avatar {
       width: 30px; height: 30px; border-radius: 50%;
       flex-shrink: 0; display: flex; align-items: center; justify-content: center;
@@ -544,6 +579,51 @@
     msgEl.focus();
   }
 
+  function sendFeedback(chatID, score, upBtn, downBtn) {
+    fetch('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatID, score }),
+    }).catch(() => {}); // fire-and-forget
+
+    upBtn.disabled = true;
+    downBtn.disabled = true;
+    const row = upBtn.parentElement;
+    row.classList.add('voted');
+    if (score > 0) upBtn.classList.add('active');
+    else downBtn.classList.add('active');
+  }
+
+  function addFeedbackRow(wrapper, chatID, isCached) {
+    const row = document.createElement('div');
+    row.className = 'feedback-row';
+
+    if (isCached) {
+      const badge = document.createElement('span');
+      badge.className = 'cached-badge';
+      badge.textContent = '⚡ cached';
+      badge.title = 'This answer came from the semantic cache';
+      row.appendChild(badge);
+    }
+
+    const upBtn = document.createElement('button');
+    upBtn.className = 'feedback-btn up';
+    upBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>';
+    upBtn.title = 'Helpful';
+
+    const downBtn = document.createElement('button');
+    downBtn.className = 'feedback-btn down';
+    downBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>';
+    downBtn.title = 'Not helpful';
+
+    upBtn.onclick   = () => sendFeedback(chatID, 1,  upBtn, downBtn);
+    downBtn.onclick = () => sendFeedback(chatID, -1, upBtn, downBtn);
+
+    row.appendChild(upBtn);
+    row.appendChild(downBtn);
+    wrapper.appendChild(row);
+  }
+
   function sendMessage(text) {
     busy = true;
     sendBtn.disabled = true;
@@ -552,8 +632,13 @@
     const botBubble = addMessage('bot', '…thinking…', 'thinking');
 
     let accumulated = '';
+    let chatID = 0;
+    let isCached = false;
+    let finished = false;
 
     function finish(success = true) {
+      if (finished) return;
+      finished = true;
       botBubble.classList.remove('thinking');
       busy = false;
       sendBtn.disabled = false;
@@ -579,6 +664,12 @@
         const MAX_HISTORY = 10;
         if (conversationHistory.length > MAX_HISTORY) {
           conversationHistory = conversationHistory.slice(-MAX_HISTORY);
+        }
+
+        // Add thumbs up/down feedback buttons if we have a chat_id
+        if (chatID) {
+          const wrapper = botBubble.parentElement;
+          addFeedbackRow(wrapper, chatID, isCached);
         }
       }
     }
@@ -618,6 +709,7 @@
                 botBubble.innerHTML = markdownToHTML(accumulated);
                 messagesEl.scrollTop = messagesEl.scrollHeight;
               } else if (ev.type === 'done') {
+                if (ev.chat_id) { chatID = ev.chat_id; isCached = !!ev.cached; }
                 finish();
               } else if (ev.type === 'error') {
                 botBubble.classList.remove('thinking');

@@ -2,6 +2,13 @@
 <html>
 <head>
   <title>MCP Analytics - Safecast Admin</title>
+  <script>
+  (function() {
+    var saved = localStorage.getItem('safecastDocTheme');
+    var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.setAttribute('data-theme', saved || (prefersDark ? 'dark' : 'light'));
+  })();
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="apple-touch-icon" sizes="180x180" href="/static/images/apple-touch-icon.png">
@@ -40,8 +47,31 @@
         color-scheme: dark;
       }
     }
+    :root[data-theme='light'] {
+      --bg-primary: #f5f5f5; --bg-card: #fff; --text-primary: #333;
+      --text-secondary: #666; --text-muted: #999; --border-color: #ddd;
+      --link-color: #0066cc; --shadow: 0 1px 3px rgba(0,0,0,0.1);
+      --hover-bg: #f9f9f9; --th-bg: #424242; color-scheme: light;
+    }
+    :root[data-theme='dark'] {
+      --bg-primary: #1a1a1a; --bg-card: #2b2b2b; --text-primary: #eee;
+      --text-secondary: #aaa; --text-muted: #777; --border-color: #444;
+      --link-color: #90caf9; --shadow: 0 1px 3px rgba(255,255,255,0.07);
+      --hover-bg: #333; --th-bg: #616161; color-scheme: dark;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-primary); color: var(--text-primary); padding: 20px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-primary); color: var(--text-primary); transition: background 0.2s, color 0.2s; }
+    .top-nav { background: #1a3a5c; color: #fff; padding: 0 24px; display: flex; align-items: center; gap: 16px; height: 52px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); position: sticky; top: 0; z-index: 100; }
+    .nav-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; color: #fff; font-weight: 700; font-size: 17px; white-space: nowrap; }
+    .nav-logo img { height: 28px; width: 28px; object-fit: contain; }
+    .nav-sep { color: rgba(255,255,255,0.3); font-size: 18px; }
+    .nav-title { font-size: 15px; font-weight: 600; color: #d0e8ff; white-space: nowrap; }
+    .nav-spacer { flex: 1; }
+    .back-link { color: #afd4f5; text-decoration: none; font-size: 13px; white-space: nowrap; }
+    .back-link:hover { color: #fff; }
+    #theme-toggle { background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.25); border-radius: 6px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
+    #theme-toggle:hover { background: rgba(255,255,255,0.22); }
+    .page-content { padding: 20px 24px; }
     h1 { margin-bottom: 15px; font-size: 1.6em; }
 
     /* Admin tab bar */
@@ -114,18 +144,36 @@
     .modal h3 { margin-bottom: 10px; }
     .modal pre { white-space: pre-wrap; word-break: break-word; font-size: 0.9em; line-height: 1.5; background: var(--bg-primary); padding: 15px; border-radius: 8px; max-height: 60vh; overflow-y: auto; }
     .modal button { margin-top: 15px; padding: 8px 20px; background: var(--tab-active-bg); color: white; border: none; border-radius: var(--btn-border-radius); cursor: pointer; }
-    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0; }
-    .page-header h1 { margin: 0; }
-    .back-to-map-btn { background: #2196F3 !important; color: white !important; padding: 8px 16px; border-radius: var(--btn-border-radius); text-decoration: none !important; font-weight: 500; transition: background 0.2s; }
-    .back-to-map-btn:hover { background: #1976D2 !important; text-decoration: none !important; }
+
+    /* Edit modal */
+    .edit-modal { background: var(--bg-card); border-radius: 12px; padding: 24px; max-width: 700px; width: 90%; max-height: 85vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+    .edit-modal h3 { margin-bottom: 16px; font-size: 1.1em; }
+    .edit-field { margin-bottom: 14px; }
+    .edit-field label { display: block; font-size: 0.82em; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 5px; }
+    .edit-field textarea, .edit-field input[type="text"] { width: 100%; padding: 8px 10px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-primary); color: var(--text-primary); font-size: 0.9em; font-family: inherit; resize: vertical; }
+    .edit-field textarea { min-height: 80px; }
+    .edit-btn-row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
+    .btn-cancel { padding: 8px 18px; border: 1px solid var(--border-color); border-radius: var(--btn-border-radius); background: var(--bg-card); color: var(--text-primary); cursor: pointer; font-size: 0.9em; }
+    .btn-save { padding: 8px 18px; border: none; border-radius: var(--btn-border-radius); background: #4CAF50; color: white; cursor: pointer; font-size: 0.9em; font-weight: 600; }
+    .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+    td.actions-col { white-space: nowrap; }
+    .btn-row-edit { padding: 3px 10px; font-size: 0.8em; border: 1px solid #e65100; border-radius: 4px; background: #ff6d00; color: white; cursor: pointer; }
+    .btn-row-edit:hover { background: #e65100; }
   </style>
 </head>
 <body>
-
-<div class="page-header">
-  <h1>MCP Analytics</h1>
-  <a href="/" class="back-to-map-btn">Back to Map</a>
-</div>
+<nav class="top-nav">
+  <a href="/" class="nav-logo">
+    <img src="/static/images/safecast-logo-squared.png" alt="Safecast">
+    Safecast
+  </a>
+  <span class="nav-sep">|</span>
+  <span class="nav-title">MCP Analytics</span>
+  <span class="nav-spacer"></span>
+  <a href="/" class="back-link">← Back to Map</a>
+  <button id="theme-toggle" onclick="toggleTheme()">🌙 Dark Mode</button>
+</nav>
+<div class="page-content">
 
 <div class="admin-tabs" id="adminTabs"></div>
 
@@ -133,6 +181,8 @@
   <button class="active" onclick="switchTable('chat_questions')">Chat Questions</button>
   <button onclick="switchTable('mcp_query_log')">Tool Usage</button>
   <button onclick="switchTable('mcp_ai_query_log')">AI Query Log</button>
+  <button onclick="switchTable('qa_embeddings')">Cached Insights</button>
+  <button onclick="switchTable('location_knowledge')">Location Notes</button>
 </div>
 
 <div class="controls">
@@ -164,6 +214,17 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="editModalOverlay" onclick="closeEditModal()">
+  <div class="edit-modal" onclick="event.stopPropagation()">
+    <h3>Edit Row</h3>
+    <div id="editFields"></div>
+    <div class="edit-btn-row">
+      <button class="btn-cancel" onclick="closeEditModal()">Cancel</button>
+      <button class="btn-save" id="editSaveBtn" onclick="saveEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const PASSWORD = new URLSearchParams(window.location.search).get('password') || '';
 const AUTH_PARAM = PASSWORD ? '?password=' + encodeURIComponent(PASSWORD) : '';
@@ -178,11 +239,15 @@ const COLUMN_LABELS = {
   tool_name: 'Tool', duration_ms: 'Duration (ms)', result_count: 'Results',
   client: 'Client', user_id: 'User ID', user_email: 'Email',
   created_at: 'Timestamp', client_info: 'Client', params: 'Params',
-  generated_query: 'Query', commit_hash: 'Commit', error: 'Error'
+  generated_query: 'Query', commit_hash: 'Commit', error: 'Error',
+  thumbs_up: '👍', thumbs_down: '👎',
+  chat_id: 'Chat ID', feedback_score: 'Score',
+  lat: 'Lat', lon: 'Lon', radius_m: 'Radius (m)', note: 'Note',
+  source_chat_id: 'Source Chat'
 };
 
 // Columns that should be expandable (long text)
-const EXPANDABLE = new Set(['question', 'answer', 'generated_query', 'user_agent', 'accept_language', 'referer', 'params']);
+const EXPANDABLE = new Set(['question', 'answer', 'generated_query', 'user_agent', 'accept_language', 'referer', 'params', 'note']);
 
 let currentTable = 'chat_questions';
 let currentSort = 'timestamp';
@@ -197,8 +262,90 @@ let currentColumns = [];
 const KEY_COLUMNS = {
   'chat_questions': 'id',
   'mcp_query_log': 'created_at',
-  'mcp_ai_query_log': 'timestamp'
+  'mcp_ai_query_log': 'timestamp',
+  'qa_embeddings': 'id',
+  'location_knowledge': 'id'
 };
+
+const EDITABLE_COLUMNS = {
+  'chat_questions':   ['question', 'answer', 'source', 'model', 'country', 'browser', 'os'],
+  'mcp_query_log':    ['params', 'client_info'],
+  'mcp_ai_query_log': ['generated_query', 'error'],
+  'qa_embeddings':    ['question', 'answer'],
+  'location_knowledge': ['note', 'lat', 'lon', 'radius_m']
+};
+
+let editRowIndex = null;
+
+function editRow(idx) {
+  const row = currentData[idx];
+  if (!row) return;
+  editRowIndex = idx;
+  const editableCols = EDITABLE_COLUMNS[currentTable] || [];
+  const container = document.getElementById('editFields');
+  container.innerHTML = '';
+  editableCols.forEach(col => {
+    const val = row[col] !== null && row[col] !== undefined ? String(row[col]) : '';
+    const isLong = EXPANDABLE.has(col);
+    const label = COLUMN_LABELS[col] || col;
+    const div = document.createElement('div');
+    div.className = 'edit-field';
+    if (isLong) {
+      div.innerHTML = `<label>${label}</label><textarea id="ef_${col}" rows="5">${escapeHtml(val)}</textarea>`;
+    } else {
+      div.innerHTML = `<label>${label}</label><input type="text" id="ef_${col}" value="${escapeHtml(val)}">`;
+    }
+    container.appendChild(div);
+  });
+  document.getElementById('editModalOverlay').classList.add('visible');
+  const first = container.querySelector('textarea, input');
+  if (first) first.focus();
+}
+
+function closeEditModal() {
+  document.getElementById('editModalOverlay').classList.remove('visible');
+  editRowIndex = null;
+}
+
+async function saveEdit() {
+  if (editRowIndex === null) return;
+  const row = currentData[editRowIndex];
+  const keyCol = KEY_COLUMNS[currentTable];
+  const keyVal = row[keyCol];
+  const editableCols = EDITABLE_COLUMNS[currentTable] || [];
+
+  const payload = {};
+  editableCols.forEach(col => {
+    const el = document.getElementById('ef_' + col);
+    if (el) payload[col] = el.value;
+  });
+
+  const saveBtn = document.getElementById('editSaveBtn');
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Saving…';
+
+  let url = `/api/admin/mcp/update?table=${currentTable}&id=${encodeURIComponent(String(keyVal))}`;
+  if (PASSWORD) url += '&password=' + encodeURIComponent(PASSWORD);
+
+  try {
+    const resp = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!resp.ok) {
+      const text = await resp.text();
+      throw new Error(text || 'HTTP ' + resp.status);
+    }
+    closeEditModal();
+    fetchData();
+  } catch (err) {
+    alert('Save failed: ' + err.message);
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save';
+  }
+}
 
 // Build admin tabs
 function buildAdminTabs() {
@@ -232,7 +379,9 @@ function switchTable(table) {
     btn.classList.toggle('active', btn.textContent === {
       'chat_questions': 'Chat Questions',
       'mcp_query_log': 'Tool Usage',
-      'mcp_ai_query_log': 'AI Query Log'
+      'mcp_ai_query_log': 'AI Query Log',
+      'qa_embeddings': 'Cached Insights',
+      'location_knowledge': 'Location Notes'
     }[table]);
   });
 
@@ -327,7 +476,9 @@ async function fetchData() {
     // Build header
     const thead = document.getElementById('tableHead');
     const keyCol = KEY_COLUMNS[currentTable];
+    const hasEditable = (EDITABLE_COLUMNS[currentTable] || []).length > 0;
     let headerHTML = '<tr><th class="checkbox-col"><input type="checkbox" onchange="toggleAll(this)"></th>';
+    if (hasEditable) headerHTML += '<th style="width:60px"></th>';
     columns.forEach(col => {
       const label = COLUMN_LABELS[col] || col;
       const sortClass = currentSort === col ? (currentOrder === 'asc' ? 'sortable asc' : 'sortable desc') : 'sortable';
@@ -336,6 +487,7 @@ async function fetchData() {
     headerHTML += '</tr>';
     // Filter row
     headerHTML += '<tr class="filter-row"><th></th>';
+    if (hasEditable) headerHTML += '<th></th>';
     columns.forEach(col => {
       const label = COLUMN_LABELS[col] || col;
       headerHTML += `<th><input type="text" class="filter-input" placeholder="${label}..." onkeyup="filterTable()"></th>`;
@@ -349,6 +501,7 @@ async function fetchData() {
     data.forEach((row, idx) => {
       const keyVal = row[keyCol];
       bodyHTML += `<tr><td class="checkbox-col"><input type="checkbox" class="row-cb" value="${keyVal}" onchange="updateDeleteBtn()"></td>`;
+      if (hasEditable) bodyHTML += `<td class="actions-col"><button class="btn-row-edit" onclick="editRow(${idx})">Edit</button></td>`;
       columns.forEach(col => {
         let val = row[col];
         if (val === null || val === undefined) val = '';
@@ -356,6 +509,12 @@ async function fetchData() {
         if (EXPANDABLE.has(col) && strVal.length > 60) {
           const preview = strVal.substring(0, 60) + '...';
           bodyHTML += `<td class="expandable" title="Click to expand" onclick="showModal('${COLUMN_LABELS[col] || col}', ${JSON.stringify(strVal).replace(/'/g, "&#39;")})">${escapeHtml(preview)}</td>`;
+        } else if (col === 'thumbs_up') {
+          const n = parseInt(val) || 0;
+          bodyHTML += `<td style="color:${n > 0 ? '#4caf50' : 'inherit'};font-weight:${n > 0 ? '600' : 'normal'}">👍 ${n}</td>`;
+        } else if (col === 'thumbs_down') {
+          const n = parseInt(val) || 0;
+          bodyHTML += `<td style="color:${n > 0 ? '#e17055' : 'inherit'};font-weight:${n > 0 ? '600' : 'normal'}">👎 ${n}</td>`;
         } else if (col === 'is_mobile' || col === 'cloudfront') {
           bodyHTML += `<td>${val ? 'Yes' : (val === false ? 'No' : '')}</td>`;
         } else if (col === 'timestamp' || col === 'client_timestamp' || col === 'created_at') {
@@ -572,10 +731,26 @@ document.addEventListener('DOMContentLoaded', () => {
   fetchData();
 });
 
-// Keyboard shortcut: Escape closes modal
+// Keyboard shortcut: Escape closes modals
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeModal();
+  if (e.key === 'Escape') { closeModal(); closeEditModal(); }
 });
+</script>
+</div><!-- .page-content -->
+<script>
+(function() {
+  function applyLabel() {
+    var btn = document.getElementById('theme-toggle');
+    if (btn) btn.textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? '\u2600\uFE0F Light Mode' : '\uD83C\uDF19 Dark Mode';
+  }
+  applyLabel();
+  window.toggleTheme = function() {
+    var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('safecastDocTheme', next);
+    applyLabel();
+  };
+})();
 </script>
 </body>
 </html>

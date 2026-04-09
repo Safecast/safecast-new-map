@@ -83,11 +83,31 @@ func getTrackDB(ctx context.Context, trackID string, fromID, toID, limit int) (*
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	// Get total count for this track
-	countRow, _ := queryRow(ctx, `SELECT count(*) AS total FROM markers WHERE trackid = $1`, trackID)
+	// Get total count and full-track statistics in one query.
+	// This always covers the entire track regardless of the measurement window/limit,
+	// so Claude always knows the true min/max/peak even when limit truncates the data.
+	statsRow, _ := queryRow(ctx, `
+		WITH stats AS (
+			SELECT COUNT(*)         AS total,
+			       MIN(doserate)    AS min_val,
+			       MAX(doserate)    AS max_val,
+			       AVG(doserate)    AS avg_val
+			FROM markers WHERE trackid = $1
+		),
+		peak AS (
+			SELECT id AS peak_id, lat AS peak_lat, lon AS peak_lon,
+			       to_timestamp(date) AS peak_at
+			FROM markers WHERE trackid = $1
+			ORDER BY doserate DESC LIMIT 1
+		)
+		SELECT s.total, s.min_val, s.max_val, s.avg_val,
+		       p.peak_id, p.peak_lat, p.peak_lon, p.peak_at
+		FROM stats s, peak p`, trackID)
+
 	total := 0
-	if countRow != nil {
-		if t, ok := countRow["total"]; ok {
+	var trackStats map[string]any
+	if statsRow != nil {
+		if t, ok := statsRow["total"]; ok {
 			switch v := t.(type) {
 			case int64:
 				total = int(v)
@@ -95,10 +115,27 @@ func getTrackDB(ctx context.Context, trackID string, fromID, toID, limit int) (*
 				total = int(v)
 			}
 		}
+		trackStats = map[string]any{
+			"total_measurements": total,
+			"min_µSv_h":  statsRow["min_val"],
+			"max_µSv_h":  statsRow["max_val"],
+			"avg_µSv_h":  statsRow["avg_val"],
+			"peak_location": map[string]any{
+				"id":          statsRow["peak_id"],
+				"latitude":    statsRow["peak_lat"],
+				"longitude":   statsRow["peak_lon"],
+				"captured_at": statsRow["peak_at"],
+			},
+		}
 	}
 
 	measurements := make([]map[string]any, len(rows))
 	var uploaderUsername, uploaderEmail any
+	peakInWindow := false
+	var peakID any
+	if statsRow != nil {
+		peakID = statsRow["peak_id"]
+	}
 	for i, r := range rows {
 		measurements[i] = map[string]any{
 			"id":    r["id"],
@@ -114,11 +151,45 @@ func getTrackDB(ctx context.Context, trackID string, fromID, toID, limit int) (*
 			"detector":    r["detector"],
 			"has_spectrum": r["has_spectrum"],
 		}
+		if peakID != nil && fmt.Sprintf("%v", r["id"]) == fmt.Sprintf("%v", peakID) {
+			measurements[i]["is_peak"] = true
+			peakInWindow = true
+		}
 
 		// Store uploader info from first row (all rows for same track have same uploader)
 		if i == 0 {
 			uploaderUsername = r["uploader_username"]
 			uploaderEmail = r["uploader_email"]
+		}
+	}
+
+	// If the peak measurement wasn't in the sampled window, fetch and prepend it
+	if !peakInWindow && statsRow != nil {
+		peakRow, err := queryRow(ctx, `
+			SELECT m.id, m.doserate AS value, 'µSv/h' AS unit,
+				to_timestamp(m.date) AS captured_at,
+				m.lat AS latitude, m.lon AS longitude,
+				m.device_id, m.altitude AS height, m.detector, m.has_spectrum
+			FROM markers m
+			WHERE m.trackid = $1
+			ORDER BY m.doserate DESC LIMIT 1`, trackID)
+		if err == nil && peakRow != nil {
+			peakMeasurement := map[string]any{
+				"id":    peakRow["id"],
+				"value": peakRow["value"],
+				"unit":  peakRow["unit"],
+				"captured_at": peakRow["captured_at"],
+				"location": map[string]any{
+					"latitude":  peakRow["latitude"],
+					"longitude": peakRow["longitude"],
+				},
+				"device_id":    peakRow["device_id"],
+				"height":       peakRow["height"],
+				"detector":     peakRow["detector"],
+				"has_spectrum": peakRow["has_spectrum"],
+				"is_peak":      true,
+			}
+			measurements = append([]map[string]any{peakMeasurement}, measurements...)
 		}
 	}
 
@@ -130,8 +201,9 @@ func getTrackDB(ctx context.Context, trackID string, fromID, toID, limit int) (*
 		"source":          "database",
 		"from_marker":     nilIfZero(fromID),
 		"to_marker":       nilIfZero(toID),
+		"track_statistics": trackStats,
 		"measurements":    measurements,
-		"_ai_hint": "CRITICAL INSTRUCTIONS: (1) The .unit. field indicates measurement units - CPM means .counts per minute. NOT .counts per second.. Always interpret and report CPM values as counts per minute. (2) Present all data in a purely scientific, factual manner. NEVER use personal pronouns (I, we, I.ll, I.m, you, your), exclamations (!, Perfect, Great, Excellent), or conversational phrases. Format responses as objective statements: .Latest reading: X CPM at location Y. NOT .I found a reading of X CPM. or .Perfect! The sensor shows..... State only objective facts and measurements.",
+		"_ai_hint": "IMPORTANT: track_statistics covers the ENTIRE track regardless of the measurement window shown. Always report min/max/peak from track_statistics, not from the limited measurements array. If the max in track_statistics differs from what is visible in measurements, explicitly note the peak location from track_statistics. CRITICAL INSTRUCTIONS: Present all data in a purely scientific, factual manner. NEVER use personal pronouns (I, we, I'll, I'm, you, your), exclamations (!, Perfect, Great, Excellent), or conversational phrases.",
 		"_ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
 	}
 

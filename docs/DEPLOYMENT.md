@@ -232,9 +232,36 @@ Then restart the service to reload: `systemctl restart safecast-new-map`
 
 | Service | systemd name | Binary | Config |
 |---------|-------------|--------|--------|
-| Map server | `safecast-new-map` | `/usr/local/bin/safecast-new-map` | flags in service file |
+| Map server | `safecast-new-map` | `/usr/local/bin/safecast-new-map` | flags + `Environment=` lines in service file |
 | MCP server | `safecast-mcp` | `/root/safecast-mcp-server/safecast-mcp` | `/root/safecast-mcp-server/.env` |
 | Web-chat | `safecast-web-chat` | `/root/safecast-web-chat-server/safecast-web-chat` | `/root/safecast-web-chat-server/.env` |
+
+### Required Environment Variables — safecast-new-map service
+
+These must be set as `Environment=` lines in `/etc/systemd/system/safecast-new-map.service`. Without them, API documentation cross-links fall back to `http://localhost:8765`.
+
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `MAP_BASE_URL` | `https://simplemap.safecast.org` | Base URL for the Map API docs "Switch to MCP API" button |
+| `MCP_BASE_URL` | `https://simplemap.safecast.org` | Base URL for the MCP API docs "Switch to Map API" button |
+| `DUCKLAKE_PG_URL` | `dbname=ducklake_catalog host=localhost user=ducklake_rw password=...` | DuckLake catalog |
+| `DUCKLAKE_DATA_PATH` | `/var/lib/safecast/ducklake/` | DuckLake Parquet data path |
+| `ANTHROPIC_API_KEY` | `sk-ant-...` | Claude API key |
+
+**Example service file snippet:**
+```ini
+Environment=MAP_BASE_URL=https://simplemap.safecast.org
+Environment=MCP_BASE_URL=https://simplemap.safecast.org
+Environment=DUCKLAKE_PG_URL="dbname=ducklake_catalog host=localhost user=ducklake_rw password=SECRET"
+Environment=DUCKLAKE_DATA_PATH=/var/lib/safecast/ducklake/
+Environment=ANTHROPIC_API_KEY=sk-ant-...
+```
+
+After editing the service file, always reload and restart:
+```bash
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 \
+  "systemctl daemon-reload && systemctl restart safecast-new-map"
+```
 
 ### Useful Commands
 
@@ -346,6 +373,124 @@ Rules are saved in `/etc/iptables/rules.v4` and restored automatically on reboot
 
 > **Background:** In March 2026 the BSI (via Hetzner abuse) flagged port 5432 as publicly accessible. The root cause was `listen_addresses` including the public IP. Both the config and firewall were fixed and the rules persisted.
 
+## Database Migrations
+
+### Running Migrations on Production
+
+Migration SQL files are in `migrations/`. Run them directly via SSH:
+
+```bash
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 \
+  "psql -h 127.0.0.1 -U postgres -d safecast -f -" < migrations/your_migration.sql
+```
+
+Or for inline changes:
+```bash
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 \
+  "psql -h 127.0.0.1 -U postgres -d safecast -c 'ALTER TABLE uploads ADD COLUMN IF NOT EXISTS comment VARCHAR;'"
+```
+
+### Columns Added Since Initial Import (Apr 2026)
+
+The following columns were added to the `uploads` table after the initial Safecast API import and must be migrated manually on any fresh production database:
+
+| Column | Migration file | Notes |
+|--------|---------------|-------|
+| `name` | `add_upload_metadata.sql` | Display name; back-filled from `filename` |
+| `notes` | `add_upload_metadata.sql` | Admin-only internal notes |
+| `comment` | *(inline)* | User comment from old Safecast API |
+
+After adding `name`/`comment`, back-fill from the old Safecast API (see below).
+
+### Back-filling Metadata from the Old Safecast API
+
+The admin Uploads page has an **"Import Safecast API Metadata"** button that fetches `name` and `comment` for all `safecast-api` tracks from `api.safecast.org`. For new imports this is automatic; the button is only needed as a one-time backfill for rows that existed before the columns were added.
+
+#### ⚠️ CloudFront timeout
+
+The button makes a synchronous browser request. CloudFront cuts connections after ~60 seconds, which only processes ~1,000 tracks before the request is killed. For a full backfill (~47k tracks, ~15 min), **run directly on the server via SSH** to bypass CloudFront:
+
+```bash
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 \
+  "curl -s -X POST 'http://localhost:8765/api/admin/tracks/import-safecast' \
+   -H 'Content-Type: application/json' \
+   -d '{\"password\":\"ADMIN_PASSWORD\"}' \
+   --max-time 1800"
+```
+
+Expected response: `{"ok":true,"total":46380,"updated":46380}`
+
+The admin password is in the systemd service file:
+```bash
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 "systemctl cat safecast-new-map | grep admin-password"
+```
+
+**Note:** Many tracks have no comment in the old API (the uploader never wrote one) — this is normal. Only tracks where the uploader provided a description will have a non-empty `comment`.
+
+## API Documentation Pages
+
+### Overview
+
+Three Swagger UI pages are served by the unified server (`safecast-new-map`, port 8765):
+
+| URL | Description |
+|-----|-------------|
+| `/docs/` | **Combined page** — Map API and MCP API in a tabbed interface |
+| `/map-api/` | Map API only (standalone Swagger UI) |
+| `/mcp-api/` | MCP API only (standalone Swagger UI) |
+
+All three support dark mode. `/docs/` is the canonical entry point.
+
+### Nginx routing
+
+All three paths are proxied from both nginx configs to port 8765:
+
+```nginx
+location /docs/     { proxy_pass http://localhost:8765/docs/; ... }
+location /mcp-api/  { proxy_pass http://localhost:8765/mcp-api/; ... }
+location /map-api/  { ... }  # falls through to the default location / block → 8765
+```
+
+**Note:** `/mcp-api/` requires an explicit nginx `location` block — it does NOT fall through to the default `location /` block because that block also goes to 8765 but earlier nginx configs had it pointing to port 3333 by mistake.
+
+### Combined docs page (`/docs/`)
+
+Implemented in `cmd/unified-server/rest.go` — `serveAPIDocsPage()` handler.
+
+- Admin-style CSS variables (`--bg-primary`, `--bg-card`, `--text-primary`, etc.) matching all admin pages
+- Tab bar uses the same `.api-tabs` pattern as admin `.admin-tabs`
+- Dark mode stored in `localStorage` key `safecastDocTheme`, applied via `data-theme` on `<html>`
+- MCP API swagger initialized **lazily** — only on first tab click (avoids loading both at page load)
+- Active tab persisted in `localStorage` key `safecastDocTab`
+- Both swagger instances use `BaseLayout` (no duplicate swagger topbars)
+- Swagger UI assets reused from `/map-api/swagger-ui-bundle.js`
+
+### Code block visibility fix (light mode)
+
+Swagger's microlight syntax highlighter was rendering code examples with near-invisible light text on a light background in light mode. Fixed in both theme CSS constants (`mapSwaggerThemeCSS`, `mcpSwaggerThemeCSS`) in `cmd/unified-server/rest.go`:
+
+```css
+.swagger-ui .microlight, .swagger-ui pre.microlight {
+  color: #24292e !important;  /* dark charcoal — was unset, defaulting to near-white */
+}
+.swagger-ui .microlight span { color: inherit !important; }
+```
+
+### `swaggerFiles` singleton conflict fix
+
+`github.com/swaggo/files` exposes a **package-level webdav singleton** (`swaggerFiles.Handler`). When two `httpSwagger.Handler` instances are registered on the same `http.ServeMux` (e.g. `/map-api/` and `/mcp-api/`), each closure sets `handler.Prefix` via its own `sync.Once` on first request. Whichever runs second overwrites the prefix, causing the first handler to return 404 for all its static assets (`swagger-ui-bundle.js`, `swagger-ui.css`, etc.).
+
+**Fix (PR #63):** Only one `httpSwagger.Handler` is registered on port 8765 (`/map-api/`). The `/mcp-api/` path uses:
+
+- `/mcp-api/doc.json` — served directly via `swag.ReadDoc("swagger")` (no webdav involved)
+- `/mcp-api/` — custom HTML page (`serveMCPAPIPage` in `rest.go`) that loads all static assets from `/map-api/`
+
+The combined `/docs/` page was also already loading assets from `/map-api/`, so it benefits from this fix too.
+
+### Preamble dark mode fix (`/map-api/`)
+
+The white preamble header box (title, description, nav buttons) on `/map-api/` was not responding to dark mode. Fixed by injecting a `<style>` element via the `onComplete` JS callback with `body.dark-mode #safecast-preamble` rules.
+
 ## Related Documentation
 
 - [CloudFront Setup Guide](cloudfront-setup.md) - Initial CloudFront configuration
@@ -361,6 +506,11 @@ Rules are saved in `/etc/iptables/rules.v4` and restored automatically on reboot
 **CloudFront Distribution ID:** E12FYIQ8RRXOJ1
 **Service Name:** `safecast-new-map`
 **Binary Path:** `/usr/local/bin/safecast-new-map`
+
+**API Documentation URLs:**
+- **Combined docs (tabs):** `https://simplemap.safecast.org/docs/`
+- Map API only: `https://simplemap.safecast.org/map-api/`
+- MCP API only: `https://simplemap.safecast.org/mcp-api/`
 
 **One-Line Deploy:**
 ```bash
