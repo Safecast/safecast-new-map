@@ -41,6 +41,15 @@ func TestRegisterRouteInventory(t *testing.T) {
 
 		AdminUploadsHandler: func(http.ResponseWriter, *http.Request) {},
 		AdminTracksHandler:  func(http.ResponseWriter, *http.Request) {},
+		AdminMCPDataHandler:            func(http.ResponseWriter, *http.Request) {},
+		AdminMCPExportHandler:          func(http.ResponseWriter, *http.Request) {},
+		AdminMCPDeleteHandler:          func(http.ResponseWriter, *http.Request) {},
+		AdminRealtimeDataHandler:       func(http.ResponseWriter, *http.Request) {},
+		AdminRealtimeExportHandler:     func(http.ResponseWriter, *http.Request) {},
+		AdminRealtimeDeleteHandler:     func(http.ResponseWriter, *http.Request) {},
+		AdminTranslationsReloadHandler: func(http.ResponseWriter, *http.Request) {},
+		AdminTranslationByIDHandler:    func(http.ResponseWriter, *http.Request) {},
+		AdminTranslationsHandler:       func(http.ResponseWriter, *http.Request) {},
 	}
 	Register(mux, cfg)
 
@@ -57,6 +66,15 @@ func TestRegisterRouteInventory(t *testing.T) {
 		"/api/admin/users",
 		"/api/admin/uploads",
 		"/api/admin/tracks",
+		"/api/admin/mcp/data",
+		"/api/admin/mcp/export",
+		"/api/admin/mcp/delete",
+		"/api/admin/realtime/data",
+		"/api/admin/realtime/export",
+		"/api/admin/realtime/delete",
+		"/api/admin/translations/reload",
+		"/api/admin/translations/",
+		"/api/admin/translations",
 	}
 
 	for _, route := range requiredRoutes {
