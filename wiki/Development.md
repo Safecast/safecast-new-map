@@ -81,17 +81,14 @@ This builds binaries for:
 - macOS (amd64, arm64)
 - Windows (amd64)
 
-### Build MCP Server (Legacy)
+### Runtime Build Target
 
 ```bash
-# Standalone MCP server
-go build -o mcp-server ./cmd/mcp-server
-
-# Standalone web chat
-go build -o web-chat ./cmd/web-chat
+# Canonical runtime
+go build -o safecast-new-map ./cmd/unified-server
 ```
 
-**Note:** The unified server includes all functionality in a single binary.
+The unified server is the only supported runtime (map + MCP + chat).
 
 ---
 
@@ -198,8 +195,6 @@ safecast-new-map/
 │   │   ├── main.go
 │   │   ├── doc.go         # Swagger documentation
 │   │   └── hints/         # MCP model hints
-│   ├── mcp-server/        # Standalone MCP server (legacy)
-│   ├── web-chat/          # Standalone web chat (legacy)
 │   └── tools/             # Maintenance utilities
 ├── pkg/
 │   ├── auth/              # Authentication handlers
@@ -450,10 +445,7 @@ swag init \
 ```
 
 **MCP API:**
-```bash
-cd cmd/mcp-server
-swag init -g rest.go
-```
+Generated from unified-server annotations and shared MCP registrars.
 
 ### Swagger Annotations
 

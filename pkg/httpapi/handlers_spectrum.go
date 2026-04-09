@@ -2,7 +2,6 @@
 package httpapi
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -29,17 +28,17 @@ func (s *Server) spectrum(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.DB == nil || s.DB.DB == nil {
-		http.Error(w, "Database not available", http.StatusServiceUnavailable)
+		writeJSONError(w, http.StatusServiceUnavailable, "Database not available")
 		return
 	}
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	if len(parts) < 3 {
-		http.Error(w, "Marker ID not provided", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "Marker ID not provided")
 		return
 	}
 	markerID, err := strconv.ParseInt(parts[2], 10, 64)
 	if err != nil {
-		http.Error(w, "Invalid marker ID", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "Invalid marker ID")
 		return
 	}
 	ctx, cancel := WithMinimumDeadline(r.Context(), 30*time.Second)
@@ -47,15 +46,14 @@ func (s *Server) spectrum(w http.ResponseWriter, r *http.Request) {
 	spectrum, err := s.DB.GetSpectrum(ctx, markerID)
 	if err != nil {
 		log.Printf("Error fetching spectrum for marker %d: %v", markerID, err)
-		http.Error(w, "Error fetching spectrum", http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, "Error fetching spectrum")
 		return
 	}
 	if spectrum == nil {
-		http.Error(w, "No spectrum found for this marker", http.StatusNotFound)
+		writeJSONError(w, http.StatusNotFound, "No spectrum found for this marker")
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(spectrum)
+	writeJSON(w, http.StatusOK, spectrum)
 }
 
 // spectrumDownload returns spectrum content as a downloadable attachment.
@@ -73,17 +71,17 @@ func (s *Server) spectrum(w http.ResponseWriter, r *http.Request) {
 // @Router      /api/spectrum/{markerID}/download [get]
 func (s *Server) spectrumDownload(w http.ResponseWriter, r *http.Request) {
 	if s.DB == nil || s.DB.DB == nil {
-		http.Error(w, "Database not available", http.StatusServiceUnavailable)
+		writeJSONError(w, http.StatusServiceUnavailable, "Database not available")
 		return
 	}
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	if len(parts) < 3 {
-		http.Error(w, "Marker ID not provided", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "Marker ID not provided")
 		return
 	}
 	markerID, err := strconv.ParseInt(parts[2], 10, 64)
 	if err != nil {
-		http.Error(w, "Invalid marker ID", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "Invalid marker ID")
 		return
 	}
 	format := r.URL.Query().Get("format")
@@ -95,18 +93,18 @@ func (s *Server) spectrumDownload(w http.ResponseWriter, r *http.Request) {
 	spectrum, err := s.DB.GetSpectrum(ctx, markerID)
 	if err != nil {
 		log.Printf("Error fetching spectrum for marker %d: %v", markerID, err)
-		http.Error(w, "Error fetching spectrum", http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, "Error fetching spectrum")
 		return
 	}
 	if spectrum == nil {
-		http.Error(w, "No spectrum found for this marker", http.StatusNotFound)
+		writeJSONError(w, http.StatusNotFound, "No spectrum found for this marker")
 		return
 	}
 	switch strings.ToLower(format) {
 	case "json":
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=spectrum_%d.json", markerID))
-		json.NewEncoder(w).Encode(spectrum)
+		writeJSON(w, http.StatusOK, spectrum)
 	case "csv":
 		w.Header().Set("Content-Type", "text/csv")
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=spectrum_%d.csv", markerID))
@@ -125,7 +123,7 @@ func (s *Server) spectrumDownload(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=spectrum_%d.n42", markerID))
 			w.Write(spectrum.RawData)
 		} else {
-			http.Error(w, "N42 format not available for this spectrum", http.StatusNotFound)
+			writeJSONError(w, http.StatusNotFound, "N42 format not available for this spectrum")
 		}
 	case "spe":
 		if len(spectrum.RawData) > 0 && spectrum.SourceFormat == "spe" {
@@ -133,9 +131,9 @@ func (s *Server) spectrumDownload(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=spectrum_%d.spe", markerID))
 			w.Write(spectrum.RawData)
 		} else {
-			http.Error(w, "SPE format not available for this spectrum", http.StatusNotFound)
+			writeJSONError(w, http.StatusNotFound, "SPE format not available for this spectrum")
 		}
 	default:
-		http.Error(w, fmt.Sprintf("Unsupported format: %s", format), http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, fmt.Sprintf("Unsupported format: %s", format))
 	}
 }

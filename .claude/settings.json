@@ -7,7 +7,7 @@
       "Read(//usr/**)",
       "Bash(dpkg -L tea-cli)",
       "Bash(git commit:*)",
-      "Bash(grep -r \"ToolDef\\\\|mcp.NewTool\" /home/rob/Documents/Safecast/safecast-new-map/cmd/mcp-server/*.go)",
+      "Bash(grep -r \"ToolDef\\\\|mcp.NewTool\" /home/rob/Documents/Safecast/safecast-new-map/cmd/unified-server/*.go)",
       "Bash(find /home/rob/Documents/Safecast/safecast-new-map -name *.sql -o -name *schema* -o -name *migration*)",
       "Bash(grep -E \"\\(\\\\.go|\\\\.html\\)$\")",
       "Bash(grep -r \"HandleFunc.*admin\" /home/rob/Documents/Safecast/safecast-new-map/cmd/unified-server/*.go)",

@@ -30,6 +30,8 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	httpSwagger "github.com/swaggo/http-swagger"
 	_ "safecast-new-map/cmd/unified-server/docs"
+	"safecast-new-map/pkg/httpresp"
+	"safecast-new-map/pkg/mcpserver"
 )
 
 //go:embed static/favicon.ico
@@ -44,31 +46,48 @@ var favicon32 []byte
 // RESTHandler wires all REST API routes onto a mux.
 type RESTHandler struct{}
 
+// registerAPIRoutes attaches all /api/* endpoints.
+func (h *RESTHandler) registerAPIRoutes(mux *http.ServeMux) {
+	mcpserver.RegisterRESTRoutes(func(route mcpserver.RouteKey) {
+		switch route {
+		case mcpserver.RouteRadiation:
+			mux.HandleFunc("/api/radiation", h.handleRadiation)
+		case mcpserver.RouteArea:
+			mux.HandleFunc("/api/area", h.handleArea)
+		case mcpserver.RouteTracks:
+			mux.HandleFunc("/api/tracks", h.handleTracks)
+		case mcpserver.RouteTrackByID:
+			mux.HandleFunc("/api/track/", h.handleTrack) // /api/track/{id}
+		case mcpserver.RouteDevice:
+			mux.HandleFunc("/api/device/", h.handleDevice) // /api/device/{id}/history
+		case mcpserver.RouteSensors:
+			mux.HandleFunc("/api/sensors", h.handleSensors)
+		case mcpserver.RouteSensorByID:
+			mux.HandleFunc("/api/sensor/", h.handleSensor) // /api/sensor/{id}/current or /history
+		case mcpserver.RouteSpectra:
+			mux.HandleFunc("/api/spectra", h.handleSpectra)
+		case mcpserver.RouteSpectrumByID:
+			mux.HandleFunc("/api/spectrum/", h.handleSpectrum) // /api/spectrum/{marker_id}
+		case mcpserver.RouteStats:
+			mux.HandleFunc("/api/stats", h.handleStats)
+		case mcpserver.RouteExtreme:
+			mux.HandleFunc("/api/extreme", handleRESTExtremeReadings)
+		case mcpserver.RouteInfo:
+			mux.HandleFunc("/api/info/", h.handleInfo) // /api/info/{topic}
+		case mcpserver.RouteGPTRadiation:
+			mux.HandleFunc("/api/gpt/radiation", h.handleGPTRadiation)
+		case mcpserver.RouteGPTArea:
+			mux.HandleFunc("/api/gpt/area", h.handleGPTArea)
+		case mcpserver.RouteGPTStats:
+			mux.HandleFunc("/api/gpt/stats", h.handleGPTStats)
+		}
+	})
+	mux.HandleFunc("/api/sensors/export", h.handleSensorsExport)
+}
+
 // Register attaches all /api/* routes and the /mcp-api/ Swagger UI to mux.
 func (h *RESTHandler) Register(mux *http.ServeMux) {
-	// Historical data
-	mux.HandleFunc("/api/radiation", h.handleRadiation)
-	mux.HandleFunc("/api/area", h.handleArea)
-	mux.HandleFunc("/api/tracks", h.handleTracks)
-	mux.HandleFunc("/api/track/", h.handleTrack)   // /api/track/{id}
-	mux.HandleFunc("/api/device/", h.handleDevice) // /api/device/{id}/history
-
-	// Real-time sensors
-	mux.HandleFunc("/api/sensors", h.handleSensors)
-	mux.HandleFunc("/api/sensors/export", h.handleSensorsExport)
-	mux.HandleFunc("/api/sensor/", h.handleSensor) // /api/sensor/{id}/current or /history
-
-	// Spectroscopy
-	mux.HandleFunc("/api/spectra", h.handleSpectra)
-	mux.HandleFunc("/api/spectrum/", h.handleSpectrum) // /api/spectrum/{marker_id}
-
-	// Reference / stats
-	mux.HandleFunc("/api/stats", h.handleStats)
-	mux.HandleFunc("/api/extreme", handleRESTExtremeReadings)
-	mux.HandleFunc("/api/info/", h.handleInfo) // /api/info/{topic}
-
-	// GPT-optimised compact endpoints (for Custom GPT Actions)
-	h.RegisterGPT(mux)
+	h.registerAPIRoutes(mux)
 
 	// Favicon endpoints
 	mux.HandleFunc("/mcp-api/favicon.ico", serveFavicon)
@@ -155,15 +174,14 @@ func (h *RESTHandler) Register(mux *http.ServeMux) {
 
 // writeJSON writes v as a JSON response with the given HTTP status code.
 func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.WriteHeader(status)
-	_ = jsonEncode(w, v)
+	httpresp.WriteJSON(w, status, v)
 }
 
 // writeError writes a JSON error response.
 func writeError(w http.ResponseWriter, status int, msg string) {
-	writeJSON(w, status, map[string]string{"error": msg})
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	httpresp.WriteError(w, status, "", msg)
 }
 
 // jsonEncode writes v as JSON to w.
