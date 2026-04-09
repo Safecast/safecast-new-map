@@ -29,6 +29,10 @@ jobs:
           mkdir -p hints
           cp -r cmd/unified-server/hints/* hints/
 
+      - name: Install deploy tools
+        run: |
+          apt-get update -qq && apt-get install -y -qq rsync openssh-client awscli
+
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
