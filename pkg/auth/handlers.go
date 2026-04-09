@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"safecast-new-map/pkg/httpresp"
 	"time"
 )
 
@@ -36,7 +37,7 @@ const (
 // @Router      /api/auth/register [post]
 func (m *Manager) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -171,7 +172,7 @@ func (m *Manager) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 // @Router      /api/auth/login [post]
 func (m *Manager) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -302,7 +303,7 @@ func (m *Manager) LoginHandler(w http.ResponseWriter, r *http.Request) {
 // @Router      /api/auth/logout [post]
 func (m *Manager) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -354,7 +355,7 @@ func (m *Manager) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 // @Router      /api/auth/forgot-password [post]
 func (m *Manager) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -434,7 +435,7 @@ func (m *Manager) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) 
 // @Router      /api/auth/reset-password [post]
 func (m *Manager) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -511,7 +512,7 @@ func (m *Manager) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 // @Router      /api/auth/verify-email [get]
 func (m *Manager) VerifyEmailHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -583,13 +584,13 @@ func (m *Manager) ProfileHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Expires", "0")
 
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	user, ok := GetUserFromContext(r.Context())
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		writeJSONError(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
@@ -614,7 +615,7 @@ func (m *Manager) ProfileHandler(w http.ResponseWriter, r *http.Request) {
 // @Router      /api/user/change-password [post]
 func (m *Manager) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -666,15 +667,11 @@ func (m *Manager) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) 
 // Helper functions
 
 func writeJSON(w http.ResponseWriter, data interface{}, status int) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
+	httpresp.WriteJSON(w, status, data)
 }
 
 func writeJSONError(w http.ResponseWriter, message string, status int) {
-	writeJSON(w, map[string]interface{}{
-		"error": message,
-	}, status)
+	httpresp.WriteError(w, status, "", message)
 }
 
 func getClientIP(r *http.Request) string {
