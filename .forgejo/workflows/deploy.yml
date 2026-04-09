@@ -31,7 +31,8 @@ jobs:
 
       - name: Install deploy tools
         run: |
-          apt-get update -qq && apt-get install -y -qq rsync openssh-client awscli
+          apt-get update -qq && apt-get install -y -qq rsync openssh-client python3-pip unzip
+          pip3 install --quiet awscli
 
       - name: Setup SSH
         run: |
