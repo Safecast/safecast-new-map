@@ -29,6 +29,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	httpSwagger "github.com/swaggo/http-swagger"
+	"safecast-new-map/pkg/httpresp"
 	_ "safecast-new-map/cmd/unified-server/docs"
 )
 
@@ -44,8 +45,8 @@ var favicon32 []byte
 // RESTHandler wires all REST API routes onto a mux.
 type RESTHandler struct{}
 
-// Register attaches all /api/* routes and the /mcp-api/ Swagger UI to mux.
-func (h *RESTHandler) Register(mux *http.ServeMux) {
+// registerAPIRoutes attaches all /api/* endpoints.
+func (h *RESTHandler) registerAPIRoutes(mux *http.ServeMux) {
 	// Historical data
 	mux.HandleFunc("/api/radiation", h.handleRadiation)
 	mux.HandleFunc("/api/area", h.handleArea)
@@ -68,6 +69,11 @@ func (h *RESTHandler) Register(mux *http.ServeMux) {
 
 	// GPT-optimised compact endpoints (for Custom GPT Actions)
 	h.RegisterGPT(mux)
+}
+
+// Register attaches all /api/* routes and the /mcp-api/ Swagger UI to mux.
+func (h *RESTHandler) Register(mux *http.ServeMux) {
+	h.registerAPIRoutes(mux)
 
 	// Favicon endpoints
 	mux.HandleFunc("/mcp-api/favicon.ico", serveFavicon)
@@ -154,15 +160,14 @@ func (h *RESTHandler) Register(mux *http.ServeMux) {
 
 // writeJSON writes v as a JSON response with the given HTTP status code.
 func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.WriteHeader(status)
-	_ = jsonEncode(w, v)
+	httpresp.WriteJSON(w, status, v)
 }
 
 // writeError writes a JSON error response.
 func writeError(w http.ResponseWriter, status int, msg string) {
-	writeJSON(w, status, map[string]string{"error": msg})
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	httpresp.WriteError(w, status, "", msg)
 }
 
 // jsonEncode writes v as JSON to w.

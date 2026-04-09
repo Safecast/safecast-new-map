@@ -428,6 +428,11 @@ func RegisterMCP() {
 	mux.Handle("/mcp-http", modeladapter.ModelDetectionMiddleware(httpServer))
 	mux.Handle("/mcp/", modeladapter.ModelDetectionMiddleware(sseServer))
 
+	// Keep MCP listener and standalone MCP server route capabilities aligned:
+	// expose the REST mirror /api/* endpoints on the MCP port as well.
+	restHandler := &RESTHandler{}
+	restHandler.registerAPIRoutes(mux)
+
 	// Register Swagger docs
 	registerSwaggerDocs(mux)
 
