@@ -234,17 +234,9 @@
       filter: brightness(1.5) contrast(0.85);
     }
 
-    /* White circle border for help button in dark mode */
-    :root[data-theme='dark'] #persistent-help-btn {
-      border: 2px solid rgba(255, 255, 255, 0.7);
-    }
-
     @media (prefers-color-scheme: dark) {
       .leaflet-tile-pane {
         filter: brightness(1.5) contrast(0.85);
-      }
-      #persistent-help-btn {
-        border: 2px solid rgba(255, 255, 255, 0.7);
       }
     }
 
@@ -1910,282 +1902,81 @@
       color: var(--muted, #7a8494);
       font-size: 11px;
     }
+  
+        /* --- Stage 2 Tutorial CSS --- */
+        #tutorial-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          background: rgba(0, 0, 0, 0.75);
+          z-index: 10005;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          opacity: 0;
+          visibility: hidden;
+          transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        #tutorial-overlay.visible { opacity: 1; visibility: visible; }
+        #tutorial-modal {
+          background: var(--control-bg, #ffffff);
+          color: var(--modal-text, #333333);
+          width: 100%; max-width: 480px; border-radius: 8px;
+          padding: 30px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+          font-family: var(--font-family-base, sans-serif); text-align: center;
+        }
+        #tutorial-modal h2 { margin-top: 0; font-size: 22px; margin-bottom: 15px; }
+        #tutorial-modal p { line-height: 1.5; margin-bottom: 25px; font-size: 16px; }
+        .tutorial-buttons { display: flex; flex-direction: column; gap: 10px; }
+        .tutorial-buttons button { padding: 12px 20px; cursor: pointer; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; transition: background 0.2s ease; }
+        #btn-start-tour { background: #007bff; color: white; }
+        #btn-start-tour:hover { background: #0056b3; }
+        #btn-dismiss-tour { background: transparent; color: var(--modal-text, #333); border: 1px solid var(--modal-text, #333); }
+        #btn-dismiss-tour:hover { background: rgba(128,128,128,0.1); }
+        #persistent-help-btn {
+          position: fixed; bottom: 20px; right: 20px;
+          width: 40px; height: 40px; border-radius: 50%; background: var(--control-bg, #ffffff);
+          color: var(--modal-text, #333333); font-weight: bold; font-size: 20px; display: flex; align-items: center; justify-content: center;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.4); cursor: pointer; z-index: 1000; border: 1px solid rgba(0,0,0,0.2); transition: transform 0.2s ease;
+        }
+        #persistent-help-btn:hover { transform: scale(1.1); }
+        /* --- Stage 3 Tour CSS --- */
+        #spotlight-overlay { position: fixed; background: transparent; border-radius: 8px; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7); pointer-events: none; z-index: 10001; transition: all 0.4s ease; opacity: 0; visibility: hidden; }
+        #spotlight-overlay.active { opacity: 1; visibility: visible; }
+        #tour-tooltip { position: fixed; box-sizing: border-box; background: #ffffff; color: #333; padding: 24px; border-radius: 12px; width: 320px; box-shadow: 0 10px 30px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05); z-index: 10002; opacity: 0; visibility: hidden; transition: opacity 0.4s ease, visibility 0.4s ease, top 0.4s cubic-bezier(0.2,0.8,0.2,1), left 0.4s cubic-bezier(0.2,0.8,0.2,1); font-family: var(--font-family-base, sans-serif); }
+        #tour-tooltip::before { content: '💡'; display: block; font-size: 20px; margin-bottom: 12px; }
+        #tour-tooltip.active { opacity: 1; visibility: visible; }
+        #tour-tooltip p { margin-top: 0; margin-bottom: 24px; font-size: 14px; line-height: 1.6; color: #444; }
+        .tour-nav { display: flex; justify-content: space-between; }
+        .tour-nav button { padding: 8px 16px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; font-size: 14px; }
+        #btn-tour-next { background: #007bff; color: white; }
+        #btn-tour-next:hover { background: #0056b3; }
+        #btn-tour-exit { background: #e0e0e0; color: #333; }
+        #btn-tour-exit:hover { background: #c8c8c8; }
+        /* --- Stage 4 Story Wall CSS --- */
+        #story-wall-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.85); z-index: 10005; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: opacity 0.4s ease, visibility 0.4s ease; }
+        #story-wall-modal.visible { opacity: 1; visibility: visible; }
+        .story-wall-content { background: var(--control-bg, #ffffff); color: var(--modal-text, #333333); width: 90%; max-width: 900px; border-radius: 8px; padding: 40px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5); font-family: var(--font-family-base, sans-serif); }
+        .story-wall-content h2 { text-align: center; margin-top: 0; font-size: 24px; margin-bottom: 30px; }
+        #story-wall-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
+        @media (max-width: 768px) { #story-wall-grid { grid-template-columns: 1fr; } }
+        .story-card { background: #f9f9f9; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
+        .story-photo { width: 100%; padding-top: 66.66%; background: #e0e0e0; position: relative; }
+        .story-photo::after { content: 'SAFECAST'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #999; font-weight: bold; letter-spacing: 2px; }
+        .story-card-body { padding: 15px; flex-grow: 1; display:flex; flex-direction: column;}
+        .story-card-name { font-weight: bold; font-size: 16px; margin: 0 0 4px 0; color: #333; }
+        .story-card-location { color: #777; font-size: 13px; margin: 0 0 10px 0; }
+        .story-card-hardware { display: inline-block; padding: 3px 8px; background: #007bff; color: white; border-radius: 12px; font-size: 11px; font-weight: bold; margin-bottom: 10px; align-self: flex-start; }
+        .story-card-excerpt { color: #555; line-height: 1.4; font-size: 13px; margin:0;}
+        .story-wall-actions { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #ddd; padding-top: 20px; }
+        .btn-read-more { color: #007bff; text-decoration: none; font-weight: bold; font-size: 15px; }
+        .btn-read-more:hover { text-decoration: underline; }
+        #btn-start-exploring { background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px; }
+        #btn-start-exploring:hover { background: #218838; }
 
-    /* --- Stage 2 Tutorial CSS --- */
-    #tutorial-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0, 0, 0, 0.75);
-      z-index: 10005;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      opacity: 0;
-      visibility: hidden;
-      transition: opacity 0.3s ease, visibility 0.3s ease;
-    }
-
-    #tutorial-overlay.visible {
-      opacity: 1;
-      visibility: visible;
-    }
-
-    #tutorial-modal {
-      background: var(--control-bg, #ffffff);
-      color: var(--modal-text, #333333);
-      width: 100%;
-      max-width: 480px;
-      border-radius: 8px;
-      padding: 30px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-      font-family: var(--font-family-base, sans-serif);
-      text-align: center;
-    }
-
-    #tutorial-modal h2 {
-      margin-top: 0;
-      font-size: 22px;
-      margin-bottom: 15px;
-    }
-
-    #tutorial-modal p {
-      line-height: 1.5;
-      margin-bottom: 25px;
-      font-size: 16px;
-    }
-
-    .tutorial-buttons {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .tutorial-buttons button {
-      padding: 12px 20px;
-      cursor: pointer;
-      border: none;
-      border-radius: 4px;
-      font-size: 16px;
-      font-weight: bold;
-      transition: background 0.2s ease;
-    }
-
-    #btn-start-tour {
-      background: #007bff;
-      color: white;
-    }
-
-    #btn-start-tour:hover {
-      background: #0056b3;
-    }
-
-    #btn-dismiss-tour {
-      background: transparent;
-      color: var(--modal-text, #333);
-      border: 1px solid var(--modal-text, #333);
-    }
-
-    #btn-dismiss-tour:hover {
-      background: rgba(128,128,128,0.1);
-    }
-
-    #persistent-help-btn {
-      position: fixed;
-      bottom: 60px;
-      right: 120px;
-      transform: none;
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: var(--control-bg, #ffffff);
-      color: var(--modal-text, #333333);
-      font-weight: bold;
-      font-size: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-      cursor: pointer;
-      z-index: 1000;
-      border: 1px solid rgba(0,0,0,0.2);
-      transition: transform 0.2s ease;
-    }
-
-    #persistent-help-btn:hover {
-      transform: scale(1.1);
-    }
-
-    /* --- Stage 3 Tour CSS --- */
-    #spotlight-overlay {
-      position: fixed;
-      background: transparent;
-      border-radius: 8px;
-      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7);
-      pointer-events: none;
-      z-index: 10001;
-      transition: all 0.4s ease;
-      opacity: 0;
-      visibility: hidden;
-    }
-
-    #spotlight-overlay.active {
-      opacity: 1;
-      visibility: visible;
-    }
-
-    #tour-tooltip {
-      position: fixed;
-      box-sizing: border-box;
-      background: #ffffff;
-      color: #333;
-      padding: 24px;
-      border-radius: 12px;
-      width: 320px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05);
-      z-index: 10002;
-      opacity: 0;
-      visibility: hidden;
-      transition: opacity 0.4s ease, visibility 0.4s ease, top 0.4s cubic-bezier(0.2,0.8,0.2,1), left 0.4s cubic-bezier(0.2,0.8,0.2,1);
-      font-family: var(--font-family-base, sans-serif);
-    }
-
-    #tour-tooltip::before {
-      content: '💡';
-      display: block;
-      font-size: 20px;
-      margin-bottom: 12px;
-    }
-
-    #tour-tooltip.active {
-      opacity: 1;
-      visibility: visible;
-    }
-
-    #tour-tooltip p {
-      margin-top: 0;
-      margin-bottom: 24px;
-      font-size: 14px;
-      line-height: 1.6;
-      color: #444;
-    }
-
-    .tour-nav {
-      display: flex;
-      justify-content: space-between;
-    }
-
-    .tour-nav button {
-      padding: 8px 16px;
-      border-radius: 4px;
-      border: none;
-      cursor: pointer;
-      font-weight: bold;
-      font-size: 14px;
-    }
-
-    #btn-tour-next {
-      background: #007bff;
-      color: white;
-    }
-
-    #btn-tour-next:hover { background: #0056b3; }
-
-    #btn-tour-exit {
-      background: #e0e0e0;
-      color: #333;
-    }
-
-    #btn-tour-exit:hover { background: #c8c8c8; }
-
-    /* --- Stage 4 Story Wall CSS --- */
-    #story-wall-modal {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100vw; height: 100vh;
-      background: rgba(0, 0, 0, 0.85);
-      z-index: 10005;
-      display: flex; align-items: center; justify-content: center;
-      opacity: 0; visibility: hidden;
-      transition: opacity 0.4s ease, visibility 0.4s ease;
-    }
-
-    #story-wall-modal.visible {
-      opacity: 1; visibility: visible;
-    }
-
-    .story-wall-content {
-      background: var(--control-bg, #ffffff);
-      color: var(--modal-text, #333333);
-      width: 90%; max-width: 900px;
-      border-radius: 8px; padding: 40px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-      font-family: var(--font-family-base, sans-serif);
-    }
-
-    .story-wall-content h2 {
-      text-align: center;
-      margin-top: 0; font-size: 24px; margin-bottom: 30px;
-    }
-
-    #story-wall-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 20px;
-      margin-bottom: 30px;
-    }
-
-    @media (max-width: 768px) {
-      #story-wall-grid { grid-template-columns: 1fr; }
-    }
-
-    .story-card {
-      background: #f9f9f9; border-radius: 8px; overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      display: flex; flex-direction: column;
-    }
-
-    .story-photo {
-      width: 100%; padding-top: 66.66%;
-      background: #e0e0e0; position: relative;
-    }
-
-    .story-photo::after {
-      content: 'SAFECAST'; position: absolute;
-      top: 50%; left: 50%; transform: translate(-50%, -50%);
-      color: #999; font-weight: bold; letter-spacing: 2px;
-    }
-
-    .story-card-body { padding: 15px; flex-grow: 1; display:flex; flex-direction: column;}
-    .story-card-name { font-weight: bold; font-size: 16px; margin: 0 0 4px 0; color: #333; }
-    .story-card-location { color: #777; font-size: 13px; margin: 0 0 10px 0; }
-    .story-card-hardware {
-      display: inline-block; padding: 3px 8px; background: #007bff; color: white;
-      border-radius: 12px; font-size: 11px; font-weight: bold; margin-bottom: 10px; align-self: flex-start;
-    }
-    .story-card-excerpt { color: #555; line-height: 1.4; font-size: 13px; margin:0;}
-
-    .story-wall-actions {
-      display: flex; justify-content: space-between; align-items: center;
-      border-top: 1px solid #ddd; padding-top: 20px;
-    }
-
-    .btn-read-more {
-      color: #007bff; text-decoration: none; font-weight: bold; font-size: 15px;
-    }
-
-    .btn-read-more:hover { text-decoration: underline; }
-
-    #btn-start-exploring {
-      background: #28a745; color: white;
-      padding: 10px 20px; border: none; border-radius: 4px;
-      cursor: pointer; font-weight: bold; font-size: 16px;
-    }
-
-    #btn-start-exploring:hover { background: #218838; }
-  </style>
+    </style>
 
   <!-- Translation script -->
   <script id="translations-script">
@@ -2263,7 +2054,8 @@
       <p class="home-popup-subtitle">{{translate "home_subtitle"}}</p>
 
       <div class="home-search-wrapper">
-        <input type="text" id="homeSearchInput" class="home-search-input" placeholder="{{translate "home_search_placeholder"}}" autocomplete="off" aria-label="{{translate "home_search_placeholder"}}">
+        <input type="text" id="homeSearchInput" class="home-search-input" placeholder="{{translate "
+          home_search_placeholder"}}" autocomplete="off" aria-label="{{translate " home_search_placeholder"}}">
         <svg class="home-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="11" cy="11" r="8"></circle>
           <path d="M21 21l-4.35-4.35"></path>
@@ -2357,7 +2149,8 @@
   </a>
 
   <!-- Short link pill shows the shareable URL and copies it on click -->
-  <div id="shortLinkDisplay" role="button" tabindex="0" aria-live="polite" aria-label="{{translate "short_link_tooltip"}}"></div>
+  <div id="shortLinkDisplay" role="button" tabindex="0" aria-live="polite" aria-label="{{translate "
+    short_link_tooltip"}}"></div>
 
   <!-- Map container -->
   <div id="map"></div>
@@ -2414,9 +2207,14 @@
     <div id="legend-labels"
       style="display:flex; flex-direction:column; justify-content:space-between; height:100%; font-weight:bold; min-width:35px; text-align:left;">
     </div>
-    <div
-      style="position:absolute; bottom:20px;right:5px;width:100%;text-align:center; font-size:15px; font-weight:bold; color:var(--modal-text); text-shadow: 0 0 2px var(--control-bg);">
-      <span id="legend-unit-label">µSv/h</span>
+    <!-- Beautiful Legend tooltip replacement -->
+    <div class="annotation-typical-bg" style="position:absolute; bottom: 26%; right: 100%; margin-right: 12px; white-space: nowrap; pointer-events: none; background: var(--control-bg, rgba(255,255,255,0.85)); padding: 8px 12px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); color: var(--modal-text, #333); text-align: right; display: flex; flex-direction: column; gap: 3px;">
+      <div style="font-size: 12px; font-weight: bold;">Typical (~5-20 μR/h)</div>
+      <div style="font-size: 11px; color: #666; font-weight: normal;">Avg background: ~10</div>
+      <div style="position:absolute; right:-5px; top:50%; width:0; height:0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 5px solid var(--control-bg, rgba(255,255,255,0.85)); transform: translateY(-50%);"></div>
+    </div>
+    <div style="position:absolute; top:-26px; right:0; width:100%; text-align:center; font-size:14px; font-weight:bold; color:var(--modal-text); background: var(--control-bg, rgba(255,255,255,0.85)); padding: 2px 4px; border-radius: 4px; box-sizing: border-box; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
+       <span id="legend-unit-label">µSv/h</span>
     </div>
   </div>
   <!--
@@ -2464,7 +2262,43 @@
   Box scrolls when content is long.
 -->
 
-  <!-- Generic Info Modal for legal notes, data sources, and license -->
+  <!-- --- Stage 3 Tour HTML --- -->
+<div id="spotlight-overlay"></div>
+<div id="tour-tooltip">
+  <p id="tour-text"></p>
+  <div class="tour-nav">
+    <button id="btn-tour-next">Next</button>
+    <button id="btn-tour-exit">Exit</button>
+  </div>
+</div>
+
+<!-- --- Stage 4 Story Wall HTML --- -->
+<div id="story-wall-modal">
+  <div class="story-wall-content">
+    <h2>The data you're looking at was collected by people like these.</h2>
+    <div id="story-wall-grid"></div>
+    <div class="story-wall-actions">
+      <a href="/stories.html" class="btn-read-more" target="_blank">Read more stories →</a>
+      <button id="btn-start-exploring">Start exploring</button>
+    </div>
+  </div>
+</div>
+
+<!-- --- Stage 2 Tutorial HTML --- -->
+<div id="tutorial-overlay">
+  <div id="tutorial-modal">
+    <h2>You're looking at real radiation data...</h2>
+    <p>Safecast provides open, crowdsourced radiation data globally. Would you like a quick tour on how to read the map and understand the readings?</p>
+    <div class="tutorial-buttons">
+      <button id="btn-start-tour">Show me how to read this</button>
+      <button id="btn-dismiss-tour">Explore on my own</button>
+    </div>
+  </div>
+</div>
+
+<div id="persistent-help-btn" title="Tutorial & Help">?</div>
+
+<!-- Generic Info Modal for legal notes, data sources, and license -->
   <div id="infoModal" style="
   display:none;
   position:fixed;
@@ -4876,7 +4710,8 @@
       // Track view initialization
       // Inject markers as literal JSON so the first render avoids the template parse error
       // and the frontend can inspect the slice immediately.
-      var initialMarkers = {{ .MarkersJSON }};
+      var initialMarkers = {{ .MarkersJSON }
+    };
     if (Array.isArray(initialMarkers) && initialMarkers.length > 0) {
       isTrackView = true;
 
@@ -4937,10 +4772,11 @@
           div.style.padding = '6px 10px';
 
           // helper that returns one <label> line
-          const row = (id, iconMarkup, checked, extraClass = '') => `
-            <label style="white-space:nowrap;display:block;cursor:pointer;">
+          const row = (id, iconMarkup, labelText, checked, extraClass = '') => `
+            <label style="white-space:nowrap;display:block;cursor:pointer;margin-bottom:4px;">
             <input id="${id}" type="checkbox" ${checked ? 'checked' : ''}/>
             <span class="speed-filter-icon ${extraClass}">${iconMarkup}</span>
+            <span class="speed-filter-label" style="margin-left: 5px; font-size: 0.9em; vertical-align: middle;">${labelText}</span>
             </label>`;
 
           // Build rows dynamically so the realtime checkbox only appears when supported server-side.
@@ -4948,16 +4784,17 @@
           if (window.safecastRealtimeEnabled) {
             // Use the Safecast heart artwork so the live toggle reflects the new branding.
             const liveIconMarkup = '<img src="/static/images/safecast-heart-logo.png" alt="Realtime measurements from safecast.org" style="width:1em; height:1em; vertical-align:middle;"/>';
-            pieces.push(row('sfLive', liveIconMarkup, state.live));
+            pieces.push(row('sfLive', liveIconMarkup, 'Live', state.live));
             pieces.push('<div class="leaflet-control-layers-separator"></div>');
           }
           pieces.push(
-            row('sfPlane', '✈️', state.plane, 'speed-filter-icon--mono'),
-            row('sfCar', '🚗', state.car, 'speed-filter-icon--mono'),
-            row('sfPed', '🚶', state.ped, 'speed-filter-icon--mono')
-          );
-          pieces.push('<div class="leaflet-control-layers-separator"></div>');
-          pieces.push(row('sfSpectrum', '📊', state.spectrum, ''));
+          row('sfPed',   '🧍', 'Walk', state.ped,   'speed-filter-icon--mono'),
+          row('sfPlane', '✈️', 'Air', state.plane, 'speed-filter-icon--mono'),
+          row('sfCar',   '🚜', 'Vehicle', state.car,   'speed-filter-icon--mono'),
+          row('sfStation', '📡', 'Station', state.station || false, 'speed-filter-icon--mono')
+        );
+        pieces.push('<div class="leaflet-control-layers-separator"></div>');
+        pieces.push(row('sfSpectrum', '📊', 'Aggregate', state.spectrum, ''));
           div.innerHTML = pieces.join('');
 
           // We collect all checkboxes so keyboard focus and pointer use can share a single tooltip instance.
@@ -5015,10 +4852,11 @@
               } else {
                 delete state.live;
               }
-              state.plane = div.querySelector('#sfPlane').checked;
-              state.car = div.querySelector('#sfCar').checked;
-              state.ped = div.querySelector('#sfPed').checked;
-              state.spectrum = div.querySelector('#sfSpectrum').checked;
+              state.plane    = div.querySelector('#sfPlane') ? div.querySelector('#sfPlane').checked : false;
+            state.car      = div.querySelector('#sfCar') ? div.querySelector('#sfCar').checked : false;
+            state.ped      = div.querySelector('#sfPed') ? div.querySelector('#sfPed').checked : false;
+            state.station  = div.querySelector('#sfStation') ? div.querySelector('#sfStation').checked : false;
+            state.spectrum = div.querySelector('#sfSpectrum') ? div.querySelector('#sfSpectrum').checked : false;
               saveSpeedFilterState(state);   // remember choice
 
               // Sync show=rt with filter state:
@@ -5467,8 +5305,28 @@
 
     // Tooltip uses the same builder for hover previews.
     function getTooltipContent(marker) {
-      return buildMarkerContent(marker);
-    }
+  const isElevated = (marker.doseRate || 0) >= 20;
+  const statusStr = isElevated ? 'Elevated — above typical background' : 'Within normal background range';
+  const cDate = marker.date ? new Date(marker.date * 1000).toLocaleString() : '[Date Placeholder]';
+  const hardware = marker.hardwareType || marker.tube || marker.transport || '[Hardware Placeholder]';
+  const color = isElevated ? '#e74c3c' : '#2ecc71';
+
+  return `
+    <div class="custom-tooltip marker-tooltip" style="padding: 10px; max-width: 250px;">
+      <div class="tooltip-value-row">
+        <span class="value" style="font-size: 1.5em; font-weight: bold;">${marker.doseRate || 0}</span>
+        <span class="unit" style="font-size: 1.2em; font-weight: bold;"> μR/h</span>
+      </div>
+      <div class="tooltip-status" style="color: ${color}; font-size: 0.9em; margin: 6px 0;">
+        ${statusStr}
+      </div>
+      <div class="tooltip-metadata" style="color: var(--text-muted, #666); font-size: 0.8em; margin-top: 8px; border-top: 1px solid rgba(150,150,150,0.3); padding-top: 8px;">
+        <div class="date">Date: ${cDate}</div>
+        <div class="hardware">Hardware: ${hardware}</div>
+      </div>
+    </div>
+  `;
+}
 
     // Track upload info cache (uploader name, detector)
     const trackInfoCache = new Map();
@@ -6078,8 +5936,20 @@
         });
       } else {
         // Regular circle marker - use pool for better performance
-        const markerStyle = getCachedMarkerStyle(m.doseRate, zoom, m.speed);
-        marker = markerPool.getCircleMarker(m.lat, m.lon, markerStyle);
+    const baseStyle = getCachedMarkerStyle(m.doseRate, zoom, m.speed);
+    const markerStyle = Object.assign({}, baseStyle);
+    
+    // Conditional rendering based on dataType
+    if (m.dataType === 'station') {
+      markerStyle.fillOpacity = 0; // hollow circle
+      markerStyle.weight = 2; // solid border
+      markerStyle.color = baseStyle.fillColor || baseStyle.color || '#fff';
+    } else if (m.dataType === 'mobile' || !m.dataType) {
+      markerStyle.fillOpacity = baseStyle.fillOpacity !== undefined ? baseStyle.fillOpacity : 1;
+      markerStyle.weight = 0; // filled dot
+    }
+
+    marker = markerPool.getCircleMarker(m.lat, m.lon, markerStyle);
 
         // At low zoom: minimal interaction for performance
         // At high zoom: full tooltip support
@@ -10752,7 +10622,81 @@
       padding-top: 8px;
       border-top: 1px solid var(--modal-border);
     }
-  </style>
+  
+        /* --- Stage 2 Tutorial CSS --- */
+        #tutorial-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          background: rgba(0, 0, 0, 0.75);
+          z-index: 10005;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          opacity: 0;
+          visibility: hidden;
+          transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        #tutorial-overlay.visible { opacity: 1; visibility: visible; }
+        #tutorial-modal {
+          background: var(--control-bg, #ffffff);
+          color: var(--modal-text, #333333);
+          width: 100%; max-width: 480px; border-radius: 8px;
+          padding: 30px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+          font-family: var(--font-family-base, sans-serif); text-align: center;
+        }
+        #tutorial-modal h2 { margin-top: 0; font-size: 22px; margin-bottom: 15px; }
+        #tutorial-modal p { line-height: 1.5; margin-bottom: 25px; font-size: 16px; }
+        .tutorial-buttons { display: flex; flex-direction: column; gap: 10px; }
+        .tutorial-buttons button { padding: 12px 20px; cursor: pointer; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; transition: background 0.2s ease; }
+        #btn-start-tour { background: #007bff; color: white; }
+        #btn-start-tour:hover { background: #0056b3; }
+        #btn-dismiss-tour { background: transparent; color: var(--modal-text, #333); border: 1px solid var(--modal-text, #333); }
+        #btn-dismiss-tour:hover { background: rgba(128,128,128,0.1); }
+        #persistent-help-btn {
+          position: fixed; bottom: 20px; right: 20px;
+          width: 40px; height: 40px; border-radius: 50%; background: var(--control-bg, #ffffff);
+          color: var(--modal-text, #333333); font-weight: bold; font-size: 20px; display: flex; align-items: center; justify-content: center;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.4); cursor: pointer; z-index: 1000; border: 1px solid rgba(0,0,0,0.2); transition: transform 0.2s ease;
+        }
+        #persistent-help-btn:hover { transform: scale(1.1); }
+        /* --- Stage 3 Tour CSS --- */
+        #spotlight-overlay { position: fixed; background: transparent; border-radius: 8px; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7); pointer-events: none; z-index: 10001; transition: all 0.4s ease; opacity: 0; visibility: hidden; }
+        #spotlight-overlay.active { opacity: 1; visibility: visible; }
+        #tour-tooltip { position: fixed; box-sizing: border-box; background: #ffffff; color: #333; padding: 24px; border-radius: 12px; width: 320px; box-shadow: 0 10px 30px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05); z-index: 10002; opacity: 0; visibility: hidden; transition: opacity 0.4s ease, visibility 0.4s ease, top 0.4s cubic-bezier(0.2,0.8,0.2,1), left 0.4s cubic-bezier(0.2,0.8,0.2,1); font-family: var(--font-family-base, sans-serif); }
+        #tour-tooltip::before { content: '💡'; display: block; font-size: 20px; margin-bottom: 12px; }
+        #tour-tooltip.active { opacity: 1; visibility: visible; }
+        #tour-tooltip p { margin-top: 0; margin-bottom: 24px; font-size: 14px; line-height: 1.6; color: #444; }
+        .tour-nav { display: flex; justify-content: space-between; }
+        .tour-nav button { padding: 8px 16px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; font-size: 14px; }
+        #btn-tour-next { background: #007bff; color: white; }
+        #btn-tour-next:hover { background: #0056b3; }
+        #btn-tour-exit { background: #e0e0e0; color: #333; }
+        #btn-tour-exit:hover { background: #c8c8c8; }
+        /* --- Stage 4 Story Wall CSS --- */
+        #story-wall-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.85); z-index: 10005; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: opacity 0.4s ease, visibility 0.4s ease; }
+        #story-wall-modal.visible { opacity: 1; visibility: visible; }
+        .story-wall-content { background: var(--control-bg, #ffffff); color: var(--modal-text, #333333); width: 90%; max-width: 900px; border-radius: 8px; padding: 40px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5); font-family: var(--font-family-base, sans-serif); }
+        .story-wall-content h2 { text-align: center; margin-top: 0; font-size: 24px; margin-bottom: 30px; }
+        #story-wall-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
+        @media (max-width: 768px) { #story-wall-grid { grid-template-columns: 1fr; } }
+        .story-card { background: #f9f9f9; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
+        .story-photo { width: 100%; padding-top: 66.66%; background: #e0e0e0; position: relative; }
+        .story-photo::after { content: 'SAFECAST'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #999; font-weight: bold; letter-spacing: 2px; }
+        .story-card-body { padding: 15px; flex-grow: 1; display:flex; flex-direction: column;}
+        .story-card-name { font-weight: bold; font-size: 16px; margin: 0 0 4px 0; color: #333; }
+        .story-card-location { color: #777; font-size: 13px; margin: 0 0 10px 0; }
+        .story-card-hardware { display: inline-block; padding: 3px 8px; background: #007bff; color: white; border-radius: 12px; font-size: 11px; font-weight: bold; margin-bottom: 10px; align-self: flex-start; }
+        .story-card-excerpt { color: #555; line-height: 1.4; font-size: 13px; margin:0;}
+        .story-wall-actions { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #ddd; padding-top: 20px; }
+        .btn-read-more { color: #007bff; text-decoration: none; font-weight: bold; font-size: 15px; }
+        .btn-read-more:hover { text-decoration: underline; }
+        #btn-start-exploring { background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px; }
+        #btn-start-exploring:hover { background: #218838; }
+
+    </style>
 
   <button id="safecast-ai-toggle" aria-label="Open AI Assistant">
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -11210,221 +11154,7 @@
         });
       }
     })();
-
-    // --- Stage 2 & 3 Tutorial Engine ---
-    function initializeTutorial() {
-      const overlay = document.getElementById('tutorial-overlay');
-      const btnStart = document.getElementById('btn-start-tour');
-      const btnDismiss = document.getElementById('btn-dismiss-tour');
-      const btnHelp = document.getElementById('persistent-help-btn');
-
-      function showTutorial() { if(overlay) overlay.classList.add('visible'); }
-      function hideTutorial() { if(overlay) overlay.classList.remove('visible'); }
-
-      function dismissTutorial() {
-        hideTutorial();
-        localStorage.setItem('safecast_tutorial_seen', 'true');
-      }
-
-      if (!localStorage.getItem('safecast_tutorial_seen')) {
-        showTutorial();
-      }
-
-      if (btnDismiss) btnDismiss.addEventListener('click', dismissTutorial);
-      if (overlay) overlay.addEventListener('click', function(e) {
-        if (e.target === overlay) dismissTutorial();
-      });
-      if (btnHelp) btnHelp.addEventListener('click', showTutorial);
-
-      // Link Stage 2 to Stage 3
-      if (btnStart) btnStart.addEventListener('click', function() {
-        hideTutorial();
-        startHighlightTour();
-      });
-    }
-
-    // Initialize Stage 2 listener
-    initializeTutorial();
-
-    // Stage 3 Tour Engine
-    let currentTourStep = 0;
-    const tourSteps = [
-      { targetSelector: '#legend', text: "This legend shows how radiation levels are color-coded on the map. Blue is normal background radiation, while red/magenta indicates elevated levels." },
-      { targetSelector: '.leaflet-control-layers', text: "Use these filters to isolate data collected by walkers, cars, planes, or stationary sensors." },
-      { targetSelector: '#map', text: "Map markers represent individual data points or clusters. You can click on them to view the precise radiation measurements logged by Safecast contributors." },
-      { targetSelector: '#persistent-help-btn', text: "You can click this button anytime to restart this tutorial or view the welcome screen again. Safe exploring!" }
-    ];
-
-    function startHighlightTour() {
-      currentTourStep = 0;
-      const spotlight = document.getElementById('spotlight-overlay');
-      const tooltip = document.getElementById('tour-tooltip');
-      const btnNext = document.getElementById('btn-tour-next');
-      const btnExit = document.getElementById('btn-tour-exit');
-
-      if (!spotlight || !tooltip) return;
-
-      spotlight.classList.add('active');
-      tooltip.classList.add('active');
-
-      if (btnNext) btnNext.innerText = 'Next';
-
-      renderTourStep();
-
-      // Bind nav buttons once
-      if (btnNext) btnNext.onclick = advanceTour;
-      if (btnExit) btnExit.onclick = exitTour;
-    }
-
-    function renderTourStep() {
-      const spotlight = document.getElementById('spotlight-overlay');
-      const tooltip = document.getElementById('tour-tooltip');
-      const pText = document.getElementById('tour-text');
-      const btnNext = document.getElementById('btn-tour-next');
-
-      if (currentTourStep >= tourSteps.length) {
-        showStoryWall();
-        return;
-      }
-
-      const step = tourSteps[currentTourStep];
-      let targetEl = document.querySelector(step.targetSelector);
-
-      if (!targetEl) targetEl = document.body;
-
-      if (pText) pText.innerText = step.text;
-
-      const rect = targetEl.getBoundingClientRect();
-      const padding = 10;
-
-      spotlight.style.top = (rect.top - padding) + 'px';
-      spotlight.style.left = (rect.left - padding) + 'px';
-      spotlight.style.width = (rect.width + padding * 2) + 'px';
-      spotlight.style.height = (rect.height + padding * 2) + 'px';
-
-      let tooltipTop = rect.bottom + 20;
-      let tooltipLeft = rect.left + (rect.width / 2) - 160;
-
-      if (tooltipTop > window.innerHeight - 200) {
-        tooltipTop = rect.top - 200 - 20;
-      }
-      if (tooltipTop < 20) tooltipTop = 20;
-      if (tooltipLeft < 20) tooltipLeft = 20;
-      if (tooltipLeft > window.innerWidth - 340) tooltipLeft = window.innerWidth - 340;
-
-      tooltip.style.top = tooltipTop + 'px';
-      tooltip.style.left = tooltipLeft + 'px';
-
-      if (currentTourStep === tourSteps.length - 1) {
-        if(btnNext) btnNext.innerText = 'Finish';
-      } else {
-        if(btnNext) btnNext.innerText = 'Next';
-      }
-    }
-
-    function advanceTour() {
-      currentTourStep++;
-      renderTourStep();
-    }
-
-    function showStoryWall() {
-      const spotlight = document.getElementById('spotlight-overlay');
-      const tooltip = document.getElementById('tour-tooltip');
-      if (spotlight) spotlight.classList.remove('active');
-      if (tooltip) tooltip.classList.remove('active');
-
-      const storyModal = document.getElementById('story-wall-modal');
-      const btnExploring = document.getElementById('btn-start-exploring');
-
-      if (storyModal) {
-        storyModal.classList.add('visible');
-        fetchStories();
-      }
-
-      if (btnExploring) {
-        btnExploring.onclick = exitTour; // Final exit
-      }
-    }
-
-    function fetchStories() {
-      const grid = document.getElementById('story-wall-grid');
-      if (!grid) return;
-
-      fetch('/static/data/stories.json')
-        .then(res => res.json())
-        .then(data => {
-          const topStories = data.slice(0, 3);
-          grid.innerHTML = ''; // clear
-
-          topStories.forEach(s => {
-            grid.innerHTML += `
-              <div class="story-card">
-                <div class="story-photo"></div>
-                <div class="story-card-body">
-                  <h3 class="story-card-name">${s.name}</h3>
-                  <p class="story-card-location">${s.location}</p>
-                  <div class="story-card-hardware">${s.hardware}</div>
-                  <p class="story-card-excerpt">${s.excerpt}</p>
-                </div>
-              </div>
-            `;
-          });
-        })
-        .catch(err => {
-          console.error(err);
-          grid.innerHTML = '<p>Error loading stories.</p>';
-        });
-    }
-
-    function exitTour() {
-      const spotlight = document.getElementById('spotlight-overlay');
-      const tooltip = document.getElementById('tour-tooltip');
-      const storyModal = document.getElementById('story-wall-modal');
-      if (spotlight) spotlight.classList.remove('active');
-      if (tooltip) tooltip.classList.remove('active');
-      if (storyModal) storyModal.classList.remove('visible');
-      localStorage.setItem('safecast_tutorial_seen', 'true');
-    }
-
-    // Initialize legend display with current unit preference
-    updateLegendDisplay();
   </script>
-
-<!-- --- Stage 3 Tour HTML --- -->
-<div id="spotlight-overlay"></div>
-<div id="tour-tooltip">
-  <p id="tour-text"></p>
-  <div class="tour-nav">
-    <button id="btn-tour-next">Next</button>
-    <button id="btn-tour-exit">Exit</button>
-  </div>
-</div>
-
-<!-- --- Stage 4 Story Wall HTML --- -->
-<div id="story-wall-modal">
-  <div class="story-wall-content">
-    <h2>The data you're looking at was collected by people like these.</h2>
-    <div id="story-wall-grid"></div>
-    <div class="story-wall-actions">
-      <a href="/stories.html" class="btn-read-more" target="_blank">Read more stories →</a>
-      <button id="btn-start-exploring">Start exploring</button>
-    </div>
-  </div>
-</div>
-
-<!-- --- Stage 2 Tutorial HTML --- -->
-<div id="tutorial-overlay">
-  <div id="tutorial-modal">
-    <h2>You're looking at real radiation data...</h2>
-    <p>Safecast provides open, crowdsourced radiation data globally. Would you like a quick tour on how to read the map and understand the readings?</p>
-    <div class="tutorial-buttons">
-      <button id="btn-start-tour">Show me how to read this</button>
-      <button id="btn-dismiss-tour">Explore on my own</button>
-    </div>
-  </div>
-</div>
-
-<div id="persistent-help-btn" title="Tutorial &amp; Help">?</div>
 
 </body>
 
