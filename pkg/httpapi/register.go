@@ -43,6 +43,7 @@ type RegisterConfig struct {
 	AdminMCPDataHandler              http.HandlerFunc
 	AdminMCPExportHandler            http.HandlerFunc
 	AdminMCPDeleteHandler            http.HandlerFunc
+	AdminMCPUpdateHandler            http.HandlerFunc
 	AdminRealtimeDataHandler         http.HandlerFunc
 	AdminRealtimeExportHandler       http.HandlerFunc
 	AdminRealtimeDeleteHandler       http.HandlerFunc
@@ -163,6 +164,7 @@ func registerAuthAndAdminRoutes(mux *http.ServeMux, cfg RegisterConfig) {
 	registerOptionalAdmin("/api/admin/mcp/data", cfg.AdminMCPDataHandler)
 	registerOptionalAdmin("/api/admin/mcp/export", cfg.AdminMCPExportHandler)
 	registerOptionalAdmin("/api/admin/mcp/delete", cfg.AdminMCPDeleteHandler)
+	registerOptionalAdmin("/api/admin/mcp/update", cfg.AdminMCPUpdateHandler)
 	registerOptionalAdmin("/api/admin/realtime/data", cfg.AdminRealtimeDataHandler)
 	registerOptionalAdmin("/api/admin/realtime/export", cfg.AdminRealtimeExportHandler)
 	registerOptionalAdmin("/api/admin/realtime/delete", cfg.AdminRealtimeDeleteHandler)
