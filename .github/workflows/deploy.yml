@@ -13,7 +13,8 @@ jobs:
       - run: echo "CI runs on GitHub only — skipping on mirror"
 
   deploy:
-    if: github.server_url == 'https://github.com'
+    # Deploy is handled by Codeberg Actions (.forgejo/workflows/deploy.yml)
+    if: false
     runs-on: ubuntu-latest
 
     steps:
