@@ -13,7 +13,7 @@ It exists to avoid route drift across `main` files and transport-specific muxes.
 - Admin API routes: all `/api/admin/*` must be registered through
   `pkg/httpapi/register.go` using `RegisterConfig`.
 
-## Unified MCP Server (MCP listener)
+## Unified MCP Surface (same runtime, MCP listener)
 
 - Entrypoint: `cmd/unified-server/mcp_register.go`
 - Shared MCP composers:
@@ -26,21 +26,8 @@ It exists to avoid route drift across `main` files and transport-specific muxes.
   - `/mcp/sse`
 - MCP docs/UI:
   - `/mcp-api/*`
-- Policy: the MCP listener owns the MCP REST mirror (`/api/*`) using the same
-  shared registrars as standalone `cmd/mcp-server`, so capabilities stay aligned.
-
-## Standalone MCP Server
-
-- Entrypoint: `cmd/mcp-server/main.go`
-- Shared MCP composers:
-  - `pkg/mcpserver/tools.go`
-  - `pkg/mcpserver/transports.go`
-  - `pkg/mcpserver/routes.go`
-  - `pkg/mcpserver/docs.go`
-- Routes:
-  - MCP transports (`/mcp-http`, `/mcp/sse`)
-  - MCP REST mirror (`/api/*`)
-  - Swagger (`/mcp-api/*`)
+- Policy: the MCP listener owns the MCP REST mirror (`/api/*`) via
+  `pkg/mcpserver/*`. No standalone MCP runtime exists.
 
 ## Guardrails
 
@@ -48,7 +35,7 @@ It exists to avoid route drift across `main` files and transport-specific muxes.
   registry/composer exists.
 - For MCP surface changes (tools/transports/REST/docs):
   1. Update shared registrars under `pkg/mcpserver/*`.
-  2. Keep `cmd/*` entrypoints as thin wiring only.
+  2. Keep `cmd/unified-server/*` entrypoints as thin wiring only.
 - When adding an API endpoint:
   1. Add handler implementation in the owning package.
   2. Register via the owner composer/registrar.

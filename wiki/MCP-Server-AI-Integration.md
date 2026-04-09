@@ -482,10 +482,6 @@ GET /mcp/sse
 
 Provides real-time streaming for long-running queries.
 
-### stdio
-
-For CLI integration and local tools.
-
 ---
 
 ## Best Practices
@@ -507,9 +503,8 @@ For CLI integration and local tools.
 ### Integration
 
 1. **Use HTTP transport** for web applications
-2. **Use stdio** for CLI tools
-3. **Enable SSE** for real-time updates
-4. **Test with Claude Code** before production
+2. **Enable SSE** for real-time updates
+3. **Test with Claude Code** before production
 
 ---
 
@@ -564,5 +559,4 @@ echo $DUCKLAKE_DATA_PATH
 - [Database Setup](Database-Setup) - DuckLake configuration
 - [Deployment](Deployment) - Production deployment with AI features
 - [Development](Development) - Extending MCP tools
-- [MCP Model Adapter Plan](/docs/MCP_MODEL_ADAPTER_PLAN.md) - Architecture details
 - [RAG Semantic Cache](/docs/rag-semantic-cache.md) - Caching architecture

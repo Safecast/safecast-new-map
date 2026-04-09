@@ -639,9 +639,8 @@ func RegisterMCP() {
 	// (Other REST routes like /api/radiation, /api/tracks, etc. are already
 	// handled by httpapi or registerSwaggerDocs on port 8765.)
 	restH := &RESTHandler{}
-	mux.HandleFunc("/api/sensors", restH.handleSensors)
-	mux.HandleFunc("/api/sensors/export", restH.handleSensorsExport)
-	mux.HandleFunc("/api/sensor/", restH.handleSensor)
+	// Sensors endpoints are already registered on MCP mux via registerAPIRoutes(mux).
+	// Keep explicit registrations on main mux for relative URL usage from web chat.
 	http.HandleFunc("/api/sensors", restH.handleSensors)
 	http.HandleFunc("/api/sensors/export", restH.handleSensorsExport)
 	http.HandleFunc("/api/sensor/", restH.handleSensor)

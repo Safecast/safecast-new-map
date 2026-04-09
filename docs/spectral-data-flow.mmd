@@ -34,7 +34,7 @@ flowchart TB
     Download["GET /api/spectrum/{markerID}/download\n?format=json|csv|n42|spe\n• json — full spectrum + cal\n• csv — channel, energy_keV, counts\n• n42/spe — original raw_data bytes"]
   end
 
-  subgraph MCPLayer["🤖 MCP Tool — cmd/mcp-server"]
+  subgraph MCPLayer["🤖 MCP Tool — cmd/unified-server (shared MCP runtime)"]
     MCPSpec["get_spectrum tool\nCalls /api/spectrum/{markerID}\nReturns channel data + calibration\nfor AI analysis"]
   end
 

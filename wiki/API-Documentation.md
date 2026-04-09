@@ -706,8 +706,8 @@ cd cmd/unified-server && swag init \
   --parseDependencyLevel 2 \
   --instanceName unifiedapi
 
-# MCP server docs
-cd cmd/mcp-server && swag init -g rest.go
+# MCP docs are generated from unified-server annotations and shared
+# MCP registrars (`pkg/mcpserver/*`)
 ```
 
 ---

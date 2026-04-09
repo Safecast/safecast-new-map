@@ -35,6 +35,5 @@ jobs:
       - name: Verify generated Swagger docs are up to date
         run: |
           go install github.com/swaggo/swag/cmd/swag@latest
-          (cd cmd/mcp-server && "$(go env GOPATH)/bin/swag" init -g rest.go)
           (cd cmd/unified-server && "$(go env GOPATH)/bin/swag" init -g doc.go -o docs/api --parseDependency --parseInternal --parseDependencyLevel 2 --instanceName unifiedapi)
-          git diff --exit-code -- cmd/mcp-server/docs cmd/unified-server/docs/api
+          git diff --exit-code -- cmd/unified-server/docs/api
