@@ -32,34 +32,14 @@ var (
 )
 
 type companionRoutesConfig struct {
-	MainMux             *http.ServeMux
-	MCPMux              *http.ServeMux
-	RESTHandler         *RESTHandler
-	FeedbackHandler     http.HandlerFunc
-	TrackInsightsHandle http.HandlerFunc
-	ChatHandler         http.HandlerFunc
+	MainMux     *http.ServeMux
+	MCPMux      *http.ServeMux
+	ChatHandler http.HandlerFunc
 }
 
-// registerCompanionRoutes keeps cross-listener API parity explicit for routes
-// that must exist on both the MCP and main listeners.
+// registerCompanionRoutes keeps cross-listener non-API parity explicit for
+// routes that must exist on both the MCP and main listeners.
 func registerCompanionRoutes(cfg companionRoutesConfig) {
-	if cfg.MCPMux != nil && cfg.FeedbackHandler != nil {
-		cfg.MCPMux.HandleFunc("/api/feedback", cfg.FeedbackHandler)
-	}
-	if cfg.MainMux != nil && cfg.FeedbackHandler != nil {
-		cfg.MainMux.HandleFunc("/api/feedback", cfg.FeedbackHandler)
-	}
-
-	if cfg.MainMux != nil && cfg.RESTHandler != nil {
-		cfg.MainMux.HandleFunc("/api/sensors", cfg.RESTHandler.handleSensors)
-		cfg.MainMux.HandleFunc("/api/sensors/export", cfg.RESTHandler.handleSensorsExport)
-		cfg.MainMux.HandleFunc("/api/sensor/", cfg.RESTHandler.handleSensor)
-	}
-
-	if cfg.MainMux != nil && cfg.TrackInsightsHandle != nil {
-		cfg.MainMux.HandleFunc("GET /api/track/{id}/insights", cfg.TrackInsightsHandle)
-	}
-
 	if cfg.MCPMux != nil && cfg.ChatHandler != nil {
 		cfg.MCPMux.HandleFunc("/chat", cfg.ChatHandler)
 	}
@@ -664,17 +644,6 @@ func RegisterMCP() {
 		model = "claude-sonnet-4-5"
 	}
 	mcpURL := fmt.Sprintf("http://localhost:%s/mcp-http", mcpPort)
-
-	feedbackHandler := handleFeedback()
-	// Keep companion routes explicit so main and MCP listeners stay aligned.
-	restH := &RESTHandler{}
-	registerCompanionRoutes(companionRoutesConfig{
-		MainMux:             http.DefaultServeMux,
-		MCPMux:              mux,
-		RESTHandler:         restH,
-		FeedbackHandler:     feedbackHandler,
-		TrackInsightsHandle: trackInsightsHandler,
-	})
 
 	if apiKey != "" {
 		chatHandler := handleWebChat(mcpURL, apiKey, model)

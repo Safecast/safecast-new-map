@@ -27,6 +27,13 @@ type RegisterConfig struct {
 	DB            *database.Database
 	AdminPassword string
 
+	// Optional public API handlers that do not belong to auth/admin groups.
+	APISensorsHandler       http.HandlerFunc
+	APISensorsExportHandler http.HandlerFunc
+	APISensorByIDHandler    http.HandlerFunc
+	APIFeedbackHandler      http.HandlerFunc
+	APITrackInsightsHandler http.HandlerFunc
+
 	// Admin handlers; each is guarded by optional auth or admin password.
 	AdminUploadsHandler              http.HandlerFunc
 	AdminTracksHandler               http.HandlerFunc
@@ -171,6 +178,18 @@ func registerAuthAndAdminRoutes(mux *http.ServeMux, cfg RegisterConfig) {
 	registerOptionalAdmin("/api/admin/translations/reload", cfg.AdminTranslationsReloadHandler)
 	registerOptionalAdmin("/api/admin/translations/", cfg.AdminTranslationByIDHandler)
 	registerOptionalAdmin("/api/admin/translations", cfg.AdminTranslationsHandler)
+
+	registerOptionalPublic := func(path string, handler http.HandlerFunc) {
+		if handler == nil {
+			return
+		}
+		mux.HandleFunc(path, handler)
+	}
+	registerOptionalPublic("/api/sensors", cfg.APISensorsHandler)
+	registerOptionalPublic("/api/sensors/export", cfg.APISensorsExportHandler)
+	registerOptionalPublic("/api/sensor/", cfg.APISensorByIDHandler)
+	registerOptionalPublic("/api/feedback", cfg.APIFeedbackHandler)
+	registerOptionalPublic("GET /api/track/{id}/insights", cfg.APITrackInsightsHandler)
 }
 
 // checkAdminAccess returns true if the request is from an admin user or carries the admin password.

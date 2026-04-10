@@ -11,8 +11,8 @@
 //  3. Return top 5 by similarity score.
 //  4. Location notes: location_knowledge rows whose (lat, lon) falls inside bbox.
 //
-// Registration: http.HandleFunc("GET /api/track/{id}/insights", trackInsightsHandler)
-// in mcp_register.go, registered on http.DefaultServeMux (port 8765).
+// Registration: wired through pkg/httpapi.RegisterConfig as
+// APITrackInsightsHandler for the main listener.
 
 package main
 

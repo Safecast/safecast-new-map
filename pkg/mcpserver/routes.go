@@ -20,6 +20,7 @@ const (
 	RouteGPTRadiation  RouteKey = "gpt_radiation"
 	RouteGPTArea       RouteKey = "gpt_area"
 	RouteGPTStats      RouteKey = "gpt_stats"
+	RouteFeedback      RouteKey = "feedback"
 )
 
 var defaultRESTRouteOrder = []RouteKey{
@@ -39,6 +40,7 @@ var defaultRESTRouteOrder = []RouteKey{
 	RouteGPTRadiation,
 	RouteGPTArea,
 	RouteGPTStats,
+	RouteFeedback,
 }
 
 // RegisterRESTRoutes iterates the canonical REST mirror route set.
