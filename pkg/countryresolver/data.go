@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"safecast-new-map/public_html/geojson"
+	"safecast-new-map/pkg/geojson"
 )
 
 // datasetPath reflects the URL exposed by the web server so error messages

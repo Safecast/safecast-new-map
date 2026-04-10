@@ -1549,7 +1549,7 @@ paths:
       - web
   /api/track/{id}:
     get:
-      description: Returns full track marker JSON for a track ID path segment.
+      description: Returns full track data in JSON, CSV, or XLSX format.
       parameters:
       - description: Track ID
         in: path
@@ -2499,6 +2499,63 @@ paths:
       summary: Discover active fixed sensors
       tags:
       - realtime
+  /sensors/export:
+    get:
+      description: Downloads all active fixed sensors matching the given filters in
+        CSV, JSON, or Excel format. No row limit — returns up to 10 000 devices.
+      parameters:
+      - description: 'Output format: csv (default), json, xlsx'
+        in: query
+        name: format
+        type: string
+      - description: Filter by sensor type
+        in: query
+        name: type
+        type: string
+      - default: -90
+        description: Southern boundary
+        in: query
+        name: min_lat
+        type: number
+      - default: 90
+        description: Northern boundary
+        in: query
+        name: max_lat
+        type: number
+      - default: -180
+        description: Western boundary
+        in: query
+        name: min_lon
+        type: number
+      - default: 180
+        description: Eastern boundary
+        in: query
+        name: max_lon
+        type: number
+      produces:
+      - text/csv
+      - application/json
+      - application/vnd.ms-excel
+      responses:
+        "200":
+          description: Sensor data file
+          schema:
+            type: string
+        "400":
+          description: Invalid parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Database unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Export all active sensors
+      tags:
+      - realtime
   /spectra:
     get:
       description: Returns spectroscopy metadata (filename, device model, energy range,
@@ -2730,29 +2787,6 @@ paths:
       summary: Get all measurements from a specific track
       tags:
       - historical
-  /trackid/{id}:
-    get:
-      description: Serves the HTML map page for a specific track ID.
-      parameters:
-      - description: Track ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - text/html
-      responses:
-        "200":
-          description: HTML page
-          schema:
-            type: string
-        "400":
-          description: Track ID missing
-          schema:
-            type: string
-      summary: Render map page for one track
-      tags:
-      - web
   /tracks:
     get:
       description: Lists bGeigie Import tracks (bulk radiation measurement drives).
