@@ -6,6 +6,21 @@ import (
 	"strings"
 )
 
+// Standard error code constants used across all API endpoints.
+const (
+	CodeBadRequest       = "bad_request"
+	CodeMethodNotAllowed = "method_not_allowed"
+	CodeUnauthorized     = "unauthorized"
+	CodeForbidden        = "forbidden"
+	CodeNotFound         = "not_found"
+	CodeConflict         = "conflict"
+	CodeRateLimited      = "rate_limited"
+	CodeUnavailable      = "service_unavailable"
+	CodeInternal         = "internal_error"
+	CodeTimeout          = "timeout"
+	CodeCancelled        = "cancelled"
+)
+
 // ErrorBody is the standard JSON error envelope used by API endpoints.
 type ErrorBody struct {
 	Status string      `json:"status,omitempty"`
@@ -43,6 +58,57 @@ func RequireMethodJSON(w http.ResponseWriter, r *http.Request, allowed ...string
 		}
 	}
 	w.Header().Set("Allow", strings.Join(allowed, ", "))
-	WriteError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Method not allowed")
+	WriteError(w, http.StatusMethodNotAllowed, CodeMethodNotAllowed, "Method not allowed")
 	return false
+}
+
+// WriteMethodNotAllowed writes a 405 JSON error with an Allow header.
+func WriteMethodNotAllowed(w http.ResponseWriter, allowed ...string) {
+	if len(allowed) > 0 {
+		w.Header().Set("Allow", strings.Join(allowed, ", "))
+	}
+	WriteError(w, http.StatusMethodNotAllowed, CodeMethodNotAllowed, "Method not allowed")
+}
+
+// WriteBadRequest writes a 400 JSON error with the given code and message.
+func WriteBadRequest(w http.ResponseWriter, code, msg string) {
+	if code == "" {
+		code = CodeBadRequest
+	}
+	WriteError(w, http.StatusBadRequest, code, msg)
+}
+
+// WriteUnauthorized writes a 401 JSON error.
+func WriteUnauthorized(w http.ResponseWriter, msg string) {
+	WriteError(w, http.StatusUnauthorized, CodeUnauthorized, msg)
+}
+
+// WriteForbidden writes a 403 JSON error.
+func WriteForbidden(w http.ResponseWriter, msg string) {
+	WriteError(w, http.StatusForbidden, CodeForbidden, msg)
+}
+
+// WriteNotFound writes a 404 JSON error.
+func WriteNotFound(w http.ResponseWriter, msg string) {
+	WriteError(w, http.StatusNotFound, CodeNotFound, msg)
+}
+
+// WriteRateLimited writes a 429 JSON error.
+func WriteRateLimited(w http.ResponseWriter, msg string) {
+	WriteError(w, http.StatusTooManyRequests, CodeRateLimited, msg)
+}
+
+// WriteUnavailable writes a 503 JSON error.
+func WriteUnavailable(w http.ResponseWriter, msg string) {
+	WriteError(w, http.StatusServiceUnavailable, CodeUnavailable, msg)
+}
+
+// WriteInternalError writes a 500 JSON error.
+func WriteInternalError(w http.ResponseWriter, msg string) {
+	WriteError(w, http.StatusInternalServerError, CodeInternal, msg)
+}
+
+// WriteTimeout writes a 408 JSON error.
+func WriteTimeout(w http.ResponseWriter, msg string) {
+	WriteError(w, http.StatusRequestTimeout, CodeTimeout, msg)
 }
