@@ -31,6 +31,32 @@ var (
 	mcpHintsLoader  *modeladapter.HintsLoader
 )
 
+type companionRoutesConfig struct {
+	MainMux     *http.ServeMux
+	MCPMux      *http.ServeMux
+	ChatHandler http.HandlerFunc
+}
+
+// corsMiddleware adds Access-Control-Allow-Origin: * to every response so the
+// MCP REST API is accessible from browser clients on different origins.
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		next.ServeHTTP(w, r)
+	})
+}
+
+// registerCompanionRoutes keeps cross-listener non-API parity explicit for
+// routes that must exist on both the MCP and main listeners.
+func registerCompanionRoutes(cfg companionRoutesConfig) {
+	if cfg.MCPMux != nil && cfg.ChatHandler != nil {
+		cfg.MCPMux.HandleFunc("/chat", cfg.ChatHandler)
+	}
+	if cfg.MainMux != nil && cfg.ChatHandler != nil {
+		cfg.MainMux.HandleFunc("/chat", cfg.ChatHandler)
+	}
+}
+
 // Maximum tokens for the prompt sent to Claude. Leave headroom for tool results.
 const maxPromptTokens = 150000
 
@@ -484,7 +510,7 @@ func handleFeedback() http.HandlerFunc {
 			return
 		}
 		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
 			return
 		}
 
@@ -493,16 +519,15 @@ func handleFeedback() http.HandlerFunc {
 			Score  int   `json:"score"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ChatID == 0 {
-			http.Error(w, "invalid request: chat_id required", http.StatusBadRequest)
+			writeError(w, http.StatusBadRequest, "invalid request: chat_id required")
 			return
 		}
 		if err := RecordFeedback(req.ChatID, req.Score); err != nil {
 			log.Printf("feedback error: %v", err)
-			http.Error(w, "failed to record feedback", http.StatusInternalServerError)
+			writeError(w, http.StatusInternalServerError, "failed to record feedback")
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"ok":true}`))
+		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 	}
 }
 
@@ -628,38 +653,13 @@ func RegisterMCP() {
 	}
 	mcpURL := fmt.Sprintf("http://localhost:%s/mcp-http", mcpPort)
 
-	feedbackHandler := handleFeedback()
-	// Register feedback on both mux and main mux regardless of apiKey,
-	// so the endpoint is always reachable even if chat is reconfigured.
-	mux.HandleFunc("/api/feedback", feedbackHandler)
-	http.HandleFunc("/api/feedback", feedbackHandler)
-
-	// Register sensor REST endpoints on both mux (port 3333) and main mux (port 8765)
-	// so the AI chat download buttons can use relative URLs like /api/sensors/export.
-	// (Other REST routes like /api/radiation, /api/tracks, etc. are already
-	// handled by httpapi or registerSwaggerDocs on port 8765.)
-	restH := &RESTHandler{}
-	// Sensors endpoints are already registered on MCP mux via registerAPIRoutes(mux).
-	// Keep explicit registrations on main mux for relative URL usage from web chat.
-	http.HandleFunc("/api/sensors", restH.handleSensors)
-	http.HandleFunc("/api/sensors/export", restH.handleSensorsExport)
-	http.HandleFunc("/api/sensor/", restH.handleSensor)
-
-	// Track insights: register on main mux (port 8765) using Go 1.22 pattern routing.
-	// The specific pattern "GET /api/track/{id}/insights" takes precedence over the
-	// pkg/httpapi catch-all "/api/track/" handler.
-	http.HandleFunc("GET /api/track/{id}/insights", trackInsightsHandler)
-
 	if apiKey != "" {
 		chatHandler := handleWebChat(mcpURL, apiKey, model)
-
-		// Register /chat on MCP mux (port 3333)
-		mux.HandleFunc("/chat", chatHandler)
-
-		// Also register /chat on main map server (port 8765) so the
-		// embedded widget can use a relative "/chat" URL without
-		// cross-origin or CloudFront routing issues.
-		http.HandleFunc("/chat", chatHandler)
+		registerCompanionRoutes(companionRoutesConfig{
+			MainMux:     http.DefaultServeMux,
+			MCPMux:      mux,
+			ChatHandler: chatHandler,
+		})
 	} else {
 		log.Println("AI chat disabled: ANTHROPIC_API_KEY not set")
 	}
@@ -671,11 +671,12 @@ func RegisterMCP() {
 	log.Println("  REST API: /api/...")
 	log.Println("  Swagger UI: /mcp-api/")
 
-	// Start MCP server on separate port
+	// Start MCP server on separate port, wrapped with CORS middleware so browser
+	// clients can call the MCP REST API from any origin.
 	go func() {
 		listenAddr := ":" + mcpPort
 		log.Printf("MCP goroutine: starting listener on %s", listenAddr)
-		if err := http.ListenAndServe(listenAddr, mux); err != nil {
+		if err := http.ListenAndServe(listenAddr, corsMiddleware(mux)); err != nil {
 			log.Printf("ERROR: MCP server on port %s failed: %v", mcpPort, err)
 		}
 	}()

@@ -2,7 +2,6 @@ package selfupgrade
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -12,6 +11,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"safecast-new-map/pkg/httpresp"
 )
 
 var (
@@ -928,55 +929,50 @@ func (m *Manager) HTTPHandler() http.Handler {
 		case path == "" || path == "/":
 			http.NotFound(w, r)
 		case strings.HasPrefix(path, "/status"):
-			if r.Method != http.MethodGet {
-				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			if !httpresp.RequireMethodJSON(w, r, http.MethodGet) {
 				return
 			}
 			status, err := m.Status(r.Context())
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusServiceUnavailable)
+				httpresp.WriteUnavailable(w, err.Error())
 				return
 			}
-			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(status)
+			httpresp.WriteJSON(w, http.StatusOK, status)
 		case strings.HasPrefix(path, "/trigger"):
-			if r.Method != http.MethodPost {
-				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			if !httpresp.RequireMethodJSON(w, r, http.MethodPost) {
 				return
 			}
 			if err := m.Trigger(r.Context()); err != nil {
-				http.Error(w, err.Error(), http.StatusConflict)
+				httpresp.WriteError(w, http.StatusConflict, httpresp.CodeConflict, err.Error())
 				return
 			}
 			w.WriteHeader(http.StatusAccepted)
 		case strings.HasPrefix(path, "/approve"):
-			if r.Method != http.MethodPost && r.Method != http.MethodGet {
-				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			if !httpresp.RequireMethodJSON(w, r, http.MethodPost, http.MethodGet) {
 				return
 			}
 			version := r.URL.Query().Get("version")
 			if strings.TrimSpace(version) == "" {
-				http.Error(w, "missing version", http.StatusBadRequest)
+				httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, "missing version")
 				return
 			}
 			if err := m.Decision(r.Context(), Decision{Version: version, Approve: true}); err != nil {
-				http.Error(w, err.Error(), http.StatusConflict)
+				httpresp.WriteError(w, http.StatusConflict, httpresp.CodeConflict, err.Error())
 				return
 			}
 			w.WriteHeader(http.StatusAccepted)
 		case strings.HasPrefix(path, "/reject"):
-			if r.Method != http.MethodPost && r.Method != http.MethodGet {
-				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			if !httpresp.RequireMethodJSON(w, r, http.MethodPost, http.MethodGet) {
 				return
 			}
 			version := r.URL.Query().Get("version")
 			reason := r.URL.Query().Get("reason")
 			if strings.TrimSpace(version) == "" {
-				http.Error(w, "missing version", http.StatusBadRequest)
+				httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, "missing version")
 				return
 			}
 			if err := m.Decision(r.Context(), Decision{Version: version, Approve: false, Reason: reason}); err != nil {
-				http.Error(w, err.Error(), http.StatusConflict)
+				httpresp.WriteError(w, http.StatusConflict, httpresp.CodeConflict, err.Error())
 				return
 			}
 			w.WriteHeader(http.StatusAccepted)

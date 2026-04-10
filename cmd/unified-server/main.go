@@ -16,7 +16,6 @@ import (
 	"flag"
 	"fmt"
 	lru "github.com/hashicorp/golang-lru/v2"
-	httpSwagger "github.com/swaggo/http-swagger"
 	"html"
 	"html/template"
 	"io/fs"
@@ -38,7 +37,6 @@ import (
 	"golang.org/x/crypto/acme/autocert"
 
 	_ "safecast-new-map/cmd/unified-server/docs/api"
-	"github.com/swaggo/swag"
 	"safecast-new-map/pkg/auth"
 	"safecast-new-map/pkg/database"
 	"safecast-new-map/pkg/database/drivers"
@@ -784,15 +782,12 @@ func main() {
 		log.Fatalf("static fs: %v", err)
 	}
 
-	// Serve static files from embedded filesystem - this must come BEFORE the catch-all route
-	// to avoid the map handler catching static file requests
-	http.Handle("/static/", http.StripPrefix("/static/",
-		http.FileServer(http.FS(staticFS))))
-
-	// Serve JS files from the physical directory as a workaround
-	// This ensures the marker-worker.js file is accessible to the browser
-	// Access files from public_html root and let StripPrefix handle the path
-	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("public_html/"))))
+	// Static asset routes are registered through the static registrar to keep
+	// main() focused on composition rather than per-path wiring.
+	httpapi.RegisterStaticRoutes(http.DefaultServeMux, httpapi.StaticRoutesConfig{
+		StaticFS: staticFS,
+		JSDir:    "public_html/",
+	})
 	mcpPortForDocs := strings.TrimSpace(os.Getenv("MCP_PORT"))
 	if mcpPortForDocs == "" {
 		mcpPortForDocs = "3333"
@@ -803,177 +798,10 @@ func main() {
 	}
 	mcpDocsURL := strings.TrimRight(mcpBaseForDocs, "/") + "/mcp-api/"
 
-	// Combined API docs page (Map API + MCP API tabs)
-	http.HandleFunc("/docs/", serveAPIDocsPage)
-	http.HandleFunc("/docs", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/docs/", http.StatusMovedPermanently)
-	})
-
-	// Register Map API favicon and theme CSS endpoints
-	http.HandleFunc("/map-api/favicon.ico", serveFavicon)
-	http.HandleFunc("/map-api/favicon-16x16.png", serveFavicon16)
-	http.HandleFunc("/map-api/favicon-32x32.png", serveFavicon32)
-	http.HandleFunc("/map-api/swagger-theme.css", serveMapSwaggerTheme)
-
-	mapAPINavScript := fmt.Sprintf(`function() {
-				document.title = 'Safecast Map API Docs';
-				const mcpDocsURL = %q;
-
-				// ── Favicons ──
-				const link16 = document.createElement('link');
-				link16.rel = 'icon'; link16.type = 'image/png'; link16.sizes = '16x16';
-				link16.href = '/map-api/favicon-16x16.png';
-				document.head.appendChild(link16);
-				const link32 = document.createElement('link');
-				link32.rel = 'icon'; link32.type = 'image/png'; link32.sizes = '32x32';
-				link32.href = '/map-api/favicon-32x32.png';
-				document.head.appendChild(link32);
-				const linkICO = document.createElement('link');
-				linkICO.rel = 'shortcut icon'; linkICO.href = '/map-api/favicon.ico';
-				document.head.appendChild(linkICO);
-
-				// ── Theme CSS ──
-				const style = document.createElement('link');
-				style.rel = 'stylesheet'; style.href = '/map-api/swagger-theme.css';
-				document.head.appendChild(style);
-
-				// ── Remove Swagger logo ──
-				const swaggerLogo = document.querySelector('.topbar-wrapper .link');
-				if (swaggerLogo) swaggerLogo.remove();
-				document.querySelectorAll('.topbar-wrapper img').forEach(img => img.remove());
-
-				// ── Inject "Switch to MCP API" button into topbar ──
-				const topbar = document.querySelector('.swagger-ui .topbar');
-				if (topbar) {
-					const existingBtn = document.getElementById('safecast-switch-btn');
-					if (existingBtn) existingBtn.remove();
-					const switchBtn = document.createElement('a');
-					switchBtn.id = 'safecast-switch-btn';
-					switchBtn.href = mcpDocsURL;
-					switchBtn.textContent = 'Switch to MCP API \u2192';
-					switchBtn.style.cssText = 'display:inline-block;margin-left:auto;margin-right:16px;padding:6px 14px;background:#0a4f8a;color:#fff;border-radius:6px;font:600 13px/1.4 -apple-system,BlinkMacSystemFont,sans-serif;text-decoration:none;border:1px solid rgba(255,255,255,0.25);white-space:nowrap;';
-					switchBtn.onmouseover = function() { this.style.background = '#083d6e'; };
-					switchBtn.onmouseout  = function() { this.style.background = '#0a4f8a'; };
-					const wrapper = topbar.querySelector('.topbar-wrapper');
-					if (wrapper) {
-						wrapper.style.display = 'flex';
-						wrapper.style.alignItems = 'center';
-						wrapper.style.width = '100%%';
-						wrapper.appendChild(switchBtn);
-					} else {
-						topbar.appendChild(switchBtn);
-					}
-				}
-
-				// ── Dark mode toggle ──
-				const btn = document.createElement('button');
-				btn.id = 'dark-mode-toggle';
-				btn.textContent = '\u{1F319} Dark Mode';
-				const isDark = localStorage.getItem('safecastMapDarkMode') === 'true';
-				if (isDark) { document.body.classList.add('dark-mode'); btn.textContent = '\u2600\uFE0F Light Mode'; }
-				btn.onclick = function() {
-					document.body.classList.toggle('dark-mode');
-					const nowDark = document.body.classList.contains('dark-mode');
-					btn.textContent = nowDark ? '\u2600\uFE0F Light Mode' : '\u{1F319} Dark Mode';
-					localStorage.setItem('safecastMapDarkMode', nowDark);
-				};
-				document.body.appendChild(btn);
-
-				// ── Dark-mode styles for preamble ──
-				const dmStyle = document.createElement('style');
-				dmStyle.textContent = [
-					'body.dark-mode #safecast-preamble { background: #1a2535 !important; border-bottom-color: #0d9488 !important; }',
-					'body.dark-mode #safecast-preamble h2 { color: #93c5fd !important; }',
-					'body.dark-mode #safecast-preamble > div > p { color: #b0b8c8 !important; }',
-					'body.dark-mode #safecast-preamble a[href*="creativecommons"] { color: #5eead4 !important; }',
-					'body.dark-mode #safecast-preamble summary { color: #93c5fd !important; }',
-					'body.dark-mode #safecast-preamble details > div > div { background: #0f1c2e !important; border-color: #2a3f5f !important; }',
-					'body.dark-mode #safecast-preamble details > div > div strong { color: #93c5fd !important; }',
-					'body.dark-mode #safecast-preamble details > div > div p { color: #8899aa !important; }',
-					'body.dark-mode #safecast-preamble details > div > p { color: #6b7a8d !important; }',
-					'body.dark-mode #safecast-preamble code { background: #0f1c2e !important; color: #5eead4 !important; }',
-				].join('\n');
-				document.head.appendChild(dmStyle);
-
-				// ── Preamble section (inserted before #swagger-ui) ──
-				const existing = document.getElementById('safecast-preamble');
-				if (existing) existing.remove();
-				const preamble = document.createElement('div');
-				preamble.id = 'safecast-preamble';
-				preamble.style.cssText = 'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#fff;border-bottom:3px solid #0066cc;padding:28px 32px 24px;line-height:1.6;';
-				preamble.innerHTML = '<div style="max-width:900px;margin:0 auto;">' +
-					'<h2 style="margin:0 0 6px;font-size:22px;color:#1a3a5c;">Safecast Map API</h2>' +
-					'<p style="margin:0 0 16px;font-size:15px;color:#555;">' +
-						'Safecast has collected over 200 million radiation measurements from sensors carried by volunteers ' +
-						'and fixed monitoring stations around the world. This page is the technical interface that lets software ' +
-						'applications query, filter and download all of that data. You do not need an account or API key &mdash; ' +
-						'all data is <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" style="color:#0066cc;">CC0 licensed</a> and freely accessible.' +
-					'</p>' +
-					'<details style="margin-bottom:16px;">' +
-						'<summary style="cursor:pointer;font-weight:600;font-size:14px;color:#1a3a5c;user-select:none;">For developers &mdash; endpoint overview</summary>' +
-						'<div style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;">' +
-							'<div style="background:#f0f6ff;border:1px solid #c8ddf8;border-radius:8px;padding:12px;">' +
-								'<strong style="color:#1a3a5c;">Historical</strong>' +
-								'<p style="margin:4px 0 0;font-size:13px;color:#555;">bGeigie mobile track measurements from citizen scientists worldwide.</p>' +
-							'</div>' +
-							'<div style="background:#f0f6ff;border:1px solid #c8ddf8;border-radius:8px;padding:12px;">' +
-								'<strong style="color:#1a3a5c;">Realtime Sensors</strong>' +
-								'<p style="margin:4px 0 0;font-size:13px;color:#555;">Fixed Pointcast / Solarcast station readings &mdash; current &amp; history.</p>' +
-							'</div>' +
-							'<div style="background:#f0f6ff;border:1px solid #c8ddf8;border-radius:8px;padding:12px;">' +
-								'<strong style="color:#1a3a5c;">Spectroscopy</strong>' +
-								'<p style="margin:4px 0 0;font-size:13px;color:#555;">Gamma spectroscopy records linked to measurement markers.</p>' +
-							'</div>' +
-							'<div style="background:#f0f6ff;border:1px solid #c8ddf8;border-radius:8px;padding:12px;">' +
-								'<strong style="color:#1a3a5c;">Stats &amp; Reference</strong>' +
-								'<p style="margin:4px 0 0;font-size:13px;color:#555;">Aggregate stats, extreme readings, and dataset metadata.</p>' +
-							'</div>' +
-						'</div>' +
-						'<p style="margin:12px 0 0;font-size:13px;color:#777;">All endpoints return JSON. Base path: <code style="background:#f0f6ff;padding:1px 5px;border-radius:4px;">/api</code>. No authentication required.</p>' +
-					'</details>' +
-					'<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">' +
-						'<a href="/" style="display:inline-block;padding:7px 16px;background:#1a3a5c;color:#fff;border-radius:6px;font:600 13px/1.4 sans-serif;text-decoration:none;">\u2190 Back to Map</a>' +
-						'<a href="' + mcpDocsURL + '" style="display:inline-block;padding:7px 16px;background:#0d9488;color:#fff;border-radius:6px;font:600 13px/1.4 sans-serif;text-decoration:none;">Switch to MCP API \u2192</a>' +
-					'</div>' +
-				'</div>';
-				const swaggerUIEl = document.getElementById('swagger-ui');
-				if (swaggerUIEl) {
-					document.body.insertBefore(preamble, swaggerUIEl);
-				} else {
-					document.body.prepend(preamble);
-				}
-			}`, mcpDocsURL)
-	http.Handle("/map-api/", httpSwagger.Handler(
-		httpSwagger.URL("/map-api/doc.json"),
-		httpSwagger.InstanceName("unifiedapi"),
-		httpSwagger.UIConfig(map[string]string{
-			"onComplete": mapAPINavScript,
-		}),
-	))
-
-	// Serve MCP API spec JSON directly (avoids sharing swaggerFiles.Handler singleton
-	// with the /map-api/ swagger instance, which causes a prefix conflict).
-	http.HandleFunc("/mcp-api/doc.json", func(w http.ResponseWriter, r *http.Request) {
-		doc, err := swag.ReadDoc("swagger")
-		if err != nil {
-			http.Error(w, "swagger spec unavailable", http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(doc))
-	})
-	// Standalone /mcp-api/ page: custom HTML that loads assets from /map-api/
-	// (single swagger static-file handler on this port — avoids prefix conflict).
-	http.HandleFunc("/mcp-api/favicon.ico", serveFavicon)
-	http.HandleFunc("/mcp-api/favicon-16x16.png", serveFavicon16)
-	http.HandleFunc("/mcp-api/favicon-32x32.png", serveFavicon32)
-	http.HandleFunc("/mcp-api/swagger-theme.css", serveSwaggerTheme)
-	http.HandleFunc("/mcp-api/", serveMCPAPIPage)
-
-	http.HandleFunc("/home", homeHandler)
+	registerMainAPIDocsRoutes(http.DefaultServeMux, mcpDocsURL)
 
 	// Stories page and its data feed
-	http.HandleFunc("/stories.html", func(w http.ResponseWriter, r *http.Request) {
+	storiesPageHandler := func(w http.ResponseWriter, r *http.Request) {
 		data, err := content.ReadFile("public_html/stories.html")
 		if err != nil {
 			http.Error(w, "Not found", http.StatusNotFound)
@@ -981,8 +809,8 @@ func main() {
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Write(data)
-	})
-	http.HandleFunc("/data/stories.json", func(w http.ResponseWriter, r *http.Request) {
+	}
+	storiesDataHandler := func(w http.ResponseWriter, r *http.Request) {
 		data, err := content.ReadFile("public_html/data/stories.json")
 		if err != nil {
 			http.Error(w, "Not found", http.StatusNotFound)
@@ -990,14 +818,19 @@ func main() {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(data)
-	})
+	}
 
-	http.HandleFunc("/", mapHandler)
+	var profilePageHandler http.HandlerFunc
+	var resetPasswordPageHandler http.HandlerFunc
+	var adminUsersPageHandler http.HandlerFunc
+	var adminUploadsPageHandler http.HandlerFunc
+	var adminMCPPageHandler http.HandlerFunc
+	var adminRealtimePageHandler http.HandlerFunc
+	var adminTranslationsPageHandler http.HandlerFunc
 
-	// Register authentication routes if auth system is enabled
+	// Register authentication and admin page handlers only when auth is enabled.
 	if authManager != nil {
-		// Serve profile page
-		http.HandleFunc("/profile", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+		profilePageHandler = func(w http.ResponseWriter, r *http.Request) {
 			// Prevent CloudFront from caching user-specific pages
 			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
 			w.Header().Set("Pragma", "no-cache")
@@ -1022,10 +855,9 @@ func main() {
 			}
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			tmpl.Execute(w, nil)
-		}))
+		}
 
-		// Serve reset-password page
-		http.HandleFunc("/reset-password", func(w http.ResponseWriter, r *http.Request) {
+		resetPasswordPageHandler = func(w http.ResponseWriter, r *http.Request) {
 			data, err := content.ReadFile("public_html/reset-password.html")
 			if err != nil {
 				http.Error(w, "Reset password page not found", http.StatusNotFound)
@@ -1033,38 +865,14 @@ func main() {
 			}
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.Write(data)
-		})
-	}
-
-	// User admin routes (supports both URL password and session-based admin auth)
-	if authManager != nil {
-		// Helper function to check admin access (session-based or password-based)
-		checkAdminAccess := func(w http.ResponseWriter, r *http.Request) bool {
-			// First check for session-based admin auth
-			if user, ok := auth.GetUserFromContext(r.Context()); ok && user.IsAdmin {
-				return true
-			}
-			// Fall back to URL password
-			if *adminPassword != "" {
-				password := r.URL.Query().Get("password")
-				if password == *adminPassword {
-					return true
-				}
-			}
-			http.Error(w, "Unauthorized - Please login as admin or provide password", http.StatusUnauthorized)
-			return false
 		}
 
-		// Serve admin users page
-		http.HandleFunc("/admin/users", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+		adminUsersPageHandler = func(w http.ResponseWriter, r *http.Request) {
 			// Prevent CloudFront from caching this dynamic admin page
 			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
 			w.Header().Set("Pragma", "no-cache")
 			w.Header().Set("Expires", "0")
 
-			if !checkAdminAccess(w, r) {
-				return
-			}
 			data, err := content.ReadFile("public_html/admin-users.html")
 			if err != nil {
 				http.Error(w, "Admin page not found", http.StatusNotFound)
@@ -1072,26 +880,18 @@ func main() {
 			}
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.Write(data)
-		}))
+		}
 
-		// Serve admin uploads page (wrapper for /api/admin/uploads)
-		http.HandleFunc("/admin/uploads", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
-			if !checkAdminAccess(w, r) {
-				return
-			}
-			// Forward to the API endpoint which handles the uploads listing
+		adminUploadsPageHandler = func(w http.ResponseWriter, r *http.Request) {
+			// Forward to the API endpoint which handles the uploads listing.
 			adminUploadsHandler(w, r)
-		}))
+		}
 
-		// Serve admin MCP analytics page
-		http.HandleFunc("/admin/mcp", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+		adminMCPPageHandler = func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
 			w.Header().Set("Pragma", "no-cache")
 			w.Header().Set("Expires", "0")
 
-			if !checkAdminAccess(w, r) {
-				return
-			}
 			data, err := content.ReadFile("public_html/admin-mcp.html")
 			if err != nil {
 				http.Error(w, "Admin MCP page not found", http.StatusNotFound)
@@ -1099,25 +899,13 @@ func main() {
 			}
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.Write(data)
-		}))
+		}
 
-		// MCP analytics API endpoints
-		// Note: /api/admin/mcp/data, /mcp/export, /mcp/delete are registered via httpapi.Register
-		http.HandleFunc("/api/admin/mcp/update", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
-			if !checkAdminAccess(w, r) {
-				return
-			}
-			adminMCPUpdateHandler(w, r)
-		}))
-		// Serve admin Realtime page and API endpoints
-		http.HandleFunc("/admin/realtime", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+		adminRealtimePageHandler = func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
 			w.Header().Set("Pragma", "no-cache")
 			w.Header().Set("Expires", "0")
 
-			if !checkAdminAccess(w, r) {
-				return
-			}
 			data, err := content.ReadFile("public_html/admin-realtime.html")
 			if err != nil {
 				http.Error(w, "Admin Realtime page not found", http.StatusNotFound)
@@ -1125,13 +913,9 @@ func main() {
 			}
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.Write(data)
-		}))
+		}
 
-		// Admin translations page and API
-		http.HandleFunc("/admin/translations", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
-			if !checkAdminAccess(w, r) {
-				return
-			}
+		adminTranslationsPageHandler = func(w http.ResponseWriter, r *http.Request) {
 			data, err := content.ReadFile("public_html/admin-translations.html")
 			if err != nil {
 				http.Error(w, "Page not found", http.StatusNotFound)
@@ -1139,34 +923,51 @@ func main() {
 			}
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.Write(data)
-		}))
+		}
 	}
 
-	// Upload endpoint - protected with auth if required
-	if *requireAuth && authManager != nil {
-		http.HandleFunc("/upload", authManager.RequireAuth(uploadHandler))
-	} else {
-		http.HandleFunc("/upload", uploadHandler)
-	}
-	http.HandleFunc("/upload/progress", progressHandler)
-	http.HandleFunc("/get_markers", getMarkersHandler)
-	// Note: /stream_markers is Server-Sent Events (streaming) so gzip is skipped.
-	// Gzip doesn't work well with streaming responses due to buffering.
-	http.HandleFunc("/stream_markers", streamMarkersHandler)
-	http.HandleFunc("/realtime_history", realtimeHistoryHandler)
-	http.HandleFunc("/trackid/", trackHandler)
-	http.HandleFunc("/tracks/", tracksHandler)
+	httpapi.RegisterPageRoutes(http.DefaultServeMux, httpapi.PageRoutesConfig{
+		AuthManager:                  authManager,
+		AdminPassword:                *adminPassword,
+		HomeHandler:                  homeHandler,
+		StoriesPageHandler:           storiesPageHandler,
+		StoriesDataHandler:           storiesDataHandler,
+		MapHandler:                   mapHandler,
+		ProfileHandler:               profilePageHandler,
+		ResetPasswordHandler:         resetPasswordPageHandler,
+		AdminUsersPageHandler:        adminUsersPageHandler,
+		AdminUploadsPageHandler:      adminUploadsPageHandler,
+		AdminMCPPageHandler:          adminMCPPageHandler,
+		AdminRealtimePageHandler:     adminRealtimePageHandler,
+		AdminTranslationsPageHandler: adminTranslationsPageHandler,
+	})
+
+	// Legacy public endpoints (non-/api) live in one registrar to keep route
+	// ownership explicit and avoid growth of direct HandleFunc wiring in main().
+	httpapi.RegisterLegacyRoutes(http.DefaultServeMux, httpapi.LegacyRoutesConfig{
+		AuthManager:            authManager,
+		RequireAuth:            *requireAuth,
+		UploadHandler:          uploadHandler,
+		UploadProgressHandler:  progressHandler,
+		GetMarkersHandler:      getMarkersHandler,
+		StreamMarkersHandler:   streamMarkersHandler,
+		RealtimeHistoryHandler: realtimeHistoryHandler,
+		TrackByIDHandler:       trackHandler,
+		TracksByPrefixHandler:  tracksHandler,
+	})
 	// api/docs, licenses/, api/geoip, s/, api/spectrum/, api/markers/spectra, api/tracks/bounds, api/track-info/, api/update-coordinates, qrpng — registered via webServer.Register above
 	// API endpoints ship JSON/archives. Keeping registration close to other
 	// routes avoids surprises for operators scanning main() for handlers.
 	limiter := httpapi.NewRateLimiter(time.Minute)
 	apiHandler := httpapi.NewHandler(db, *dbType, archiveGen, limiter, log.Printf, archiveFrequency)
+	restHandler := &RESTHandler{}
 
 	// Keep MCP/realtime/translations admin APIs aligned with the legacy behavior:
 	// they are registered only when auth is configured.
 	var adminMCPDataAPIHandler http.HandlerFunc
 	var adminMCPExportAPIHandler http.HandlerFunc
 	var adminMCPDeleteAPIHandler http.HandlerFunc
+	var adminMCPUpdateAPIHandler http.HandlerFunc
 	var adminRealtimeDataAPIHandler http.HandlerFunc
 	var adminRealtimeExportAPIHandler http.HandlerFunc
 	var adminRealtimeDeleteAPIHandler http.HandlerFunc
@@ -1177,6 +978,7 @@ func main() {
 		adminMCPDataAPIHandler = adminMCPDataHandler
 		adminMCPExportAPIHandler = adminMCPExportHandler
 		adminMCPDeleteAPIHandler = adminMCPDeleteHandler
+		adminMCPUpdateAPIHandler = adminMCPUpdateHandler
 		adminRealtimeDataAPIHandler = adminRealtimeDataHandler
 		adminRealtimeExportAPIHandler = adminRealtimeExportHandler
 		adminRealtimeDeleteAPIHandler = adminRealtimeDeleteHandler
@@ -1225,12 +1027,18 @@ func main() {
 		AdminMCPDataHandler:              adminMCPDataAPIHandler,
 		AdminMCPExportHandler:            adminMCPExportAPIHandler,
 		AdminMCPDeleteHandler:            adminMCPDeleteAPIHandler,
+		AdminMCPUpdateHandler:            adminMCPUpdateAPIHandler,
 		AdminRealtimeDataHandler:         adminRealtimeDataAPIHandler,
 		AdminRealtimeExportHandler:       adminRealtimeExportAPIHandler,
 		AdminRealtimeDeleteHandler:       adminRealtimeDeleteAPIHandler,
 		AdminTranslationsReloadHandler:   adminTranslationsReloadAPIHandler,
 		AdminTranslationByIDHandler:      adminTranslationByIDAPIHandler,
 		AdminTranslationsHandler:         adminTranslationsAPIHandler,
+		APISensorsHandler:                restHandler.handleSensors,
+		APISensorsExportHandler:          restHandler.handleSensorsExport,
+		APISensorByIDHandler:             restHandler.handleSensor,
+		APIFeedbackHandler:               handleFeedback(),
+		APITrackInsightsHandler:          trackInsightsHandler,
 	})
 
 	// Register MCP Server (AI assistant, REST API, Swagger) on port 3333

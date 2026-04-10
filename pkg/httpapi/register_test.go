@@ -39,17 +39,23 @@ func TestRegisterRouteInventory(t *testing.T) {
 		AuthManager:   authManager,
 		AdminPassword: "secret",
 
-		AdminUploadsHandler: func(http.ResponseWriter, *http.Request) {},
-		AdminTracksHandler:  func(http.ResponseWriter, *http.Request) {},
+		AdminUploadsHandler:            func(http.ResponseWriter, *http.Request) {},
+		AdminTracksHandler:             func(http.ResponseWriter, *http.Request) {},
 		AdminMCPDataHandler:            func(http.ResponseWriter, *http.Request) {},
 		AdminMCPExportHandler:          func(http.ResponseWriter, *http.Request) {},
 		AdminMCPDeleteHandler:          func(http.ResponseWriter, *http.Request) {},
+		AdminMCPUpdateHandler:          func(http.ResponseWriter, *http.Request) {},
 		AdminRealtimeDataHandler:       func(http.ResponseWriter, *http.Request) {},
 		AdminRealtimeExportHandler:     func(http.ResponseWriter, *http.Request) {},
 		AdminRealtimeDeleteHandler:     func(http.ResponseWriter, *http.Request) {},
 		AdminTranslationsReloadHandler: func(http.ResponseWriter, *http.Request) {},
 		AdminTranslationByIDHandler:    func(http.ResponseWriter, *http.Request) {},
 		AdminTranslationsHandler:       func(http.ResponseWriter, *http.Request) {},
+		APISensorsHandler:              func(http.ResponseWriter, *http.Request) {},
+		APISensorsExportHandler:        func(http.ResponseWriter, *http.Request) {},
+		APISensorByIDHandler:           func(http.ResponseWriter, *http.Request) {},
+		APIFeedbackHandler:             func(http.ResponseWriter, *http.Request) {},
+		APITrackInsightsHandler:        func(http.ResponseWriter, *http.Request) {},
 	}
 	Register(mux, cfg)
 
@@ -60,21 +66,27 @@ func TestRegisterRouteInventory(t *testing.T) {
 		"/api/markers/spectra",
 		"/api/update-coordinates",
 		"/api/tracks/bounds",
-		"/api/auth/login",
-		"/api/user/profile",
-		"/api/user/uploads",
-		"/api/admin/users",
-		"/api/admin/uploads",
-		"/api/admin/tracks",
-		"/api/admin/mcp/data",
-		"/api/admin/mcp/export",
-		"/api/admin/mcp/delete",
-		"/api/admin/realtime/data",
-		"/api/admin/realtime/export",
-		"/api/admin/realtime/delete",
-		"/api/admin/translations/reload",
-		"/api/admin/translations/",
-		"/api/admin/translations",
+		RouteAPIAuthLogin,
+		RouteAPIUserProfile,
+		RouteAPIUserUploads,
+		RouteAPIAdminUsers,
+		RouteAPIAdminUploads,
+		RouteAPIAdminTracks,
+		RouteAPIAdminMCPData,
+		RouteAPIAdminMCPExport,
+		RouteAPIAdminMCPDelete,
+		RouteAPIAdminMCPUpdate,
+		RouteAPIAdminRealtimeData,
+		RouteAPIAdminRealtimeExport,
+		RouteAPIAdminRealtimeDelete,
+		RouteAPIAdminTranslationsReload,
+		RouteAPIAdminTranslationsByID,
+		RouteAPIAdminTranslations,
+		RouteAPISensors,
+		RouteAPISensorsExport,
+		RouteAPISensorByID,
+		RouteAPIFeedback,
+		"/api/track/abc/insights",
 	}
 
 	for _, route := range requiredRoutes {
@@ -85,6 +97,21 @@ func TestRegisterRouteInventory(t *testing.T) {
 				t.Fatalf("route %s was not registered", route)
 			}
 		})
+	}
+}
+
+func TestRegisterTrackInsightsRoutePrecedence(t *testing.T) {
+	mux := http.NewServeMux()
+	cfg := RegisterConfig{
+		APIHandler:              NewHandler(nil, "sqlite", nil, nil, nil, ""),
+		APITrackInsightsHandler: func(http.ResponseWriter, *http.Request) {},
+	}
+	Register(mux, cfg)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/track/abc/insights", nil)
+	_, pattern := mux.Handler(req)
+	if pattern != RoutePatternAPITrackInsights {
+		t.Fatalf("expected insights route precedence, got %q", pattern)
 	}
 }
 
@@ -110,7 +137,7 @@ func TestRegisterAuthAdminGuards(t *testing.T) {
 	})
 
 	t.Run("admin users requires auth or password", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/api/admin/users", nil)
+		req := httptest.NewRequest(http.MethodGet, RouteAPIAdminUsers, nil)
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 		if rec.Code != http.StatusUnauthorized {
@@ -119,7 +146,7 @@ func TestRegisterAuthAdminGuards(t *testing.T) {
 	})
 
 	t.Run("user uploads requires session auth", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/api/user/uploads", nil)
+		req := httptest.NewRequest(http.MethodGet, RouteAPIUserUploads, nil)
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 		if rec.Code != http.StatusUnauthorized {
