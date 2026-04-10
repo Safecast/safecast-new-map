@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/mark3labs/mcp-go/mcp"
+	"safecast-new-map/pkg/mcpserver"
 )
 
 // GPT-friendly compact types — short field names to minimize response size.
@@ -28,9 +29,25 @@ type gptResp struct {
 // RegisterGPT wires /api/gpt/* routes — compact endpoints for ChatGPT Custom GPT Actions.
 // All routes are hard-capped at 5 results and return non-indented JSON.
 func (h *RESTHandler) RegisterGPT(mux *http.ServeMux) {
-	mux.HandleFunc("/api/gpt/radiation", h.handleGPTRadiation)
-	mux.HandleFunc("/api/gpt/area", h.handleGPTArea)
-	mux.HandleFunc("/api/gpt/stats", h.handleGPTStats)
+	h.registerGPTByRoute(mcpserver.RouteGPTRadiation, mux)
+	h.registerGPTByRoute(mcpserver.RouteGPTArea, mux)
+	h.registerGPTByRoute(mcpserver.RouteGPTStats, mux)
+}
+
+// registerGPTByRoute keeps GPT endpoint path wiring in one place so the
+// general REST route registrar and explicit GPT registrar cannot drift.
+func (h *RESTHandler) registerGPTByRoute(route mcpserver.RouteKey, mux *http.ServeMux) {
+	if mux == nil {
+		return
+	}
+	switch route {
+	case mcpserver.RouteGPTRadiation:
+		mux.HandleFunc("/api/gpt/radiation", h.handleGPTRadiation)
+	case mcpserver.RouteGPTArea:
+		mux.HandleFunc("/api/gpt/area", h.handleGPTArea)
+	case mcpserver.RouteGPTStats:
+		mux.HandleFunc("/api/gpt/stats", h.handleGPTStats)
+	}
 }
 
 // handleGPTRadiation handles GET /api/gpt/radiation.
