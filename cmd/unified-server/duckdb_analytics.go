@@ -19,10 +19,29 @@ var duckDB *sql.DB
 
 // initDuckDBAnalytics initializes DuckDB with DuckLake catalog backed by PostgreSQL.
 // This allows multiple services to share the same analytics tables concurrently.
+// When DuckLake is not configured (local dev), falls back to a local DuckDB file for persistence.
 func initDuckDBAnalytics() error {
-	// Open in-memory DuckDB — all persistent data lives in DuckLake (PostgreSQL + Parquet)
+	ducklakePGURL := os.Getenv("DUCKLAKE_PG_URL")
+	dataPath := os.Getenv("DUCKLAKE_DATA_PATH")
+	if dataPath == "" {
+		dataPath = "/var/lib/safecast/ducklake/"
+	}
+
+	useDucklake := ducklakePGURL != ""
+
+	// Open DuckDB — in-memory when using DuckLake (data lives in PG+Parquet),
+	// or a local file for persistence when running without DuckLake (local dev).
+	dbPath := ""
+	if !useDucklake {
+		localPath := os.Getenv("DUCKDB_LOCAL_PATH")
+		if localPath == "" {
+			localPath = "./analytics_local.duckdb"
+		}
+		dbPath = localPath
+	}
+
 	var err error
-	duckDB, err = sql.Open("duckdb", "")
+	duckDB, err = sql.Open("duckdb", dbPath)
 	if err != nil {
 		return fmt.Errorf("failed to open duckdb: %w", err)
 	}
@@ -35,45 +54,39 @@ func initDuckDBAnalytics() error {
 		return fmt.Errorf("failed to ping duckdb: %w", err)
 	}
 
-	log.Println("DuckDB initialized (in-memory)")
+	if useDucklake {
+		log.Println("DuckDB initialized (in-memory, DuckLake mode)")
 
-	// Install and load required extensions
-	for _, ext := range []string{"ducklake", "postgres"} {
-		if _, err := duckDB.Exec(fmt.Sprintf("INSTALL %s;", ext)); err != nil {
-			log.Printf("Warning: INSTALL %s failed: %v", ext, err)
+		// Install and load required extensions
+		for _, ext := range []string{"ducklake", "postgres"} {
+			if _, err := duckDB.Exec(fmt.Sprintf("INSTALL %s;", ext)); err != nil {
+				log.Printf("Warning: INSTALL %s failed: %v", ext, err)
+			}
+			if _, err := duckDB.Exec(fmt.Sprintf("LOAD %s;", ext)); err != nil {
+				return fmt.Errorf("LOAD %s: %w", ext, err)
+			}
 		}
-		if _, err := duckDB.Exec(fmt.Sprintf("LOAD %s;", ext)); err != nil {
-			return fmt.Errorf("LOAD %s: %w", ext, err)
-		}
-	}
 
-	// Attach DuckLake catalog via PostgreSQL (optional — falls back to in-memory for local dev)
-	ducklakePGURL := os.Getenv("DUCKLAKE_PG_URL")
-	if ducklakePGURL == "" {
-		ducklakePGURL = "dbname=ducklake_catalog host=localhost user=ducklake_rw"
-	}
-	dataPath := os.Getenv("DUCKLAKE_DATA_PATH")
-	if dataPath == "" {
-		dataPath = "/var/lib/safecast/ducklake/"
-	}
-
-	attachQuery := fmt.Sprintf(
-		"ATTACH 'ducklake:postgres:%s' AS analytics (DATA_PATH '%s');",
-		ducklakePGURL, dataPath,
-	)
-	ducklakeOK := false
-	if _, err := duckDB.Exec(attachQuery); err != nil {
-		log.Printf("Warning: DuckLake attach failed (%v) — falling back to in-memory tables (local dev mode)", err)
-	} else {
-		log.Printf("DuckLake attached (catalog=PostgreSQL, data=%s)", dataPath)
-		if _, err := duckDB.Exec("USE analytics;"); err != nil {
-			log.Printf("Warning: USE analytics failed: %v — using in-memory tables", err)
+		attachQuery := fmt.Sprintf(
+			"ATTACH 'ducklake:postgres:%s' AS analytics (DATA_PATH '%s');",
+			ducklakePGURL, dataPath,
+		)
+		ducklakeOK := false
+		if _, err := duckDB.Exec(attachQuery); err != nil {
+			log.Printf("Warning: DuckLake attach failed (%v) — falling back to in-memory tables", err)
 		} else {
-			ducklakeOK = true
+			log.Printf("DuckLake attached (catalog=PostgreSQL, data=%s)", dataPath)
+			if _, err := duckDB.Exec("USE analytics;"); err != nil {
+				log.Printf("Warning: USE analytics failed: %v — using in-memory tables", err)
+			} else {
+				ducklakeOK = true
+			}
 		}
-	}
-	if !ducklakeOK {
-		log.Println("DuckDB running in-memory only (analytics will not persist across restarts)")
+		if !ducklakeOK {
+			log.Println("DuckDB running in-memory only (analytics will not persist across restarts)")
+		}
+	} else {
+		log.Printf("DuckDB initialized (local file: %s)", dbPath)
 	}
 
 	// Also attach main Safecast PostgreSQL for cross-database queries (read-only)
