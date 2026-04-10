@@ -665,7 +665,9 @@ func startSelfUpgrade(ctx context.Context, dbCfg database.Config) context.Cancel
 		return nil
 	}
 
-	http.Handle("/selfupgrade/", manager.HTTPHandler())
+	httpapi.RegisterSystemRoutes(http.DefaultServeMux, httpapi.SystemRoutesConfig{
+		SelfUpgradeHandler: manager.HTTPHandler(),
+	})
 	go func() {
 		manager.Wait()
 	}()
@@ -9916,15 +9918,12 @@ func main() {
 		log.Fatalf("static fs: %v", err)
 	}
 
-	// Serve static files from embedded filesystem - this must come BEFORE the catch-all route
-	// to avoid the map handler catching static file requests
-	http.Handle("/static/", http.StripPrefix("/static/",
-		http.FileServer(http.FS(staticFS))))
-
-	// Serve JS files from the physical directory as a workaround
-	// This ensures the marker-worker.js file is accessible to the browser
-	// Access files from public_html root and let StripPrefix handle the path
-	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("public_html/"))))
+	// Static asset routes are registered through the static registrar to keep
+	// main() focused on composition rather than per-path wiring.
+	httpapi.RegisterStaticRoutes(http.DefaultServeMux, httpapi.StaticRoutesConfig{
+		StaticFS: staticFS,
+		JSDir:    "public_html/",
+	})
 	mcpPortForDocs := strings.TrimSpace(os.Getenv("MCP_PORT"))
 	if mcpPortForDocs == "" {
 		mcpPortForDocs = "3333"
@@ -9937,10 +9936,8 @@ func main() {
 
 	registerMainAPIDocsRoutes(http.DefaultServeMux, mcpDocsURL)
 
-	http.HandleFunc("/home", homeHandler)
-
 	// Stories page and its data feed
-	http.HandleFunc("/stories.html", func(w http.ResponseWriter, r *http.Request) {
+	storiesPageHandler := func(w http.ResponseWriter, r *http.Request) {
 		data, err := content.ReadFile("public_html/stories.html")
 		if err != nil {
 			http.Error(w, "Not found", http.StatusNotFound)
@@ -9948,8 +9945,8 @@ func main() {
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Write(data)
-	})
-	http.HandleFunc("/data/stories.json", func(w http.ResponseWriter, r *http.Request) {
+	}
+	storiesDataHandler := func(w http.ResponseWriter, r *http.Request) {
 		data, err := content.ReadFile("public_html/data/stories.json")
 		if err != nil {
 			http.Error(w, "Not found", http.StatusNotFound)
@@ -9957,14 +9954,19 @@ func main() {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(data)
-	})
+	}
 
-	http.HandleFunc("/", mapHandler)
+	var profilePageHandler http.HandlerFunc
+	var resetPasswordPageHandler http.HandlerFunc
+	var adminUsersPageHandler http.HandlerFunc
+	var adminUploadsPageHandler http.HandlerFunc
+	var adminMCPPageHandler http.HandlerFunc
+	var adminRealtimePageHandler http.HandlerFunc
+	var adminTranslationsPageHandler http.HandlerFunc
 
-	// Register authentication routes if auth system is enabled
+	// Register authentication and admin page handlers only when auth is enabled.
 	if authManager != nil {
-		// Serve profile page
-		http.HandleFunc("/profile", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+		profilePageHandler = func(w http.ResponseWriter, r *http.Request) {
 			// Prevent CloudFront from caching user-specific pages
 			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
 			w.Header().Set("Pragma", "no-cache")
@@ -9989,10 +9991,9 @@ func main() {
 			}
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			tmpl.Execute(w, nil)
-		}))
+		}
 
-		// Serve reset-password page
-		http.HandleFunc("/reset-password", func(w http.ResponseWriter, r *http.Request) {
+		resetPasswordPageHandler = func(w http.ResponseWriter, r *http.Request) {
 			data, err := content.ReadFile("public_html/reset-password.html")
 			if err != nil {
 				http.Error(w, "Reset password page not found", http.StatusNotFound)
@@ -10000,38 +10001,14 @@ func main() {
 			}
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.Write(data)
-		})
-	}
-
-	// User admin routes (supports both URL password and session-based admin auth)
-	if authManager != nil {
-		// Helper function to check admin access (session-based or password-based)
-		checkAdminAccess := func(w http.ResponseWriter, r *http.Request) bool {
-			// First check for session-based admin auth
-			if user, ok := auth.GetUserFromContext(r.Context()); ok && user.IsAdmin {
-				return true
-			}
-			// Fall back to URL password
-			if *adminPassword != "" {
-				password := r.URL.Query().Get("password")
-				if password == *adminPassword {
-					return true
-				}
-			}
-			http.Error(w, "Unauthorized - Please login as admin or provide password", http.StatusUnauthorized)
-			return false
 		}
 
-		// Serve admin users page
-		http.HandleFunc("/admin/users", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+		adminUsersPageHandler = func(w http.ResponseWriter, r *http.Request) {
 			// Prevent CloudFront from caching this dynamic admin page
 			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
 			w.Header().Set("Pragma", "no-cache")
 			w.Header().Set("Expires", "0")
 
-			if !checkAdminAccess(w, r) {
-				return
-			}
 			data, err := content.ReadFile("public_html/admin-users.html")
 			if err != nil {
 				http.Error(w, "Admin page not found", http.StatusNotFound)
@@ -10039,26 +10016,18 @@ func main() {
 			}
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.Write(data)
-		}))
+		}
 
-		// Serve admin uploads page (wrapper for /api/admin/uploads)
-		http.HandleFunc("/admin/uploads", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
-			if !checkAdminAccess(w, r) {
-				return
-			}
-			// Forward to the API endpoint which handles the uploads listing
+		adminUploadsPageHandler = func(w http.ResponseWriter, r *http.Request) {
+			// Forward to the API endpoint which handles the uploads listing.
 			adminUploadsHandler(w, r)
-		}))
+		}
 
-		// Serve admin MCP analytics page
-		http.HandleFunc("/admin/mcp", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+		adminMCPPageHandler = func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
 			w.Header().Set("Pragma", "no-cache")
 			w.Header().Set("Expires", "0")
 
-			if !checkAdminAccess(w, r) {
-				return
-			}
 			data, err := content.ReadFile("public_html/admin-mcp.html")
 			if err != nil {
 				http.Error(w, "Admin MCP page not found", http.StatusNotFound)
@@ -10066,17 +10035,13 @@ func main() {
 			}
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.Write(data)
-		}))
+		}
 
-		// Serve admin Realtime page and API endpoints
-		http.HandleFunc("/admin/realtime", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+		adminRealtimePageHandler = func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
 			w.Header().Set("Pragma", "no-cache")
 			w.Header().Set("Expires", "0")
 
-			if !checkAdminAccess(w, r) {
-				return
-			}
 			data, err := content.ReadFile("public_html/admin-realtime.html")
 			if err != nil {
 				http.Error(w, "Admin Realtime page not found", http.StatusNotFound)
@@ -10084,13 +10049,9 @@ func main() {
 			}
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.Write(data)
-		}))
+		}
 
-		// Admin translations page and API
-		http.HandleFunc("/admin/translations", authManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
-			if !checkAdminAccess(w, r) {
-				return
-			}
+		adminTranslationsPageHandler = func(w http.ResponseWriter, r *http.Request) {
 			data, err := content.ReadFile("public_html/admin-translations.html")
 			if err != nil {
 				http.Error(w, "Page not found", http.StatusNotFound)
@@ -10098,28 +10059,44 @@ func main() {
 			}
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.Write(data)
-		}))
+		}
 	}
 
-	// Upload endpoint - protected with auth if required
-	if *requireAuth && authManager != nil {
-		http.HandleFunc("/upload", authManager.RequireAuth(uploadHandler))
-	} else {
-		http.HandleFunc("/upload", uploadHandler)
-	}
-	http.HandleFunc("/upload/progress", progressHandler)
-	http.HandleFunc("/get_markers", getMarkersHandler)
-	// Note: /stream_markers is Server-Sent Events (streaming) so gzip is skipped.
-	// Gzip doesn't work well with streaming responses due to buffering.
-	http.HandleFunc("/stream_markers", streamMarkersHandler)
-	http.HandleFunc("/realtime_history", realtimeHistoryHandler)
-	http.HandleFunc("/trackid/", trackHandler)
-	http.HandleFunc("/tracks/", tracksHandler)
+	httpapi.RegisterPageRoutes(http.DefaultServeMux, httpapi.PageRoutesConfig{
+		AuthManager:                  authManager,
+		AdminPassword:                *adminPassword,
+		HomeHandler:                  homeHandler,
+		StoriesPageHandler:           storiesPageHandler,
+		StoriesDataHandler:           storiesDataHandler,
+		MapHandler:                   mapHandler,
+		ProfileHandler:               profilePageHandler,
+		ResetPasswordHandler:         resetPasswordPageHandler,
+		AdminUsersPageHandler:        adminUsersPageHandler,
+		AdminUploadsPageHandler:      adminUploadsPageHandler,
+		AdminMCPPageHandler:          adminMCPPageHandler,
+		AdminRealtimePageHandler:     adminRealtimePageHandler,
+		AdminTranslationsPageHandler: adminTranslationsPageHandler,
+	})
+
+	// Legacy public endpoints (non-/api) live in one registrar to keep route
+	// ownership explicit and avoid growth of direct HandleFunc wiring in main().
+	httpapi.RegisterLegacyRoutes(http.DefaultServeMux, httpapi.LegacyRoutesConfig{
+		AuthManager:            authManager,
+		RequireAuth:            *requireAuth,
+		UploadHandler:          uploadHandler,
+		UploadProgressHandler:  progressHandler,
+		GetMarkersHandler:      getMarkersHandler,
+		StreamMarkersHandler:   streamMarkersHandler,
+		RealtimeHistoryHandler: realtimeHistoryHandler,
+		TrackByIDHandler:       trackHandler,
+		TracksByPrefixHandler:  tracksHandler,
+	})
 	// api/docs, licenses/, api/geoip, s/, api/spectrum/, api/markers/spectra, api/tracks/bounds, api/track-info/, api/update-coordinates, qrpng — registered via webServer.Register above
 	// API endpoints ship JSON/archives. Keeping registration close to other
 	// routes avoids surprises for operators scanning main() for handlers.
 	limiter := httpapi.NewRateLimiter(time.Minute)
 	apiHandler := httpapi.NewHandler(db, *dbType, archiveGen, limiter, log.Printf, archiveFrequency)
+	restHandler := &RESTHandler{}
 
 	// Keep MCP/realtime/translations admin APIs aligned with the legacy behavior:
 	// they are registered only when auth is configured.
@@ -10193,6 +10170,11 @@ func main() {
 		AdminTranslationsReloadHandler:   adminTranslationsReloadAPIHandler,
 		AdminTranslationByIDHandler:      adminTranslationByIDAPIHandler,
 		AdminTranslationsHandler:         adminTranslationsAPIHandler,
+		APISensorsHandler:                restHandler.handleSensors,
+		APISensorsExportHandler:          restHandler.handleSensorsExport,
+		APISensorByIDHandler:             restHandler.handleSensor,
+		APIFeedbackHandler:               handleFeedback(),
+		APITrackInsightsHandler:          trackInsightsHandler,
 	})
 
 	// Register MCP Server (AI assistant, REST API, Swagger) on port 3333
