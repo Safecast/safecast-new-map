@@ -10,7 +10,7 @@ This guide covers deploying to the production server at simplemap.safecast.org.
 
 ### Services
 
-The unified service is built from this repo and deployed by the GitHub Actions workflow:
+The unified service is built from this repo and deployed by the **Codeberg Actions** workflow (`.forgejo/workflows/deploy.yml`). GitHub Actions runs tests and releases only.
 
 | Service | Binary | Port | Location on VPS |
 |---------|--------|------|-----------------|
@@ -86,18 +86,29 @@ aws cloudfront create-invalidation --distribution-id E12FYIQ8RRXOJ1 --paths "/*"
 3. **Start service:** New version loads cleanly
 4. **Verify:** Ensure service started successfully
 
-## Automated Deployment (GitHub Actions)
+## Automated Deployment (Codeberg Actions)
 
-**Current workflow:** `.github/workflows/deploy.yml`
+**Current workflow:** `.forgejo/workflows/deploy.yml` — triggers on push to `main`.
+
+GitHub Actions (`.github/workflows/`) runs tests and multi-platform releases only. Deploy is Codeberg-only.
+
+### CI Split
+
+| Workflow | GitHub | Codeberg |
+|----------|--------|----------|
+| `test.yml` | ✅ PRs + main | ✅ PRs + main |
+| `deploy.yml` | ❌ disabled | ✅ push to main |
+| `release.yml` | ✅ multi-platform | not present |
 
 ### How It Works
 
-1. **Trigger:** Automatic on push to `main` branch, or manual via workflow_dispatch
-2. **Build:** Compiles Go binary on GitHub runners
-3. **Deploy:** Uses SSH with stored private key to deploy to 65.108.24.131
-4. **Invalidate:** Clears CloudFront cache to serve new version
+1. **Trigger:** Automatic on push to `main`, or manual via workflow_dispatch
+2. **Build:** Compiles Go binary on `codeberg-medium` runner
+3. **Deploy:** Stop → rsync binary → start service via SSH to 65.108.24.131
+4. **Health check:** Polls `http://localhost:8765/api/health` up to 5 times
+5. **Invalidate:** Clears CloudFront cache
 
-### Required GitHub Secrets
+### Required Secrets (set in Codeberg repo Settings → Secrets)
 
 | Secret | Purpose |
 |--------|---------|
@@ -105,21 +116,11 @@ aws cloudfront create-invalidation --distribution-id E12FYIQ8RRXOJ1 --paths "/*"
 | `AWS_ACCESS_KEY_ID` | CloudFront cache invalidation |
 | `AWS_SECRET_ACCESS_KEY` | CloudFront cache invalidation |
 | `DATABASE_URL` | Postgres connection string for unified server |
-| `DUCKLAKE_PG_URL` | DuckLake PostgreSQL catalog connection (e.g., `dbname=ducklake_catalog host=localhost user=ducklake_rw`) |
-| `DUCKLAKE_DATA_PATH` | Path for DuckLake Parquet data files (e.g., `/var/lib/safecast/ducklake/`) |
-| `ANTHROPIC_API_KEY` | Claude API key for web-chat service |
+| `DUCKLAKE_PG_URL` | DuckLake PostgreSQL catalog connection |
+| `DUCKLAKE_DATA_PATH` | Path for DuckLake Parquet data files |
+| `ANTHROPIC_API_KEY` | Claude API key for AI assistant |
 
-### Workflow Steps
-
-```
-1. Build unified binary (`safecast-new-map`)
-2. Setup SSH
-3. Stop → rsync → start: safecast-new-map
-4. Invalidate CloudFront cache (/*)
-5. Cleanup SSH keys
-```
-
-**Note:** The workflow correctly uses the IP address (65.108.24.131) for all SSH operations.
+**Note:** All SSH/rsync in the workflow uses the IP address (65.108.24.131), not the domain.
 
 ## CloudFront Considerations
 
@@ -464,13 +465,57 @@ The combined `/docs/` page was also already loading assets from `/map-api/`, so 
 
 The white preamble header box (title, description, nav buttons) on `/map-api/` was not responding to dark mode. Fixed by injecting a `<style>` element via the `onComplete` JS callback with `body.dark-mode #safecast-preamble` rules.
 
+## Route Ownership
+
+All routes live in the unified server binary (`cmd/unified-server/`, port 8765).
+
+### HTTP route composers
+
+| Composer | Owns |
+|----------|------|
+| `pkg/httpapi/register.go` | All `/api/*` map-server routes |
+| `pkg/httpapi/handlers_core.go` | Core REST handlers |
+| `pkg/auth/*` | Auth routes (`/api/auth/`, `/api/user/`) |
+| `cmd/unified-server/mcp_register.go` | MCP surface wiring |
+
+### MCP surface (same binary, same port 8765)
+
+| Path | Description |
+|------|-------------|
+| `/mcp-http` | MCP HTTP transport |
+| `/mcp/sse` | MCP SSE transport |
+| `/mcp-api/*` | MCP Swagger UI |
+
+Shared MCP composers: `pkg/mcpserver/tools.go`, `transports.go`, `routes.go`, `docs.go`
+
+### Guardrails
+
+- Do not add `/api/*` routes directly in `main.go` — use the registry composers.
+- For MCP changes: update `pkg/mcpserver/*`, keep `cmd/unified-server/` as thin wiring.
+- When adding an endpoint: implement in the owning package → register via composer → add route inventory test.
+
+### Nginx routing (production)
+
+All traffic hits nginx on port 443, which proxies to port 8765. Key path rules:
+
+```
+/mcp-http        → 8765 (MCP HTTP transport)
+/mcp/sse         → 8765 (MCP SSE transport)
+/mcp-api/        → 8765 (MCP Swagger UI)
+/assistant/      → 8765 (AI assistant)
+/docs/           → 8765 (combined API docs)
+/map-api/        → 8765 (Map API Swagger)
+/api/*           → 8765 (REST API)
+/                → 8765 (map UI + everything else)
+```
+
+> **Note:** Use specific `location = /api/endpoint` rules for any future path-based routing splits — a broad `location /api/` rule will break things.
+
 ## Related Documentation
 
 - [CloudFront Setup Guide](cloudfront-setup.md) - Initial CloudFront configuration
 - [Upload 403 Fix](cloudfront-fix-upload-403.md) - Cookie forwarding configuration
 - [WAF 403 Fix](cloudfront-fix-waf-403.md) - Large file upload configuration
-- [GitHub Actions Guide](../GITHUB_ACTIONS_GUIDE.md) - Workflow details
-- [Memory (Project Notes)](~/.claude/projects/-home-rob-Documents-Safecast-safecast-new-map/memory/MEMORY.md)
 
 ## Quick Reference
 
