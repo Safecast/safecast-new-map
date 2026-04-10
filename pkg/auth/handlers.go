@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"safecast-new-map/pkg/httpresp"
 	"time"
+
+	"safecast-new-map/pkg/httpresp"
 )
 
 const (
@@ -36,13 +37,12 @@ const (
 // @Failure     500 {object} map[string]interface{} "Server error"
 // @Router      /api/auth/register [post]
 func (m *Manager) RegisterHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+	if !httpresp.RequireMethodJSON(w, r, http.MethodPost) {
 		return
 	}
 
 	if !m.AllowRegistration {
-		writeJSONError(w, "Registration is currently disabled", http.StatusForbidden)
+		httpresp.WriteForbidden(w, "Registration is currently disabled")
 		return
 	}
 
@@ -53,36 +53,36 @@ func (m *Manager) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, "Invalid request body", http.StatusBadRequest)
+		httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, "Invalid request body")
 		return
 	}
 
 	// Validate inputs
 	req.Email = NormalizeEmail(req.Email)
 	if err := ValidateEmail(req.Email); err != nil {
-		writeJSONError(w, err.Error(), http.StatusBadRequest)
+		httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, err.Error())
 		return
 	}
 
 	req.Username = SanitizeInput(req.Username)
 	if err := ValidateUsername(req.Username); err != nil {
-		writeJSONError(w, err.Error(), http.StatusBadRequest)
+		httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, err.Error())
 		return
 	}
 
 	if err := ValidatePassword(req.Password); err != nil {
-		writeJSONError(w, err.Error(), http.StatusBadRequest)
+		httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, err.Error())
 		return
 	}
 
 	// Check if user already exists
 	existingUser, err := GetUserByEmail(r.Context(), m.DB, m.DBDriver, req.Email)
 	if err != nil && err != sql.ErrNoRows {
-		writeJSONError(w, "Database error", http.StatusInternalServerError)
+		httpresp.WriteInternalError(w, "Database error")
 		return
 	}
 	if existingUser != nil {
-		writeJSONError(w, "Email address already registered", http.StatusConflict)
+		httpresp.WriteError(w, http.StatusConflict, httpresp.CodeConflict, "Email address already registered")
 		return
 	}
 
@@ -98,7 +98,7 @@ func (m *Manager) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	userID, err := CreateUser(r.Context(), m.DB, m.DBDriver, user, req.Password)
 	if err != nil {
 		log.Printf("AUTH: Failed registration - email=%s username=%s reason=create_failed ip=%s error=%v", req.Email, req.Username, clientIP, err)
-		writeJSONError(w, "Failed to create user", http.StatusInternalServerError)
+		httpresp.WriteInternalError(w, "Failed to create user")
 		return
 	}
 
@@ -107,7 +107,7 @@ func (m *Manager) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	// Create email verification token
 	token, err := GenerateToken()
 	if err != nil {
-		writeJSONError(w, "Failed to generate verification token", http.StatusInternalServerError)
+		httpresp.WriteInternalError(w, "Failed to generate verification token")
 		return
 	}
 
@@ -121,7 +121,7 @@ func (m *Manager) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := CreateEmailVerificationToken(r.Context(), m.DB, m.DBDriver, verificationToken); err != nil {
-		writeJSONError(w, "Failed to create verification token", http.StatusInternalServerError)
+		httpresp.WriteInternalError(w, "Failed to create verification token")
 		return
 	}
 
@@ -149,11 +149,11 @@ func (m *Manager) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	writeJSON(w, map[string]interface{}{
+	httpresp.WriteJSON(w, http.StatusCreated, map[string]interface{}{
 		"success": true,
 		"message": "Registration successful. Please check your email to verify your account.",
 		"userId":  userID,
-	}, http.StatusCreated)
+	})
 }
 
 // LoginHandler handles user login requests.
@@ -171,8 +171,7 @@ func (m *Manager) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 // @Failure     500 {object} map[string]interface{} "Server error"
 // @Router      /api/auth/login [post]
 func (m *Manager) LoginHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+	if !httpresp.RequireMethodJSON(w, r, http.MethodPost) {
 		return
 	}
 
@@ -183,7 +182,7 @@ func (m *Manager) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, "Invalid request body", http.StatusBadRequest)
+		httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, "Invalid request body")
 		return
 	}
 
@@ -201,17 +200,17 @@ func (m *Manager) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			if err == sql.ErrNoRows {
 				log.Printf("AUTH: Failed login attempt - email=%s method=api_key reason=invalid_key ip=%s", req.Email, clientIP)
-				writeJSONError(w, "Invalid API key", http.StatusUnauthorized)
+				httpresp.WriteUnauthorized(w, "Invalid API key")
 				return
 			}
 			log.Printf("AUTH: Failed login attempt - email=%s method=api_key reason=database_error ip=%s error=%v", req.Email, clientIP, err)
-			writeJSONError(w, "Database error", http.StatusInternalServerError)
+			httpresp.WriteInternalError(w, "Database error")
 			return
 		}
 		// Verify the email matches the API key's user
 		if user.Email != req.Email {
 			log.Printf("AUTH: Failed login attempt - email=%s method=api_key reason=email_mismatch ip=%s", req.Email, clientIP)
-			writeJSONError(w, "Invalid email or API key", http.StatusUnauthorized)
+			httpresp.WriteUnauthorized(w, "Invalid email or API key")
 			return
 		}
 	} else if req.Password != "" {
@@ -221,37 +220,37 @@ func (m *Manager) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			if err == sql.ErrNoRows {
 				log.Printf("AUTH: Failed login attempt - email=%s method=password reason=user_not_found ip=%s", req.Email, clientIP)
-				writeJSONError(w, "Invalid email or password", http.StatusUnauthorized)
+				httpresp.WriteUnauthorized(w, "Invalid email or password")
 				return
 			}
 			log.Printf("AUTH: Failed login attempt - email=%s method=password reason=database_error ip=%s error=%v", req.Email, clientIP, err)
-			writeJSONError(w, "Database error", http.StatusInternalServerError)
+			httpresp.WriteInternalError(w, "Database error")
 			return
 		}
 
 		// Verify password
 		if !VerifyPassword(user.PasswordHash, req.Password) {
 			log.Printf("AUTH: Failed login attempt - email=%s method=password reason=invalid_password ip=%s", req.Email, clientIP)
-			writeJSONError(w, "Invalid email or password", http.StatusUnauthorized)
+			httpresp.WriteUnauthorized(w, "Invalid email or password")
 			return
 		}
 	} else {
 		log.Printf("AUTH: Failed login attempt - email=%s method=none reason=no_credentials ip=%s", req.Email, clientIP)
-		writeJSONError(w, "Either password or API key is required", http.StatusBadRequest)
+		httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, "Either password or API key is required")
 		return
 	}
 
 	// Check if user is active
 	if !user.IsActive {
 		log.Printf("AUTH: Failed login attempt - email=%s user_id=%d method=%s reason=account_disabled ip=%s", user.Email, user.ID, authMethod, clientIP)
-		writeJSONError(w, "Account is disabled", http.StatusForbidden)
+		httpresp.WriteForbidden(w, "Account is disabled")
 		return
 	}
 
 	// Create session
 	sessionID, err := GenerateSessionID()
 	if err != nil {
-		writeJSONError(w, "Failed to create session", http.StatusInternalServerError)
+		httpresp.WriteInternalError(w, "Failed to create session")
 		return
 	}
 
@@ -269,7 +268,7 @@ func (m *Manager) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := CreateSession(r.Context(), m.DB, m.DBDriver, session); err != nil {
-		writeJSONError(w, "Failed to create session", http.StatusInternalServerError)
+		httpresp.WriteInternalError(w, "Failed to create session")
 		return
 	}
 
@@ -285,11 +284,11 @@ func (m *Manager) LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Return user info (without password hash)
 	user.PasswordHash = ""
-	writeJSON(w, map[string]interface{}{
+	httpresp.WriteJSON(w, http.StatusOK, map[string]interface{}{
 		"success": true,
 		"message": "Login successful",
 		"user":    user,
-	}, http.StatusOK)
+	})
 }
 
 // LogoutHandler handles user logout requests.
@@ -299,11 +298,10 @@ func (m *Manager) LoginHandler(w http.ResponseWriter, r *http.Request) {
 // @Tags        auth
 // @Produce     json
 // @Success     200 {object} map[string]interface{} "Logout success"
-// @Failure     405 {string} string "Method not allowed"
+// @Failure     405 {object} map[string]interface{} "Method not allowed"
 // @Router      /api/auth/logout [post]
 func (m *Manager) LogoutHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+	if !httpresp.RequireMethodJSON(w, r, http.MethodPost) {
 		return
 	}
 
@@ -335,10 +333,10 @@ func (m *Manager) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	// Clear session cookie
 	m.clearSessionCookie(w)
 
-	writeJSON(w, map[string]interface{}{
+	httpresp.WriteJSON(w, http.StatusOK, map[string]interface{}{
 		"success": true,
 		"message": "Logged out successfully",
-	}, http.StatusOK)
+	})
 }
 
 // ForgotPasswordHandler handles password reset requests.
@@ -354,8 +352,7 @@ func (m *Manager) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 // @Failure     500 {object} map[string]interface{} "Server error"
 // @Router      /api/auth/forgot-password [post]
 func (m *Manager) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+	if !httpresp.RequireMethodJSON(w, r, http.MethodPost) {
 		return
 	}
 
@@ -364,7 +361,7 @@ func (m *Manager) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, "Invalid request body", http.StatusBadRequest)
+		httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, "Invalid request body")
 		return
 	}
 
@@ -375,20 +372,20 @@ func (m *Manager) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		if err == sql.ErrNoRows {
 			// Don't reveal if email exists or not (security)
-			writeJSON(w, map[string]interface{}{
+			httpresp.WriteJSON(w, http.StatusOK, map[string]interface{}{
 				"success": true,
 				"message": "If that email address is registered, a password reset link has been sent.",
-			}, http.StatusOK)
+			})
 			return
 		}
-		writeJSONError(w, "Database error", http.StatusInternalServerError)
+		httpresp.WriteInternalError(w, "Database error")
 		return
 	}
 
 	// Create password reset token
 	token, err := GenerateToken()
 	if err != nil {
-		writeJSONError(w, "Failed to generate reset token", http.StatusInternalServerError)
+		httpresp.WriteInternalError(w, "Failed to generate reset token")
 		return
 	}
 
@@ -403,7 +400,7 @@ func (m *Manager) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := CreatePasswordResetToken(r.Context(), m.DB, m.DBDriver, resetToken); err != nil {
-		writeJSONError(w, "Failed to create reset token", http.StatusInternalServerError)
+		httpresp.WriteInternalError(w, "Failed to create reset token")
 		return
 	}
 
@@ -415,10 +412,10 @@ func (m *Manager) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	writeJSON(w, map[string]interface{}{
+	httpresp.WriteJSON(w, http.StatusOK, map[string]interface{}{
 		"success": true,
 		"message": "If that email address is registered, a password reset link has been sent.",
-	}, http.StatusOK)
+	})
 }
 
 // ResetPasswordHandler handles password reset with token.
@@ -434,8 +431,7 @@ func (m *Manager) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) 
 // @Failure     500 {object} map[string]interface{} "Server error"
 // @Router      /api/auth/reset-password [post]
 func (m *Manager) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+	if !httpresp.RequireMethodJSON(w, r, http.MethodPost) {
 		return
 	}
 
@@ -445,12 +441,12 @@ func (m *Manager) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, "Invalid request body", http.StatusBadRequest)
+		httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, "Invalid request body")
 		return
 	}
 
 	if err := ValidatePassword(req.Password); err != nil {
-		writeJSONError(w, err.Error(), http.StatusBadRequest)
+		httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, err.Error())
 		return
 	}
 
@@ -458,29 +454,29 @@ func (m *Manager) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	token, err := GetPasswordResetToken(r.Context(), m.DB, m.DBDriver, req.Token)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			writeJSONError(w, "Invalid or expired reset token", http.StatusBadRequest)
+			httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, "Invalid or expired reset token")
 			return
 		}
-		writeJSONError(w, "Database error", http.StatusInternalServerError)
+		httpresp.WriteInternalError(w, "Database error")
 		return
 	}
 
 	// Check if token is expired
 	now := time.Now().Unix()
 	if token.ExpiresAt < now {
-		writeJSONError(w, "Reset token has expired", http.StatusBadRequest)
+		httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, "Reset token has expired")
 		return
 	}
 
 	// Check if token has already been used
 	if token.Used {
-		writeJSONError(w, "Reset token has already been used", http.StatusBadRequest)
+		httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, "Reset token has already been used")
 		return
 	}
 
 	// Update user password
 	if err := UpdateUserPassword(r.Context(), m.DB, m.DBDriver, token.UserID, req.Password); err != nil {
-		writeJSONError(w, "Failed to update password", http.StatusInternalServerError)
+		httpresp.WriteInternalError(w, "Failed to update password")
 		return
 	}
 
@@ -493,10 +489,10 @@ func (m *Manager) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 		_ = m.EmailSender.SendPasswordChangedEmail(user.Email)
 	}
 
-	writeJSON(w, map[string]interface{}{
+	httpresp.WriteJSON(w, http.StatusOK, map[string]interface{}{
 		"success": true,
 		"message": "Password reset successful",
-	}, http.StatusOK)
+	})
 }
 
 // VerifyEmailHandler handles email verification with token.
@@ -511,14 +507,13 @@ func (m *Manager) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 // @Failure     500 {object} map[string]interface{} "Server error"
 // @Router      /api/auth/verify-email [get]
 func (m *Manager) VerifyEmailHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+	if !httpresp.RequireMethodJSON(w, r, http.MethodGet) {
 		return
 	}
 
 	tokenStr := r.URL.Query().Get("token")
 	if tokenStr == "" {
-		writeJSONError(w, "Token is required", http.StatusBadRequest)
+		httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, "Token is required")
 		return
 	}
 
@@ -526,36 +521,38 @@ func (m *Manager) VerifyEmailHandler(w http.ResponseWriter, r *http.Request) {
 	token, err := GetEmailVerificationToken(r.Context(), m.DB, m.DBDriver, tokenStr)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			writeJSONError(w, "Invalid or expired verification token", http.StatusBadRequest)
+			httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, "Invalid or expired verification token")
 			return
 		}
-		writeJSONError(w, "Database error", http.StatusInternalServerError)
+		httpresp.WriteInternalError(w, "Database error")
 		return
 	}
 
 	// Check if token is expired
 	now := time.Now().Unix()
 	if token.ExpiresAt < now {
-		writeJSONError(w, "Verification token has expired", http.StatusBadRequest)
+		httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, "Verification token has expired")
 		return
 	}
 
 	// Check if token has already been used
 	if token.Used {
-		writeJSONError(w, "Email already verified", http.StatusOK)
+		httpresp.WriteJSON(w, http.StatusOK, map[string]interface{}{
+			"message": "Email already verified",
+		})
 		return
 	}
 
 	// Get user info for logging
 	user, err := GetUserByID(r.Context(), m.DB, m.DBDriver, token.UserID)
 	if err != nil {
-		writeJSONError(w, "Failed to fetch user", http.StatusInternalServerError)
+		httpresp.WriteInternalError(w, "Failed to fetch user")
 		return
 	}
 
 	// Verify user email
 	if err := VerifyUserEmail(r.Context(), m.DB, m.DBDriver, token.UserID); err != nil {
-		writeJSONError(w, "Failed to verify email", http.StatusInternalServerError)
+		httpresp.WriteInternalError(w, "Failed to verify email")
 		return
 	}
 
@@ -575,7 +572,7 @@ func (m *Manager) VerifyEmailHandler(w http.ResponseWriter, r *http.Request) {
 // @Tags        auth
 // @Produce     json
 // @Success     200 {object} User "User profile"
-// @Failure     401 {string} string "Unauthorized"
+// @Failure     401 {object} map[string]interface{} "Unauthorized"
 // @Router      /api/user/profile [get]
 func (m *Manager) ProfileHandler(w http.ResponseWriter, r *http.Request) {
 	// Prevent CloudFront from caching user-specific data
@@ -583,21 +580,20 @@ func (m *Manager) ProfileHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Pragma", "no-cache")
 	w.Header().Set("Expires", "0")
 
-	if r.Method != http.MethodGet {
-		writeJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+	if !httpresp.RequireMethodJSON(w, r, http.MethodGet) {
 		return
 	}
 
 	user, ok := GetUserFromContext(r.Context())
 	if !ok {
-		writeJSONError(w, "Unauthorized", http.StatusUnauthorized)
+		httpresp.WriteUnauthorized(w, "Unauthorized")
 		return
 	}
 
 	// Don't expose password hash
 	user.PasswordHash = ""
 
-	writeJSON(w, user, http.StatusOK)
+	httpresp.WriteJSON(w, http.StatusOK, user)
 }
 
 // ChangePasswordHandler allows a logged-in user to change their password.
@@ -614,14 +610,13 @@ func (m *Manager) ProfileHandler(w http.ResponseWriter, r *http.Request) {
 // @Failure     500 {object} map[string]interface{} "Server error"
 // @Router      /api/user/change-password [post]
 func (m *Manager) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+	if !httpresp.RequireMethodJSON(w, r, http.MethodPost) {
 		return
 	}
 
 	user, ok := GetUserFromContext(r.Context())
 	if !ok {
-		writeJSONError(w, "Unauthorized", http.StatusUnauthorized)
+		httpresp.WriteUnauthorized(w, "Unauthorized")
 		return
 	}
 
@@ -630,48 +625,38 @@ func (m *Manager) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) 
 		NewPassword     string `json:"new_password"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, "Invalid request body", http.StatusBadRequest)
+		httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, "Invalid request body")
 		return
 	}
 
 	if req.CurrentPassword == "" || req.NewPassword == "" {
-		writeJSONError(w, "Current password and new password are required", http.StatusBadRequest)
+		httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, "Current password and new password are required")
 		return
 	}
 
 	if len(req.NewPassword) < 8 {
-		writeJSONError(w, "New password must be at least 8 characters", http.StatusBadRequest)
+		httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, "New password must be at least 8 characters")
 		return
 	}
 
 	// Verify current password
 	if !VerifyPassword(user.PasswordHash, req.CurrentPassword) {
-		writeJSONError(w, "Current password is incorrect", http.StatusUnauthorized)
+		httpresp.WriteUnauthorized(w, "Current password is incorrect")
 		return
 	}
 
 	// Update password
 	if err := UpdateUserPassword(r.Context(), m.DB, m.DBDriver, user.ID, req.NewPassword); err != nil {
-		writeJSONError(w, "Failed to update password", http.StatusInternalServerError)
+		httpresp.WriteInternalError(w, "Failed to update password")
 		return
 	}
 
 	log.Printf("AUTH: Password changed - user_id=%d email=%s ip=%s", user.ID, user.Email, getClientIP(r))
 
-	writeJSON(w, map[string]interface{}{
+	httpresp.WriteJSON(w, http.StatusOK, map[string]interface{}{
 		"success": true,
 		"message": "Password changed successfully",
-	}, http.StatusOK)
-}
-
-// Helper functions
-
-func writeJSON(w http.ResponseWriter, data interface{}, status int) {
-	httpresp.WriteJSON(w, status, data)
-}
-
-func writeJSONError(w http.ResponseWriter, message string, status int) {
-	httpresp.WriteError(w, status, "", message)
+	})
 }
 
 func getClientIP(r *http.Request) string {

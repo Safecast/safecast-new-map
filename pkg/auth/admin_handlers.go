@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"safecast-new-map/pkg/httpresp"
 )
 
 // AdminCreateUserRequest describes the JSON body for admin user creation.
@@ -46,8 +48,7 @@ type AdminUpdateUserRequest struct {
 // @Failure     500 {object} map[string]string "Server error"
 // @Router      /api/admin/users [get]
 func (m *Manager) AdminListUsersHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	if !httpresp.RequireMethodJSON(w, r, http.MethodGet) {
 		return
 	}
 
@@ -68,26 +69,24 @@ func (m *Manager) AdminListUsersHandler(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	// Get users with pagination
 	users, err := GetUsersPaginated(r.Context(), m.DB, m.DBDriver, limit, offset, search)
 	if err != nil {
-		writeJSON(w, map[string]string{"error": "Failed to fetch users"}, http.StatusInternalServerError)
+		httpresp.WriteInternalError(w, "Failed to fetch users")
 		return
 	}
 
-	// Get total count for pagination
 	total, err := CountUsers(r.Context(), m.DB, m.DBDriver, search)
 	if err != nil {
-		writeJSON(w, map[string]string{"error": "Failed to count users"}, http.StatusInternalServerError)
+		httpresp.WriteInternalError(w, "Failed to count users")
 		return
 	}
 
-	writeJSON(w, map[string]interface{}{
+	httpresp.WriteJSON(w, http.StatusOK, map[string]interface{}{
 		"users":  users,
 		"total":  total,
 		"limit":  limit,
 		"offset": offset,
-	}, http.StatusOK)
+	})
 }
 
 // AdminCreateUserHandler creates a new user (admin only).
@@ -105,12 +104,10 @@ func (m *Manager) AdminListUsersHandler(w http.ResponseWriter, r *http.Request) 
 // @Failure     500 {object} map[string]string "Server error"
 // @Router      /api/admin/users/create [post]
 func (m *Manager) AdminCreateUserHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	if !httpresp.RequireMethodJSON(w, r, http.MethodPost) {
 		return
 	}
 
-	// Parse request
 	var req struct {
 		Email                 string `json:"email"`
 		Username              string `json:"username"`
@@ -120,41 +117,38 @@ func (m *Manager) AdminCreateUserHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, map[string]string{"error": "Invalid request body"}, http.StatusBadRequest)
+		httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, "Invalid request body")
 		return
 	}
 
-	// Validate input
 	if err := ValidateEmail(req.Email); err != nil {
-		writeJSON(w, map[string]string{"error": err.Error()}, http.StatusBadRequest)
+		httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, err.Error())
 		return
 	}
 
 	if req.Username != "" {
 		if err := ValidateUsername(req.Username); err != nil {
-			writeJSON(w, map[string]string{"error": err.Error()}, http.StatusBadRequest)
+			httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, err.Error())
 			return
 		}
 	}
 
-	// Generate password if not provided
 	password := req.Password
 	if password == "" {
 		generatedPassword, err := GenerateRandomPassword(16)
 		if err != nil {
-			writeJSON(w, map[string]string{"error": "Failed to generate password"}, http.StatusInternalServerError)
+			httpresp.WriteInternalError(w, "Failed to generate password")
 			return
 		}
 		password = generatedPassword
 		req.RequiresPasswordSetup = true
 	} else {
 		if err := ValidatePassword(password); err != nil {
-			writeJSON(w, map[string]string{"error": err.Error()}, http.StatusBadRequest)
+			httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, err.Error())
 			return
 		}
 	}
 
-	// Create user
 	newUser := &User{
 		Email:                 req.Email,
 		Username:              req.Username,
@@ -166,17 +160,15 @@ func (m *Manager) AdminCreateUserHandler(w http.ResponseWriter, r *http.Request)
 	userID, err := CreateUser(r.Context(), m.DB, m.DBDriver, newUser, password)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") || strings.Contains(err.Error(), "duplicate key") {
-			writeJSON(w, map[string]string{"error": "User with this email already exists"}, http.StatusConflict)
+			httpresp.WriteError(w, http.StatusConflict, httpresp.CodeConflict, "User with this email already exists")
 		} else {
-			writeJSON(w, map[string]string{"error": "Failed to create user"}, http.StatusInternalServerError)
+			httpresp.WriteInternalError(w, "Failed to create user")
 		}
 		return
 	}
 
-	// Send welcome or password setup email if requested
 	if m.EmailSender != nil && (req.SendWelcomeEmail || req.RequiresPasswordSetup) {
 		if req.RequiresPasswordSetup {
-			// Generate password reset token
 			token, err := GenerateToken()
 			if err == nil {
 				expiresAt := time.Now().Add(7 * 24 * time.Hour).Unix()
@@ -192,7 +184,6 @@ func (m *Manager) AdminCreateUserHandler(w http.ResponseWriter, r *http.Request)
 				}
 			}
 		} else {
-			// Send regular welcome email with verification
 			token, err := GenerateToken()
 			if err == nil {
 				expiresAt := time.Now().Add(24 * time.Hour).Unix()
@@ -210,11 +201,11 @@ func (m *Manager) AdminCreateUserHandler(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	writeJSON(w, map[string]interface{}{
+	httpresp.WriteJSON(w, http.StatusCreated, map[string]interface{}{
 		"id":      userID,
 		"email":   req.Email,
 		"message": "User created successfully",
-	}, http.StatusCreated)
+	})
 }
 
 // AdminUpdateUserHandler updates an existing user (admin only).
@@ -234,25 +225,22 @@ func (m *Manager) AdminCreateUserHandler(w http.ResponseWriter, r *http.Request)
 // @Router      /api/admin/users/{id} [put]
 // @Router      /api/admin/users/{id} [patch]
 func (m *Manager) AdminUpdateUserHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPut && r.Method != http.MethodPatch {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	if !httpresp.RequireMethodJSON(w, r, http.MethodPut, http.MethodPatch) {
 		return
 	}
 
-	// Get user ID from URL path
 	pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	if len(pathParts) < 4 {
-		writeJSON(w, map[string]string{"error": "User ID required"}, http.StatusBadRequest)
+		httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, "User ID required")
 		return
 	}
 	userIDStr := pathParts[3]
 	targetUserID, err := strconv.ParseInt(userIDStr, 10, 64)
 	if err != nil {
-		writeJSON(w, map[string]string{"error": "Invalid user ID"}, http.StatusBadRequest)
+		httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, "Invalid user ID")
 		return
 	}
 
-	// Parse request
 	var req struct {
 		Email         *string `json:"email"`
 		Username      *string `json:"username"`
@@ -264,25 +252,23 @@ func (m *Manager) AdminUpdateUserHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, map[string]string{"error": "Invalid request body"}, http.StatusBadRequest)
+		httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, "Invalid request body")
 		return
 	}
 
-	// Get existing user
 	targetUser, err := GetUserByID(r.Context(), m.DB, m.DBDriver, targetUserID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			writeJSON(w, map[string]string{"error": "User not found"}, http.StatusNotFound)
+			httpresp.WriteNotFound(w, "User not found")
 		} else {
-			writeJSON(w, map[string]string{"error": "Failed to fetch user"}, http.StatusInternalServerError)
+			httpresp.WriteInternalError(w, "Failed to fetch user")
 		}
 		return
 	}
 
-	// Update fields if provided
 	if req.Email != nil {
 		if err := ValidateEmail(*req.Email); err != nil {
-			writeJSON(w, map[string]string{"error": err.Error()}, http.StatusBadRequest)
+			httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, err.Error())
 			return
 		}
 		targetUser.Email = *req.Email
@@ -291,7 +277,7 @@ func (m *Manager) AdminUpdateUserHandler(w http.ResponseWriter, r *http.Request)
 	if req.Username != nil {
 		if *req.Username != "" {
 			if err := ValidateUsername(*req.Username); err != nil {
-				writeJSON(w, map[string]string{"error": err.Error()}, http.StatusBadRequest)
+				httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, err.Error())
 				return
 			}
 		}
@@ -314,32 +300,30 @@ func (m *Manager) AdminUpdateUserHandler(w http.ResponseWriter, r *http.Request)
 		targetUser.ExternalID = *req.ExternalID
 	}
 
-	// Update password if provided
 	if req.Password != nil && *req.Password != "" {
 		if err := ValidatePassword(*req.Password); err != nil {
-			writeJSON(w, map[string]string{"error": err.Error()}, http.StatusBadRequest)
+			httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, err.Error())
 			return
 		}
 		if err := UpdateUserPassword(r.Context(), m.DB, m.DBDriver, targetUserID, *req.Password); err != nil {
-			writeJSON(w, map[string]string{"error": "Failed to update password"}, http.StatusInternalServerError)
+			httpresp.WriteInternalError(w, "Failed to update password")
 			return
 		}
 	}
 
-	// Update user in database
 	if err := UpdateUser(r.Context(), m.DB, m.DBDriver, targetUser); err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") || strings.Contains(err.Error(), "duplicate key") {
-			writeJSON(w, map[string]string{"error": "Email or username already in use"}, http.StatusConflict)
+			httpresp.WriteError(w, http.StatusConflict, httpresp.CodeConflict, "Email or username already in use")
 		} else {
-			writeJSON(w, map[string]string{"error": "Failed to update user"}, http.StatusInternalServerError)
+			httpresp.WriteInternalError(w, "Failed to update user")
 		}
 		return
 	}
 
-	writeJSON(w, map[string]interface{}{
+	httpresp.WriteJSON(w, http.StatusOK, map[string]interface{}{
 		"message": "User updated successfully",
 		"user":    targetUser,
-	}, http.StatusOK)
+	})
 }
 
 // AdminDeleteUserHandler deletes a user (admin only).
@@ -355,31 +339,28 @@ func (m *Manager) AdminUpdateUserHandler(w http.ResponseWriter, r *http.Request)
 // @Failure     500 {object} map[string]string "Server error"
 // @Router      /api/admin/users/{id} [delete]
 func (m *Manager) AdminDeleteUserHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodDelete {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	if !httpresp.RequireMethodJSON(w, r, http.MethodDelete) {
 		return
 	}
 
-	// Get user ID from URL path
 	pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	if len(pathParts) < 4 {
-		writeJSON(w, map[string]string{"error": "User ID required"}, http.StatusBadRequest)
+		httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, "User ID required")
 		return
 	}
 	userIDStr := pathParts[3]
 	targetUserID, err := strconv.ParseInt(userIDStr, 10, 64)
 	if err != nil {
-		writeJSON(w, map[string]string{"error": "Invalid user ID"}, http.StatusBadRequest)
+		httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, "Invalid user ID")
 		return
 	}
 
-	// Delete user
 	if err := DeleteUser(r.Context(), m.DB, m.DBDriver, targetUserID); err != nil {
-		writeJSON(w, map[string]string{"error": "Failed to delete user"}, http.StatusInternalServerError)
+		httpresp.WriteInternalError(w, "Failed to delete user")
 		return
 	}
 
-	writeJSON(w, map[string]string{"message": "User deleted successfully"}, http.StatusOK)
+	httpresp.WriteJSON(w, http.StatusOK, map[string]string{"message": "User deleted successfully"})
 }
 
 // AdminResetUserPasswordHandler sends a password reset email to a user (admin only).
@@ -395,43 +376,38 @@ func (m *Manager) AdminDeleteUserHandler(w http.ResponseWriter, r *http.Request)
 // @Failure     500 {object} map[string]string "Server error"
 // @Router      /api/admin/users/{id}/reset-password [post]
 func (m *Manager) AdminResetUserPasswordHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	if !httpresp.RequireMethodJSON(w, r, http.MethodPost) {
 		return
 	}
 
-	// Get user ID from URL path
 	pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	if len(pathParts) < 4 {
-		writeJSON(w, map[string]string{"error": "User ID required"}, http.StatusBadRequest)
+		httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, "User ID required")
 		return
 	}
 	userIDStr := pathParts[3]
 	targetUserID, err := strconv.ParseInt(userIDStr, 10, 64)
 	if err != nil {
-		writeJSON(w, map[string]string{"error": "Invalid user ID"}, http.StatusBadRequest)
+		httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, "Invalid user ID")
 		return
 	}
 
-	// Get target user
 	targetUser, err := GetUserByID(r.Context(), m.DB, m.DBDriver, targetUserID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			writeJSON(w, map[string]string{"error": "User not found"}, http.StatusNotFound)
+			httpresp.WriteNotFound(w, "User not found")
 		} else {
-			writeJSON(w, map[string]string{"error": "Failed to fetch user"}, http.StatusInternalServerError)
+			httpresp.WriteInternalError(w, "Failed to fetch user")
 		}
 		return
 	}
 
-	// Generate password reset token
 	token, err := GenerateToken()
 	if err != nil {
-		writeJSON(w, map[string]string{"error": "Failed to generate token"}, http.StatusInternalServerError)
+		httpresp.WriteInternalError(w, "Failed to generate token")
 		return
 	}
 
-	// Token expires in 1 hour for admin-initiated resets
 	expiresAt := time.Now().Add(1 * time.Hour).Unix()
 	resetToken := &PasswordResetToken{
 		UserID:    targetUserID,
@@ -441,25 +417,22 @@ func (m *Manager) AdminResetUserPasswordHandler(w http.ResponseWriter, r *http.R
 	}
 
 	if err := CreatePasswordResetToken(r.Context(), m.DB, m.DBDriver, resetToken); err != nil {
-		writeJSON(w, map[string]string{"error": "Failed to create reset token"}, http.StatusInternalServerError)
+		httpresp.WriteInternalError(w, "Failed to create reset token")
 		return
 	}
 
-	// Send email if email sender is configured
 	if m.EmailSender != nil {
 		resetURL := fmt.Sprintf("%s/reset-password?token=%s", m.BaseURL, token)
 		if err := m.EmailSender.SendPasswordResetEmail(targetUser.Email, resetURL); err != nil {
-			// Log the actual error and return it to the user
-			errMsg := fmt.Sprintf("Failed to send email: %v", err)
-			writeJSON(w, map[string]string{"error": errMsg}, http.StatusInternalServerError)
+			httpresp.WriteInternalError(w, fmt.Sprintf("Failed to send email: %v", err))
 			return
 		}
 	}
 
-	writeJSON(w, map[string]string{
+	httpresp.WriteJSON(w, http.StatusOK, map[string]string{
 		"message": "Password reset email sent successfully",
-		"token":   token, // Include token for admin to share manually if needed
-	}, http.StatusOK)
+		"token":   token,
+	})
 }
 
 // AdminRegenerateAPIKeyHandler regenerates an API key for a user (admin only).
@@ -476,44 +449,39 @@ func (m *Manager) AdminResetUserPasswordHandler(w http.ResponseWriter, r *http.R
 // @Failure     500 {object} map[string]string "Server error"
 // @Router      /api/admin/users/{id}/regenerate-api-key [post]
 func (m *Manager) AdminRegenerateAPIKeyHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	if !httpresp.RequireMethodJSON(w, r, http.MethodPost) {
 		return
 	}
 
-	// Get user ID from URL path
 	pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	if len(pathParts) < 4 {
-		writeJSON(w, map[string]string{"error": "User ID required"}, http.StatusBadRequest)
+		httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, "User ID required")
 		return
 	}
 	userIDStr := pathParts[3]
 	targetUserID, err := strconv.ParseInt(userIDStr, 10, 64)
 	if err != nil {
-		writeJSON(w, map[string]string{"error": "Invalid user ID"}, http.StatusBadRequest)
+		httpresp.WriteBadRequest(w, httpresp.CodeBadRequest, "Invalid user ID")
 		return
 	}
 
-	// Get target user
 	targetUser, err := GetUserByID(r.Context(), m.DB, m.DBDriver, targetUserID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			writeJSON(w, map[string]string{"error": "User not found"}, http.StatusNotFound)
+			httpresp.WriteNotFound(w, "User not found")
 		} else {
-			writeJSON(w, map[string]string{"error": "Failed to fetch user"}, http.StatusInternalServerError)
+			httpresp.WriteInternalError(w, "Failed to fetch user")
 		}
 		return
 	}
 
-	// Regenerate API key
 	newAPIKey, err := RegenerateAPIKey(r.Context(), m.DB, m.DBDriver, targetUserID)
 	if err != nil {
 		log.Printf("ERROR: Failed to regenerate API key for user %d: %v", targetUserID, err)
-		writeJSON(w, map[string]string{"error": "Failed to regenerate API key"}, http.StatusInternalServerError)
+		httpresp.WriteInternalError(w, "Failed to regenerate API key")
 		return
 	}
 
-	// Send email notification if email sender is configured
 	if m.EmailSender != nil {
 		if err := m.EmailSender.SendAPIKeyRegeneratedEmail(targetUser.Email, targetUser.Username, newAPIKey); err != nil {
 			log.Printf("WARNING: Failed to send API key regeneration email to %s: %v", targetUser.Email, err)
@@ -521,11 +489,11 @@ func (m *Manager) AdminRegenerateAPIKeyHandler(w http.ResponseWriter, r *http.Re
 		}
 	}
 
-	writeJSON(w, map[string]interface{}{
+	httpresp.WriteJSON(w, http.StatusOK, map[string]interface{}{
 		"message": "API key regenerated successfully",
 		"api_key": newAPIKey,
 		"user_id": targetUserID,
-	}, http.StatusOK)
+	})
 }
 
 // IsAdmin checks if a user has admin privileges.

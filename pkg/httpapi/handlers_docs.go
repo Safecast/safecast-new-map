@@ -22,7 +22,7 @@ import (
 func (s *Server) license(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		w.Header().Set("Allow", "GET, HEAD")
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
 	rawPath := strings.TrimPrefix(r.URL.Path, "/licenses/")
@@ -44,7 +44,7 @@ func (s *Server) license(w http.ResponseWriter, r *http.Request) {
 	data, err := fs.ReadFile(s.Content, file)
 	if err != nil {
 		s.Logf("license handler: %s read error: %v", file, err)
-		http.Error(w, "unable to load license", http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, "unable to load license")
 		return
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")

@@ -9,6 +9,7 @@ import (
 
 	"safecast-new-map/pkg/auth"
 	"safecast-new-map/pkg/database"
+	"safecast-new-map/pkg/httpresp"
 )
 
 // routeRegistrar is implemented by both Server (web) and Handler (core API).
@@ -117,12 +118,12 @@ func registerAuthAndAdminRoutes(mux *http.ServeMux, cfg RegisterConfig) {
 					cfg.AuthManager.AdminResetUserPasswordHandler(w, r)
 				} else if strings.HasSuffix(r.URL.Path, "/regenerate-api-key") {
 					cfg.AuthManager.AdminRegenerateAPIKeyHandler(w, r)
-				} else {
-					http.Error(w, "Not found", http.StatusNotFound)
-				}
-			default:
-				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			} else {
+				writeJSONError(w, http.StatusNotFound, "Not found")
 			}
+		default:
+			httpresp.WriteMethodNotAllowed(w)
+		}
 		}))
 	}
 
@@ -200,7 +201,7 @@ func checkAdminAccess(w http.ResponseWriter, r *http.Request, adminPassword stri
 	if adminPassword != "" && r.URL.Query().Get("password") == adminPassword {
 		return true
 	}
-	http.Error(w, "Unauthorized - Please login as admin or provide password", http.StatusUnauthorized)
+	httpresp.WriteUnauthorized(w, "Unauthorized - Please login as admin or provide password")
 	return false
 }
 
@@ -221,18 +222,16 @@ func handleUserUploads(w http.ResponseWriter, r *http.Request, cfg RegisterConfi
 	w.Header().Set("Pragma", "no-cache")
 	w.Header().Set("Expires", "0")
 
-	if r.Method != http.MethodGet {
-		if !requireMethod(w, r, http.MethodGet) {
-			return
-		}
+	if !requireMethod(w, r, http.MethodGet) {
+		return
 	}
 	user, ok := auth.GetUserFromContext(r.Context())
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		httpresp.WriteUnauthorized(w, "Unauthorized")
 		return
 	}
 	if cfg.DB == nil || cfg.DB.DB == nil {
-		http.Error(w, "Database not available", http.StatusServiceUnavailable)
+		httpresp.WriteUnavailable(w, "Database not available")
 		return
 	}
 
@@ -260,7 +259,7 @@ func handleUserUploads(w http.ResponseWriter, r *http.Request, cfg RegisterConfi
 		if cfg.Logf != nil {
 			cfg.Logf("Error fetching user uploads: %v", err)
 		}
-		http.Error(w, "Failed to fetch uploads", http.StatusInternalServerError)
+		httpresp.WriteInternalError(w, "Failed to fetch uploads")
 		return
 	}
 	totalCount, _ := cfg.DB.CountUploads(ctx, internalUserID, "")
