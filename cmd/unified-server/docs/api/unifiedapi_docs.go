@@ -1607,7 +1607,8 @@ const docTemplateunifiedapi = `{
                     "405": {
                         "description": "Method not allowed",
                         "schema": {
-                            "type": "string"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -2582,7 +2583,8 @@ const docTemplateunifiedapi = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "string"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
