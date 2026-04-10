@@ -467,6 +467,22 @@ var mcpEditableColumns = map[string][]string{
 // adminMCPUpdateHandler updates editable fields of a single row.
 // PUT /api/admin/mcp/update?table=chat_questions&id=<key_value>
 // Body: JSON object with field names → new string values.
+//
+// @Summary     Admin MCP analytics update
+// @Description Updates one or more editable fields of a single MCP analytics row. Only whitelisted columns (e.g. question, answer, source, model, country) may be modified; timestamps and computed columns are ignored.
+// @Tags        admin
+// @Accept      json
+// @Produce     json
+// @Param       table query  string true  "Analytics table name" Enums(chat_questions,mcp_query_log,mcp_ai_query_log,qa_embeddings,location_knowledge)
+// @Param       id    query  string true  "Row key value (integer for id-keyed tables, timestamp string for log tables)"
+// @Param       body  body   object true  "JSON object mapping editable field names to their new string values"
+// @Success     200 {object} map[string]string "status: ok"
+// @Failure     400 {string} string "Invalid request"
+// @Failure     405 {string} string "Method not allowed"
+// @Failure     500 {string} string "Update failed"
+// @Failure     503 {string} string "Analytics unavailable"
+// @Router      /api/admin/mcp/update [put]
+// @Router      /api/admin/mcp/update [post]
 func adminMCPUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPut && r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
