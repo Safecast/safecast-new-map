@@ -186,3 +186,58 @@ Developer → 65.108.24.131 (Direct IP) → Server
   - Bytes downloaded
   - Error rates
   - Popular objects
+
+---
+
+## Nginx Routing Rules — Port 3333 vs 8765
+
+The unified server runs two listeners:
+- **Port 8765** — main map server (`cmd/unified-server`). Handles all web pages, uploads, auth, and track downloads (CSV/XLSX/JSON) via `pkg/httpapi/handlers_core.go`.
+- **Port 3333** — MCP server (same binary, separate goroutine). Handles MCP protocol (`/mcp`, `/mcp-http`) and exposes a JSON-only REST mirror of `/api/*`.
+
+### Critical routing rule: never use a broad `location /api/`
+
+The MCP server's REST mirror (`rest_tracks.go`) only returns **JSON**. It does not detect `.csv` or `.xlsx` extensions. Only port 8765's `handleTrackData` in `handlers_core.go` performs format detection and serves CSV/XLSX downloads.
+
+A broad `location /api/` block pointing to port 3333 **breaks all file-format downloads** — requests like `/api/track/8hp0s9.csv` reach the MCP server, which strips no extension and returns JSON.
+
+**Correct approach (origin-simplemap.safecast.org):** Use specific `location =` rules for each MCP-only endpoint, and route `/api/track/` to port 8765:
+
+```nginx
+# MCP-only endpoints → port 3333
+location = /api/radiation  { proxy_pass http://localhost:3333/api/radiation; ... }
+location = /api/area       { proxy_pass http://localhost:3333/api/area; ... }
+location = /api/stats      { proxy_pass http://localhost:3333/api/stats; ... }
+location = /api/extreme    { proxy_pass http://localhost:3333/api/extreme; ... }
+location = /api/spectra    { proxy_pass http://localhost:3333/api/spectra; ... }
+location /api/sensor/      { proxy_pass http://localhost:3333/api/sensor/; ... }
+location /api/device/      { proxy_pass http://localhost:3333/api/device/; ... }
+location /api/info/        { proxy_pass http://localhost:3333/api/info/; ... }
+
+# Track downloads (CSV/XLSX/JSON) MUST go to port 8765
+location ~ ^/api/track/[^/]+/insights { proxy_pass http://localhost:8765; ... }
+location /api/track/       { proxy_pass http://localhost:8765; ... }
+
+# Everything else → port 8765
+location / { proxy_pass http://localhost:8765; ... }
+```
+
+**Wrong (breaks CSV/XLSX downloads):**
+```nginx
+location /api/ {
+    proxy_pass http://localhost:3333/api/;  # ← sends /api/track/x.csv to MCP → JSON returned
+}
+```
+
+### How track format detection works (port 8765 only)
+
+`pkg/httpapi/handlers_core.go` `handleTrackData()` strips the extension from the URL path before querying the database:
+
+| URL | Format served |
+|-----|--------------|
+| `/api/track/8hp0s9` | JSON |
+| `/api/track/8hp0s9.json` | JSON |
+| `/api/track/8hp0s9.csv` | CSV (`text/csv`, `Content-Disposition: attachment`) |
+| `/api/track/8hp0s9.xlsx` | XLSX (`application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`) |
+
+The MCP server's `rest_tracks.go` `handleTrack()` does none of this — it passes the full path segment (including `.csv`) as the track ID and always returns JSON.
