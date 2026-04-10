@@ -61,10 +61,6 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key root@65.108.24.131 "systemctl start safecast-new-map"
 
-      - name: Verify deployment
-        run: |
-          ssh -i ~/.ssh/deploy_key root@65.108.24.131 "systemctl status safecast-new-map"
-
       - name: Update environment
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -77,7 +73,25 @@ jobs:
 
       - name: Restart service with new config
         run: |
-          ssh -i ~/.ssh/deploy_key root@65.108.24.131 "systemctl restart safecast-new-map && systemctl status safecast-new-map"
+          ssh -i ~/.ssh/deploy_key root@65.108.24.131 "systemctl restart safecast-new-map"
+
+      - name: Health check
+        run: |
+          echo "Waiting for service to be ready..."
+          sleep 5
+          for i in 1 2 3 4 5; do
+            STATUS=$(ssh -i ~/.ssh/deploy_key root@65.108.24.131 \
+              "curl -s -o /dev/null -w '%{http_code}' http://localhost:8765/api/health || echo 000")
+            echo "Attempt $i: HTTP $STATUS"
+            if [ "$STATUS" = "200" ]; then
+              echo "Service is healthy"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Health check failed after 5 attempts"
+          ssh -i ~/.ssh/deploy_key root@65.108.24.131 "systemctl status safecast-new-map"
+          exit 1
 
       - name: Invalidate CloudFront cache
         run: |
