@@ -334,8 +334,13 @@ async function saveEdit() {
       body: JSON.stringify(payload)
     });
     if (!resp.ok) {
-      const text = await resp.text();
-      throw new Error(text || 'HTTP ' + resp.status);
+      const raw = await resp.text();
+      let msg = raw || 'HTTP ' + resp.status;
+      try {
+        const j = JSON.parse(raw);
+        if (j && j.error) msg = j.error;
+      } catch (_) { /* plain-text or empty body */ }
+      throw new Error(msg);
     }
     closeEditModal();
     fetchData();
