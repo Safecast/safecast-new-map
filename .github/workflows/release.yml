@@ -180,34 +180,20 @@ jobs:
           name: bin-${{ matrix.target }}
           path: dist/
 
-# ---------- DEPLOY: Build linux/amd64 DuckDB binary and deploy to production (Codeberg only) ----------
-# Runs on Codeberg on every push to main. GitHub is excluded to prevent double-deploys
-# (both remotes receive every git push simultaneously).
+# ---------- DEPLOY: Build linux/amd64 DuckDB binary and deploy to production ----------
+# Currently runs on GitHub Actions. Plan: switch to Codeberg self-hosted runner on
+# 65.108.24.131 to remove dependency on GitHub and shared runner queue issues.
+# See memory: project_codeberg_migration.md for self-hosted runner setup plan.
   deploy:
-    if: github.server_url != 'https://github.com' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.server_url == 'https://github.com' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [build_duckdb]
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - name: Download linux/amd64 DuckDB artifact
+        uses: actions/download-artifact@v4
         with:
-          go-version: "1.24"
-          cache: true
-          cache-dependency-path: go.sum
-
-      - name: Install build dependencies
-        run: sudo apt-get update && sudo apt-get install -y gcc libc6-dev rsync
-
-      - name: Build with DuckDB analytics
-        run: |
-          go get github.com/marcboeker/go-duckdb/v2@latest
-          go mod tidy
-          CGO_ENABLED=1 GOFLAGS="-trimpath -buildvcs=false" \
-          go build -tags "netgo,osusergo,duckdb" \
-                   -ldflags "-s -w -X main.CompileVersion=${{ github.run_number }}" \
-                   -o safecast-new-map ./cmd/unified-server
+          name: bin-linux_amd64_duckdb
+          path: dist/
 
       - name: Install SSH key
         run: |
@@ -221,8 +207,9 @@ jobs:
 
       - name: Upload binary
         run: |
+          chmod +x dist/safecast-new-map_linux_amd64_duckdb
           rsync -avP -e "ssh -i ~/.ssh/deploy_key" \
-            ./safecast-new-map \
+            dist/safecast-new-map_linux_amd64_duckdb \
             root@65.108.24.131:/usr/local/bin/safecast-new-map
 
       - name: Start service and verify
