@@ -71,10 +71,17 @@ func adminMCPDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	search := r.URL.Query().Get("search")
 
-	// Build WHERE clause for search
+	// virtualCols are computed via JOIN, not real columns in the table — must be
+	// excluded from WHERE clauses and direct SELECTs.
+	virtualCols := map[string]bool{"thumbs_up": true, "thumbs_down": true}
+
+	// Build WHERE clause for search — skip virtual (computed) columns
 	var whereClauses []string
 	if search != "" {
 		for _, col := range columns {
+			if virtualCols[col] {
+				continue
+			}
 			whereClauses = append(whereClauses, fmt.Sprintf("CAST(%s AS VARCHAR) ILIKE '%%%s%%'", col, escapeLike(search)))
 		}
 	}
@@ -101,7 +108,6 @@ func adminMCPDataHandler(w http.ResponseWriter, r *http.Request) {
 	// inlined VARCHAR values are truncated to a single byte on read.
 	// LEFT(col, 100000) forces DuckDB to materialize a new string that the driver reads correctly.
 	longTextCols := map[string]bool{"question": true, "answer": true, "generated_query": true, "user_agent": true, "params": true, "note": true}
-	virtualCols := map[string]bool{"thumbs_up": true, "thumbs_down": true}
 
 	var dataQuery string
 	if tableName == "chat_questions" {
@@ -222,9 +228,15 @@ func adminMCPExportHandler(w http.ResponseWriter, r *http.Request) {
 
 	search := r.URL.Query().Get("search")
 
+	// virtualCols are computed via JOIN, not real columns — skip in WHERE and SELECT.
+	exportVirtualCols := map[string]bool{"thumbs_up": true, "thumbs_down": true}
+
 	var whereClauses []string
 	if search != "" {
 		for _, col := range columns {
+			if exportVirtualCols[col] {
+				continue
+			}
 			whereClauses = append(whereClauses, fmt.Sprintf("CAST(%s AS VARCHAR) ILIKE '%%%s%%'", col, escapeLike(search)))
 		}
 	}
@@ -234,14 +246,20 @@ func adminMCPExportHandler(w http.ResponseWriter, r *http.Request) {
 		whereSQL = "WHERE " + strings.Join(whereClauses, " OR ")
 	}
 
-	// Use LEFT() workaround for long text columns (same DuckLake driver bug as data handler)
+	// Use LEFT() workaround for long text columns (same DuckLake driver bug as data handler).
+	// Skip virtual columns — they are not real columns in the table.
 	exportLongTextCols := map[string]bool{"question": true, "answer": true, "generated_query": true, "user_agent": true, "params": true}
-	exportCastCols := make([]string, len(columns))
-	for i, col := range columns {
+	var exportCastCols []string
+	var exportColumns []string
+	for _, col := range columns {
+		if exportVirtualCols[col] {
+			continue
+		}
+		exportColumns = append(exportColumns, col)
 		if exportLongTextCols[col] {
-			exportCastCols[i] = fmt.Sprintf("LEFT(%s, 100000) AS %s", col, col)
+			exportCastCols = append(exportCastCols, fmt.Sprintf("LEFT(%s, 100000) AS %s", col, col))
 		} else {
-			exportCastCols[i] = col
+			exportCastCols = append(exportCastCols, col)
 		}
 	}
 	colList := strings.Join(exportCastCols, ", ")
@@ -266,18 +284,18 @@ func adminMCPExportHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s.csv", tableName))
 
 	writer := csv.NewWriter(w)
-	writer.Write(columns) // header row
+	writer.Write(exportColumns) // header row (virtual cols excluded)
 
 	for rows.Next() {
-		values := make([]interface{}, len(columns))
-		ptrs := make([]interface{}, len(columns))
+		values := make([]interface{}, len(exportColumns))
+		ptrs := make([]interface{}, len(exportColumns))
 		for i := range values {
 			ptrs[i] = &values[i]
 		}
 		if err := rows.Scan(ptrs...); err != nil {
 			continue
 		}
-		record := make([]string, len(columns))
+		record := make([]string, len(exportColumns))
 		for i, v := range values {
 			if v == nil {
 				record[i] = ""
