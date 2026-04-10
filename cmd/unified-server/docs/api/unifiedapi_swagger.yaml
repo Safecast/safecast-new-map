@@ -1149,7 +1149,8 @@ paths:
         "405":
           description: Method not allowed
           schema:
-            type: string
+            additionalProperties: true
+            type: object
       summary: Logout user
       tags:
       - auth
@@ -1811,7 +1812,8 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            type: string
+            additionalProperties: true
+            type: object
       summary: Get current user profile
       tags:
       - auth
