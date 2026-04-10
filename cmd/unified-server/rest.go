@@ -86,6 +86,8 @@ func (h *RESTHandler) registerAPIRoutes(mux *http.ServeMux) {
 			mux.HandleFunc("/api/gpt/area", h.handleGPTArea)
 		case mcpserver.RouteGPTStats:
 			mux.HandleFunc("/api/gpt/stats", h.handleGPTStats)
+		case mcpserver.RouteFeedback:
+			mux.HandleFunc("/api/feedback", handleFeedback())
 		}
 	})
 }
