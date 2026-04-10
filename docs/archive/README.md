@@ -34,6 +34,16 @@ This directory contains historical planning documents and implementation plans t
 **Live Endpoint:** https://simplemap.safecast.org/mcp-http  
 **Documentation:** See [README.md](../../README.md#mcp-server--ai-integration)
 
+### BACKFILL_GUIDE.md
+**Status:** ✅ IMPLEMENTED  
+**Date Archived:** 2026-04-10  
+**Reason:** One-time historical data backfill (2015–2017) completed. Backfill mode is still in the fetcher code but this guide is no longer needed for day-to-day ops.
+
+### marker_statistics.md
+**Status:** 🗄️ ARCHIVED  
+**Date Archived:** 2026-04-10  
+**Reason:** Point-in-time snapshot of database statistics (518M total markers as of ~early 2026). Kept for historical reference.
+
 ---
 
 **Note:** For current project plans and documentation, see the main [README.md](../../README.md).

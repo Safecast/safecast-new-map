@@ -10898,7 +10898,7 @@ function selectHomeSearchResult(result, query) {
               row(headers) + rows.map(r => row(r)).join('') +
               '</Table></Worksheet></Workbook>';
             blob = new Blob([xml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-            filename = 'safecast_' + date + '.xls';
+            filename = 'safecast_' + date + '.xlsx';
 
           } else { // json
             const objects = rows.map(r => Object.fromEntries(headers.map((h,i) => [h, r[i]])));
@@ -11103,7 +11103,7 @@ function selectHomeSearchResult(result, query) {
               // <a> tags → server handles format + filename (no JS state needed).
               // Default to world-bounds; export chunk will refine href if needed.
               out += '<a class="table-download-btn" data-fmt="csv" href="/api/sensors/export?format=csv" download="safecast_sensors_' + date + '.csv" title="Download as CSV">' + dlSvg + ' CSV</a>';
-              out += '<a class="table-download-btn excel" data-fmt="excel" href="/api/sensors/export?format=xlsx" download="safecast_sensors_' + date + '.xls" title="Download as Excel">' + dlSvg + ' Excel</a>';
+              out += '<a class="table-download-btn excel" data-fmt="excel" href="/api/sensors/export?format=xlsx" download="safecast_sensors_' + date + '.xlsx" title="Download as Excel">' + dlSvg + ' Excel</a>';
               out += '<a class="table-download-btn json" data-fmt="json" href="/api/sensors/export?format=json" download="safecast_sensors_' + date + '.json" title="Download as JSON">' + dlSvg + ' JSON</a>';
               out += '<span class="table-rows-info">showing ' + Math.min(maxDisplay, dataRows.length) + ' of … rows — download for all</span>';
             } else {
@@ -11290,7 +11290,7 @@ function selectHomeSearchResult(result, query) {
               botBubble.querySelectorAll('a.table-download-btn[data-fmt]').forEach(function(a) {
                 const fmt = a.dataset.fmt || 'csv';
                 const serverFmt = fmt === 'excel' ? 'xlsx' : fmt;
-                const ext = fmt === 'excel' ? 'xls' : fmt;
+                const ext = fmt === 'excel' ? 'xlsx' : fmt;
                 const base = pendingExportChunk.export_url || '/api/sensors/export';
                 a.href = base + '&format=' + serverFmt;
                 a.download = 'safecast_sensors_' + date + '.' + ext;

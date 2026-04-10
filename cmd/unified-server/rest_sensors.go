@@ -194,7 +194,9 @@ func (h *RESTHandler) handleSensor(w http.ResponseWriter, r *http.Request) {
 // @Summary     Export all active sensors
 // @Description Downloads all active fixed sensors matching the given filters in CSV, JSON, or Excel format. No row limit — returns up to 10 000 devices.
 // @Tags        realtime
-// @Produce     text/csv application/json application/vnd.ms-excel
+// @Produce     text/csv
+// @Produce     application/json
+// @Produce     application/vnd.ms-excel
 // @Param       format  query  string  false "Output format: csv (default), json, xlsx"
 // @Param       type    query  string  false "Filter by sensor type"
 // @Param       min_lat query  number  false "Southern boundary" default(-90)

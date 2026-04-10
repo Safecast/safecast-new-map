@@ -2196,7 +2196,7 @@ const docTemplateunifiedapi = `{
         },
         "/api/track/{id}": {
             "get": {
-                "description": "Returns full track marker JSON for a track ID path segment.",
+                "description": "Returns full track data in JSON, CSV, or XLSX format.",
                 "produces": [
                     "application/json"
                 ],
@@ -3578,6 +3578,88 @@ const docTemplateunifiedapi = `{
                 }
             }
         },
+        "/sensors/export": {
+            "get": {
+                "description": "Downloads all active fixed sensors matching the given filters in CSV, JSON, or Excel format. No row limit — returns up to 10 000 devices.",
+                "produces": [
+                    "text/csv",
+                    "application/json",
+                    "application/vnd.ms-excel"
+                ],
+                "tags": [
+                    "realtime"
+                ],
+                "summary": "Export all active sensors",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Output format: csv (default), json, xlsx",
+                        "name": "format",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by sensor type",
+                        "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "default": -90,
+                        "description": "Southern boundary",
+                        "name": "min_lat",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "default": 90,
+                        "description": "Northern boundary",
+                        "name": "max_lat",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "default": -180,
+                        "description": "Western boundary",
+                        "name": "min_lon",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "default": 180,
+                        "description": "Eastern boundary",
+                        "name": "max_lon",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Sensor data file",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Database unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/spectra": {
             "get": {
                 "description": "Returns spectroscopy metadata (filename, device model, energy range, location) without channel data. Use GET /api/spectrum/{marker_id} to fetch full channel data. Requires database connection.",
@@ -3902,41 +3984,6 @@ const docTemplateunifiedapi = `{
                             "additionalProperties": {
                                 "type": "string"
                             }
-                        }
-                    }
-                }
-            }
-        },
-        "/trackid/{id}": {
-            "get": {
-                "description": "Serves the HTML map page for a specific track ID.",
-                "produces": [
-                    "text/html"
-                ],
-                "tags": [
-                    "web"
-                ],
-                "summary": "Render map page for one track",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Track ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "HTML page",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "400": {
-                        "description": "Track ID missing",
-                        "schema": {
-                            "type": "string"
                         }
                     }
                 }

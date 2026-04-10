@@ -1,0 +1,107 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: codeberg-medium
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Build unified server
+        run: |
+          go build -o safecast-new-map ./cmd/unified-server
+
+      - name: Prepare MCP hints directory
+        run: |
+          mkdir -p hints
+          cp -r cmd/unified-server/hints/* hints/
+
+      - name: Install deploy tools
+        run: |
+          apt-get update -qq && apt-get install -y -qq rsync openssh-client unzip curl
+          curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
+          unzip -q /tmp/awscliv2.zip -d /tmp
+          /tmp/aws/install
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H 65.108.24.131 >> ~/.ssh/known_hosts
+
+      - name: Stop service
+        run: |
+          ssh -i ~/.ssh/deploy_key root@65.108.24.131 "systemctl stop safecast-new-map || true"
+
+      - name: Deploy binary
+        run: |
+          rsync -avP -e "ssh -i ~/.ssh/deploy_key" ./safecast-new-map root@65.108.24.131:/usr/local/bin/safecast-new-map
+
+      - name: Deploy hints
+        run: |
+          ssh -i ~/.ssh/deploy_key root@65.108.24.131 "mkdir -p /root/safecast-unified-server/hints"
+          rsync -avP -e "ssh -i ~/.ssh/deploy_key" ./hints/ root@65.108.24.131:/root/safecast-unified-server/hints/
+
+      - name: Start service
+        if: always()
+        run: |
+          ssh -i ~/.ssh/deploy_key root@65.108.24.131 "systemctl start safecast-new-map"
+
+      - name: Update environment
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DUCKLAKE_PG_URL: ${{ secrets.DUCKLAKE_PG_URL }}
+          DUCKLAKE_DATA_PATH: ${{ secrets.DUCKLAKE_DATA_PATH }}
+        run: |
+          ssh -i ~/.ssh/deploy_key root@65.108.24.131 \
+            "printf 'DATABASE_URL=${DATABASE_URL}\nDUCKLAKE_PG_URL=${DUCKLAKE_PG_URL}\nDUCKLAKE_DATA_PATH=${DUCKLAKE_DATA_PATH}\nMCP_HINTS_DIR=/root/safecast-unified-server/hints\nANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}\nCLAUDE_MODEL=claude-haiku-4-5-20251001\nMCP_BASE_URL=https://simplemap.safecast.org/mcp\n' > /root/safecast-unified-server/.env"
+
+      - name: Restart service with new config
+        run: |
+          ssh -i ~/.ssh/deploy_key root@65.108.24.131 "systemctl restart safecast-new-map"
+
+      - name: Health check
+        run: |
+          echo "Waiting for service to be ready..."
+          sleep 5
+          for i in 1 2 3 4 5; do
+            STATUS=$(ssh -i ~/.ssh/deploy_key root@65.108.24.131 \
+              "curl -s -o /dev/null -w '%{http_code}' http://localhost:8765/api/health || echo 000")
+            echo "Attempt $i: HTTP $STATUS"
+            if [ "$STATUS" = "200" ]; then
+              echo "Service is healthy"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Health check failed after 5 attempts"
+          ssh -i ~/.ssh/deploy_key root@65.108.24.131 "systemctl status safecast-new-map"
+          exit 1
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation --distribution-id E12FYIQ8RRXOJ1 --paths "/*"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: us-east-1
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -f ~/.ssh/deploy_key
