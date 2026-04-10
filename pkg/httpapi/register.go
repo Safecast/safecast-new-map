@@ -79,31 +79,31 @@ func registerAuthAndAdminRoutes(mux *http.ServeMux, cfg RegisterConfig) {
 		return
 	}
 	if cfg.AuthManager != nil {
-		mux.HandleFunc("/api/auth/register", cfg.AuthManager.RegisterHandler)
-		mux.HandleFunc("/api/auth/login", cfg.AuthManager.LoginHandler)
-		mux.HandleFunc("/api/auth/logout", cfg.AuthManager.LogoutHandler)
-		mux.HandleFunc("/api/auth/forgot-password", cfg.AuthManager.ForgotPasswordHandler)
-		mux.HandleFunc("/api/auth/reset-password", cfg.AuthManager.ResetPasswordHandler)
-		mux.HandleFunc("/api/auth/verify-email", cfg.AuthManager.VerifyEmailHandler)
-		mux.HandleFunc("/api/user/profile", cfg.AuthManager.RequireAuth(cfg.AuthManager.ProfileHandler))
-		mux.HandleFunc("/api/user/change-password", cfg.AuthManager.RequireAuth(cfg.AuthManager.ChangePasswordHandler))
-		mux.HandleFunc("/api/user/uploads", cfg.AuthManager.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc(RouteAPIAuthRegister, cfg.AuthManager.RegisterHandler)
+		mux.HandleFunc(RouteAPIAuthLogin, cfg.AuthManager.LoginHandler)
+		mux.HandleFunc(RouteAPIAuthLogout, cfg.AuthManager.LogoutHandler)
+		mux.HandleFunc(RouteAPIAuthForgotPassword, cfg.AuthManager.ForgotPasswordHandler)
+		mux.HandleFunc(RouteAPIAuthResetPassword, cfg.AuthManager.ResetPasswordHandler)
+		mux.HandleFunc(RouteAPIAuthVerifyEmail, cfg.AuthManager.VerifyEmailHandler)
+		mux.HandleFunc(RouteAPIUserProfile, cfg.AuthManager.RequireAuth(cfg.AuthManager.ProfileHandler))
+		mux.HandleFunc(RouteAPIUserChangePassword, cfg.AuthManager.RequireAuth(cfg.AuthManager.ChangePasswordHandler))
+		mux.HandleFunc(RouteAPIUserUploads, cfg.AuthManager.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 			handleUserUploads(w, r, cfg)
 		}))
 
-		mux.HandleFunc("/api/admin/users", cfg.AuthManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc(RouteAPIAdminUsers, cfg.AuthManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
 			if !checkAdminAccess(w, r, cfg.AdminPassword) {
 				return
 			}
 			cfg.AuthManager.AdminListUsersHandler(w, r)
 		}))
-		mux.HandleFunc("/api/admin/users/create", cfg.AuthManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc(RouteAPIAdminUsersCreate, cfg.AuthManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
 			if !checkAdminAccess(w, r, cfg.AdminPassword) {
 				return
 			}
 			cfg.AuthManager.AdminCreateUserHandler(w, r)
 		}))
-		mux.HandleFunc("/api/admin/users/", cfg.AuthManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc(RouteAPIAdminUsersByID, cfg.AuthManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
 			if !checkAdminAccess(w, r, cfg.AdminPassword) {
 				return
 			}
@@ -143,18 +143,18 @@ func registerAuthAndAdminRoutes(mux *http.ServeMux, cfg RegisterConfig) {
 		mux.HandleFunc(path, guard(handler))
 	}
 
-	registerOptional("/api/admin/uploads", cfg.AdminUploadsHandler)
-	registerOptional("/api/admin/tracks", cfg.AdminTracksHandler)
-	registerOptional("/api/admin/backfill", cfg.AdminBackfillHandler)
-	registerOptional("/api/admin/backfill-countries", cfg.AdminBackfillCountriesHandler)
-	registerOptional("/api/admin/delete", cfg.AdminDeleteTrackHandler)
-	registerOptional("/api/admin/delete-multiple", cfg.AdminDeleteMultipleTracksHandler)
-	registerOptional("/api/admin/import-from-safecast", cfg.AdminImportFromSafecastHandler)
-	registerOptional("/api/admin/import-by-id", cfg.AdminImportByIDHandler)
-	registerOptional("/api/admin/tracks/update", cfg.AdminUpdateTrackHandler)
-	registerOptional("/api/admin/uploads/update", cfg.AdminUpdateUploadHandler)
-	registerOptional("/api/admin/tracks/import-safecast", cfg.AdminImportSafecastMetaHandler)
-	registerOptional("/api/admin/cache", cfg.AdminCacheHandler)
+	registerOptional(RouteAPIAdminUploads, cfg.AdminUploadsHandler)
+	registerOptional(RouteAPIAdminTracks, cfg.AdminTracksHandler)
+	registerOptional(RouteAPIAdminBackfill, cfg.AdminBackfillHandler)
+	registerOptional(RouteAPIAdminBackfillCountries, cfg.AdminBackfillCountriesHandler)
+	registerOptional(RouteAPIAdminDelete, cfg.AdminDeleteTrackHandler)
+	registerOptional(RouteAPIAdminDeleteMultiple, cfg.AdminDeleteMultipleTracksHandler)
+	registerOptional(RouteAPIAdminImportFromSafecast, cfg.AdminImportFromSafecastHandler)
+	registerOptional(RouteAPIAdminImportByID, cfg.AdminImportByIDHandler)
+	registerOptional(RouteAPIAdminTracksUpdate, cfg.AdminUpdateTrackHandler)
+	registerOptional(RouteAPIAdminUploadsUpdate, cfg.AdminUpdateUploadHandler)
+	registerOptional(RouteAPIAdminTracksImportSafecast, cfg.AdminImportSafecastMetaHandler)
+	registerOptional(RouteAPIAdminCache, cfg.AdminCacheHandler)
 
 	registerOptionalAdmin := func(path string, handler http.HandlerFunc) {
 		if handler == nil {
@@ -168,16 +168,16 @@ func registerAuthAndAdminRoutes(mux *http.ServeMux, cfg RegisterConfig) {
 		})
 	}
 
-	registerOptionalAdmin("/api/admin/mcp/data", cfg.AdminMCPDataHandler)
-	registerOptionalAdmin("/api/admin/mcp/export", cfg.AdminMCPExportHandler)
-	registerOptionalAdmin("/api/admin/mcp/delete", cfg.AdminMCPDeleteHandler)
-	registerOptionalAdmin("/api/admin/mcp/update", cfg.AdminMCPUpdateHandler)
-	registerOptionalAdmin("/api/admin/realtime/data", cfg.AdminRealtimeDataHandler)
-	registerOptionalAdmin("/api/admin/realtime/export", cfg.AdminRealtimeExportHandler)
-	registerOptionalAdmin("/api/admin/realtime/delete", cfg.AdminRealtimeDeleteHandler)
-	registerOptionalAdmin("/api/admin/translations/reload", cfg.AdminTranslationsReloadHandler)
-	registerOptionalAdmin("/api/admin/translations/", cfg.AdminTranslationByIDHandler)
-	registerOptionalAdmin("/api/admin/translations", cfg.AdminTranslationsHandler)
+	registerOptionalAdmin(RouteAPIAdminMCPData, cfg.AdminMCPDataHandler)
+	registerOptionalAdmin(RouteAPIAdminMCPExport, cfg.AdminMCPExportHandler)
+	registerOptionalAdmin(RouteAPIAdminMCPDelete, cfg.AdminMCPDeleteHandler)
+	registerOptionalAdmin(RouteAPIAdminMCPUpdate, cfg.AdminMCPUpdateHandler)
+	registerOptionalAdmin(RouteAPIAdminRealtimeData, cfg.AdminRealtimeDataHandler)
+	registerOptionalAdmin(RouteAPIAdminRealtimeExport, cfg.AdminRealtimeExportHandler)
+	registerOptionalAdmin(RouteAPIAdminRealtimeDelete, cfg.AdminRealtimeDeleteHandler)
+	registerOptionalAdmin(RouteAPIAdminTranslationsReload, cfg.AdminTranslationsReloadHandler)
+	registerOptionalAdmin(RouteAPIAdminTranslationsByID, cfg.AdminTranslationByIDHandler)
+	registerOptionalAdmin(RouteAPIAdminTranslations, cfg.AdminTranslationsHandler)
 
 	registerOptionalPublic := func(path string, handler http.HandlerFunc) {
 		if handler == nil {
@@ -185,11 +185,11 @@ func registerAuthAndAdminRoutes(mux *http.ServeMux, cfg RegisterConfig) {
 		}
 		mux.HandleFunc(path, handler)
 	}
-	registerOptionalPublic("/api/sensors", cfg.APISensorsHandler)
-	registerOptionalPublic("/api/sensors/export", cfg.APISensorsExportHandler)
-	registerOptionalPublic("/api/sensor/", cfg.APISensorByIDHandler)
-	registerOptionalPublic("/api/feedback", cfg.APIFeedbackHandler)
-	registerOptionalPublic("GET /api/track/{id}/insights", cfg.APITrackInsightsHandler)
+	registerOptionalPublic(RouteAPISensors, cfg.APISensorsHandler)
+	registerOptionalPublic(RouteAPISensorsExport, cfg.APISensorsExportHandler)
+	registerOptionalPublic(RouteAPISensorByID, cfg.APISensorByIDHandler)
+	registerOptionalPublic(RouteAPIFeedback, cfg.APIFeedbackHandler)
+	registerOptionalPublic(RoutePatternAPITrackInsights, cfg.APITrackInsightsHandler)
 }
 
 // checkAdminAccess returns true if the request is from an admin user or carries the admin password.

@@ -66,26 +66,26 @@ func TestRegisterRouteInventory(t *testing.T) {
 		"/api/markers/spectra",
 		"/api/update-coordinates",
 		"/api/tracks/bounds",
-		"/api/auth/login",
-		"/api/user/profile",
-		"/api/user/uploads",
-		"/api/admin/users",
-		"/api/admin/uploads",
-		"/api/admin/tracks",
-		"/api/admin/mcp/data",
-		"/api/admin/mcp/export",
-		"/api/admin/mcp/delete",
-		"/api/admin/mcp/update",
-		"/api/admin/realtime/data",
-		"/api/admin/realtime/export",
-		"/api/admin/realtime/delete",
-		"/api/admin/translations/reload",
-		"/api/admin/translations/",
-		"/api/admin/translations",
-		"/api/sensors",
-		"/api/sensors/export",
-		"/api/sensor/",
-		"/api/feedback",
+		RouteAPIAuthLogin,
+		RouteAPIUserProfile,
+		RouteAPIUserUploads,
+		RouteAPIAdminUsers,
+		RouteAPIAdminUploads,
+		RouteAPIAdminTracks,
+		RouteAPIAdminMCPData,
+		RouteAPIAdminMCPExport,
+		RouteAPIAdminMCPDelete,
+		RouteAPIAdminMCPUpdate,
+		RouteAPIAdminRealtimeData,
+		RouteAPIAdminRealtimeExport,
+		RouteAPIAdminRealtimeDelete,
+		RouteAPIAdminTranslationsReload,
+		RouteAPIAdminTranslationsByID,
+		RouteAPIAdminTranslations,
+		RouteAPISensors,
+		RouteAPISensorsExport,
+		RouteAPISensorByID,
+		RouteAPIFeedback,
 		"/api/track/abc/insights",
 	}
 
@@ -110,7 +110,7 @@ func TestRegisterTrackInsightsRoutePrecedence(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/api/track/abc/insights", nil)
 	_, pattern := mux.Handler(req)
-	if pattern != "GET /api/track/{id}/insights" {
+	if pattern != RoutePatternAPITrackInsights {
 		t.Fatalf("expected insights route precedence, got %q", pattern)
 	}
 }
@@ -137,7 +137,7 @@ func TestRegisterAuthAdminGuards(t *testing.T) {
 	})
 
 	t.Run("admin users requires auth or password", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/api/admin/users", nil)
+		req := httptest.NewRequest(http.MethodGet, RouteAPIAdminUsers, nil)
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 		if rec.Code != http.StatusUnauthorized {
@@ -146,7 +146,7 @@ func TestRegisterAuthAdminGuards(t *testing.T) {
 	})
 
 	t.Run("user uploads requires session auth", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/api/user/uploads", nil)
+		req := httptest.NewRequest(http.MethodGet, RouteAPIUserUploads, nil)
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 		if rec.Code != http.StatusUnauthorized {
