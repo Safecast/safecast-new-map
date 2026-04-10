@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"safecast-new-map/pkg/httpresp"
 )
 
 type contextKey string
@@ -100,12 +102,12 @@ func (m *Manager) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user, err := m.getUserFromSession(r)
 		if err != nil {
-			http.Error(w, "Authentication error", http.StatusInternalServerError)
+			httpresp.WriteInternalError(w, "Authentication error")
 			return
 		}
 
 		if user == nil {
-			http.Error(w, "Unauthorized - Please login", http.StatusUnauthorized)
+			httpresp.WriteUnauthorized(w, "Unauthorized - Please login")
 			return
 		}
 
@@ -141,17 +143,17 @@ func (m *Manager) RequireAdmin(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user, err := m.getUserFromSession(r)
 		if err != nil {
-			http.Error(w, "Authentication error", http.StatusInternalServerError)
+			httpresp.WriteInternalError(w, "Authentication error")
 			return
 		}
 
 		if user == nil {
-			http.Error(w, "Unauthorized - Please login", http.StatusUnauthorized)
+			httpresp.WriteUnauthorized(w, "Unauthorized - Please login")
 			return
 		}
 
 		if !user.IsAdmin {
-			http.Error(w, "Forbidden - Admin access required", http.StatusForbidden)
+			httpresp.WriteForbidden(w, "Forbidden - Admin access required")
 			return
 		}
 
@@ -253,7 +255,7 @@ func (m *Manager) RequireAuthOrAPIKey(next http.HandlerFunc) http.HandlerFunc {
 			}
 		}
 
-		http.Error(w, "Unauthorized - Please login or provide API key", http.StatusUnauthorized)
+		httpresp.WriteUnauthorized(w, "Unauthorized - Please login or provide API key")
 	}
 }
 

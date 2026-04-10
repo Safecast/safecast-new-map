@@ -30,13 +30,13 @@ sed -i 's/stopped at page 10/stopped at page 200/' pkg/safecast-fetcher/fetcher.
 
 # Rebuild
 echo "Rebuilding with increased page limit..."
-go build -o safecast-new-map main.go
+go build -o safecast-new-map ./cmd/unified-server
 
 # ... (lines 34-60) ...
 
 # Rebuild with original settings
 echo "Rebuilding with original 10-page limit..."
-go build -o safecast-new-map main.go
+go build -o safecast-new-map ./cmd/unified-server
 
 echo ""
 echo "========================================="

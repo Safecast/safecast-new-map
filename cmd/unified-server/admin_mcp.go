@@ -415,7 +415,7 @@ func adminMCPDeleteHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if len(nums) == 0 {
-			http.Error(w, "No valid integer IDs provided", http.StatusBadRequest)
+			writeError(w, http.StatusBadRequest, "No valid integer IDs provided")
 			return
 		}
 		query = fmt.Sprintf("DELETE FROM %s WHERE %s IN (%s)",
@@ -469,28 +469,28 @@ var mcpEditableColumns = map[string][]string{
 // Body: JSON object with field names → new string values.
 func adminMCPUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPut && r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 	if !duckDBAvailable() {
-		http.Error(w, "Analytics not available", http.StatusServiceUnavailable)
+		writeError(w, http.StatusServiceUnavailable, "Analytics not available")
 		return
 	}
 
 	tableName := r.URL.Query().Get("table")
 	if _, ok := mcpTableColumns[tableName]; !ok {
-		http.Error(w, "Invalid table name", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "Invalid table name")
 		return
 	}
 	keyVal := r.URL.Query().Get("id")
 	if keyVal == "" {
-		http.Error(w, "Missing id parameter", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "Missing id parameter")
 		return
 	}
 
 	var payload map[string]string
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
 
@@ -504,7 +504,7 @@ func adminMCPUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if len(setClauses) == 0 {
-		http.Error(w, "No editable fields provided", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "No editable fields provided")
 		return
 	}
 
@@ -515,12 +515,11 @@ func adminMCPUpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	if _, err := duckDB.Exec(query, args...); err != nil {
 		log.Printf("admin mcp update error: %v", err)
-		http.Error(w, "Update failed", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "Update failed")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"}) //nolint:errcheck
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func escapeLike(s string) string {

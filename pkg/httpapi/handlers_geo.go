@@ -72,7 +72,7 @@ func geoIPLookup(ctx context.Context, ip string) (float64, float64, error) {
 func (s *Server) geoIP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		w.Header().Set("Allow", "GET, HEAD")
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
 	if !s.Config.AutoLocateDefault {

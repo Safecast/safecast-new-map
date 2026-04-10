@@ -105,10 +105,10 @@ func (h *Handler) acquirePermit(w http.ResponseWriter, r *http.Request, kind Req
 	permit, err := h.Limiter.Acquire(r.Context(), ip, kind)
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-			http.Error(w, "request cancelled", http.StatusRequestTimeout)
+			writeJSONError(w, http.StatusRequestTimeout, "request cancelled")
 			return nil, false
 		}
-		http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
+		writeJSONError(w, http.StatusTooManyRequests, "rate limit exceeded")
 		if h.Logf != nil {
 			h.Logf("rate limiter rejected %s %s: %v", ip, r.URL.Path, err)
 		}
@@ -144,13 +144,11 @@ func (h *Handler) acquirePermit(w http.ResponseWriter, r *http.Request, kind Req
 // @Failure     503 {string} string "Database unavailable"
 // @Router      /api/shorten [post]
 func (h *Handler) handleShorten(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if !requireMethod(w, r, http.MethodPost) {
 		return
 	}
 	if h.DB == nil || h.DB.DB == nil {
-		http.Error(w, "short links unavailable", http.StatusServiceUnavailable)
+		writeJSONError(w, http.StatusServiceUnavailable, "short links unavailable")
 		return
 	}
 
@@ -165,7 +163,7 @@ func (h *Handler) handleShorten(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	body, err := io.ReadAll(io.LimitReader(r.Body, 4096))
 	if err != nil {
-		http.Error(w, "read body", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "read body")
 		return
 	}
 
@@ -175,26 +173,26 @@ func (h *Handler) handleShorten(w http.ResponseWriter, r *http.Request) {
 		Commit bool   `json:"commit"`
 	}
 	if err := json.Unmarshal(body, &payload); err != nil {
-		http.Error(w, "invalid payload", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "invalid payload")
 		return
 	}
 
 	raw := strings.TrimSpace(payload.URL)
 	if raw == "" {
-		http.Error(w, "missing url", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "missing url")
 		return
 	}
 
 	scheme := requestScheme(r)
 	host := requestHost(r)
 	if host == "" {
-		http.Error(w, "missing host", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "missing host")
 		return
 	}
 
 	parsed, err := url.Parse(raw)
 	if err != nil {
-		http.Error(w, "invalid url", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "invalid url")
 		return
 	}
 	parsed.Fragment = ""
@@ -202,25 +200,25 @@ func (h *Handler) handleShorten(w http.ResponseWriter, r *http.Request) {
 	var target string
 	if parsed.Scheme == "" && parsed.Host == "" {
 		if !strings.HasPrefix(parsed.Path, "/") {
-			http.Error(w, "relative path must start with /", http.StatusBadRequest)
+			writeJSONError(w, http.StatusBadRequest, "relative path must start with /")
 			return
 		}
 		base := &url.URL{Scheme: scheme, Host: host}
 		target = base.ResolveReference(parsed).String()
 	} else {
 		if parsed.Scheme != "http" && parsed.Scheme != "https" {
-			http.Error(w, "unsupported scheme", http.StatusBadRequest)
+			writeJSONError(w, http.StatusBadRequest, "unsupported scheme")
 			return
 		}
 		if !strings.EqualFold(strings.TrimSpace(parsed.Host), host) {
-			http.Error(w, "foreign host rejected", http.StatusBadRequest)
+			writeJSONError(w, http.StatusBadRequest, "foreign host rejected")
 			return
 		}
 		target = parsed.String()
 	}
 
 	if len(target) > 4096 {
-		http.Error(w, "url too long", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "url too long")
 		return
 	}
 
@@ -242,7 +240,7 @@ func (h *Handler) handleShorten(w http.ResponseWriter, r *http.Request) {
 		code, stored, err = h.DB.PreviewShortLink(ctx, target, 0)
 	}
 	if err != nil {
-		http.Error(w, "short link unavailable", http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, "short link unavailable")
 		if h.Logf != nil {
 			h.Logf("shorten failed for %q: %v", target, err)
 		}
@@ -407,13 +405,11 @@ func (h *Handler) handleOverview(w http.ResponseWriter, r *http.Request) {
 // @Failure     503 {string} string "Database unavailable"
 // @Router      /api/latest [get]
 func (h *Handler) handleLatestNearby(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		w.Header().Set("Allow", http.MethodGet)
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if !requireMethod(w, r, http.MethodGet) {
 		return
 	}
 	if h.DB == nil || h.DB.DB == nil {
-		http.Error(w, "database unavailable", http.StatusServiceUnavailable)
+		writeJSONError(w, http.StatusServiceUnavailable, "database unavailable")
 		return
 	}
 
@@ -429,33 +425,33 @@ func (h *Handler) handleLatestNearby(w http.ResponseWriter, r *http.Request) {
 	latRaw := strings.TrimSpace(query.Get("lat"))
 	lonRaw := strings.TrimSpace(query.Get("lon"))
 	if latRaw == "" || lonRaw == "" {
-		http.Error(w, "lat and lon are required", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "lat and lon are required")
 		return
 	}
 
 	lat, err := strconv.ParseFloat(latRaw, 64)
 	if err != nil {
-		http.Error(w, "invalid lat", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "invalid lat")
 		return
 	}
 	if lat < -90 || lat > 90 {
-		http.Error(w, "lat out of range", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "lat out of range")
 		return
 	}
 
 	lon, err := strconv.ParseFloat(lonRaw, 64)
 	if err != nil {
-		http.Error(w, "invalid lon", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "invalid lon")
 		return
 	}
 	if lon < -180 || lon > 180 {
-		http.Error(w, "lon out of range", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "lon out of range")
 		return
 	}
 
 	radiusMeters := parseFloatDefault(strings.TrimSpace(query.Get("radius_m")), 1500)
 	if radiusMeters <= 0 {
-		http.Error(w, "radius_m must be positive", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "radius_m must be positive")
 		return
 	}
 	radiusMeters = clampFloat(radiusMeters, 25, 50000)
@@ -479,10 +475,10 @@ func (h *Handler) handleLatestNearby(w http.ResponseWriter, r *http.Request) {
 
 	if err := <-errCh; err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-			http.Error(w, "request cancelled", http.StatusRequestTimeout)
+			writeJSONError(w, http.StatusRequestTimeout, "request cancelled")
 			return
 		}
-		http.Error(w, "latest lookup failed", http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, "latest lookup failed")
 		if h.Logf != nil {
 			h.Logf("latest nearby error: %v", err)
 		}
@@ -517,7 +513,7 @@ func (h *Handler) handleLatestNearby(w http.ResponseWriter, r *http.Request) {
 
 	data, err := encodeJSON(resp)
 	if err != nil {
-		http.Error(w, "encode json", http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, "encode json")
 		if h.Logf != nil {
 			h.Logf("latest nearby encode: %v", err)
 		}
@@ -649,13 +645,13 @@ func (h *Handler) handleTrackDataByIndex(w http.ResponseWriter, r *http.Request)
 
 	index, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil || index <= 0 {
-		http.Error(w, "invalid track index", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "invalid track index")
 		return
 	}
 
 	trackID, err := h.DB.GetTrackIDByIndex(ctx, index, h.DBType)
 	if err != nil {
-		http.Error(w, "resolve track index", http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, "resolve track index")
 		if h.Logf != nil {
 			h.Logf("resolve track index %d: %v", index, err)
 		}
@@ -697,7 +693,7 @@ func (h *Handler) handleTracksByYear(w http.ResponseWriter, r *http.Request) {
 
 	year, err := strconv.Atoi(trimmed)
 	if err != nil || year <= 0 {
-		http.Error(w, "invalid year", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "invalid year")
 		return
 	}
 
@@ -745,18 +741,18 @@ func (h *Handler) handleTracksByMonth(w http.ResponseWriter, r *http.Request) {
 
 	parts := strings.Split(trimmed, "/")
 	if len(parts) < 2 {
-		http.Error(w, "invalid month path", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "invalid month path")
 		return
 	}
 
 	year, err := strconv.Atoi(parts[0])
 	if err != nil || year <= 0 {
-		http.Error(w, "invalid year", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "invalid year")
 		return
 	}
 	month, err := strconv.Atoi(parts[1])
 	if err != nil || month < 1 || month > 12 {
-		http.Error(w, "invalid month", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "invalid month")
 		return
 	}
 
@@ -917,7 +913,7 @@ const (
 // @Router      /api/json/weekly.tgz [get]
 func (h *Handler) handleArchiveDownload(w http.ResponseWriter, r *http.Request) {
 	if h.Archive == nil {
-		http.Error(w, "archive disabled", http.StatusServiceUnavailable)
+		writeJSONError(w, http.StatusServiceUnavailable, "archive disabled")
 		return
 	}
 
@@ -935,7 +931,7 @@ func (h *Handler) handleArchiveDownload(w http.ResponseWriter, r *http.Request) 
 
 	info, err := h.Archive.Fetch(fetchCtx)
 	if err != nil {
-		http.Error(w, "archive unavailable", http.StatusServiceUnavailable)
+		writeJSONError(w, http.StatusServiceUnavailable, "archive unavailable")
 		if h.Logf != nil {
 			h.Logf("archive fetch error: %v", err)
 		}
@@ -944,14 +940,14 @@ func (h *Handler) handleArchiveDownload(w http.ResponseWriter, r *http.Request) 
 
 	file, err := os.Open(info.Path)
 	if err != nil {
-		http.Error(w, "archive open error", http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, "archive open error")
 		return
 	}
 	defer file.Close()
 
 	stat, err := file.Stat()
 	if err != nil {
-		http.Error(w, "archive stat error", http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, "archive stat error")
 		return
 	}
 
@@ -1431,7 +1427,7 @@ func (h *Handler) latestTrackInfo(ctx context.Context) (int64, string, error) {
 func (h *Handler) respondJSON(w http.ResponseWriter, payload any) {
 	data, err := encodeJSON(payload)
 	if err != nil {
-		http.Error(w, "encode json", http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, "encode json")
 		if h.Logf != nil {
 			h.Logf("encode json: %v", err)
 		}
@@ -1532,13 +1528,11 @@ func parseFloatDefault(v string, def float64) float64 {
 // @Failure     503 {string} string "Database unavailable"
 // @Router      /api/countries [get]
 func (h *Handler) handleCountries(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		w.Header().Set("Allow", http.MethodGet)
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if !requireMethod(w, r, http.MethodGet) {
 		return
 	}
 	if h.DB == nil || h.DB.DB == nil {
-		http.Error(w, "database unavailable", http.StatusServiceUnavailable)
+		writeJSONError(w, http.StatusServiceUnavailable, "database unavailable")
 		return
 	}
 

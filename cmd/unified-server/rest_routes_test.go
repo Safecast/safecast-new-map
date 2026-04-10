@@ -18,6 +18,7 @@ func TestRegisterAPIRoutesInventory(t *testing.T) {
 		"/api/track/",
 		"/api/device/",
 		"/api/sensors",
+		"/api/sensors/export",
 		"/api/sensor/",
 		"/api/spectra",
 		"/api/spectrum/",
@@ -27,6 +28,7 @@ func TestRegisterAPIRoutesInventory(t *testing.T) {
 		"/api/gpt/radiation",
 		"/api/gpt/area",
 		"/api/gpt/stats",
+		"/api/feedback",
 	}
 
 	for _, route := range required {
@@ -37,5 +39,54 @@ func TestRegisterAPIRoutesInventory(t *testing.T) {
 				t.Fatalf("route %s was not registered", route)
 			}
 		})
+	}
+}
+
+func TestRegisterAPIRoutesSensorsCoexistence(t *testing.T) {
+	mux := http.NewServeMux()
+	h := &RESTHandler{}
+	h.registerAPIRoutes(mux)
+
+	reqList := httptest.NewRequest(http.MethodGet, "/api/sensors", nil)
+	_, patternList := mux.Handler(reqList)
+	if patternList != "/api/sensors" {
+		t.Fatalf("expected /api/sensors pattern, got %q", patternList)
+	}
+
+	reqExport := httptest.NewRequest(http.MethodGet, "/api/sensors/export", nil)
+	_, patternExport := mux.Handler(reqExport)
+	if patternExport != "/api/sensors/export" {
+		t.Fatalf("expected /api/sensors/export pattern, got %q", patternExport)
+	}
+}
+
+func TestRegisterCompanionRoutesInventory(t *testing.T) {
+	mainMux := http.NewServeMux()
+	mcpMux := http.NewServeMux()
+
+	registerCompanionRoutes(companionRoutesConfig{
+		MainMux:     mainMux,
+		MCPMux:      mcpMux,
+		ChatHandler: func(http.ResponseWriter, *http.Request) {},
+	})
+
+	mainRequired := []string{
+		"/chat",
+	}
+	for _, route := range mainRequired {
+		req := httptest.NewRequest(http.MethodGet, route, nil)
+		_, pattern := mainMux.Handler(req)
+		if pattern == "" {
+			t.Fatalf("main mux route %s was not registered", route)
+		}
+	}
+
+	mcpRequired := []string{"/chat"}
+	for _, route := range mcpRequired {
+		req := httptest.NewRequest(http.MethodGet, route, nil)
+		_, pattern := mcpMux.Handler(req)
+		if pattern == "" {
+			t.Fatalf("mcp mux route %s was not registered", route)
+		}
 	}
 }
