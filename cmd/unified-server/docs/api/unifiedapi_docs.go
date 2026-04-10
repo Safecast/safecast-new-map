@@ -548,6 +548,168 @@ const docTemplateunifiedapi = `{
                 }
             }
         },
+        "/api/admin/mcp/update": {
+            "put": {
+                "description": "Updates one or more editable fields of a single MCP analytics row. Only whitelisted columns (e.g. question, answer, source, model, country) may be modified; timestamps and computed columns are ignored.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Admin MCP analytics update",
+                "parameters": [
+                    {
+                        "enum": [
+                            "chat_questions",
+                            "mcp_query_log",
+                            "mcp_ai_query_log",
+                            "qa_embeddings",
+                            "location_knowledge"
+                        ],
+                        "type": "string",
+                        "description": "Analytics table name",
+                        "name": "table",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Row key value (integer for id-keyed tables, timestamp string for log tables)",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "JSON object mapping editable field names to their new string values",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "status: ok",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "405": {
+                        "description": "Method not allowed",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Update failed",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "503": {
+                        "description": "Analytics unavailable",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Updates one or more editable fields of a single MCP analytics row. Only whitelisted columns (e.g. question, answer, source, model, country) may be modified; timestamps and computed columns are ignored.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Admin MCP analytics update",
+                "parameters": [
+                    {
+                        "enum": [
+                            "chat_questions",
+                            "mcp_query_log",
+                            "mcp_ai_query_log",
+                            "qa_embeddings",
+                            "location_knowledge"
+                        ],
+                        "type": "string",
+                        "description": "Analytics table name",
+                        "name": "table",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Row key value (integer for id-keyed tables, timestamp string for log tables)",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "JSON object mapping editable field names to their new string values",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "status: ok",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "405": {
+                        "description": "Method not allowed",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Update failed",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "503": {
+                        "description": "Analytics unavailable",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/api/admin/realtime/data": {
             "get": {
                 "description": "Returns paginated latest realtime device readings.",
@@ -1607,7 +1769,8 @@ const docTemplateunifiedapi = `{
                     "405": {
                         "description": "Method not allowed",
                         "schema": {
-                            "type": "string"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -2582,7 +2745,8 @@ const docTemplateunifiedapi = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "string"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -2845,6 +3009,61 @@ const docTemplateunifiedapi = `{
                             "additionalProperties": {
                                 "type": "string"
                             }
+                        }
+                    }
+                }
+            }
+        },
+        "/feedback": {
+            "post": {
+                "description": "Records a thumbs-up (+1) or thumbs-down (-1) vote for a specific AI chat response. Used to reinforce the semantic Q\u0026A cache: highly-rated answers are surfaced to future similar queries.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "analytics"
+                ],
+                "summary": "Submit chat response feedback",
+                "parameters": [
+                    {
+                        "description": "JSON payload: {chat_id: integer, score: 1|-1}",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "ok: true",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "boolean"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request — chat_id required",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "405": {
+                        "description": "Method not allowed",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to record feedback",
+                        "schema": {
+                            "type": "string"
                         }
                     }
                 }
@@ -3989,6 +4208,53 @@ const docTemplateunifiedapi = `{
                 }
             }
         },
+        "/track/{id}/insights": {
+            "get": {
+                "description": "Returns positively-rated Q\u0026A pairs and curated location notes that are semantically or spatially relevant to the given bGeigie track. Requires DuckDB analytics and OpenAI embeddings. Returns empty arrays when analytics are unavailable.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "historical"
+                ],
+                "summary": "Get cached Q\u0026A insights for a track",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Track identifier (e.g. 8eh5m1)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Insights and location notes for the track",
+                        "schema": {
+                            "$ref": "#/definitions/main.trackInsightsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Track id required",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Track not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "503": {
+                        "description": "Database not available",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/tracks": {
             "get": {
                 "description": "Lists bGeigie Import tracks (bulk radiation measurement drives). Each track represents measurements from a single bGeigie session. Can filter by year, month, and detector/device name.",
@@ -4253,6 +4519,66 @@ const docTemplateunifiedapi = `{
                 },
                 "username": {
                     "type": "string"
+                }
+            }
+        },
+        "main.trackInsight": {
+            "type": "object",
+            "properties": {
+                "answer": {
+                    "type": "string"
+                },
+                "chat_id": {
+                    "type": "integer"
+                },
+                "feedback_score": {
+                    "type": "integer"
+                },
+                "question": {
+                    "type": "string"
+                },
+                "similarity_score": {
+                    "type": "number"
+                }
+            }
+        },
+        "main.trackInsightsResponse": {
+            "type": "object",
+            "properties": {
+                "insights": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/main.trackInsight"
+                    }
+                },
+                "location_notes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/main.trackLocationNote"
+                    }
+                },
+                "track_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.trackLocationNote": {
+            "type": "object",
+            "properties": {
+                "feedback_score": {
+                    "type": "integer"
+                },
+                "lat": {
+                    "type": "number"
+                },
+                "lon": {
+                    "type": "number"
+                },
+                "note": {
+                    "type": "string"
+                },
+                "source_chat_id": {
+                    "type": "integer"
                 }
             }
         }

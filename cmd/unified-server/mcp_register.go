@@ -500,6 +500,18 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 
 // handleFeedback accepts a thumbs-up (+1) or thumbs-down (-1) for a chat response.
 // The frontend sends: POST /api/feedback {"chat_id": <int>, "score": 1|-1}
+//
+// @Summary     Submit chat response feedback
+// @Description Records a thumbs-up (+1) or thumbs-down (-1) vote for a specific AI chat response. Used to reinforce the semantic Q&A cache: highly-rated answers are surfaced to future similar queries.
+// @Tags        analytics
+// @Accept      json
+// @Produce     json
+// @Param       body body object true "JSON payload: {chat_id: integer, score: 1|-1}"
+// @Success     200 {object} map[string]bool "ok: true"
+// @Failure     400 {string} string "Invalid request — chat_id required"
+// @Failure     405 {string} string "Method not allowed"
+// @Failure     500 {string} string "Failed to record feedback"
+// @Router      /feedback [post]
 func handleFeedback() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
