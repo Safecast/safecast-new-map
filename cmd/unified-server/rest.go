@@ -34,6 +34,7 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger"
 	"github.com/swaggo/swag"
 	_ "safecast-new-map/cmd/unified-server/docs"
+	"safecast-new-map/pkg/httpapi"
 	"safecast-new-map/pkg/httpresp"
 	"safecast-new-map/pkg/mcpserver"
 )
@@ -65,11 +66,11 @@ func (h *RESTHandler) registerAPIRoutes(mux *http.ServeMux) {
 		case mcpserver.RouteDevice:
 			mux.HandleFunc("/api/device/", h.handleDevice) // /api/device/{id}/history
 		case mcpserver.RouteSensors:
-			mux.HandleFunc("/api/sensors", h.handleSensors)
+			mux.HandleFunc(httpapi.RouteAPISensors, h.handleSensors)
 		case mcpserver.RouteSensorsExport:
-			mux.HandleFunc("/api/sensors/export", h.handleSensorsExport)
+			mux.HandleFunc(httpapi.RouteAPISensorsExport, h.handleSensorsExport)
 		case mcpserver.RouteSensorByID:
-			mux.HandleFunc("/api/sensor/", h.handleSensor) // /api/sensor/{id}/current or /history
+			mux.HandleFunc(httpapi.RouteAPISensorByID, h.handleSensor) // /api/sensor/{id}/current or /history
 		case mcpserver.RouteSpectra:
 			mux.HandleFunc("/api/spectra", h.handleSpectra)
 		case mcpserver.RouteSpectrumByID:
@@ -81,13 +82,13 @@ func (h *RESTHandler) registerAPIRoutes(mux *http.ServeMux) {
 		case mcpserver.RouteInfo:
 			mux.HandleFunc("/api/info/", h.handleInfo) // /api/info/{topic}
 		case mcpserver.RouteGPTRadiation:
-			mux.HandleFunc("/api/gpt/radiation", h.handleGPTRadiation)
+			h.registerGPTByRoute(route, mux)
 		case mcpserver.RouteGPTArea:
-			mux.HandleFunc("/api/gpt/area", h.handleGPTArea)
+			h.registerGPTByRoute(route, mux)
 		case mcpserver.RouteGPTStats:
-			mux.HandleFunc("/api/gpt/stats", h.handleGPTStats)
+			h.registerGPTByRoute(route, mux)
 		case mcpserver.RouteFeedback:
-			mux.HandleFunc("/api/feedback", handleFeedback())
+			mux.HandleFunc(httpapi.RouteAPIFeedback, handleFeedback())
 		}
 	})
 }
