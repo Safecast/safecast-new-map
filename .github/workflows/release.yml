@@ -100,48 +100,53 @@ jobs:
           name: bin-${{ matrix.goos }}-${{ matrix.goarch }}
           path: dist/
 
-# ---------- DUCKDB: Unified server with DuckDB analytics (Linux/amd64 + macOS) ----------
-  build_duckdb:
+# ---------- DUCKDB linux/amd64: dedicated job for deploy artifact ----------
+  build_linux_duckdb:
     if: github.server_url == 'https://github.com'
-    runs-on: ${{ matrix.runner }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # Linux amd64 in container
-          - { target: linux_amd64_duckdb, goos: linux, goarch: amd64, goversion: "1.24", runner: "ubuntu-24.04", in_container: true }
-          # macOS amd64/arm64: нативно
-          - { target: darwin_amd64_duckdb, goos: darwin, goarch: amd64, goversion: "1.24", runner: "macos-13", in_container: false }
-          - { target: darwin_arm64_duckdb, goos: darwin, goarch: arm64, goversion: "1.24", runner: "macos-14", in_container: false }
-
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # --- Linux в контейнере ---
-      - name: Build (Linux duckdb container)
-        if: matrix.in_container == true
+      - name: Build (Linux amd64 duckdb)
         uses: addnab/docker-run-action@v3
         with:
-          image: golang:${{ matrix.goversion }}
+          image: golang:1.24
           options: -v ${{ github.workspace }}:/build -w /build
           run: |
             set -euo pipefail
             export CGO_ENABLED=1
-            export GOOS=${{ matrix.goos }}
-            export GOARCH=${{ matrix.goarch }}
             VERSION=${{ github.run_number }}
             mkdir -p dist
-            BIN="safecast-new-map_${GOOS}_${GOARCH}_duckdb"
             apt-get update && apt-get install -y gcc libc6-dev
             go get github.com/marcboeker/go-duckdb/v2@latest
             go mod tidy
             GOFLAGS="-trimpath -buildvcs=false" \
             go build -tags "netgo,osusergo,duckdb" \
                      -ldflags "-s -w -X main.CompileVersion=$VERSION" \
-                     -o "dist/${BIN}" ./cmd/unified-server
+                     -o "dist/safecast-new-map_linux_amd64_duckdb" ./cmd/unified-server
 
-      # --- macOS нативно ---
+      - name: Upload linux/amd64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bin-linux_amd64_duckdb
+          path: dist/
+
+# ---------- DUCKDB: macOS release artifacts (failures do not block deploy) ----------
+  build_duckdb:
+    if: github.server_url == 'https://github.com' && (contains(toJson(github.event.head_commit.message), 'stable release') || github.event_name == 'workflow_dispatch')
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macOS arm64 (Apple Silicon)
+          - { target: darwin_arm64_duckdb, goos: darwin, goarch: arm64, goversion: "1.24", runner: "macos-14", in_container: false }
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Set up Go (macOS)
         if: matrix.in_container == false
         uses: actions/setup-go@v5
@@ -186,7 +191,7 @@ jobs:
 # See memory: project_codeberg_migration.md for self-hosted runner setup plan.
   deploy:
     if: github.server_url == 'https://github.com' && github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [build_duckdb]
+    needs: [build_linux_duckdb]
     runs-on: ubuntu-latest
     steps:
       - name: Download linux/amd64 DuckDB artifact
@@ -220,7 +225,7 @@ jobs:
 
   release:
     if: github.server_url == 'https://github.com'
-    needs: [build_portable, build_duckdb]
+    needs: [build_portable, build_linux_duckdb, build_duckdb]
     runs-on: ubuntu-24.04
     steps:
       - name: Download all artifacts
