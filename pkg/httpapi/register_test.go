@@ -51,6 +51,11 @@ func TestRegisterRouteInventory(t *testing.T) {
 		AdminTranslationsReloadHandler: func(http.ResponseWriter, *http.Request) {},
 		AdminTranslationByIDHandler:    func(http.ResponseWriter, *http.Request) {},
 		AdminTranslationsHandler:       func(http.ResponseWriter, *http.Request) {},
+		APISensorsHandler:              func(http.ResponseWriter, *http.Request) {},
+		APISensorsExportHandler:        func(http.ResponseWriter, *http.Request) {},
+		APISensorByIDHandler:           func(http.ResponseWriter, *http.Request) {},
+		APIFeedbackHandler:             func(http.ResponseWriter, *http.Request) {},
+		APITrackInsightsHandler:        func(http.ResponseWriter, *http.Request) {},
 	}
 	Register(mux, cfg)
 
@@ -77,6 +82,11 @@ func TestRegisterRouteInventory(t *testing.T) {
 		"/api/admin/translations/reload",
 		"/api/admin/translations/",
 		"/api/admin/translations",
+		"/api/sensors",
+		"/api/sensors/export",
+		"/api/sensor/",
+		"/api/feedback",
+		"/api/track/abc/insights",
 	}
 
 	for _, route := range requiredRoutes {
@@ -87,6 +97,21 @@ func TestRegisterRouteInventory(t *testing.T) {
 				t.Fatalf("route %s was not registered", route)
 			}
 		})
+	}
+}
+
+func TestRegisterTrackInsightsRoutePrecedence(t *testing.T) {
+	mux := http.NewServeMux()
+	cfg := RegisterConfig{
+		APIHandler:              NewHandler(nil, "sqlite", nil, nil, nil, ""),
+		APITrackInsightsHandler: func(http.ResponseWriter, *http.Request) {},
+	}
+	Register(mux, cfg)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/track/abc/insights", nil)
+	_, pattern := mux.Handler(req)
+	if pattern != "GET /api/track/{id}/insights" {
+		t.Fatalf("expected insights route precedence, got %q", pattern)
 	}
 }
 
