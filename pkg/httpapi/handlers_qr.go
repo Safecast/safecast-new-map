@@ -47,6 +47,6 @@ func (s *Server) qrPng(w http.ResponseWriter, r *http.Request) {
 		LogoPadding: 16,
 	}
 	if err := qrlogoext.EncodePNG(w, []byte(u), logoBytes, opts); err != nil {
-		http.Error(w, "QR encode: "+err.Error(), http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, "QR encode: "+err.Error())
 	}
 }

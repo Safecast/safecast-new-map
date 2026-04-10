@@ -101,14 +101,40 @@ func (h *RESTHandler) Register(mux *http.ServeMux) {
 
 // writeJSON writes v as a JSON response with the given HTTP status code.
 func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	httpresp.WriteJSON(w, status, v)
 }
 
-// writeError writes a JSON error response.
+// writeError writes a JSON error response with an automatically-derived error code.
 func writeError(w http.ResponseWriter, status int, msg string) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	httpresp.WriteError(w, status, "", msg)
+	httpresp.WriteError(w, status, codeFromStatus(status), msg)
+}
+
+// codeFromStatus maps common HTTP status codes to the canonical httpresp error code strings.
+func codeFromStatus(status int) string {
+	switch status {
+	case http.StatusBadRequest:
+		return httpresp.CodeBadRequest
+	case http.StatusMethodNotAllowed:
+		return httpresp.CodeMethodNotAllowed
+	case http.StatusUnauthorized:
+		return httpresp.CodeUnauthorized
+	case http.StatusForbidden:
+		return httpresp.CodeForbidden
+	case http.StatusNotFound:
+		return httpresp.CodeNotFound
+	case http.StatusConflict:
+		return httpresp.CodeConflict
+	case http.StatusTooManyRequests:
+		return httpresp.CodeRateLimited
+	case http.StatusServiceUnavailable:
+		return httpresp.CodeUnavailable
+	case http.StatusInternalServerError:
+		return httpresp.CodeInternal
+	case http.StatusRequestTimeout:
+		return httpresp.CodeTimeout
+	default:
+		return "error"
+	}
 }
 
 // jsonEncode writes v as JSON to w.
@@ -143,7 +169,6 @@ func serveMCPResult(w http.ResponseWriter, result *mcp.CallToolResult, err error
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(http.StatusOK)
 	_, _ = io.WriteString(w, text)
 }

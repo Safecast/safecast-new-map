@@ -65,7 +65,7 @@ func (h *RESTHandler) registerGPTByRoute(route mcpserver.RouteKey, mux *http.Ser
 // @Router      /gpt/radiation [get]
 func (h *RESTHandler) handleGPTRadiation(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "GET only", http.StatusMethodNotAllowed)
+		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 	q := r.URL.Query()
@@ -112,7 +112,7 @@ func (h *RESTHandler) handleGPTRadiation(w http.ResponseWriter, r *http.Request)
 // @Router      /gpt/area [get]
 func (h *RESTHandler) handleGPTArea(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "GET only", http.StatusMethodNotAllowed)
+		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 	q := r.URL.Query()
