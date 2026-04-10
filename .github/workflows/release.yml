@@ -180,17 +180,34 @@ jobs:
           name: bin-${{ matrix.target }}
           path: dist/
 
-# ---------- DEPLOY: Push linux/amd64 DuckDB binary to production on every main push ----------
+# ---------- DEPLOY: Build linux/amd64 DuckDB binary and deploy to production (Codeberg only) ----------
+# Runs on Codeberg on every push to main. GitHub is excluded to prevent double-deploys
+# (both remotes receive every git push simultaneously).
   deploy:
-    if: github.server_url == 'https://github.com' && github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [build_duckdb]
-    runs-on: ubuntu-24.04
+    if: github.server_url != 'https://github.com' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
     steps:
-      - name: Download linux/amd64 DuckDB artifact
-        uses: actions/download-artifact@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
-          name: bin-linux_amd64_duckdb
-          path: dist/
+          go-version: "1.24"
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y gcc libc6-dev rsync
+
+      - name: Build with DuckDB analytics
+        run: |
+          go get github.com/marcboeker/go-duckdb/v2@latest
+          go mod tidy
+          CGO_ENABLED=1 GOFLAGS="-trimpath -buildvcs=false" \
+          go build -tags "netgo,osusergo,duckdb" \
+                   -ldflags "-s -w -X main.CompileVersion=${{ github.run_number }}" \
+                   -o safecast-new-map ./cmd/unified-server
 
       - name: Install SSH key
         run: |
@@ -204,9 +221,8 @@ jobs:
 
       - name: Upload binary
         run: |
-          chmod +x dist/safecast-new-map_linux_amd64_duckdb
           rsync -avP -e "ssh -i ~/.ssh/deploy_key" \
-            dist/safecast-new-map_linux_amd64_duckdb \
+            ./safecast-new-map \
             root@65.108.24.131:/usr/local/bin/safecast-new-map
 
       - name: Start service and verify
