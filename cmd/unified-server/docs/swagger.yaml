@@ -1,4 +1,115 @@
 basePath: /api
+definitions:
+  auth.AdminCreateUserRequest:
+    properties:
+      email:
+        example: user@example.com
+        type: string
+      password:
+        example: StrongPass123!
+        type: string
+      requires_password_setup:
+        example: false
+        type: boolean
+      send_welcome_email:
+        example: true
+        type: boolean
+      username:
+        example: jane_doe
+        type: string
+    type: object
+  auth.AdminUpdateUserRequest:
+    properties:
+      email:
+        example: updated@example.com
+        type: string
+      email_verified:
+        example: true
+        type: boolean
+      external_id:
+        example: auth0|abc123
+        type: string
+      is_active:
+        example: true
+        type: boolean
+      is_admin:
+        example: false
+        type: boolean
+      password:
+        example: NewStrongPass123!
+        type: string
+      username:
+        example: updated_name
+        type: string
+    type: object
+  auth.User:
+    properties:
+      api_key:
+        type: string
+      created_at:
+        type: integer
+      email:
+        type: string
+      email_verified:
+        type: boolean
+      external_id:
+        type: string
+      external_source:
+        type: string
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      is_admin:
+        type: boolean
+      last_login_at:
+        type: integer
+      requires_password_setup:
+        type: boolean
+      updated_at:
+        type: integer
+      username:
+        type: string
+    type: object
+  main.trackInsight:
+    properties:
+      answer:
+        type: string
+      chat_id:
+        type: integer
+      feedback_score:
+        type: integer
+      question:
+        type: string
+      similarity_score:
+        type: number
+    type: object
+  main.trackInsightsResponse:
+    properties:
+      insights:
+        items:
+          $ref: '#/definitions/main.trackInsight'
+        type: array
+      location_notes:
+        items:
+          $ref: '#/definitions/main.trackLocationNote'
+        type: array
+      track_id:
+        type: string
+    type: object
+  main.trackLocationNote:
+    properties:
+      feedback_score:
+        type: integer
+      lat:
+        type: number
+      lon:
+        type: number
+      note:
+        type: string
+      source_chat_id:
+        type: integer
+    type: object
 host: simplemap.safecast.org
 info:
   contact:
@@ -13,6 +124,24 @@ info:
   title: Safecast Map API
   version: "1.0"
 paths:
+  /api:
+    get:
+      description: Returns endpoint index, disclaimers, and dataset summary counts.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Overview payload
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Server error
+          schema:
+            type: string
+      summary: Get API overview
+      tags:
+      - core
   /api/admin/backfill:
     post:
       description: Backfills upload records from existing spectra entries.
@@ -176,9 +305,15 @@ paths:
       - admin
   /api/admin/mcp/data:
     get:
-      description: Returns paginated MCP analytics rows for a selected table.
+      description: Returns paginated MCP analytics rows for a selected table. For
+        table=mcp_query_log, the columns are tool_name, created_at, duration_ms, result_count,
+        client_info, and params.
       parameters:
       - description: Analytics table name
+        enum:
+        - chat_questions
+        - mcp_query_log
+        - mcp_ai_query_log
         in: query
         name: table
         required: true
@@ -191,7 +326,7 @@ paths:
         in: query
         name: offset
         type: integer
-      - description: Sort column
+      - description: Sort column (for mcp_query_log, default is created_at)
         in: query
         name: sort
         type: string
@@ -224,9 +359,14 @@ paths:
       - admin
   /api/admin/mcp/delete:
     delete:
-      description: Deletes selected or filtered MCP analytics rows.
+      description: Deletes selected or filtered MCP analytics rows. For table=mcp_query_log,
+        ids map to created_at values.
       parameters:
       - description: Analytics table name
+        enum:
+        - chat_questions
+        - mcp_query_log
+        - mcp_ai_query_log
         in: query
         name: table
         required: true
@@ -263,9 +403,14 @@ paths:
       tags:
       - admin
     post:
-      description: Deletes selected or filtered MCP analytics rows.
+      description: Deletes selected or filtered MCP analytics rows. For table=mcp_query_log,
+        ids map to created_at values.
       parameters:
       - description: Analytics table name
+        enum:
+        - chat_questions
+        - mcp_query_log
+        - mcp_ai_query_log
         in: query
         name: table
         required: true
@@ -303,9 +448,14 @@ paths:
       - admin
   /api/admin/mcp/export:
     get:
-      description: Exports MCP analytics rows as CSV for a selected table.
+      description: Exports MCP analytics rows as CSV for a selected table. For table=mcp_query_log,
+        rows are ordered by created_at descending.
       parameters:
       - description: Analytics table name
+        enum:
+        - chat_questions
+        - mcp_query_log
+        - mcp_ai_query_log
         in: query
         name: table
         required: true
@@ -330,6 +480,125 @@ paths:
           schema:
             type: string
       summary: Admin MCP analytics export
+      tags:
+      - admin
+  /api/admin/mcp/update:
+    post:
+      consumes:
+      - application/json
+      description: Updates one or more editable fields of a single MCP analytics row.
+        Only whitelisted columns (e.g. question, answer, source, model, country) may
+        be modified; timestamps and computed columns are ignored.
+      parameters:
+      - description: Analytics table name
+        enum:
+        - chat_questions
+        - mcp_query_log
+        - mcp_ai_query_log
+        - qa_embeddings
+        - location_knowledge
+        in: query
+        name: table
+        required: true
+        type: string
+      - description: Row key value (integer for id-keyed tables, timestamp string
+          for log tables)
+        in: query
+        name: id
+        required: true
+        type: string
+      - description: JSON object mapping editable field names to their new string
+          values
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'status: ok'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "405":
+          description: Method not allowed
+          schema:
+            type: string
+        "500":
+          description: Update failed
+          schema:
+            type: string
+        "503":
+          description: Analytics unavailable
+          schema:
+            type: string
+      summary: Admin MCP analytics update
+      tags:
+      - admin
+    put:
+      consumes:
+      - application/json
+      description: Updates one or more editable fields of a single MCP analytics row.
+        Only whitelisted columns (e.g. question, answer, source, model, country) may
+        be modified; timestamps and computed columns are ignored.
+      parameters:
+      - description: Analytics table name
+        enum:
+        - chat_questions
+        - mcp_query_log
+        - mcp_ai_query_log
+        - qa_embeddings
+        - location_knowledge
+        in: query
+        name: table
+        required: true
+        type: string
+      - description: Row key value (integer for id-keyed tables, timestamp string
+          for log tables)
+        in: query
+        name: id
+        required: true
+        type: string
+      - description: JSON object mapping editable field names to their new string
+          values
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'status: ok'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "405":
+          description: Method not allowed
+          schema:
+            type: string
+        "500":
+          description: Update failed
+          schema:
+            type: string
+        "503":
+          description: Analytics unavailable
+          schema:
+            type: string
+      summary: Admin MCP analytics update
       tags:
       - admin
   /api/admin/realtime/data:
@@ -683,6 +952,1061 @@ paths:
       summary: Admin uploads dashboard data
       tags:
       - admin
+  /api/admin/users:
+    get:
+      description: Returns paginated user list for admin users.
+      parameters:
+      - description: Page size
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      - description: Search term
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User rows
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Admin list users
+      tags:
+      - admin
+  /api/admin/users/{id}:
+    delete:
+      description: Deletes user by ID.
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Delete result
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid user ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Admin delete user
+      tags:
+      - admin
+    patch:
+      consumes:
+      - application/json
+      description: Updates user fields by user ID.
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Update-user payload; fields are optional. Includes password and
+          external_id.
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/auth.AdminUpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Update result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: User not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Admin update user
+      tags:
+      - admin
+    put:
+      consumes:
+      - application/json
+      description: Updates user fields by user ID.
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Update-user payload; fields are optional. Includes password and
+          external_id.
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/auth.AdminUpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Update result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: User not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Admin update user
+      tags:
+      - admin
+  /api/admin/users/{id}/regenerate-api-key:
+    post:
+      description: Regenerates API key for a user.
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Regenerate result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Admin regenerate API key
+      tags:
+      - admin
+  /api/admin/users/{id}/reset-password:
+    post:
+      description: Sends password reset/setup email for a user.
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Reset result
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Admin reset user password
+      tags:
+      - admin
+  /api/admin/users/create:
+    post:
+      consumes:
+      - application/json
+      description: Creates a user account as admin.
+      parameters:
+      - description: Create-user payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/auth.AdminCreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Create result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Duplicate user
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Admin create user
+      tags:
+      - admin
+  /api/auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Generates a password reset token and sends reset email when account
+        exists.
+      parameters:
+      - description: Forgot-password request
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Request accepted
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Request password reset
+      tags:
+      - auth
+  /api/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates by email+password or email+API key and creates a
+        session cookie.
+      parameters:
+      - description: Login request
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login success
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Account disabled
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Login user
+      tags:
+      - auth
+  /api/auth/logout:
+    post:
+      description: Deletes active session and clears the session cookie.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Logout success
+          schema:
+            additionalProperties: true
+            type: object
+        "405":
+          description: Method not allowed
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Logout user
+      tags:
+      - auth
+  /api/auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new user account and sends an email verification token
+        when email is configured.
+      parameters:
+      - description: Registration request
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Registration created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Registration disabled
+          schema:
+            additionalProperties: true
+            type: object
+        "409":
+          description: Email already exists
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Register a new user
+      tags:
+      - auth
+  /api/auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Resets account password using a valid reset token.
+      parameters:
+      - description: Reset-password request
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Password reset success
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid token or request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Reset password with token
+      tags:
+      - auth
+  /api/auth/verify-email:
+    get:
+      description: Verifies user email using a token and redirects to the map UI on
+        success.
+      parameters:
+      - description: Verification token
+        in: query
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "303":
+          description: Redirect to app
+          schema:
+            type: string
+        "400":
+          description: Invalid token
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Verify email address
+      tags:
+      - auth
+  /api/countries:
+    get:
+      description: Returns per-country measurement counts and average dose-rate metadata.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Country stats payload
+          schema:
+            additionalProperties: true
+            type: object
+        "405":
+          description: Method not allowed
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: List country statistics
+      tags:
+      - core
+  /api/geoip:
+    get:
+      description: Returns approximate latitude/longitude for the request IP when
+        auto-locate is enabled.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Latitude/longitude payload
+          schema:
+            additionalProperties:
+              format: float64
+              type: number
+            type: object
+        "204":
+          description: No location available
+          schema:
+            type: string
+        "405":
+          description: Method not allowed
+          schema:
+            type: string
+      summary: Resolve client GeoIP coordinates
+      tags:
+      - web
+  /api/json/weekly.tgz:
+    get:
+      description: Streams the generated TGZ archive of JSON track exports.
+      produces:
+      - application/gzip
+      responses:
+        "200":
+          description: Archive tarball
+          schema:
+            type: file
+        "503":
+          description: Archive unavailable
+          schema:
+            type: string
+      summary: Download JSON archive bundle
+      tags:
+      - core
+  /api/latest:
+    get:
+      description: Returns newest measurements near a coordinate within a radius.
+      parameters:
+      - description: Latitude
+        in: query
+        name: lat
+        required: true
+        type: number
+      - description: Longitude
+        in: query
+        name: lon
+        required: true
+        type: number
+      - description: Radius in meters
+        in: query
+        name: radius_m
+        type: number
+      - description: Maximum results
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Nearby measurements
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Get latest nearby measurements
+      tags:
+      - core
+  /api/markers/spectra:
+    get:
+      description: Returns markers that contain spectroscopy data, optionally filtered
+        by bounding box.
+      parameters:
+      - description: Minimum latitude
+        in: query
+        name: minLat
+        type: number
+      - description: Maximum latitude
+        in: query
+        name: maxLat
+        type: number
+      - description: Minimum longitude
+        in: query
+        name: minLon
+        type: number
+      - description: Maximum longitude
+        in: query
+        name: maxLon
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Markers
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Database unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List markers with spectra
+      tags:
+      - web
+  /api/shorten:
+    post:
+      consumes:
+      - application/json
+      description: Creates or previews a short link for same-host URLs.
+      parameters:
+      - description: Short link request body
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Short link response
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid payload
+          schema:
+            type: string
+        "405":
+          description: Method not allowed
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Create or preview short URL
+      tags:
+      - core
+  /api/spectrum/{markerID}:
+    get:
+      description: Returns spectroscopy data for a marker. Download paths are delegated
+        to the download handler.
+      parameters:
+      - description: Marker ID
+        in: path
+        name: markerID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Spectrum payload
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid marker ID
+          schema:
+            type: string
+        "404":
+          description: Spectrum not found
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Get spectrum by marker ID
+      tags:
+      - web
+  /api/spectrum/{markerID}/download:
+    get:
+      description: Downloads a spectrum as json, csv, n42, or spe.
+      parameters:
+      - description: Marker ID
+        in: path
+        name: markerID
+        required: true
+        type: integer
+      - description: 'Download format: json, csv, n42, spe'
+        in: query
+        name: format
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: Spectrum file
+          schema:
+            type: file
+        "400":
+          description: Invalid marker or format
+          schema:
+            type: string
+        "404":
+          description: Spectrum or format data unavailable
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Download spectrum file
+      tags:
+      - web
+  /api/track-info/{id}:
+    get:
+      description: Returns username, detector, and recording date metadata for a track
+        ID.
+      parameters:
+      - description: Track ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Track info payload
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Missing track ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Database unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get track metadata
+      tags:
+      - web
+  /api/track/{id}:
+    get:
+      description: Returns full track data in JSON, CSV, or XLSX format.
+      parameters:
+      - description: Track ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Track marker payload
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Track not found
+          schema:
+            type: string
+      summary: Get track marker data
+      tags:
+      - core
+  /api/tracks:
+    get:
+      description: Returns all track summaries sorted for browsing.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Track list payload
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Server error
+          schema:
+            type: string
+      summary: List track summaries
+      tags:
+      - core
+  /api/tracks/bounds:
+    get:
+      description: Returns a combined min/max lat/lon bounding box for the provided
+        track IDs.
+      parameters:
+      - description: Comma-separated track IDs
+        in: query
+        name: trackIDs
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Bounds payload
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: No valid tracks found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Database unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get combined bounds for tracks
+      tags:
+      - web
+  /api/tracks/index/{index}:
+    get:
+      description: Resolves a one-based track index to a track ID, then returns track
+        marker JSON.
+      parameters:
+      - description: One-based track index
+        in: path
+        name: index
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Track marker payload
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid index
+          schema:
+            type: string
+        "404":
+          description: Track not found
+          schema:
+            type: string
+      summary: Get track marker data by index
+      tags:
+      - core
+  /api/tracks/months/{year}/{month}:
+    get:
+      description: Returns track summaries for tracks that contain measurements in
+        a given calendar month.
+      parameters:
+      - description: Year
+        in: path
+        name: year
+        required: true
+        type: integer
+      - description: Month (1-12)
+        in: path
+        name: month
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Track list payload
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid year or month
+          schema:
+            type: string
+      summary: List tracks by month
+      tags:
+      - core
+  /api/tracks/years/{year}:
+    get:
+      description: Returns track summaries for tracks that contain measurements in
+        a given year.
+      parameters:
+      - description: Year
+        in: path
+        name: year
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Track list payload
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid year
+          schema:
+            type: string
+      summary: List tracks by year
+      tags:
+      - core
+  /api/update-coordinates:
+    post:
+      consumes:
+      - application/json
+      description: Admin-only endpoint that updates all marker coordinates for a track.
+      parameters:
+      - description: trackID, lat, lon
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Update result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Database unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update coordinates for a track
+      tags:
+      - admin
+  /api/user/change-password:
+    post:
+      consumes:
+      - application/json
+      description: Changes password for the authenticated user after validating current
+        password.
+      parameters:
+      - description: Change-password request
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Password changed
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized or wrong password
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Change current user password
+      tags:
+      - auth
+  /api/user/profile:
+    get:
+      description: Returns profile details for the authenticated user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User profile
+          schema:
+            $ref: '#/definitions/auth.User'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get current user profile
+      tags:
+      - auth
+  /api/user/uploads:
+    get:
+      description: Returns paginated uploads for the authenticated user.
+      parameters:
+      - description: Page size
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Upload rows
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: List current user uploads
+      tags:
+      - auth
   /area:
     get:
       description: Returns historical bGeigie measurements inside the specified geographic
@@ -832,6 +2156,44 @@ paths:
               type: string
             type: object
       summary: Find extreme radiation readings
+      tags:
+      - analytics
+  /feedback:
+    post:
+      consumes:
+      - application/json
+      description: 'Records a thumbs-up (+1) or thumbs-down (-1) vote for a specific
+        AI chat response. Used to reinforce the semantic Q&A cache: highly-rated answers
+        are surfaced to future similar queries.'
+      parameters:
+      - description: 'JSON payload: {chat_id: integer, score: 1|-1}'
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'ok: true'
+          schema:
+            additionalProperties:
+              type: boolean
+            type: object
+        "400":
+          description: Invalid request — chat_id required
+          schema:
+            type: string
+        "405":
+          description: Method not allowed
+          schema:
+            type: string
+        "500":
+          description: Failed to record feedback
+          schema:
+            type: string
+      summary: Submit chat response feedback
       tags:
       - analytics
   /get_markers:
@@ -1044,6 +2406,54 @@ paths:
       summary: Get radiation reference information
       tags:
       - reference
+  /licenses/{code}:
+    get:
+      description: Returns embedded license content for supported license codes.
+      parameters:
+      - description: 'License code: mit or cc0'
+        in: path
+        name: code
+        required: true
+        type: string
+      responses:
+        "200":
+          description: License text
+          schema:
+            type: string
+        "404":
+          description: License not found
+          schema:
+            type: string
+        "405":
+          description: Method not allowed
+          schema:
+            type: string
+      summary: Download project license text
+      tags:
+      - web
+  /qrpng:
+    get:
+      description: Returns a QR image for query parameter `u`, referer, or current
+        URL.
+      parameters:
+      - description: Target URL to encode
+        in: query
+        name: u
+        type: string
+      produces:
+      - image/png
+      responses:
+        "200":
+          description: QR PNG
+          schema:
+            type: file
+        "500":
+          description: QR generation failed
+          schema:
+            type: string
+      summary: Generate QR PNG
+      tags:
+      - web
   /radiation:
     get:
       description: Returns historical bGeigie measurements within a radius of the
@@ -1119,6 +2529,25 @@ paths:
       summary: Get realtime device history
       tags:
       - map
+  /s/{code}:
+    get:
+      description: Looks up a short code and redirects to its stored target URL.
+      responses:
+        "302":
+          description: Redirect
+          schema:
+            type: string
+        "404":
+          description: Code not found
+          schema:
+            type: string
+        "502":
+          description: Invalid redirect target
+          schema:
+            type: string
+      summary: Resolve short URL code
+      tags:
+      - web
   /sensor/{id}/current:
     get:
       description: Routes to current or history endpoint based on the path suffix.
@@ -1267,6 +2696,63 @@ paths:
               type: string
             type: object
       summary: Discover active fixed sensors
+      tags:
+      - realtime
+  /sensors/export:
+    get:
+      description: Downloads all active fixed sensors matching the given filters in
+        CSV, JSON, or Excel format. No row limit — returns up to 10 000 devices.
+      parameters:
+      - description: 'Output format: csv (default), json, xlsx'
+        in: query
+        name: format
+        type: string
+      - description: Filter by sensor type
+        in: query
+        name: type
+        type: string
+      - default: -90
+        description: Southern boundary
+        in: query
+        name: min_lat
+        type: number
+      - default: 90
+        description: Northern boundary
+        in: query
+        name: max_lat
+        type: number
+      - default: -180
+        description: Western boundary
+        in: query
+        name: min_lon
+        type: number
+      - default: 180
+        description: Eastern boundary
+        in: query
+        name: max_lon
+        type: number
+      produces:
+      - text/csv
+      - application/json
+      - application/vnd.ms-excel
+      responses:
+        "200":
+          description: Sensor data file
+          schema:
+            type: string
+        "400":
+          description: Invalid parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Database unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Export all active sensors
       tags:
       - realtime
   /spectra:
@@ -1460,7 +2946,10 @@ paths:
   /track/{id}:
     get:
       description: Retrieves radiation measurements recorded during a specific bGeigie
-        drive. Use GET /api/tracks to find track IDs first.
+        drive. The path ID can be used directly from a simplemap track URL (for example
+        /trackid/{id}). This REST endpoint returns measurement rows; statistical-only
+        summaries (min/max/percentiles/top peaks) are available via the MCP get_track
+        tool with stats_only=true.
       parameters:
       - description: Track identifier (e.g. 8eh5m1)
         in: path
@@ -1497,29 +2986,40 @@ paths:
       summary: Get all measurements from a specific track
       tags:
       - historical
-  /trackid/{id}:
+  /track/{id}/insights:
     get:
-      description: Serves the HTML map page for a specific track ID.
+      description: Returns positively-rated Q&A pairs and curated location notes that
+        are semantically or spatially relevant to the given bGeigie track. Requires
+        DuckDB analytics and OpenAI embeddings. Returns empty arrays when analytics
+        are unavailable.
       parameters:
-      - description: Track ID
+      - description: Track identifier (e.g. 8eh5m1)
         in: path
         name: id
         required: true
         type: string
       produces:
-      - text/html
+      - application/json
       responses:
         "200":
-          description: HTML page
+          description: Insights and location notes for the track
           schema:
-            type: string
+            $ref: '#/definitions/main.trackInsightsResponse'
         "400":
-          description: Track ID missing
+          description: Track id required
           schema:
             type: string
-      summary: Render map page for one track
+        "404":
+          description: Track not found
+          schema:
+            type: string
+        "503":
+          description: Database not available
+          schema:
+            type: string
+      summary: Get cached Q&A insights for a track
       tags:
-      - web
+      - historical
   /tracks:
     get:
       description: Lists bGeigie Import tracks (bulk radiation measurement drives).
