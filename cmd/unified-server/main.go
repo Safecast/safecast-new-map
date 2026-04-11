@@ -1041,6 +1041,10 @@ func main() {
 		APITrackInsightsHandler:          trackInsightsHandler,
 	})
 
+	// Geocoding proxy — lets the browser search for places without hitting
+	// Nominatim directly (browsers cannot set User-Agent in fetch()).
+	http.DefaultServeMux.HandleFunc("/api/geocode", handleGeocode)
+
 	// Register MCP Server (AI assistant, REST API, Swagger) on port 3333
 	// Uses existing PostgreSQL (db) and DuckDB (duckDB) connections
 	RegisterMCP()

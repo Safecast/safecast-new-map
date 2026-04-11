@@ -8824,15 +8824,11 @@ async function performSearch(query, selectFirst = false) {
   if (!searchResults) return;
 
   try {
-    // Use Nominatim API for geocoding
-    const url = `https://nominatim.openstreetmap.org/search?` +
-      `format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`;
+    // Proxy through our own server so we can set a proper User-Agent for Nominatim
+    // (browsers block setting User-Agent in fetch() as a forbidden header).
+    const url = `/api/geocode?q=${encodeURIComponent(query)}`;
 
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Safecast Map (https://map.safecast.org)'
-      }
-    });
+    const response = await fetch(url);
 
     if (!response.ok) {
       throw new Error('Search failed');
@@ -9110,14 +9106,9 @@ async function performHomeSearch(query, selectFirst = false) {
   if (!homeSearchResults) return;
 
   try {
-    const url = `https://nominatim.openstreetmap.org/search?` +
-      `format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`;
+    const url = `/api/geocode?q=${encodeURIComponent(query)}`;
 
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Safecast Map (https://map.safecast.org)'
-      }
-    });
+    const response = await fetch(url);
 
     if (!response.ok) {
       throw new Error('Search failed');
