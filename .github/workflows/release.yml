@@ -217,8 +217,8 @@ jobs:
 
       - name: Start service and verify
         run: |
-          ssh -i ~/.ssh/deploy_key root@65.108.24.131 "systemctl start safecast-new-map"
-          sleep 3
+          ssh -i ~/.ssh/deploy_key root@65.108.24.131 "systemctl restart safecast-new-map"
+          sleep 5
           ssh -i ~/.ssh/deploy_key root@65.108.24.131 "systemctl is-active safecast-new-map"
 
   release:
