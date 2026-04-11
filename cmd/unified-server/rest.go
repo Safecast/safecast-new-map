@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 
@@ -97,6 +98,43 @@ func (h *RESTHandler) registerAPIRoutes(mux *http.ServeMux) {
 func (h *RESTHandler) Register(mux *http.ServeMux) {
 	h.registerAPIRoutes(mux)
 	registerMainAPIDocsRoutes(mux, "")
+}
+
+// handleGeocode proxies geocoding requests to Nominatim server-side so that
+// the browser does not need to set a User-Agent header (a forbidden header in
+// browser fetch() calls that causes Nominatim to reject the request).
+func handleGeocode(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query().Get("q")
+	if q == "" {
+		writeError(w, http.StatusBadRequest, "missing q parameter")
+		return
+	}
+
+	nominatimURL := "https://nominatim.openstreetmap.org/search?" +
+		url.Values{
+			"format":         {"json"},
+			"q":              {q},
+			"limit":          {"5"},
+			"addressdetails": {"1"},
+		}.Encode()
+
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, nominatimURL, nil)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to build geocode request")
+		return
+	}
+	req.Header.Set("User-Agent", "Safecast Map (https://map.safecast.org)")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		writeError(w, http.StatusBadGateway, "geocode request failed")
+		return
+	}
+	defer resp.Body.Close()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(resp.StatusCode)
+	io.Copy(w, resp.Body) //nolint:errcheck
 }
 
 // writeJSON writes v as a JSON response with the given HTTP status code.
