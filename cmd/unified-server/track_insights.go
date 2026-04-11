@@ -54,6 +54,17 @@ type trackInsightsResponse struct {
 
 // trackInsightsHandler serves GET /api/track/{id}/insights.
 // Registered on http.DefaultServeMux via mcp_register.go using Go 1.22 pattern routing.
+//
+// @Summary     Get cached Q&A insights for a track
+// @Description Returns positively-rated Q&A pairs and curated location notes that are semantically or spatially relevant to the given bGeigie track. Requires DuckDB analytics and OpenAI embeddings. Returns empty arrays when analytics are unavailable.
+// @Tags        historical
+// @Produce     json
+// @Param       id path string true "Track identifier (e.g. 8eh5m1)"
+// @Success     200 {object} trackInsightsResponse "Insights and location notes for the track"
+// @Failure     400 {string} string "Track id required"
+// @Failure     404 {string} string "Track not found"
+// @Failure     503 {string} string "Database not available"
+// @Router      /track/{id}/insights [get]
 func trackInsightsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	trackID := r.PathValue("id")

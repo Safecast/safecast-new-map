@@ -21,8 +21,7 @@ safecast-new-map
 safecast-new-map-build
 safecast-new-map-improved
 safecast-web-chat
-unified-server
-unified-server-build
+/unified-server-build
 /mcp-server
 *.exe
 

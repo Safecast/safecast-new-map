@@ -71,6 +71,45 @@ definitions:
       username:
         type: string
     type: object
+  main.trackInsight:
+    properties:
+      answer:
+        type: string
+      chat_id:
+        type: integer
+      feedback_score:
+        type: integer
+      question:
+        type: string
+      similarity_score:
+        type: number
+    type: object
+  main.trackInsightsResponse:
+    properties:
+      insights:
+        items:
+          $ref: '#/definitions/main.trackInsight'
+        type: array
+      location_notes:
+        items:
+          $ref: '#/definitions/main.trackLocationNote'
+        type: array
+      track_id:
+        type: string
+    type: object
+  main.trackLocationNote:
+    properties:
+      feedback_score:
+        type: integer
+      lat:
+        type: number
+      lon:
+        type: number
+      note:
+        type: string
+      source_chat_id:
+        type: integer
+    type: object
 host: localhost:8765
 info:
   contact:
@@ -440,6 +479,125 @@ paths:
           schema:
             type: string
       summary: Admin MCP analytics export
+      tags:
+      - admin
+  /api/admin/mcp/update:
+    post:
+      consumes:
+      - application/json
+      description: Updates one or more editable fields of a single MCP analytics row.
+        Only whitelisted columns (e.g. question, answer, source, model, country) may
+        be modified; timestamps and computed columns are ignored.
+      parameters:
+      - description: Analytics table name
+        enum:
+        - chat_questions
+        - mcp_query_log
+        - mcp_ai_query_log
+        - qa_embeddings
+        - location_knowledge
+        in: query
+        name: table
+        required: true
+        type: string
+      - description: Row key value (integer for id-keyed tables, timestamp string
+          for log tables)
+        in: query
+        name: id
+        required: true
+        type: string
+      - description: JSON object mapping editable field names to their new string
+          values
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'status: ok'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "405":
+          description: Method not allowed
+          schema:
+            type: string
+        "500":
+          description: Update failed
+          schema:
+            type: string
+        "503":
+          description: Analytics unavailable
+          schema:
+            type: string
+      summary: Admin MCP analytics update
+      tags:
+      - admin
+    put:
+      consumes:
+      - application/json
+      description: Updates one or more editable fields of a single MCP analytics row.
+        Only whitelisted columns (e.g. question, answer, source, model, country) may
+        be modified; timestamps and computed columns are ignored.
+      parameters:
+      - description: Analytics table name
+        enum:
+        - chat_questions
+        - mcp_query_log
+        - mcp_ai_query_log
+        - qa_embeddings
+        - location_knowledge
+        in: query
+        name: table
+        required: true
+        type: string
+      - description: Row key value (integer for id-keyed tables, timestamp string
+          for log tables)
+        in: query
+        name: id
+        required: true
+        type: string
+      - description: JSON object mapping editable field names to their new string
+          values
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'status: ok'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "405":
+          description: Method not allowed
+          schema:
+            type: string
+        "500":
+          description: Update failed
+          schema:
+            type: string
+        "503":
+          description: Analytics unavailable
+          schema:
+            type: string
+      summary: Admin MCP analytics update
       tags:
       - admin
   /api/admin/realtime/data:
@@ -1999,6 +2157,44 @@ paths:
       summary: Find extreme radiation readings
       tags:
       - analytics
+  /feedback:
+    post:
+      consumes:
+      - application/json
+      description: 'Records a thumbs-up (+1) or thumbs-down (-1) vote for a specific
+        AI chat response. Used to reinforce the semantic Q&A cache: highly-rated answers
+        are surfaced to future similar queries.'
+      parameters:
+      - description: 'JSON payload: {chat_id: integer, score: 1|-1}'
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'ok: true'
+          schema:
+            additionalProperties:
+              type: boolean
+            type: object
+        "400":
+          description: Invalid request — chat_id required
+          schema:
+            type: string
+        "405":
+          description: Method not allowed
+          schema:
+            type: string
+        "500":
+          description: Failed to record feedback
+          schema:
+            type: string
+      summary: Submit chat response feedback
+      tags:
+      - analytics
   /get_markers:
     get:
       description: Returns filtered markers for map bounds and optional track/speed/time
@@ -2787,6 +2983,40 @@ paths:
               type: string
             type: object
       summary: Get all measurements from a specific track
+      tags:
+      - historical
+  /track/{id}/insights:
+    get:
+      description: Returns positively-rated Q&A pairs and curated location notes that
+        are semantically or spatially relevant to the given bGeigie track. Requires
+        DuckDB analytics and OpenAI embeddings. Returns empty arrays when analytics
+        are unavailable.
+      parameters:
+      - description: Track identifier (e.g. 8eh5m1)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Insights and location notes for the track
+          schema:
+            $ref: '#/definitions/main.trackInsightsResponse'
+        "400":
+          description: Track id required
+          schema:
+            type: string
+        "404":
+          description: Track not found
+          schema:
+            type: string
+        "503":
+          description: Database not available
+          schema:
+            type: string
+      summary: Get cached Q&A insights for a track
       tags:
       - historical
   /tracks:
