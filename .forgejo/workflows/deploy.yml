@@ -1,12 +1,18 @@
 name: Deploy to Production
 
+# NOTE: Production deployment is handled exclusively by GitHub Actions (.github/workflows/release.yml)
+# which builds the binary with DuckDB analytics support (-tags duckdb).
+# This Forgejo/Codeberg workflow is disabled to prevent overwriting the correct binary.
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type 'yes' to confirm manual deploy from Codeberg (normally use GitHub Actions)"
+        required: true
 
 jobs:
   deploy:
+    if: ${{ github.event.inputs.confirm == 'yes' }}
     runs-on: codeberg-medium
 
     steps:
@@ -20,7 +26,7 @@ jobs:
           cache: true
           cache-dependency-path: go.sum
 
-      - name: Build unified server
+      - name: Build unified server (without DuckDB - limited analytics)
         run: |
           go build -o safecast-new-map ./cmd/unified-server
 
