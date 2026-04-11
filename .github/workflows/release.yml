@@ -119,8 +119,6 @@ jobs:
             VERSION=${{ github.run_number }}
             mkdir -p dist
             apt-get update && apt-get install -y gcc libc6-dev
-            go get github.com/marcboeker/go-duckdb/v2@latest
-            go mod tidy
             GOFLAGS="-trimpath -buildvcs=false" \
             go build -tags "netgo,osusergo,duckdb" \
                      -ldflags "-s -w -X main.CompileVersion=$VERSION" \
