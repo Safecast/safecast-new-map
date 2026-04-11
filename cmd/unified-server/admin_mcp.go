@@ -131,6 +131,12 @@ func adminMCPDataHandler(w http.ResponseWriter, r *http.Request) {
 		if whereForJoin != "" {
 			whereForJoin = strings.ReplaceAll(whereForJoin, "CAST(", "CAST(q.")
 		}
+		// Virtual cols (thumbs_up/thumbs_down) come from the JOIN subquery,
+		// not from q — omit the "q." prefix for those in ORDER BY.
+		orderByExpr := "q." + sortCol
+		if virtualCols[sortCol] {
+			orderByExpr = sortCol
+		}
 		dataQuery = fmt.Sprintf(`
 			SELECT %s
 			FROM chat_questions q
@@ -140,8 +146,8 @@ func adminMCPDataHandler(w http.ResponseWriter, r *http.Request) {
 				       SUM(CASE WHEN score < 0 THEN 1 ELSE 0 END) AS thumbs_down
 				FROM chat_feedback GROUP BY chat_id
 			) f ON f.chat_id = q.id
-			%s ORDER BY q.%s %s LIMIT %d OFFSET %d`,
-			colList, whereForJoin, sortCol, order, limit, offset)
+			%s ORDER BY %s %s LIMIT %d OFFSET %d`,
+			colList, whereForJoin, orderByExpr, order, limit, offset)
 	} else {
 		// All other tables: no alias, use bare column names
 		castCols := make([]string, 0, len(columns))
