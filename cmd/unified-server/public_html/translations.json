@@ -1415,6 +1415,7 @@
     "ai_generated_note": "Αυτά τα δεδομένα ανακτήθηκαν από βοηθό τεχνητής νοημοσύνης χρησιμοποιώντας εργαλεία Safecast. Η ερμηνεία και παρουσίαση αυτών των δεδομένων μπορεί να επηρεαστεί από το σύστημα AI."
   },
   "en": {
+    "tour_help_tooltip": "Take a guided tour of the map and its features",
     "api_example_archive_desc": "Downloads a tgz bundle with every published .json file when the server enables the JSON archive.",
     "api_example_archive_link": "Download weekly archive",
     "api_example_archive_note": "If archives are disabled the server returns HTTP 404 Not Found.",
