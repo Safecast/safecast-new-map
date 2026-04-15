@@ -4464,6 +4464,14 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  var trackInsightsBtn = document.getElementById('track-insights-btn');
+  if (trackInsightsBtn) {
+    attachControlTooltip(trackInsightsBtn, {
+      placement: 'right',
+      content: function () { return translate('track_insights_tooltip'); },
+    });
+  }
+
   // Initialize layers and auto theme switch
   const media = window.matchMedia('(prefers-color-scheme: dark)');
   const osmLight = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
