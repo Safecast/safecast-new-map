@@ -4447,6 +4447,23 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  var aiToggle = document.getElementById('safecast-ai-toggle');
+  if (aiToggle) {
+    attachControlTooltip(aiToggle, {
+      placement: 'right',
+      content: function () { return translate('ai_open'); },
+    });
+  }
+
+  var helpBtn = document.getElementById('persistent-help-btn');
+  if (helpBtn) {
+    helpBtn.removeAttribute('title'); // remove native title to avoid double tooltip
+    attachControlTooltip(helpBtn, {
+      placement: 'left',
+      content: function () { return translate('tour_help_tooltip'); },
+    });
+  }
+
   // Initialize layers and auto theme switch
   const media = window.matchMedia('(prefers-color-scheme: dark)');
   const osmLight = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
@@ -4559,6 +4576,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const SpeedCtrl = L.Control.extend({
       onAdd() {
         const div = L.DomUtil.create('div', 'leaflet-control-layers');
+        div.id = 'speed-filter-ctrl';
         div.style.padding = '6px 10px';
 
         // helper that returns one <label> line
@@ -11583,12 +11601,22 @@ function selectHomeSearchResult(result, query) {
 
     // --- Tour steps ---
     var tourSteps = [
-      { selector: '#map',
-        text: 'Each coloured dot is a real radiation measurement. Green = safe background levels, yellow/orange = elevated, red = significantly above normal.' },
+      { selector: '#map', center: true,
+        text: 'Welcome to the Safecast map — an open platform where people worldwide share dosimeter readings for science, ecology, education, and safety. Each coloured dot is a real measurement with a timestamp and GPS location. The colour shows the dose rate — see the legend for the scale. Treat this as a community snapshot, not a precise survey.' },
+      { selector: '.upload-btn-container',
+        text: 'Upload your own radiation measurements. Supported formats include CSV, LOG, and KML files from devices such as bGeigie Nano, Radnote, and GammaScout. Your data appears on the map once processing is complete.' },
+      { selector: '#loginButton',
+        text: 'Log in to link uploads to your account, track your measurement history, and access your profile page. Registration is free and open to everyone.' },
       { selector: '#legend',
         text: 'This colour scale shows the radiation dose rate. The scale adapts to the data on screen — hover it for a full explanation.' },
       { selector: '#safecast-ai-toggle',
         text: 'Ask our AI assistant anything about the map, the data, or radiation safety. It knows Safecast data in depth.' },
+      { selector: '#track-insights-btn',
+        text: 'When you click on a track, this button appears. It asks the AI to analyse that specific track — summarising the route, radiation levels, and any notable patterns it finds.' },
+      { selector: '.date-slider-box',
+        text: 'Drag the time slider to filter measurements by date. Switch between Year and Month mode for broad or fine-grained control, and press the reset button to show all data again.' },
+      { selector: '#speed-filter-ctrl',
+        text: 'Filter measurements by travel speed: airplane, car, or walking. The spectral graph toggle (📊) shows or hides spectral sensor data. Use these to focus on the type of measurements you are interested in.' },
       { selector: '#searchInput',
         text: 'Search for any city or address to jump straight to that location on the map.' },
     ];
@@ -11637,9 +11665,14 @@ function selectHomeSearchResult(result, query) {
       spotlightEl.style.display = 'block';
     }
 
-    function positionTooltip(el) {
-      var r = el ? el.getBoundingClientRect() : { top: 40, left: 40, bottom: 80, right: 80, width: 0, height: 0 };
+    function positionTooltip(el, center) {
       var tw = 320, margin = 12;
+      if (center) {
+        tourTooltip.style.left = Math.round((window.innerWidth - tw) / 2) + 'px';
+        tourTooltip.style.top  = Math.round(window.innerHeight / 2 - 100) + 'px';
+        return;
+      }
+      var r = el ? el.getBoundingClientRect() : { top: 40, left: 40, bottom: 80, right: 80, width: 0, height: 0 };
       var left = r.right + margin;
       if (left + tw > window.innerWidth - margin) left = r.left - tw - margin;
       if (left < margin) left = margin;
@@ -11653,11 +11686,20 @@ function selectHomeSearchResult(result, query) {
     function showTourStep(index) {
       var step = tourSteps[index];
       var el = document.querySelector(step.selector);
+
+      // Skip steps whose target element is hidden or missing
+      // (offsetParent is null for both display:none AND position:fixed, so check computed style)
+      if (!el || window.getComputedStyle(el).display === 'none') {
+        if (index < tourSteps.length - 1) { tourIndex = index + 1; showTourStep(tourIndex); }
+        else { endTour(); }
+        return;
+      }
+
       tourText.textContent = step.text;
       document.getElementById('btn-tour-next').textContent =
         (index === tourSteps.length - 1) ? 'Done' : 'Next';
-      positionSpotlight(el);
-      positionTooltip(el);
+      positionSpotlight(step.center ? null : el);
+      positionTooltip(el, step.center);
       tourTooltip.style.display = 'block';
     }
 
