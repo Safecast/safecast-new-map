@@ -1416,6 +1416,7 @@
   },
   "en": {
     "tour_help_tooltip": "Take a guided tour of the map and its features",
+    "track_insights_tooltip": "Ask the AI to analyse this track — route, radiation levels, and patterns",
     "api_example_archive_desc": "Downloads a tgz bundle with every published .json file when the server enables the JSON archive.",
     "api_example_archive_link": "Download weekly archive",
     "api_example_archive_note": "If archives are disabled the server returns HTTP 404 Not Found.",
