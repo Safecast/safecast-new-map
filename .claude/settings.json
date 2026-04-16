@@ -13,7 +13,8 @@
       "Bash(grep -r \"HandleFunc.*admin\" /home/rob/Documents/Safecast/safecast-new-map/cmd/unified-server/*.go)",
       "Bash(grep -r \"api/admin/uploads\" /home/rob/Documents/Safecast/safecast-new-map/cmd/unified-server/*.go)",
       "Bash(grep -n \"NewClient\\\\|var client\" /home/rob/Documents/Safecast/safecast-new-map/cmd/unified-server/*.go)",
-      "Bash(grep -n \"AdminImportFromSafecastHandler\\\\|AdminTracksHandler\\\\|AdminDeleteTrackHandler\" /home/rob/Documents/Safecast/safecast-new-map/pkg/httpapi/*.go)"
+      "Bash(grep -n \"AdminImportFromSafecastHandler\\\\|AdminTracksHandler\\\\|AdminDeleteTrackHandler\" /home/rob/Documents/Safecast/safecast-new-map/pkg/httpapi/*.go)",
+      "Bash(curl -s \"http://localhost:8765/api/geocode?q=amsterdam\")"
     ],
     "deny": [
       "Read(./.entire/metadata/**)"
