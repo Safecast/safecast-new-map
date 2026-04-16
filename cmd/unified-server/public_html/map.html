@@ -4589,7 +4589,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // helper that returns one <label> line
         const row = (id, iconMarkup, checked, extraClass = '') => `
-            <label style="white-space:nowrap;display:block;cursor:pointer;">
+            <label id="${id}-row" style="white-space:nowrap;display:block;cursor:pointer;">
             <input id="${id}" type="checkbox" ${checked ? 'checked' : ''}/>
             <span class="speed-filter-icon ${extraClass}">${iconMarkup}</span>
             </label>`;
@@ -11623,8 +11623,12 @@ function selectHomeSearchResult(result, query) {
         text: 'When you click on a track, this button appears. It asks the AI to analyse that specific track — summarising the route, radiation levels, and any notable patterns it finds.' },
       { selector: '.date-slider-box',
         text: 'Drag the time slider to filter measurements by date. Switch between Year and Month mode for broad or fine-grained control, and press the reset button to show all data again.' },
+      { selector: '#sfLive-row',
+        text: 'The large circles with numbers on the map are live readings from Safecast realtime sensors, updated every few minutes. The number shows the current dose rate in µSv/h, and the colour matches the legend scale. Click a circle to open its full measurement history. Uncheck this box to hide realtime sensors.' },
+      { selector: '#sfSpectrum-row',
+        text: 'Toggle gamma spectrum measurements. These come from spectral sensors that record the full energy distribution of detected radiation, not just a single dose rate. Click a spectrum point on the map to see its spectral distribution chart and identify which isotopes contributed to the reading.' },
       { selector: '#speed-filter-ctrl',
-        text: 'Filter measurements by travel speed: airplane, car, or walking. The spectral graph toggle (📊) shows or hides spectral sensor data. Use these to focus on the type of measurements you are interested in.' },
+        text: 'Filter measurements by travel speed: airplane, car, or walking. Use these to focus on the type of measurements you are interested in.' },
       { selector: '#searchInput',
         text: 'Search for any city or address to jump straight to that location on the map.' },
     ];
@@ -11674,7 +11678,7 @@ function selectHomeSearchResult(result, query) {
     }
 
     function positionTooltip(el, center) {
-      var tw = 320, margin = 12;
+      var tw = 320, margin = 80;
       if (center) {
         tourTooltip.style.left = Math.round((window.innerWidth - tw) / 2) + 'px';
         tourTooltip.style.top  = Math.round(window.innerHeight / 2 - 100) + 'px';
