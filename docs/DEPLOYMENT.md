@@ -376,6 +376,19 @@ The following columns were added to the `uploads` table after the initial Safeca
 
 After adding `name`/`comment`, back-fill from the old Safecast API (see below).
 
+### Tour Steps Table (Apr 2026)
+
+The map tutorial tour is now DB-backed with multilingual text and an admin UI at `/admin/tour`. A fresh database (or any production server deployed before this change) must run:
+
+```bash
+ssh -i ~/.ssh/safecast-deploy root@65.108.24.131 \
+  "sudo -u postgres psql -d safecast -f -" < migrations/add_tour_steps_table.sql
+```
+
+This creates the `tour_steps` table (step_key, sort_order, selector, center, enabled, tri-state conditions, viewport, first_time_only, updated_at) plus the `idx_tour_steps_order` index. **The server will NOT start seeding tour steps into a non-existent table** — if you restart the service before running the migration, `seedTourStepsDB()` will log errors and the `/admin/tour` page will 500 on list fetch. Run the migration first, then restart.
+
+Per-step text lives in the existing `translations` table under keys `tour.<step_key>.text`. `seedTourStepsDB()` inserts the 11 default steps and English translations on every startup via `ON CONFLICT DO NOTHING`, so admin edits are preserved across deploys.
+
 ### Back-filling Metadata from the Old Safecast API
 
 The admin Uploads page has an **"Import Safecast API Metadata"** button that fetches `name` and `comment` for all `safecast-api` tracks from `api.safecast.org`. For new imports this is automatic; the button is only needed as a one-time backfill for rows that existed before the columns were added.
