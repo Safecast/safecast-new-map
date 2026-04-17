@@ -58,6 +58,10 @@ type RegisterConfig struct {
 	AdminTranslationsReloadHandler   http.HandlerFunc
 	AdminTranslationByIDHandler      http.HandlerFunc
 	AdminTranslationsHandler         http.HandlerFunc
+	APITourStepsHandler              http.HandlerFunc
+	AdminTourStepsReorderHandler     http.HandlerFunc
+	AdminTourStepsByIDHandler        http.HandlerFunc
+	AdminTourStepsHandler            http.HandlerFunc
 
 	Logf func(string, ...any)
 }
@@ -179,6 +183,11 @@ func registerAuthAndAdminRoutes(mux *http.ServeMux, cfg RegisterConfig) {
 	registerOptionalAdmin(RouteAPIAdminTranslationsReload, cfg.AdminTranslationsReloadHandler)
 	registerOptionalAdmin(RouteAPIAdminTranslationsByID, cfg.AdminTranslationByIDHandler)
 	registerOptionalAdmin(RouteAPIAdminTranslations, cfg.AdminTranslationsHandler)
+	// Tour step admin endpoints: reorder must be registered before the
+	// {id} pattern because mux longest-match prefers the more specific path.
+	registerOptionalAdmin(RouteAPIAdminTourStepsReorder, cfg.AdminTourStepsReorderHandler)
+	registerOptionalAdmin(RouteAPIAdminTourStepsByID, cfg.AdminTourStepsByIDHandler)
+	registerOptionalAdmin(RouteAPIAdminTourSteps, cfg.AdminTourStepsHandler)
 
 	registerOptionalPublic := func(path string, handler http.HandlerFunc) {
 		if handler == nil {
@@ -191,6 +200,7 @@ func registerAuthAndAdminRoutes(mux *http.ServeMux, cfg RegisterConfig) {
 	registerOptionalPublic(RouteAPISensorByID, cfg.APISensorByIDHandler)
 	registerOptionalPublic(RouteAPIFeedback, cfg.APIFeedbackHandler)
 	registerOptionalPublic(RoutePatternAPITrackInsights, cfg.APITrackInsightsHandler)
+	registerOptionalPublic(RouteAPITourSteps, cfg.APITourStepsHandler)
 }
 
 // checkAdminAccess returns true if the request is from an admin user or carries the admin password.
