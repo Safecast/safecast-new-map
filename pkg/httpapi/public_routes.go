@@ -41,6 +41,10 @@ const (
 	RouteAPIAdminTranslationsReload   = "/api/admin/translations/reload"
 	RouteAPIAdminTranslationsByID     = "/api/admin/translations/"
 	RouteAPIAdminTranslations         = "/api/admin/translations"
+	RouteAPITourSteps                 = "/api/tour/steps"
+	RouteAPIAdminTourStepsReorder     = "/api/admin/tour/steps/reorder"
+	RouteAPIAdminTourStepsByID        = "/api/admin/tour/steps/"
+	RouteAPIAdminTourSteps            = "/api/admin/tour/steps"
 
 	RouteAPISensors              = "/api/sensors"
 	RouteAPISensorsExport        = "/api/sensors/export"
