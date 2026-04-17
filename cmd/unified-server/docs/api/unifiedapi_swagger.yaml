@@ -730,6 +730,112 @@ paths:
       summary: Admin realtime export
       tags:
       - admin
+  /api/admin/tour/steps:
+    get:
+      description: Returns all tour step rows for admin editing.
+      parameters:
+      - description: Sort column
+        in: query
+        name: sort
+        type: string
+      - description: Sort order
+        in: query
+        name: order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tour step rows
+          schema:
+            additionalProperties: true
+            type: object
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin tour steps list
+      tags:
+      - admin
+    post:
+      consumes:
+      - application/json
+      description: Creates a new tour step row.
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Create result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin tour step create
+      tags:
+      - admin
+  /api/admin/tour/steps/{id}:
+    put:
+      consumes:
+      - application/json
+      description: Update (PUT) or delete (DELETE) a tour step row by ID.
+      parameters:
+      - description: Tour step ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Result
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin tour step update/delete
+      tags:
+      - admin
+  /api/admin/tour/steps/reorder:
+    post:
+      consumes:
+      - application/json
+      description: Rewrites sort_order to match a supplied ID order.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Reorder result
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Admin tour steps reorder
+      tags:
+      - admin
   /api/admin/tracks:
     get:
       description: Returns paginated track statistics for admin users.
@@ -1673,6 +1779,32 @@ paths:
       summary: Download spectrum file
       tags:
       - web
+  /api/tour/steps:
+    get:
+      description: Returns enabled, ordered tour steps with text resolved for the
+        requested language.
+      parameters:
+      - description: Language code (defaults to 'en')
+        in: query
+        name: lang
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tour steps
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+        "503":
+          description: Database unavailable
+          schema:
+            type: string
+      summary: Public tour steps
+      tags:
+      - tour
   /api/track-info/{id}:
     get:
       description: Returns username, detector, and recording date metadata for a track

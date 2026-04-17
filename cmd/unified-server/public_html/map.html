@@ -11595,6 +11595,97 @@ function selectHomeSearchResult(result, query) {
     })();
   </script>
 
+  <!-- Admin tour-step element picker (?pick=1) -->
+  <script>
+  (function() {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('pick') !== '1') return;
+
+    var banner = document.createElement('div');
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#0066cc;color:#fff;padding:10px 16px;font:14px sans-serif;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,0.3);';
+    banner.innerHTML = '<span style="font-weight:600;">Pick an element</span> — click any element to capture its selector. <button id="pick-cancel" style="margin-left:12px;padding:4px 10px;border:0;border-radius:4px;background:#fff;color:#0066cc;font-weight:600;cursor:pointer;">Cancel</button>';
+    document.body.appendChild(banner);
+
+    var highlight = document.createElement('div');
+    highlight.style.cssText = 'position:fixed;pointer-events:none;z-index:2147483646;border:2px solid #ff6b00;background:rgba(255,107,0,0.15);border-radius:3px;display:none;transition:all 0.05s linear;';
+    document.body.appendChild(highlight);
+
+    function isOwnUI(el) {
+      return el === banner || banner.contains(el) || el === highlight;
+    }
+
+    function moveHighlight(el) {
+      if (!el) { highlight.style.display = 'none'; return; }
+      var r = el.getBoundingClientRect();
+      highlight.style.top = r.top + 'px';
+      highlight.style.left = r.left + 'px';
+      highlight.style.width = r.width + 'px';
+      highlight.style.height = r.height + 'px';
+      highlight.style.display = 'block';
+    }
+
+    function isUniqueSelector(sel) {
+      try { return document.querySelectorAll(sel).length === 1; } catch (e) { return false; }
+    }
+
+    function buildSelector(el) {
+      if (!el || el === document || el === document.documentElement) return '';
+      if (el.id && isUniqueSelector('#' + CSS.escape(el.id))) return '#' + el.id;
+
+      // Try each class individually
+      if (el.classList && el.classList.length) {
+        for (var i = 0; i < el.classList.length; i++) {
+          var cls = '.' + CSS.escape(el.classList[i]);
+          if (isUniqueSelector(cls)) return cls;
+        }
+      }
+
+      // Walk up to nearest ancestor with an id, build nth-child path
+      var path = [];
+      var node = el;
+      while (node && node.nodeType === 1 && node !== document.body) {
+        var seg = node.tagName.toLowerCase();
+        if (node.id) { path.unshift('#' + CSS.escape(node.id)); break; }
+        var parent = node.parentElement;
+        if (parent) {
+          var idx = Array.prototype.indexOf.call(parent.children, node) + 1;
+          seg += ':nth-child(' + idx + ')';
+        }
+        path.unshift(seg);
+        node = parent;
+      }
+      return path.join(' > ');
+    }
+
+    var lastHover = null;
+    document.addEventListener('mousemove', function(e) {
+      var el = e.target;
+      if (isOwnUI(el)) { lastHover = null; highlight.style.display = 'none'; return; }
+      if (el === lastHover) return;
+      lastHover = el;
+      moveHighlight(el);
+    }, true);
+
+    document.addEventListener('click', function(e) {
+      var el = e.target;
+      if (isOwnUI(el)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      var selector = buildSelector(el);
+      try {
+        if (window.opener && !window.opener.closed) {
+          window.opener.postMessage({ type: 'tour-selector-picked', selector: selector }, '*');
+        }
+      } catch (err) { /* cross-origin safety */ }
+      window.close();
+    }, true);
+
+    document.getElementById('pick-cancel').addEventListener('click', function() {
+      window.close();
+    });
+  })();
+  </script>
+
   <!-- Tutorial / Tour / Story Wall wiring -->
   <script>
   (function() {
@@ -11607,32 +11698,48 @@ function selectHomeSearchResult(result, query) {
     var tourText        = document.getElementById('tour-text');
     var helpBtn         = document.getElementById('persistent-help-btn');
 
-    // --- Tour steps ---
-    var tourSteps = [
-      { selector: '#map', center: true,
-        text: 'Welcome to the Safecast map — an open platform where people worldwide share dosimeter readings for science, ecology, education, and safety. Each coloured dot is a real measurement with a timestamp and GPS location. The colour shows the dose rate — see the legend for the scale. Treat this as a community snapshot, not a precise survey.' },
-      { selector: '.upload-btn-container',
-        text: 'Upload your own radiation measurements. Supported formats include CSV, LOG, and KML files from devices such as bGeigie Nano, Radnote, and GammaScout. Your data appears on the map once processing is complete.' },
-      { selector: '#loginButton',
-        text: 'Log in to link uploads to your account, track your measurement history, and access your profile page. Registration is free and open to everyone.' },
-      { selector: '#legend',
-        text: 'This colour scale shows the radiation dose rate. The scale adapts to the data on screen — hover it for a full explanation.' },
-      { selector: '#safecast-ai-toggle',
-        text: 'Ask our AI assistant anything about the map, the data, or radiation safety. It knows Safecast data in depth.' },
-      { selector: '#track-insights-btn',
-        text: 'When you click on a track, this button appears. It asks the AI to analyse that specific track — summarising the route, radiation levels, and any notable patterns it finds.' },
-      { selector: '.date-slider-box',
-        text: 'Drag the time slider to filter measurements by date. Switch between Year and Month mode for broad or fine-grained control, and press the reset button to show all data again.' },
-      { selector: '#sfLive-row',
-        text: 'The large circles with numbers on the map are live readings from Safecast realtime sensors, updated every few minutes. The number shows the current dose rate in µSv/h, and the colour matches the legend scale. Click a circle to open its full measurement history. Uncheck this box to hide realtime sensors.' },
-      { selector: '#sfSpectrum-row',
-        text: 'Toggle gamma spectrum measurements. These come from spectral sensors that record the full energy distribution of detected radiation, not just a single dose rate. Click a spectrum point on the map to see its spectral distribution chart and identify which isotopes contributed to the reading.' },
-      { selector: '#speed-filter-ctrl',
-        text: 'Filter measurements by travel speed: airplane, car, or walking. Use these to focus on the type of measurements you are interested in.' },
-      { selector: '#searchInput',
-        text: 'Search for any city or address to jump straight to that location on the map.' },
-    ];
+    // --- Tour steps (loaded from /api/tour/steps) ---
+    var tourSteps = [];
     var tourIndex = 0;
+    var tourLoaded = false;
+
+    function viewportIsMobile() {
+      return !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+    }
+
+    function stepMatchesConditions(step) {
+      var isLoggedIn = !!(typeof currentUser !== 'undefined' && currentUser);
+      if (step.require_login === true && !isLoggedIn) return false;
+      if (step.require_login === false && isLoggedIn) return false;
+
+      var isAdmin = !!(typeof currentUser !== 'undefined' && currentUser && currentUser.is_admin);
+      if (step.require_admin === true && !isAdmin) return false;
+      if (step.require_admin === false && isAdmin) return false;
+
+      if (step.show_if_feature) {
+        if (step.show_if_feature === 'realtime_enabled' && !window.safecastRealtimeEnabled) return false;
+        if (step.show_if_feature === 'ai_enabled' && !document.getElementById('safecast-ai-toggle')) return false;
+      }
+
+      if (step.viewport === 'mobile' && !viewportIsMobile()) return false;
+      if (step.viewport === 'desktop' && viewportIsMobile()) return false;
+
+      if (step.first_time_only && localStorage.getItem(STORAGE_KEY)) return false;
+
+      return true;
+    }
+
+    function loadTourSteps() {
+      var lang = (typeof currentLang !== 'undefined' && currentLang) ? currentLang : 'en';
+      return fetch('/api/tour/steps?lang=' + encodeURIComponent(lang))
+        .then(function(r) { return r.ok ? r.json() : { steps: [] }; })
+        .then(function(data) {
+          var steps = (data && data.steps) || [];
+          tourSteps = steps.filter(stepMatchesConditions);
+          tourLoaded = true;
+        })
+        .catch(function() { tourSteps = []; tourLoaded = true; });
+    }
 
     // --- Story wall helpers ---
     function loadStories() {
@@ -11722,8 +11829,12 @@ function selectHomeSearchResult(result, query) {
     }
 
     function startTour() {
-      tourIndex = 0;
-      showTourStep(0);
+      var run = function() {
+        tourIndex = 0;
+        if (!tourSteps.length) { endTour(); return; }
+        showTourStep(0);
+      };
+      if (tourLoaded) { run(); } else { loadTourSteps().then(run); }
     }
 
     // --- Show/hide tutorial ---
@@ -11777,8 +11888,16 @@ function selectHomeSearchResult(result, query) {
       showTutorial();
     });
 
-    // --- Auto-show on first visit ---
-    if (!localStorage.getItem(STORAGE_KEY)) {
+    // Preload tour steps so first click on the help button is instant.
+    loadTourSteps();
+
+    // --- Auto-show on first visit, or when ?preview_tour=1 is set (admin preview) ---
+    var urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('preview_tour') === '1') {
+      setTimeout(function() {
+        loadTourSteps().then(startTour);
+      }, 1000);
+    } else if (!localStorage.getItem(STORAGE_KEY)) {
       setTimeout(showTutorial, 1000);
     }
   })();
