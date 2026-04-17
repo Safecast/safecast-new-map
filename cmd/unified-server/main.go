@@ -554,8 +554,11 @@ func main() {
 	}
 	queueDuckDBMaintenanceAfterImport(driverName, db, log.Printf, "startup")
 
-	// Seed translations into DB if empty, then reload from DB
+	// Seed translations into DB if empty. Tour step seeding also inserts
+	// tour.<step_key>.text rows, so run it before loading translations so the
+	// in-memory map picks up the new keys on first boot.
 	seedTranslationsDB(content, "public_html/translations.json")
+	seedTourStepsDB()
 	loadTranslationsFromDB()
 
 	// Initialize authentication system if configured
@@ -827,6 +830,7 @@ func main() {
 	var adminMCPPageHandler http.HandlerFunc
 	var adminRealtimePageHandler http.HandlerFunc
 	var adminTranslationsPageHandler http.HandlerFunc
+	var adminTourPageHandler http.HandlerFunc
 
 	// Register authentication and admin page handlers only when auth is enabled.
 	if authManager != nil {
@@ -924,6 +928,16 @@ func main() {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.Write(data)
 		}
+
+		adminTourPageHandler = func(w http.ResponseWriter, r *http.Request) {
+			data, err := content.ReadFile("public_html/admin-tour.html")
+			if err != nil {
+				http.Error(w, "Page not found", http.StatusNotFound)
+				return
+			}
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Write(data)
+		}
 	}
 
 	httpapi.RegisterPageRoutes(http.DefaultServeMux, httpapi.PageRoutesConfig{
@@ -940,6 +954,7 @@ func main() {
 		AdminMCPPageHandler:          adminMCPPageHandler,
 		AdminRealtimePageHandler:     adminRealtimePageHandler,
 		AdminTranslationsPageHandler: adminTranslationsPageHandler,
+		AdminTourPageHandler:         adminTourPageHandler,
 	})
 
 	// Legacy public endpoints (non-/api) live in one registrar to keep route
@@ -974,6 +989,9 @@ func main() {
 	var adminTranslationsReloadAPIHandler http.HandlerFunc
 	var adminTranslationByIDAPIHandler http.HandlerFunc
 	var adminTranslationsAPIHandler http.HandlerFunc
+	var adminTourStepsReorderAPIHandler http.HandlerFunc
+	var adminTourStepsByIDAPIHandler http.HandlerFunc
+	var adminTourStepsAPIHandler http.HandlerFunc
 	if authManager != nil {
 		adminMCPDataAPIHandler = adminMCPDataHandler
 		adminMCPExportAPIHandler = adminMCPExportHandler
@@ -999,6 +1017,24 @@ func main() {
 				adminTranslationsDataHandler(w, r)
 			case http.MethodPost:
 				adminTranslationCreateHandler(w, r)
+			default:
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			}
+		}
+		adminTourStepsReorderAPIHandler = func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodPost {
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			adminTourStepsReorderHandler(w, r)
+		}
+		adminTourStepsByIDAPIHandler = adminTourStepsByIDHandler
+		adminTourStepsAPIHandler = func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodGet:
+				adminTourStepsListHandler(w, r)
+			case http.MethodPost:
+				adminTourStepsCreateHandler(w, r)
 			default:
 				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			}
@@ -1034,6 +1070,10 @@ func main() {
 		AdminTranslationsReloadHandler:   adminTranslationsReloadAPIHandler,
 		AdminTranslationByIDHandler:      adminTranslationByIDAPIHandler,
 		AdminTranslationsHandler:         adminTranslationsAPIHandler,
+		APITourStepsHandler:              tourStepsPublicHandler,
+		AdminTourStepsReorderHandler:     adminTourStepsReorderAPIHandler,
+		AdminTourStepsByIDHandler:        adminTourStepsByIDAPIHandler,
+		AdminTourStepsHandler:            adminTourStepsAPIHandler,
 		APISensorsHandler:                restHandler.handleSensors,
 		APISensorsExportHandler:          restHandler.handleSensorsExport,
 		APISensorByIDHandler:             restHandler.handleSensor,

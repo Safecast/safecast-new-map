@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script>
+  (function() {
+    var saved = localStorage.getItem('safecastDocTheme');
+    var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.setAttribute('data-theme', saved || (prefersDark ? 'dark' : 'light'));
+  })();
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tour Steps - Safecast Admin</title>
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/images/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/images/favicon-16x16.png">
+  <link rel="manifest" href="/static/images/site.webmanifest">
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+  <style>
+    :root {
+      --bg-primary: #f5f5f5; --bg-card: white; --text-primary: #333;
+      --text-secondary: #666; --text-muted: #999; --border-color: #ddd;
+      --link-color: #0066cc; --shadow: 0 1px 3px rgba(0,0,0,0.1);
+      --th-bg: #424242; --hover-bg: #f9f9f9; --btn-border-radius: 8px;
+      --tab-active-bg: #2196F3; --tab-active-text: white;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1a1a1a; --bg-card: #2b2b2b; --text-primary: #eee;
+        --text-secondary: #aaa; --text-muted: #777; --border-color: #444;
+        --link-color: #90caf9; --shadow: 0 1px 3px rgba(255,255,255,0.1);
+        --th-bg: #616161; --hover-bg: #333; --tab-active-bg: #1976D2;
+        color-scheme: dark;
+      }
+    }
+    :root[data-theme='light'] {
+      --bg-primary: #f5f5f5; --bg-card: #fff; --text-primary: #333;
+      --text-secondary: #666; --text-muted: #999; --border-color: #ddd;
+      --link-color: #0066cc; --shadow: 0 1px 3px rgba(0,0,0,0.1);
+      --hover-bg: #f9f9f9; --th-bg: #424242; color-scheme: light;
+    }
+    :root[data-theme='dark'] {
+      --bg-primary: #1a1a1a; --bg-card: #2b2b2b; --text-primary: #eee;
+      --text-secondary: #aaa; --text-muted: #777; --border-color: #444;
+      --link-color: #90caf9; --shadow: 0 1px 3px rgba(255,255,255,0.07);
+      --hover-bg: #333; --th-bg: #616161; color-scheme: dark;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-primary); color: var(--text-primary); transition: background 0.2s, color 0.2s; }
+    .top-nav { background: #1a3a5c; color: #fff; padding: 0 24px; display: flex; align-items: center; gap: 16px; height: 52px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); position: sticky; top: 0; z-index: 100; }
+    .nav-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; color: #fff; font-weight: 700; font-size: 17px; white-space: nowrap; }
+    .nav-logo img { height: 28px; width: 28px; object-fit: contain; }
+    .nav-sep { color: rgba(255,255,255,0.3); font-size: 18px; }
+    .nav-title { font-size: 15px; font-weight: 600; color: #d0e8ff; white-space: nowrap; }
+    .nav-spacer { flex: 1; }
+    .back-link { color: #afd4f5; text-decoration: none; font-size: 13px; white-space: nowrap; }
+    .back-link:hover { color: #fff; }
+    #theme-toggle { background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.25); border-radius: 6px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
+    #theme-toggle:hover { background: rgba(255,255,255,0.22); }
+    .page-content { padding: 20px 24px; }
+    h1 { margin-bottom: 15px; font-size: 1.6em; }
+
+    .admin-tabs { display: flex; gap: 2px; margin-top: 10px; margin-bottom: 10px; background: var(--border-color); border-radius: 8px; overflow: hidden; }
+    .admin-tabs a, .admin-tabs span { padding: 10px 20px; text-decoration: none; color: var(--text-secondary); background: var(--bg-card); font-weight: 500; font-size: 0.95em; transition: background 0.2s; }
+    .admin-tabs a:hover { background: var(--hover-bg); color: var(--text-primary); }
+    .admin-tabs a.active { background: var(--tab-active-bg); color: var(--tab-active-text); }
+
+    .controls { display: flex; gap: 10px; align-items: center; margin-bottom: 15px; flex-wrap: wrap; }
+    .controls select { padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--btn-border-radius); background: var(--bg-card); color: var(--text-primary); font-size: 0.95em; }
+    .controls button { padding: 8px 16px; border: 1px solid var(--border-color); border-radius: var(--btn-border-radius); background: var(--bg-card); color: var(--text-primary); cursor: pointer; font-size: 0.95em; }
+    .controls button:hover { background: var(--hover-bg); }
+    .controls .add-btn { background: #2196F3; color: white; border-color: #2196F3; }
+    .controls .add-btn:hover { background: #1976D2; }
+    .controls .preview-btn { background: #9C27B0; color: white; border-color: #9C27B0; }
+    .controls .preview-btn:hover { background: #7B1FA2; }
+
+    .summary { margin-bottom: 10px; color: var(--text-secondary); font-size: 0.9em; }
+
+    .table-wrap { overflow-x: auto; background: var(--bg-card); border-radius: 8px; box-shadow: var(--shadow); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+    th { background: var(--th-bg); color: white; padding: 10px 12px; text-align: left; white-space: nowrap; position: sticky; top: 0; }
+    td { padding: 10px 12px; border-bottom: 1px solid var(--border-color); vertical-align: top; }
+    tr:hover { background: var(--hover-bg); }
+    tr.sortable-ghost { opacity: 0.4; background: var(--tab-active-bg) !important; }
+
+    .col-drag { width: 32px; cursor: grab; text-align: center; color: var(--text-muted); font-size: 1.2em; user-select: none; }
+    .col-drag:active { cursor: grabbing; }
+    .col-order { width: 48px; text-align: center; color: var(--text-muted); }
+    .col-key { width: 170px; font-family: monospace; font-size: 0.9em; }
+    .col-selector { width: 220px; }
+    .col-selector input { width: calc(100% - 40px); padding: 4px 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-card); color: var(--text-primary); font-family: monospace; font-size: 0.85em; }
+    .col-selector .pick-btn { width: 32px; padding: 4px; margin-left: 4px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-card); cursor: pointer; font-size: 1em; }
+    .col-selector .pick-btn:hover { background: var(--hover-bg); }
+    .col-text textarea { width: 100%; min-height: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-card); color: var(--text-primary); font-size: 0.9em; resize: vertical; font-family: inherit; }
+    .col-conditions { width: 200px; }
+    .col-conditions .cond-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+    .col-enabled { width: 70px; text-align: center; }
+    .col-actions { width: 140px; white-space: nowrap; }
+
+    .cond-badge { display: inline-block; padding: 2px 6px; border-radius: 3px; background: var(--border-color); color: var(--text-primary); font-size: 0.75em; }
+    .cond-badge.login { background: #4CAF50; color: white; }
+    .cond-badge.admin { background: #FF9800; color: white; }
+    .cond-badge.feature { background: #9C27B0; color: white; }
+    .cond-badge.viewport { background: #03A9F4; color: white; }
+    .cond-badge.firsttime { background: #795548; color: white; }
+
+    .btn-save { background: #4CAF50; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85em; }
+    .btn-save:hover { background: #388E3C; }
+    .btn-save:disabled { background: #aaa; cursor: not-allowed; }
+    .btn-cond { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.85em; }
+    .btn-cond:hover { background: var(--hover-bg); }
+    .btn-delete { background: #f44336; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.85em; }
+    .btn-delete:hover { background: #d32f2f; }
+
+    .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; }
+    .status-dot.saved { background: #4CAF50; }
+    .status-dot.dirty { background: #FF9800; }
+    .row-status { font-size: 0.75em; color: var(--text-muted); display: block; margin-top: 4px; }
+
+    .toggle-switch { position: relative; display: inline-block; width: 40px; height: 22px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: var(--border-color); border-radius: 22px; transition: 0.2s; }
+    .toggle-slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.2s; }
+    input:checked + .toggle-slider { background: #4CAF50; }
+    input:checked + .toggle-slider:before { transform: translateX(18px); }
+
+    /* Modal */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
+    .modal-overlay.visible { display: flex; align-items: center; justify-content: center; }
+    .modal { background: var(--bg-card); border-radius: 12px; padding: 24px; max-width: 560px; width: 95%; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+    .modal h3 { margin-bottom: 15px; }
+    .modal label { display: block; margin: 10px 0 4px; font-weight: 600; color: var(--text-secondary); font-size: 0.9em; }
+    .modal input[type="text"], .modal select { width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--btn-border-radius); background: var(--bg-card); color: var(--text-primary); font-size: 0.95em; }
+    .modal .tri-group { display: flex; gap: 6px; margin-top: 4px; }
+    .modal .tri-group button { flex: 1; padding: 8px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); cursor: pointer; border-radius: 4px; }
+    .modal .tri-group button.active { background: var(--tab-active-bg); color: white; border-color: var(--tab-active-bg); }
+    .modal .btn-row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    .modal .btn-save-modal { background: #4CAF50; color: white; border: none; padding: 10px 24px; border-radius: var(--btn-border-radius); cursor: pointer; font-size: 0.95em; }
+    .modal .btn-cancel { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); padding: 10px 24px; border-radius: var(--btn-border-radius); cursor: pointer; font-size: 0.95em; }
+
+    .no-data, .loading { text-align: center; padding: 40px; color: var(--text-muted); }
+  </style>
+</head>
+<body>
+<nav class="top-nav">
+  <a href="/" class="nav-logo">
+    <img src="/static/images/safecast-logo-squared.png" alt="Safecast">
+    Safecast
+  </a>
+  <span class="nav-sep">|</span>
+  <span class="nav-title">Tour Steps</span>
+  <span class="nav-spacer"></span>
+  <a href="/" class="back-link">← Back to Map</a>
+  <button id="theme-toggle" onclick="toggleTheme()">🌙 Dark Mode</button>
+</nav>
+<div class="page-content">
+
+<div class="admin-tabs" id="adminTabs"></div>
+
+<div class="controls">
+  <label for="langFilter" style="color:var(--text-secondary);font-size:0.9em;">Editing language:</label>
+  <select id="langFilter" onchange="onLangChange()">
+    <option value="en">English (en)</option>
+  </select>
+  <button class="add-btn" onclick="openConditionsModal(null, true)">+ New step</button>
+  <button class="preview-btn" onclick="previewTour()">▶ Preview tour</button>
+  <span class="summary" id="summary"></span>
+</div>
+
+<div class="table-wrap">
+  <div class="loading" id="loading">Loading...</div>
+  <table id="dataTable" style="display:none">
+    <thead>
+      <tr>
+        <th class="col-drag"></th>
+        <th class="col-order">#</th>
+        <th class="col-key">Step key</th>
+        <th class="col-selector">Target selector</th>
+        <th class="col-text">Text (in editing language)</th>
+        <th class="col-conditions">Conditions</th>
+        <th class="col-enabled">On</th>
+        <th class="col-actions">Actions</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+  <div class="no-data" id="noData" style="display:none">No tour steps yet — click "New step" above.</div>
+</div>
+
+<!-- Conditions / create modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3 id="modalTitle">Edit conditions</h3>
+    <input type="hidden" id="modalId">
+
+    <div id="modalCreateFields" style="display:none">
+      <label for="modalStepKey">Step key (unique identifier)</label>
+      <input type="text" id="modalStepKey" placeholder="e.g. upload_btn" maxlength="64">
+      <label for="modalSelector">Target CSS selector</label>
+      <input type="text" id="modalSelector" placeholder="e.g. #upload-button">
+      <label style="display:inline-flex;align-items:center;gap:6px;font-weight:normal;">
+        <input type="checkbox" id="modalCenter"> Center the tooltip (no specific element spotlight)
+      </label>
+    </div>
+
+    <label>Require login</label>
+    <div class="tri-group" id="triRequireLogin"></div>
+
+    <label>Require admin</label>
+    <div class="tri-group" id="triRequireAdmin"></div>
+
+    <label for="modalFeature">Feature gate</label>
+    <select id="modalFeature">
+      <option value="">— none —</option>
+      <option value="ai_enabled">AI assistant enabled</option>
+      <option value="realtime_enabled">Realtime sensors enabled</option>
+      <option value="logged_in_uploads">Logged-in uploads</option>
+    </select>
+
+    <label for="modalViewport">Viewport</label>
+    <select id="modalViewport">
+      <option value="any">Any</option>
+      <option value="desktop">Desktop only</option>
+      <option value="mobile">Mobile only</option>
+    </select>
+
+    <label style="display:inline-flex;align-items:center;gap:6px;font-weight:normal;">
+      <input type="checkbox" id="modalFirstTimeOnly"> Show only on first-time tour run
+    </label>
+
+    <div class="btn-row">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save-modal" onclick="saveModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+const PASSWORD = new URLSearchParams(window.location.search).get('password') || '';
+const AUTH_PARAM = PASSWORD ? '?password=' + encodeURIComponent(PASSWORD) : '';
+const AUTH_APPEND = PASSWORD ? '&password=' + encodeURIComponent(PASSWORD) : '';
+
+let steps = [];              // raw step rows from the API
+let translationsMap = {};    // { step_key: { lang: value } }
+let languages = [];          // available language codes
+let editingLang = 'en';
+let creatingNew = false;     // whether modal is in create mode
+
+function toggleTheme() {
+  const cur = document.documentElement.getAttribute('data-theme') || 'light';
+  const next = cur === 'light' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('safecastDocTheme', next);
+  document.getElementById('theme-toggle').textContent = next === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
+}
+
+function buildAdminTabs() {
+  const tabs = [
+    { label: 'Users', href: '/admin/users' },
+    { label: 'Uploads', href: '/admin/uploads' },
+    { label: 'MCP Analytics', href: '/admin/mcp' },
+    { label: 'Realtime', href: '/admin/realtime' },
+    { label: 'Translations', href: '/admin/translations' },
+    { label: 'Tour Steps', href: '/admin/tour', active: true }
+  ];
+  const container = document.getElementById('adminTabs');
+  tabs.forEach(t => {
+    const href = t.href + (PASSWORD ? '?password=' + encodeURIComponent(PASSWORD) : '');
+    container.innerHTML += `<a href="${href}" class="${t.active ? 'active' : ''}">${t.label}</a>`;
+  });
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s == null ? '' : s;
+  return d.innerHTML;
+}
+
+async function fetchLanguages() {
+  // Reuse translations list endpoint to get available languages.
+  const res = await fetch('/api/admin/translations?limit=1' + AUTH_APPEND);
+  if (!res.ok) return;
+  const body = await res.json();
+  languages = body.languages || ['en'];
+  const sel = document.getElementById('langFilter');
+  sel.innerHTML = languages.map(l =>
+    `<option value="${l}" ${l === editingLang ? 'selected' : ''}>${l}</option>`
+  ).join('');
+}
+
+async function fetchSteps() {
+  const loading = document.getElementById('loading');
+  const table = document.getElementById('dataTable');
+  const noData = document.getElementById('noData');
+  loading.style.display = 'block';
+  table.style.display = 'none';
+  noData.style.display = 'none';
+
+  const res = await fetch('/api/admin/tour/steps' + AUTH_PARAM);
+  if (!res.ok) {
+    loading.textContent = 'Failed to load: ' + res.status;
+    return;
+  }
+  const body = await res.json();
+  steps = body.data || [];
+
+  // Fetch all tour.* translations so we can show/edit text in the current language.
+  const trRes = await fetch('/api/admin/translations?limit=1000&search=tour.' + AUTH_APPEND);
+  translationsMap = {};
+  if (trRes.ok) {
+    const trBody = await trRes.json();
+    (trBody.data || []).forEach(row => {
+      const m = /^tour\.([^.]+)\.text$/.exec(row.key);
+      if (!m) return;
+      const sk = m[1];
+      if (!translationsMap[sk]) translationsMap[sk] = {};
+      translationsMap[sk][row.language_code] = { id: row.id, value: row.value };
+    });
+  }
+
+  loading.style.display = 'none';
+  if (steps.length === 0) {
+    noData.style.display = 'block';
+    return;
+  }
+  table.style.display = 'table';
+  renderTable();
+}
+
+function renderTable() {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = steps.map(renderRow).join('');
+  document.getElementById('summary').textContent =
+    steps.length + ' step' + (steps.length === 1 ? '' : 's');
+
+  // Enable drag-and-drop reordering.
+  if (window._sortable) window._sortable.destroy();
+  window._sortable = Sortable.create(tbody, {
+    handle: '.col-drag',
+    animation: 150,
+    onEnd: persistOrder
+  });
+}
+
+function conditionBadges(step) {
+  const badges = [];
+  if (step.require_login === true)  badges.push('<span class="cond-badge login">login</span>');
+  if (step.require_login === false) badges.push('<span class="cond-badge login">logged-out</span>');
+  if (step.require_admin === true)  badges.push('<span class="cond-badge admin">admin</span>');
+  if (step.show_if_feature)         badges.push(`<span class="cond-badge feature">${escapeHtml(step.show_if_feature)}</span>`);
+  if (step.viewport && step.viewport !== 'any') badges.push(`<span class="cond-badge viewport">${step.viewport}</span>`);
+  if (step.first_time_only)         badges.push('<span class="cond-badge firsttime">first-time</span>');
+  return badges.length ? badges.join(' ') : '<span style="color:var(--text-muted);font-size:0.8em;">none</span>';
+}
+
+function renderRow(step) {
+  const text = (translationsMap[step.step_key] && translationsMap[step.step_key][editingLang])
+    ? translationsMap[step.step_key][editingLang].value
+    : '';
+  const placeholderWarn = !text && editingLang !== 'en'
+    ? ' <span style="color:var(--text-muted);font-size:0.75em;">(empty — English fallback will be used)</span>'
+    : '';
+  return `
+    <tr data-id="${step.id}" data-step-key="${escapeHtml(step.step_key)}">
+      <td class="col-drag" title="Drag to reorder">☰</td>
+      <td class="col-order">${step.sort_order}</td>
+      <td class="col-key">${escapeHtml(step.step_key)}</td>
+      <td class="col-selector">
+        <input type="text" value="${escapeHtml(step.selector)}" data-field="selector"
+               oninput="markDirty(this)">
+        <button class="pick-btn" title="Pick element from map" onclick="pickElement(${step.id})">🎯</button>
+      </td>
+      <td class="col-text">
+        <textarea data-field="text" oninput="markDirty(this)">${escapeHtml(text)}</textarea>
+        ${placeholderWarn}
+      </td>
+      <td class="col-conditions">
+        <div class="cond-badges">${conditionBadges(step)}</div>
+        <button class="btn-cond" onclick="openConditionsModal(${step.id}, false)">Edit conditions</button>
+      </td>
+      <td class="col-enabled">
+        <label class="toggle-switch">
+          <input type="checkbox" ${step.enabled ? 'checked' : ''}
+                 onchange="toggleEnabled(${step.id}, this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </td>
+      <td class="col-actions">
+        <button class="btn-save" onclick="saveRow(${step.id})">Save</button>
+        <button class="btn-delete" onclick="deleteStep(${step.id})">Delete</button>
+        <span class="row-status" id="status-${step.id}"></span>
+      </td>
+    </tr>
+  `;
+}
+
+function markDirty(el) {
+  const tr = el.closest('tr');
+  const status = tr.querySelector('.row-status');
+  status.innerHTML = '<span class="status-dot dirty"></span> unsaved';
+}
+
+function rowById(id) {
+  return document.querySelector(`tr[data-id="${id}"]`);
+}
+
+function stepById(id) {
+  return steps.find(s => s.id === id);
+}
+
+async function saveRow(id) {
+  const tr = rowById(id);
+  const step = stepById(id);
+  if (!tr || !step) return;
+  const newSelector = tr.querySelector('[data-field="selector"]').value.trim();
+  const newText = tr.querySelector('[data-field="text"]').value;
+  const statusEl = document.getElementById('status-' + id);
+  statusEl.innerHTML = 'saving...';
+
+  // Save step metadata (selector may have changed).
+  const stepRes = await fetch('/api/admin/tour/steps/' + id + AUTH_PARAM, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      step_key: step.step_key,
+      selector: newSelector,
+      center: step.center,
+      enabled: step.enabled,
+      require_login: step.require_login,
+      require_admin: step.require_admin,
+      show_if_feature: step.show_if_feature,
+      viewport: step.viewport,
+      first_time_only: step.first_time_only
+    })
+  });
+  if (!stepRes.ok) {
+    statusEl.innerHTML = '<span style="color:#f44336;">save failed</span>';
+    return;
+  }
+
+  // Save the translation text (upsert).
+  const trRes = await fetch('/api/admin/translations' + AUTH_PARAM, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      language_code: editingLang,
+      key: 'tour.' + step.step_key + '.text',
+      value: newText
+    })
+  });
+  if (!trRes.ok) {
+    statusEl.innerHTML = '<span style="color:#f44336;">text save failed</span>';
+    return;
+  }
+
+  // Push a memory reload so the map picks up the change without a restart.
+  await fetch('/api/admin/translations/reload' + AUTH_PARAM, { method: 'POST' });
+
+  statusEl.innerHTML = '<span class="status-dot saved"></span> saved';
+  step.selector = newSelector;
+  if (!translationsMap[step.step_key]) translationsMap[step.step_key] = {};
+  translationsMap[step.step_key][editingLang] = { value: newText };
+}
+
+async function toggleEnabled(id, enabled) {
+  const step = stepById(id);
+  if (!step) return;
+  step.enabled = enabled;
+  await fetch('/api/admin/tour/steps/' + id + AUTH_PARAM, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      step_key: step.step_key,
+      selector: step.selector,
+      center: step.center,
+      enabled: step.enabled,
+      require_login: step.require_login,
+      require_admin: step.require_admin,
+      show_if_feature: step.show_if_feature,
+      viewport: step.viewport,
+      first_time_only: step.first_time_only
+    })
+  });
+}
+
+async function deleteStep(id) {
+  const step = stepById(id);
+  if (!step) return;
+  if (!confirm('Delete tour step "' + step.step_key + '"? This also removes its translations.')) return;
+  const res = await fetch('/api/admin/tour/steps/' + id + AUTH_PARAM, { method: 'DELETE' });
+  if (res.ok) fetchSteps();
+}
+
+async function persistOrder() {
+  const ids = Array.from(document.querySelectorAll('#tableBody tr')).map(tr => Number(tr.dataset.id));
+  await fetch('/api/admin/tour/steps/reorder' + AUTH_PARAM, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids })
+  });
+  // Refresh to pick up the new sort_order values.
+  fetchSteps();
+}
+
+// Conditions modal (reused for create)
+const TRI_STATES = [
+  { value: null,  label: 'Any' },
+  { value: true,  label: 'Yes' },
+  { value: false, label: 'No'  }
+];
+
+function buildTriGroup(elId, current) {
+  const el = document.getElementById(elId);
+  el.innerHTML = TRI_STATES.map((s, i) => `
+    <button type="button" data-value="${s.value === null ? '' : s.value}"
+            class="${s.value === current ? 'active' : ''}"
+            onclick="selectTri('${elId}', ${i})">${s.label}</button>
+  `).join('');
+}
+
+function selectTri(elId, idx) {
+  document.querySelectorAll(`#${elId} button`).forEach((b, i) => {
+    b.classList.toggle('active', i === idx);
+  });
+}
+
+function readTri(elId) {
+  const btn = document.querySelector(`#${elId} button.active`);
+  if (!btn || btn.dataset.value === '') return null;
+  return btn.dataset.value === 'true';
+}
+
+function openConditionsModal(id, isNew) {
+  creatingNew = !!isNew;
+  document.getElementById('modalId').value = id == null ? '' : id;
+  document.getElementById('modalCreateFields').style.display = isNew ? 'block' : 'none';
+  document.getElementById('modalTitle').textContent = isNew ? 'New tour step' : 'Edit conditions';
+
+  const step = isNew ? null : stepById(id);
+  document.getElementById('modalStepKey').value = '';
+  document.getElementById('modalSelector').value = '';
+  document.getElementById('modalCenter').checked = false;
+  document.getElementById('modalFeature').value = step?.show_if_feature || '';
+  document.getElementById('modalViewport').value = step?.viewport || 'any';
+  document.getElementById('modalFirstTimeOnly').checked = !!step?.first_time_only;
+  buildTriGroup('triRequireLogin', step ? step.require_login : null);
+  buildTriGroup('triRequireAdmin', step ? step.require_admin : null);
+
+  document.getElementById('modalOverlay').classList.add('visible');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('visible');
+}
+
+async function saveModal() {
+  const feature = document.getElementById('modalFeature').value;
+  const viewport = document.getElementById('modalViewport').value;
+  const firstTimeOnly = document.getElementById('modalFirstTimeOnly').checked;
+  const requireLogin = readTri('triRequireLogin');
+  const requireAdmin = readTri('triRequireAdmin');
+
+  if (creatingNew) {
+    const stepKey = document.getElementById('modalStepKey').value.trim();
+    const selector = document.getElementById('modalSelector').value.trim();
+    const center = document.getElementById('modalCenter').checked;
+    if (!stepKey || !selector) { alert('Step key and selector are required'); return; }
+    const res = await fetch('/api/admin/tour/steps' + AUTH_PARAM, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        step_key: stepKey, selector: selector, center: center, enabled: true,
+        require_login: requireLogin, require_admin: requireAdmin,
+        show_if_feature: feature || null, viewport: viewport,
+        first_time_only: firstTimeOnly
+      })
+    });
+    if (!res.ok) { alert('Create failed'); return; }
+  } else {
+    const id = Number(document.getElementById('modalId').value);
+    const step = stepById(id);
+    if (!step) return;
+    const res = await fetch('/api/admin/tour/steps/' + id + AUTH_PARAM, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        step_key: step.step_key,
+        selector: step.selector,
+        center: step.center,
+        enabled: step.enabled,
+        require_login: requireLogin,
+        require_admin: requireAdmin,
+        show_if_feature: feature || null,
+        viewport: viewport,
+        first_time_only: firstTimeOnly
+      })
+    });
+    if (!res.ok) { alert('Save failed'); return; }
+  }
+  closeModal();
+  fetchSteps();
+}
+
+function onLangChange() {
+  editingLang = document.getElementById('langFilter').value || 'en';
+  renderTable();
+}
+
+// Element picker: open the map with ?pick=1 and listen for the selector.
+function pickElement(id) {
+  const w = window.open('/?pick=1', '_blank');
+  if (!w) { alert('Pop-up blocked — allow pop-ups and try again.'); return; }
+  const handler = function(ev) {
+    if (!ev.data || ev.data.type !== 'tour-selector-picked') return;
+    window.removeEventListener('message', handler);
+    const tr = rowById(id);
+    if (!tr) return;
+    const input = tr.querySelector('[data-field="selector"]');
+    input.value = ev.data.selector;
+    markDirty(input);
+  };
+  window.addEventListener('message', handler);
+}
+
+function previewTour() {
+  window.open('/?preview_tour=1', '_blank');
+}
+
+document.addEventListener('DOMContentLoaded', async function() {
+  document.getElementById('theme-toggle').textContent =
+    document.documentElement.getAttribute('data-theme') === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
+  buildAdminTabs();
+  await fetchLanguages();
+  await fetchSteps();
+});
+</script>
+</body>
+</html>
