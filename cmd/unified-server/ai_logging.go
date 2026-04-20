@@ -21,7 +21,7 @@ type aiLogEvent struct {
 	GeneratedQuery string `json:"generated_query"`
 	DurationMs     int64  `json:"duration_ms"`
 	CommitHash     string `json:"commit_hash"`
-	Error          string `json:"error"`
+	Error          string `json:"error,omitempty"`
 }
 
 var (
