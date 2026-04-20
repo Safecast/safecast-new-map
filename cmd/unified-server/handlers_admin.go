@@ -431,6 +431,12 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return ""
 	}() + `">Translations</a>
+		<a href="/admin/tour` + func() string {
+		if password != "" {
+			return "?password=" + password
+		}
+		return ""
+	}() + `">Tour Steps</a>
 	</div>
 	<div class="nav">
 		<div class="nav-left">
@@ -2412,6 +2418,12 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return ""
 	}() + `">Translations</a>
+		<a href="/admin/tour` + func() string {
+		if password != "" {
+			return "?password=" + password
+		}
+		return ""
+	}() + `">Tour Steps</a>
 	</div>
 	<div class="nav">
 		<div class="nav-left">
