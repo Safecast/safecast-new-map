@@ -2728,6 +2728,34 @@ ON CONFLICT DO NOTHING`,
 	}
 }
 
+// SyncPostgreSQLSequence resets markers_id_seq to MAX(id)+1 when the sequence has fallen
+// behind the table's actual max id. This happens when rows are bulk-loaded with explicit ids
+// (e.g. historical Safecast API imports), causing subsequent BIGSERIAL inserts to collide
+// on markers_pkey. Safe to call on every startup: it is a no-op when the sequence is ahead.
+func (db *Database) SyncPostgreSQLSequence(ctx context.Context, logf func(string, ...any)) {
+	if db == nil || db.DB == nil {
+		return
+	}
+	var maxID int64
+	if err := db.DB.QueryRowContext(ctx, "SELECT COALESCE(MAX(id),0) FROM markers").Scan(&maxID); err != nil {
+		logf("sequence sync: could not read MAX(id): %v", err)
+		return
+	}
+	var lastValue int64
+	if err := db.DB.QueryRowContext(ctx, "SELECT last_value FROM markers_id_seq").Scan(&lastValue); err != nil {
+		logf("sequence sync: could not read sequence: %v", err)
+		return
+	}
+	if maxID >= lastValue {
+		newVal := maxID + 1
+		if _, err := db.DB.ExecContext(ctx, "SELECT setval('markers_id_seq', $1, true)", newVal); err != nil {
+			logf("sequence sync: setval failed: %v", err)
+			return
+		}
+		logf("sequence sync: reset markers_id_seq from %d to %d (MAX id was %d)", lastValue, newVal, maxID)
+	}
+}
+
 // nullableFloat64 converts optional measurement fields into SQL-friendly values so we
 // persist NULL when a sensor never reported altitude, temperature, or humidity.
 func nullableFloat64(valid bool, value float64) any {

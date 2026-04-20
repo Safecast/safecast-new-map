@@ -86,7 +86,7 @@ func LogQueryAsync(name string, args map[string]any, resultCount int, duration t
 	// Run in background — DuckLake writes can be slow and must never block MCP tool responses.
 	go func() {
 		_, err := duckDB.Exec(`
-			INSERT INTO mcp_query_log (tool_name, duration_ms, result_count, client, user_id, user_email)
+			INSERT INTO mcp_query_log (tool_name, duration_ms, result_count, client_info, user_id, user_email)
 			VALUES (?, ?, ?, ?, ?, ?)
 		`, name, duration.Milliseconds(), resultCount, client, userID, userEmail)
 		if err != nil {
