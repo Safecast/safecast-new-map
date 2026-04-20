@@ -552,6 +552,9 @@ func main() {
 	if err = db.InitSchema(dbCfg); err != nil {
 		log.Fatalf("DB schema: %v", err)
 	}
+	if strings.EqualFold(driverName, "pgx") {
+		db.SyncPostgreSQLSequence(context.Background(), log.Printf)
+	}
 	queueDuckDBMaintenanceAfterImport(driverName, db, log.Printf, "startup")
 
 	// Seed translations into DB if empty. Tour step seeding also inserts
