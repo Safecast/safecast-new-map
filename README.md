@@ -52,6 +52,18 @@ Natural background radiation is typically low and safe. This map helps identify 
 
 ---
 
+## Contributing & Community
+
+> **Mirror notice:** This repository is mirrored on [Codeberg](https://codeberg.org/Safecast/safecast-new-map). All activity is managed on **GitHub**:
+>
+> - **Issues & bug reports:** [github.com/Safecast/safecast-new-map/issues](https://github.com/Safecast/safecast-new-map/issues)
+> - **Projects & roadmap:** [github.com/Safecast/safecast-new-map/projects](https://github.com/Safecast/safecast-new-map/projects)
+> - **Commits & pull requests:** pushed to both GitHub and Codeberg simultaneously via dual-remote
+
+Please open issues and contribute on GitHub. The Codeberg mirror exists for redundancy and to serve users who prefer FOSS hosting.
+
+---
+
 ## Quick Start
 
 ### Option 1: Binary (Recommended)
