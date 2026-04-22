@@ -16,9 +16,40 @@ var queryDuckDBLogsToolDef = mcp.NewTool(
 	mcp.WithString(
 		"query",
 		mcp.Required(),
-		mcp.Description("SQL SELECT query to execute against mcp_ai_query_log"),
+		mcp.Description("SQL SELECT (or WITH ... SELECT) query to execute against mcp_ai_query_log. Must be a single statement; semicolons other than a trailing terminator are rejected."),
 	),
+	mcp.WithReadOnlyHintAnnotation(true),
 )
+
+// validateReadOnlyQuery enforces that a user-supplied DuckDB query is a single
+// read-only statement. Returns the cleaned query (trailing semicolons stripped)
+// and an error message suitable for returning to the MCP client. On success the
+// error string is empty.
+//
+// The previous implementation only checked HasPrefix("SELECT"), which is
+// trivially bypassed by "SELECT 1; DELETE FROM foo;" — DuckDB's Go driver can
+// execute multi-statement payloads through Query(). This guard also accepts
+// leading WITH (CTEs), since they're a common read-only shape.
+func validateReadOnlyQuery(q string) (string, string) {
+	cleaned := strings.TrimSpace(q)
+	// Allow one or more trailing semicolons (common from copy/paste) then
+	// re-trim whitespace that may have sat between them.
+	cleaned = strings.TrimRight(cleaned, "; \t\r\n")
+	if cleaned == "" {
+		return "", "Empty query"
+	}
+	upper := strings.ToUpper(cleaned)
+	if !strings.HasPrefix(upper, "SELECT") && !strings.HasPrefix(upper, "WITH") {
+		return "", "Only SELECT or WITH … SELECT queries are allowed"
+	}
+	// After stripping the trailing terminator, no further semicolons are
+	// permitted. This rejects stacked statements like "SELECT 1; DROP TABLE x"
+	// as well as semicolons hidden in block comments.
+	if strings.Contains(cleaned, ";") {
+		return "", "Multi-statement queries are not allowed; remove inner ';' characters"
+	}
+	return cleaned, ""
+}
 
 func handleQueryDuckDBLogs(
 	ctx context.Context,
@@ -38,12 +69,12 @@ func handleQueryDuckDBLogs(
 		return mcp.NewToolResultText("Missing or invalid 'query' argument"), nil
 	}
 
-	query := strings.TrimSpace(q)
-	if !strings.HasPrefix(strings.ToUpper(query), "SELECT") {
-		return mcp.NewToolResultText("Only SELECT queries are allowed"), nil
+	query, vErr := validateReadOnlyQuery(q)
+	if vErr != "" {
+		return mcp.NewToolResultText(vErr), nil
 	}
 
-	rows, err := duckDB.Query(query)
+	rows, err := duckDB.QueryContext(ctx, query)
 	if err != nil {
 		return mcp.NewToolResultText(fmt.Sprintf("Query error: %v", err)), nil
 	}
