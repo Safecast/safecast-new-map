@@ -834,6 +834,7 @@ func main() {
 	var adminRealtimePageHandler http.HandlerFunc
 	var adminTranslationsPageHandler http.HandlerFunc
 	var adminTourPageHandler http.HandlerFunc
+	var adminAIHintsPageHandler http.HandlerFunc
 
 	// Register authentication and admin page handlers only when auth is enabled.
 	if authManager != nil {
@@ -941,6 +942,16 @@ func main() {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.Write(data)
 		}
+
+		adminAIHintsPageHandler = func(w http.ResponseWriter, r *http.Request) {
+			data, err := content.ReadFile("public_html/admin-ai-hints.html")
+			if err != nil {
+				http.Error(w, "Page not found", http.StatusNotFound)
+				return
+			}
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Write(data)
+		}
 	}
 
 	httpapi.RegisterPageRoutes(http.DefaultServeMux, httpapi.PageRoutesConfig{
@@ -958,6 +969,7 @@ func main() {
 		AdminRealtimePageHandler:     adminRealtimePageHandler,
 		AdminTranslationsPageHandler: adminTranslationsPageHandler,
 		AdminTourPageHandler:         adminTourPageHandler,
+		AdminAIHintsPageHandler:      adminAIHintsPageHandler,
 	})
 
 	// Legacy public endpoints (non-/api) live in one registrar to keep route
@@ -995,6 +1007,10 @@ func main() {
 	var adminTourStepsReorderAPIHandler http.HandlerFunc
 	var adminTourStepsByIDAPIHandler http.HandlerFunc
 	var adminTourStepsAPIHandler http.HandlerFunc
+	var adminAIHintsReloadAPIHandler http.HandlerFunc
+	var adminAIHintsImportAPIHandler http.HandlerFunc
+	var adminAIHintsByIDAPIHandler http.HandlerFunc
+	var adminAIHintsAPIHandler http.HandlerFunc
 	if authManager != nil {
 		adminMCPDataAPIHandler = adminMCPDataHandler
 		adminMCPExportAPIHandler = adminMCPExportHandler
@@ -1042,6 +1058,63 @@ func main() {
 				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			}
 		}
+
+		adminAIHintsReloadAPIHandler = func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodPost {
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			adminAIHintReloadHandler(w, r)
+		}
+		adminAIHintsImportAPIHandler = func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodPost {
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			adminAIHintImportHandler(w, r)
+		}
+		// Subtree dispatcher for /api/admin/ai-hints/{model}[/history[/{id}/restore]|/restore|/snapshot|/export].
+		adminAIHintsByIDAPIHandler = func(w http.ResponseWriter, r *http.Request) {
+			stripped := strings.TrimPrefix(r.URL.Path, "/api/admin/ai-hints/")
+			stripped = strings.Trim(stripped, "/")
+			parts := strings.Split(stripped, "/")
+			switch {
+			case len(parts) == 1:
+				// /api/admin/ai-hints/{model}
+				switch r.Method {
+				case http.MethodGet:
+					adminAIHintGetHandler(w, r)
+				case http.MethodPut, http.MethodPatch:
+					adminAIHintUpdateHandler(w, r)
+				case http.MethodDelete:
+					adminAIHintDeleteHandler(w, r)
+				default:
+					http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+				}
+			case len(parts) == 2 && parts[1] == "restore" && r.Method == http.MethodPost:
+				adminAIHintRestoreHandler(w, r)
+			case len(parts) == 2 && parts[1] == "snapshot" && r.Method == http.MethodPost:
+				adminAIHintSnapshotHandler(w, r)
+			case len(parts) == 2 && parts[1] == "export" && r.Method == http.MethodGet:
+				adminAIHintExportHandler(w, r)
+			case len(parts) == 2 && parts[1] == "history" && r.Method == http.MethodGet:
+				adminAIHintHistoryListHandler(w, r)
+			case len(parts) == 4 && parts[1] == "history" && parts[3] == "restore" && r.Method == http.MethodPost:
+				adminAIHintHistoryRestoreHandler(w, r)
+			default:
+				http.Error(w, "Not found", http.StatusNotFound)
+			}
+		}
+		adminAIHintsAPIHandler = func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodGet:
+				adminAIHintsListHandler(w, r)
+			case http.MethodPost:
+				adminAIHintCreateHandler(w, r)
+			default:
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			}
+		}
 	}
 
 	httpapi.Register(http.DefaultServeMux, httpapi.RegisterConfig{
@@ -1077,6 +1150,10 @@ func main() {
 		AdminTourStepsReorderHandler:     adminTourStepsReorderAPIHandler,
 		AdminTourStepsByIDHandler:        adminTourStepsByIDAPIHandler,
 		AdminTourStepsHandler:            adminTourStepsAPIHandler,
+		AdminAIHintsReloadHandler:        adminAIHintsReloadAPIHandler,
+		AdminAIHintsImportHandler:        adminAIHintsImportAPIHandler,
+		AdminAIHintsByIDHandler:          adminAIHintsByIDAPIHandler,
+		AdminAIHintsHandler:              adminAIHintsAPIHandler,
 		APISensorsHandler:                restHandler.handleSensors,
 		APISensorsExportHandler:          restHandler.handleSensorsExport,
 		APISensorByIDHandler:             restHandler.handleSensor,

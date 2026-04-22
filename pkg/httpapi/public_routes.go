@@ -46,6 +46,13 @@ const (
 	RouteAPIAdminTourStepsByID        = "/api/admin/tour/steps/"
 	RouteAPIAdminTourSteps            = "/api/admin/tour/steps"
 
+	// AI Hints admin routes. Reload/import are static, then by-id, then the
+	// list root — order matters because ServeMux longest-prefix matches.
+	RouteAPIAdminAIHintsReload = "/api/admin/ai-hints/reload"
+	RouteAPIAdminAIHintsImport = "/api/admin/ai-hints/import"
+	RouteAPIAdminAIHintsByID   = "/api/admin/ai-hints/"
+	RouteAPIAdminAIHints       = "/api/admin/ai-hints"
+
 	RouteAPISensors              = "/api/sensors"
 	RouteAPISensorsExport        = "/api/sensors/export"
 	RouteAPISensorByID           = "/api/sensor/"

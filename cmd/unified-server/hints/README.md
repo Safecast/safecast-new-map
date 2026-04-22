@@ -6,6 +6,19 @@ This directory contains model-specific hints and prompts for the Safecast MCP se
 
 The hints system allows the MCP server to provide tailored descriptions, examples, and formatting guidance to different AI models (Claude, Qwen, Kimi, GPT, etc.) that connect to the Safecast database.
 
+## Source of Truth
+
+> **Runtime source of truth is the `ai_hints` table in PostgreSQL**, not the JSON files in this directory.
+>
+> On startup the server:
+> 1. Loads JSON files from this directory into memory (bootstrap/fallback).
+> 2. Seeds any missing rows into `ai_hints` with `ON CONFLICT (model) DO NOTHING` — existing DB rows are never overwritten by the JSON files.
+> 3. Reloads all non-deleted rows from `ai_hints` into memory and hands them to the MCP server.
+>
+> Admins edit hints through the **`/admin/ai-hints`** page (structured forms, history, soft delete, import/export). Changes in the DB take effect after clicking **Reload into Memory** (or restarting the service). The JSON files here are treated as seed templates and are **not** re-read at runtime unless the DB row is missing.
+>
+> To sync DB edits back into the repo, use **Export JSON** in the admin UI and commit the file.
+
 ## Files
 
 | File | Model | Description |
@@ -71,10 +84,20 @@ Default: `./hints/` relative to the binary location.
 
 ## Adding a New Model
 
-1. Create a new JSON file: `hints/newmodel.json`
-2. Set `"model": "newmodel"` in the JSON
-3. Add the model to `model_detection.go` detection logic
-4. Add the model constant to `hints.go`
+The recommended path is the admin UI:
+
+1. Open `/admin/ai-hints?password=...` (or log in as an admin user).
+2. Click **+ Add bot**, fill in the display name (the `model` slug is derived automatically), then save.
+3. Fill in capabilities, system prompt, global rules, and per-tool hints via the structured editor.
+4. Click **Reload into Memory** so the MCP server picks up the change without a restart.
+5. (Optional) Update `model_detection.go` so the server can auto-detect the new model from the `User-Agent` header.
+
+If you prefer to seed a new bot via JSON (e.g. for a fresh environment):
+
+1. Create a new JSON file: `hints/newmodel.json`.
+2. Set `"model": "newmodel"` in the JSON — this is the slug that will be inserted into `ai_hints`.
+3. Restart the server — the row will be seeded into the DB on the next startup.
+4. Add detection logic to `model_detection.go` and (optionally) a constant to `hints.go`.
 
 Example detection addition:
 
@@ -156,15 +179,18 @@ curl -H "User-Agent: UnknownBot/1.0" \
 
 ## Runtime Behavior
 
-1. **Startup**: All hints JSON files are loaded and cached in memory
-2. **Request**: Model is detected from `User-Agent` or `X-AI-Model` header
-3. **Response**: Tool results include model-specific formatting hints as metadata
+1. **Startup (file bootstrap)**: JSON files in this directory are loaded and cached in memory.
+2. **Startup (DB seed)**: Missing rows are inserted into `ai_hints` with `ON CONFLICT DO NOTHING`; existing DB rows are left alone.
+3. **Startup (DB load)**: All rows where `deleted_at IS NULL` are read from `ai_hints` and swapped into memory — this becomes the authoritative in-memory state.
+4. **Admin edit**: Writes go to `ai_hints` (with a history snapshot to `ai_hints_history`). The in-memory copy is refreshed on **Reload into Memory**.
+5. **Request**: Model is detected from `User-Agent` or `X-AI-Model` header.
+6. **Response**: Tool results include model-specific formatting hints as metadata.
 
 ## Performance
 
-- Hints are loaded once at startup (~10ms for all files)
-- No per-request file I/O
-- Thread-safe access via read-write mutex
+- Hints are loaded once at startup and on admin reload (no per-request file or DB I/O).
+- Thread-safe access via read-write mutex.
+- Atomic in-memory swap on reload (`SetHints`) — no half-loaded state.
 
 ## Troubleshooting
 

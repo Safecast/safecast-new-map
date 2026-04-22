@@ -62,6 +62,10 @@ type RegisterConfig struct {
 	AdminTourStepsReorderHandler     http.HandlerFunc
 	AdminTourStepsByIDHandler        http.HandlerFunc
 	AdminTourStepsHandler            http.HandlerFunc
+	AdminAIHintsReloadHandler        http.HandlerFunc
+	AdminAIHintsImportHandler        http.HandlerFunc
+	AdminAIHintsByIDHandler          http.HandlerFunc
+	AdminAIHintsHandler              http.HandlerFunc
 
 	Logf func(string, ...any)
 }
@@ -188,6 +192,13 @@ func registerAuthAndAdminRoutes(mux *http.ServeMux, cfg RegisterConfig) {
 	registerOptionalAdmin(RouteAPIAdminTourStepsReorder, cfg.AdminTourStepsReorderHandler)
 	registerOptionalAdmin(RouteAPIAdminTourStepsByID, cfg.AdminTourStepsByIDHandler)
 	registerOptionalAdmin(RouteAPIAdminTourSteps, cfg.AdminTourStepsHandler)
+
+	// AI Hints admin endpoints: reload and import are static, then per-model
+	// by-id subtree, then the list root. Order follows ServeMux rules.
+	registerOptionalAdmin(RouteAPIAdminAIHintsReload, cfg.AdminAIHintsReloadHandler)
+	registerOptionalAdmin(RouteAPIAdminAIHintsImport, cfg.AdminAIHintsImportHandler)
+	registerOptionalAdmin(RouteAPIAdminAIHintsByID, cfg.AdminAIHintsByIDHandler)
+	registerOptionalAdmin(RouteAPIAdminAIHints, cfg.AdminAIHintsHandler)
 
 	registerOptionalPublic := func(path string, handler http.HandlerFunc) {
 		if handler == nil {
