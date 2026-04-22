@@ -39,6 +39,7 @@ var queryExtremeReadingsToolDef = mcp.NewTool("query_extreme_readings",
 	mcp.WithString("exclude_areas",
 		mcp.Description("JSON array of geographic bounding boxes to exclude. Format: [{\"min_lat\":51.8,\"max_lat\":52.0,\"min_lon\":-8.6,\"max_lon\":-8.3}] to exclude Cork, Ireland. Can specify multiple areas to exclude."),
 	),
+	mcp.WithReadOnlyHintAnnotation(true),
 )
 
 // Handler
@@ -87,35 +88,33 @@ func handleQueryExtremeReadings(ctx context.Context, req mcp.CallToolRequest) (*
 		}
 	}
 
-	// Build WHERE clause with exclusions
-	var whereConditions []string
-	whereConditions = append(whereConditions, "doserate > 0 AND doserate < 10000")
+	// Build WHERE clause with parameterized values. User-supplied strings
+	// (device IDs) and floats (bounds) go through ? placeholders so DuckDB's
+	// driver handles escaping. Only `orderDir` and `limit` are interpolated,
+	// and both are validated earlier: orderDir is derived from the "direction"
+	// enum, limit is clamped to 1..100.
+	whereConditions := []string{"doserate > 0 AND doserate < 10000"}
+	var args []any
 
-	// Add geographic filter
 	if hasGeoFilter {
-		whereConditions = append(whereConditions, fmt.Sprintf(
-			"lat BETWEEN %.6f AND %.6f AND lon BETWEEN %.6f AND %.6f",
-			minLat, maxLat, minLon, maxLon,
-		))
+		whereConditions = append(whereConditions, "lat BETWEEN ? AND ? AND lon BETWEEN ? AND ?")
+		args = append(args, minLat, maxLat, minLon, maxLon)
 	}
 
-	// Add device exclusions
 	if len(excludeDevices) > 0 {
-		deviceList := make([]string, len(excludeDevices))
+		placeholders := make([]string, len(excludeDevices))
 		for i, dev := range excludeDevices {
-			deviceList[i] = fmt.Sprintf("'%s'", strings.ReplaceAll(dev, "'", "''"))
+			placeholders[i] = "?"
+			args = append(args, dev)
 		}
 		whereConditions = append(whereConditions, fmt.Sprintf(
-			"device_id NOT IN (%s)", strings.Join(deviceList, ", "),
+			"device_id NOT IN (%s)", strings.Join(placeholders, ", "),
 		))
 	}
 
-	// Add area exclusions
 	for _, area := range excludeAreas {
-		whereConditions = append(whereConditions, fmt.Sprintf(
-			"NOT (lat BETWEEN %.6f AND %.6f AND lon BETWEEN %.6f AND %.6f)",
-			area.MinLat, area.MaxLat, area.MinLon, area.MaxLon,
-		))
+		whereConditions = append(whereConditions, "NOT (lat BETWEEN ? AND ? AND lon BETWEEN ? AND ?)")
+		args = append(args, area.MinLat, area.MaxLat, area.MinLon, area.MaxLon)
 	}
 
 	query := fmt.Sprintf(`
@@ -135,7 +134,7 @@ func handleQueryExtremeReadings(ctx context.Context, req mcp.CallToolRequest) (*
 	`, strings.Join(whereConditions, " AND "), orderDir, limit)
 
 	// Execute query
-	rows, err := duckDB.Query(query)
+	rows, err := duckDB.QueryContext(ctx, query, args...)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Query failed: %v", err)), nil
 	}
