@@ -2,6 +2,7 @@ package modeladapter
 
 import (
 	"encoding/json"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sync"
@@ -122,10 +123,12 @@ func (q *qwenHintProvider) GetDefaultExample(toolName string) string {
 }
 
 // HintsLoader manages loading model-specific hints from JSON files.
+// The filesystem is abstracted via fs.FS so the loader can read from a real
+// directory (os.DirFS) or an embedded tree (embed.FS via fs.Sub).
 type HintsLoader struct {
-	hintsDir string
-	hints    map[string]*ModelHint // keyed by model name
-	mu       sync.RWMutex
+	fsys  fs.FS                 // always non-nil; rooted at the hints directory
+	hints map[string]*ModelHint // keyed by model name
+	mu    sync.RWMutex
 }
 
 // ModelHint represents the JSON structure for model hints.
@@ -148,20 +151,29 @@ type ToolHintJSON struct {
 	Metadata          map[string]string `json:"metadata"`
 }
 
-// NewHintsLoader creates a new HintsLoader for the given directory.
+// NewHintsLoader creates a new HintsLoader rooted at the given on-disk
+// directory. Equivalent to NewHintsLoaderFS(os.DirFS(hintsDir)).
 func NewHintsLoader(hintsDir string) *HintsLoader {
+	return NewHintsLoaderFS(os.DirFS(hintsDir))
+}
+
+// NewHintsLoaderFS creates a new HintsLoader backed by the given filesystem.
+// Pass os.DirFS(path) for a real directory or fs.Sub(embeddedFS, "hints") for
+// an embedded tree. The FS should be rooted at the hints directory itself
+// (so ReadDir(".") yields the *.json files).
+func NewHintsLoaderFS(fsys fs.FS) *HintsLoader {
 	return &HintsLoader{
-		hintsDir: hintsDir,
-		hints:    make(map[string]*ModelHint),
+		fsys:  fsys,
+		hints: make(map[string]*ModelHint),
 	}
 }
 
-// Load reads all JSON hint files from the hints directory.
+// Load reads all JSON hint files from the configured filesystem.
 func (h *HintsLoader) Load() error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	entries, err := os.ReadDir(h.hintsDir)
+	entries, err := fs.ReadDir(h.fsys, ".")
 	if err != nil {
 		return err
 	}
@@ -171,8 +183,7 @@ func (h *HintsLoader) Load() error {
 			continue
 		}
 
-		path := filepath.Join(h.hintsDir, entry.Name())
-		data, err := os.ReadFile(path)
+		data, err := fs.ReadFile(h.fsys, entry.Name())
 		if err != nil {
 			continue
 		}
@@ -198,6 +209,19 @@ func (h *HintsLoader) GetHints(model ModelName) *ModelHint {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	return h.hints[string(model)]
+}
+
+// SetHints atomically replaces the entire in-memory hints map. Used by the
+// admin reload endpoint to re-hydrate hints from the database without a
+// restart.
+func (h *HintsLoader) SetHints(hints map[string]*ModelHint) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	copied := make(map[string]*ModelHint, len(hints))
+	for k, v := range hints {
+		copied[k] = v
+	}
+	h.hints = copied
 }
 
 // GetAllModels returns a list of all loaded model names.
