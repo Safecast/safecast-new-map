@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AI Hints - Safecast Admin</title>
+  <script>
+  (function() {
+    var saved = localStorage.getItem('safecastDocTheme');
+    var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.setAttribute('data-theme', saved || (prefersDark ? 'dark' : 'light'));
+  })();
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/images/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/images/favicon-16x16.png">
+  <link rel="manifest" href="/static/images/site.webmanifest">
+  <style>
+    :root {
+      --bg-primary: #f5f5f5;
+      --bg-card: white;
+      --text-primary: #333;
+      --text-secondary: #666;
+      --text-muted: #999;
+      --border-color: #ddd;
+      --link-color: #0066cc;
+      --shadow: 0 1px 3px rgba(0,0,0,0.1);
+      --th-bg: #424242;
+      --hover-bg: #f9f9f9;
+      --btn-border-radius: 8px;
+      --tab-active-bg: #2196F3;
+      --tab-active-text: white;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1a1a1a;
+        --bg-card: #2b2b2b;
+        --text-primary: #eee;
+        --text-secondary: #aaa;
+        --text-muted: #777;
+        --border-color: #444;
+        --link-color: #90caf9;
+        --shadow: 0 1px 3px rgba(255,255,255,0.1);
+        --th-bg: #616161;
+        --hover-bg: #333;
+        --tab-active-bg: #1976D2;
+        color-scheme: dark;
+      }
+    }
+    :root[data-theme='light'] {
+      --bg-primary: #f5f5f5; --bg-card: #fff; --text-primary: #333;
+      --text-secondary: #666; --text-muted: #999; --border-color: #ddd;
+      --link-color: #0066cc; --shadow: 0 1px 3px rgba(0,0,0,0.1);
+      --hover-bg: #f9f9f9; --th-bg: #424242; color-scheme: light;
+    }
+    :root[data-theme='dark'] {
+      --bg-primary: #1a1a1a; --bg-card: #2b2b2b; --text-primary: #eee;
+      --text-secondary: #aaa; --text-muted: #777; --border-color: #444;
+      --link-color: #90caf9; --shadow: 0 1px 3px rgba(255,255,255,0.07);
+      --hover-bg: #333; --th-bg: #616161; color-scheme: dark;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-primary); color: var(--text-primary); transition: background 0.2s, color 0.2s; }
+
+    .top-nav { background: #1a3a5c; color: #fff; padding: 0 24px; display: flex; align-items: center; gap: 16px; height: 52px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); position: sticky; top: 0; z-index: 100; }
+    .nav-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; color: #fff; font-weight: 700; font-size: 17px; white-space: nowrap; }
+    .nav-logo img { height: 28px; width: 28px; object-fit: contain; }
+    .nav-sep { color: rgba(255,255,255,0.3); font-size: 18px; }
+    .nav-title { font-size: 15px; font-weight: 600; color: #d0e8ff; white-space: nowrap; }
+    .nav-spacer { flex: 1; }
+    .back-link { color: #afd4f5; text-decoration: none; font-size: 13px; white-space: nowrap; }
+    .back-link:hover { color: #fff; }
+    #theme-toggle { background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.25); border-radius: 6px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
+    #theme-toggle:hover { background: rgba(255,255,255,0.22); }
+
+    .page-content { padding: 20px 24px; }
+    h1 { margin-bottom: 15px; font-size: 1.6em; }
+
+    .admin-tabs { display: flex; gap: 2px; margin-top: 10px; margin-bottom: 10px; background: var(--border-color); border-radius: 8px; overflow: hidden; }
+    .admin-tabs a, .admin-tabs span { padding: 10px 20px; text-decoration: none; color: var(--text-secondary); background: var(--bg-card); font-weight: 500; font-size: 0.95em; transition: background 0.2s; }
+    .admin-tabs a:hover { background: var(--hover-bg); color: var(--text-primary); }
+    .admin-tabs a.active { background: var(--tab-active-bg); color: var(--tab-active-text); }
+
+    .layout { display: grid; grid-template-columns: 280px 1fr; gap: 16px; margin-top: 12px; }
+    .sidebar { background: var(--bg-card); border-radius: 8px; padding: 12px; box-shadow: var(--shadow); max-height: calc(100vh - 160px); overflow-y: auto; }
+    .sidebar h3 { font-size: 0.95em; margin-bottom: 10px; color: var(--text-secondary); }
+    .sidebar-actions { display: flex; gap: 6px; margin-bottom: 10px; }
+    .sidebar-actions button { flex: 1; padding: 6px 8px; font-size: 0.85em; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); border-radius: 6px; cursor: pointer; }
+    .sidebar-actions button.primary { background: #2196F3; color: white; border-color: #2196F3; }
+    .sidebar-actions button.primary:hover { background: #1976D2; }
+    .bot-list { list-style: none; }
+    .bot-list li { padding: 8px 10px; border-radius: 6px; cursor: pointer; color: var(--text-primary); margin-bottom: 2px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .bot-list li:hover { background: var(--hover-bg); }
+    .bot-list li.active { background: var(--tab-active-bg); color: var(--tab-active-text); }
+    .bot-list li.deleted { opacity: 0.55; font-style: italic; }
+    .bot-list .slug { font-size: 0.75em; color: var(--text-muted); font-family: monospace; }
+    .bot-list li.active .slug { color: rgba(255,255,255,0.85); }
+
+    .editor { background: var(--bg-card); border-radius: 8px; padding: 16px; box-shadow: var(--shadow); min-height: 400px; }
+    .editor-header { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 12px; }
+    .editor-header h2 { font-size: 1.2em; }
+    .editor-header .actions { display: flex; flex-wrap: wrap; gap: 6px; }
+    .btn { padding: 7px 14px; font-size: 0.9em; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); border-radius: 6px; cursor: pointer; }
+    .btn:hover { background: var(--hover-bg); }
+    .btn.primary { background: #4CAF50; color: white; border-color: #4CAF50; }
+    .btn.primary:hover { background: #388E3C; }
+    .btn.danger { background: #f44336; color: white; border-color: #f44336; }
+    .btn.danger:hover { background: #d32f2f; }
+    .btn.warn { background: #FF9800; color: white; border-color: #FF9800; }
+    .btn.warn:hover { background: #F57C00; }
+
+    .sub-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border-color); margin-bottom: 14px; }
+    .sub-tabs button { background: none; border: none; padding: 9px 18px; cursor: pointer; color: var(--text-secondary); font-weight: 500; border-bottom: 3px solid transparent; font-size: 0.95em; }
+    .sub-tabs button.active { color: var(--tab-active-bg); border-bottom-color: var(--tab-active-bg); }
+
+    .pane { display: none; }
+    .pane.active { display: block; }
+
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; font-size: 0.9em; }
+    .field .hint { font-size: 0.8em; color: var(--text-muted); margin-bottom: 4px; }
+    .field input[type=text], .field textarea, .field select { width: 100%; padding: 8px 10px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-card); color: var(--text-primary); font-size: 0.95em; font-family: inherit; }
+    .field textarea { min-height: 100px; resize: vertical; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.45; }
+    .field textarea.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85em; }
+    .field .slug-display { font-family: monospace; font-size: 0.85em; color: var(--text-muted); padding: 4px 0; }
+
+    .tag-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px; border: 1px solid var(--border-color); border-radius: 6px; min-height: 40px; align-items: center; }
+    .tag { background: var(--tab-active-bg); color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; display: inline-flex; align-items: center; gap: 5px; }
+    .tag .remove { cursor: pointer; opacity: 0.8; }
+    .tag .remove:hover { opacity: 1; }
+    .tag-row .tag-input-wrap { display: flex; gap: 4px; align-items: center; flex: 1; min-width: 200px; }
+    .tag-row select, .tag-row input { border: none; outline: none; background: transparent; color: var(--text-primary); font-size: 0.9em; padding: 2px 4px; }
+
+    .kv-rows { display: flex; flex-direction: column; gap: 6px; }
+    .kv-row { display: flex; gap: 6px; align-items: center; }
+    .kv-row input { flex: 1; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-card); color: var(--text-primary); font-size: 0.9em; }
+    .kv-row .btn-del { background: transparent; color: var(--text-muted); border: none; cursor: pointer; font-size: 1.1em; padding: 0 6px; }
+    .kv-row .btn-del:hover { color: #f44336; }
+
+    .list-rows { display: flex; flex-direction: column; gap: 6px; }
+    .list-row { display: flex; gap: 6px; }
+    .list-row input, .list-row textarea { flex: 1; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-card); color: var(--text-primary); font-size: 0.9em; }
+
+    .tool-card { border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 12px; background: var(--bg-card); }
+    .tool-head { display: flex; gap: 8px; align-items: center; padding: 10px 12px; cursor: pointer; user-select: none; }
+    .tool-head .arrow { transition: transform 0.15s; color: var(--text-muted); }
+    .tool-card.open .tool-head .arrow { transform: rotate(90deg); }
+    .tool-head .name { font-family: monospace; font-weight: 600; flex: 1; }
+    .tool-head .actions { display: flex; gap: 6px; }
+    .tool-body { display: none; padding: 12px; border-top: 1px solid var(--border-color); }
+    .tool-card.open .tool-body { display: block; }
+
+    .example-card { border: 1px dashed var(--border-color); border-radius: 6px; padding: 10px; margin-bottom: 8px; }
+    .example-card .example-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.85em; color: var(--text-secondary); }
+
+    .history-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid var(--border-color); font-size: 0.9em; }
+    .history-row:last-child { border-bottom: none; }
+    .change-kind { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.75em; font-weight: 600; text-transform: uppercase; }
+    .change-kind.update { background: #FFC107; color: #333; }
+    .change-kind.delete { background: #f44336; color: white; }
+    .change-kind.restore { background: #4CAF50; color: white; }
+    .change-kind.manual { background: #2196F3; color: white; }
+    .change-kind.import { background: #9C27B0; color: white; }
+
+    .empty { text-align: center; color: var(--text-muted); padding: 40px; }
+    .status { padding: 6px 10px; font-size: 0.85em; color: var(--text-secondary); min-height: 18px; }
+    .status.ok { color: #4CAF50; }
+    .status.err { color: #f44336; }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { max-height: 250px; }
+    }
+  </style>
+</head>
+<body>
+<nav class="top-nav">
+  <a href="/" class="nav-logo">
+    <img src="/static/images/safecast-logo-squared.png" alt="Safecast">
+    Safecast
+  </a>
+  <span class="nav-sep">|</span>
+  <span class="nav-title">AI Hints</span>
+  <span class="nav-spacer"></span>
+  <a href="/" class="back-link">← Back to Map</a>
+  <button id="theme-toggle" onclick="toggleTheme()">🌙 Dark Mode</button>
+</nav>
+<div class="page-content">
+
+<div class="admin-tabs" id="adminTabs"></div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <h3>Bot groups</h3>
+    <div class="sidebar-actions">
+      <button class="primary" onclick="addNewBot()">+ Add bot</button>
+      <button onclick="toggleDeleted()" id="toggleDeletedBtn">Show deleted</button>
+    </div>
+    <ul class="bot-list" id="botList"></ul>
+    <div class="status" id="listStatus"></div>
+  </aside>
+
+  <main class="editor">
+    <div class="editor-header">
+      <h2 id="editorTitle">Select a bot</h2>
+      <div class="actions" id="editorActions" style="display:none">
+        <button class="btn primary" onclick="saveCurrent()">Save</button>
+        <button class="btn" onclick="reloadIntoMemory()" title="Rebuild in-memory hints from DB">Reload into Memory</button>
+        <button class="btn" onclick="takeSnapshot()" title="Save a manual history snapshot">Snapshot</button>
+        <button class="btn" onclick="exportCurrent()">Export JSON</button>
+        <button class="btn warn" onclick="importJSON()">Import JSON</button>
+        <button class="btn danger" id="deleteBtn" onclick="deleteCurrent()">Delete</button>
+        <button class="btn primary" id="restoreBtn" style="display:none" onclick="restoreCurrent()">Restore</button>
+      </div>
+    </div>
+
+    <div id="editorPlaceholder" class="empty">
+      Select a bot from the list, or click "+ Add bot" to create a new one.
+    </div>
+
+    <div id="editorBody" style="display:none">
+      <div class="sub-tabs">
+        <button class="active" data-pane="general" onclick="showPane('general')">General</button>
+        <button data-pane="rules" onclick="showPane('rules')">Global rules</button>
+        <button data-pane="tools" onclick="showPane('tools')">Tools</button>
+        <button data-pane="history" onclick="showPane('history')">History</button>
+      </div>
+
+      <section class="pane active" id="pane-general">
+        <div class="field">
+          <label>Display name</label>
+          <div class="hint">Shown in the bot list. The model slug (used for MCP routing) is derived from this.</div>
+          <input type="text" id="displayName" oninput="onDisplayNameInput()">
+        </div>
+        <div class="field">
+          <label>Model slug</label>
+          <div class="hint">Readonly after creation — this is the MCP routing key.</div>
+          <input type="text" id="modelSlug" style="display:none">
+          <div class="slug-display" id="modelSlugReadonly"></div>
+        </div>
+        <div class="field">
+          <label>Capabilities</label>
+          <div class="hint">Pick from common capabilities or type a custom one.</div>
+          <div class="tag-row" id="capsRow"></div>
+        </div>
+        <div class="field">
+          <label>System prompt</label>
+          <textarea id="systemPrompt" rows="8"></textarea>
+        </div>
+      </section>
+
+      <section class="pane" id="pane-rules">
+        <div class="field">
+          <label>Global formatting rules</label>
+          <div class="hint">Key/value pairs applied across all tools. Examples: tone, coordinates, tables.</div>
+          <div class="kv-rows" id="globalRulesRows"></div>
+          <button class="btn" style="margin-top:8px" onclick="addGlobalRule()">+ Add rule</button>
+        </div>
+      </section>
+
+      <section class="pane" id="pane-tools">
+        <div id="toolsList"></div>
+        <button class="btn" onclick="addTool()">+ Add tool</button>
+      </section>
+
+      <section class="pane" id="pane-history">
+        <div id="historyList" class="empty">Loading history…</div>
+      </section>
+    </div>
+    <div class="status" id="editorStatus"></div>
+  </main>
+</div>
+</div>
+
+<input type="file" id="importFileInput" accept=".json,application/json" style="display:none" onchange="onImportFile(event)">
+
+<script>
+function toggleTheme() {
+  var cur = document.documentElement.getAttribute('data-theme') || 'light';
+  var next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('safecastDocTheme', next);
+  document.getElementById('theme-toggle').textContent = next === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
+}
+(function() {
+  var cur = document.documentElement.getAttribute('data-theme') || 'light';
+  document.getElementById('theme-toggle').textContent = cur === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
+})();
+
+const PASSWORD = new URLSearchParams(window.location.search).get('password') || '';
+const AUTH_PARAM = PASSWORD ? '?password=' + encodeURIComponent(PASSWORD) : '';
+
+const COMMON_CAPABILITIES = [
+  'tool_use', 'function_calling', 'json_mode', 'long_context',
+  'complex_reasoning', 'bilingual', 'multilingual', 'vision', 'streaming'
+];
+
+let state = {
+  list: [],              // [{model, display_name, capabilities, updated_at, deleted_at}]
+  showDeleted: false,
+  current: null,         // currently-loaded full row, or { __new: true } when creating
+  dirty: false
+};
+
+function buildAdminTabs() {
+  const tabs = [
+    { label: 'Users', href: '/admin/users' },
+    { label: 'Uploads', href: '/admin/uploads' },
+    { label: 'MCP Analytics', href: '/admin/mcp' },
+    { label: 'Realtime', href: '/admin/realtime' },
+    { label: 'Translations', href: '/admin/translations' },
+    { label: 'Tour Steps', href: '/admin/tour' },
+    { label: 'AI Hints', href: '/admin/ai-hints', active: true }
+  ];
+  const container = document.getElementById('adminTabs');
+  tabs.forEach(t => {
+    const href = t.href + (PASSWORD ? '?password=' + encodeURIComponent(PASSWORD) : '');
+    container.innerHTML += `<a href="${href}" class="${t.active ? 'active' : ''}">${t.label}</a>`;
+  });
+}
+
+function setStatus(id, msg, kind) {
+  const el = document.getElementById(id);
+  el.textContent = msg || '';
+  el.className = 'status' + (kind ? ' ' + kind : '');
+}
+
+async function apiFetch(path, opts = {}) {
+  const sep = path.indexOf('?') === -1 ? '?' : '&';
+  const url = path + (PASSWORD ? sep + 'password=' + encodeURIComponent(PASSWORD) : '');
+  const res = await fetch(url, Object.assign({ credentials: 'same-origin' }, opts));
+  const text = await res.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch (e) { /* non-JSON */ }
+  if (!res.ok) {
+    const msg = data && data.error ? data.error : res.status + ' ' + res.statusText;
+    throw new Error(msg);
+  }
+  return data;
+}
+
+// -------- List --------
+async function loadList() {
+  setStatus('listStatus', 'Loading…');
+  try {
+    const data = await apiFetch('/api/admin/ai-hints' + (state.showDeleted ? '?include_deleted=true' : ''));
+    state.list = (data && data.data) || [];
+    renderList();
+    setStatus('listStatus', state.list.length + ' bot' + (state.list.length === 1 ? '' : 's'));
+  } catch (e) {
+    setStatus('listStatus', e.message, 'err');
+  }
+}
+
+function renderList() {
+  const ul = document.getElementById('botList');
+  if (!state.list.length) {
+    ul.innerHTML = '<li class="empty">No bots yet</li>';
+    return;
+  }
+  ul.innerHTML = state.list.map(b => {
+    const isActive = state.current && state.current.model === b.model;
+    const deleted = !!b.deleted_at;
+    return `<li class="${isActive ? 'active' : ''} ${deleted ? 'deleted' : ''}" onclick="selectBot('${b.model}')">
+      <div>
+        <div>${escapeHTML(b.display_name)}</div>
+        <div class="slug">${escapeHTML(b.model)}${deleted ? ' · deleted' : ''}</div>
+      </div>
+    </li>`;
+  }).join('');
+}
+
+function toggleDeleted() {
+  state.showDeleted = !state.showDeleted;
+  document.getElementById('toggleDeletedBtn').textContent = state.showDeleted ? 'Hide deleted' : 'Show deleted';
+  loadList();
+}
+
+// -------- Editor --------
+async function selectBot(model) {
+  if (state.dirty && !confirm('You have unsaved changes. Discard them?')) return;
+  state.dirty = false;
+  try {
+    const row = await apiFetch('/api/admin/ai-hints/' + encodeURIComponent(model));
+    state.current = row;
+    renderEditor();
+  } catch (e) {
+    setStatus('editorStatus', e.message, 'err');
+  }
+}
+
+function addNewBot() {
+  if (state.dirty && !confirm('You have unsaved changes. Discard them?')) return;
+  state.current = {
+    __new: true,
+    model: '',
+    display_name: '',
+    capabilities: [],
+    system_prompt: '',
+    tools: {},
+    global_formatting_rules: {}
+  };
+  state.dirty = false;
+  renderEditor();
+}
+
+function renderEditor() {
+  const c = state.current;
+  document.getElementById('editorPlaceholder').style.display = c ? 'none' : 'block';
+  document.getElementById('editorBody').style.display = c ? 'block' : 'none';
+  document.getElementById('editorActions').style.display = c ? 'flex' : 'none';
+  if (!c) return;
+
+  document.getElementById('editorTitle').textContent = c.__new ? 'New bot' : c.display_name;
+
+  document.getElementById('displayName').value = c.display_name || '';
+  const slugInput = document.getElementById('modelSlug');
+  const slugReadonly = document.getElementById('modelSlugReadonly');
+  if (c.__new) {
+    slugInput.style.display = 'block';
+    slugInput.value = c.model || '';
+    slugInput.placeholder = 'auto-derived from display name';
+    slugReadonly.style.display = 'none';
+  } else {
+    slugInput.style.display = 'none';
+    slugReadonly.style.display = 'block';
+    slugReadonly.textContent = c.model;
+  }
+
+  document.getElementById('systemPrompt').value = c.system_prompt || '';
+  renderCapabilities(c.capabilities || []);
+  renderGlobalRules(c.global_formatting_rules || {});
+  renderTools(c.tools || {});
+  document.getElementById('historyList').innerHTML = '<div class="empty">Select the History tab to load</div>';
+
+  const delBtn = document.getElementById('deleteBtn');
+  const restoreBtn = document.getElementById('restoreBtn');
+  if (c.__new) {
+    delBtn.style.display = 'none';
+    restoreBtn.style.display = 'none';
+  } else if (c.deleted_at) {
+    delBtn.style.display = 'none';
+    restoreBtn.style.display = 'inline-block';
+  } else {
+    delBtn.style.display = 'inline-block';
+    restoreBtn.style.display = 'none';
+  }
+
+  renderList();
+  showPane('general');
+  setStatus('editorStatus', '');
+}
+
+function showPane(name) {
+  document.querySelectorAll('.sub-tabs button').forEach(b => b.classList.toggle('active', b.dataset.pane === name));
+  document.querySelectorAll('.pane').forEach(p => p.classList.toggle('active', p.id === 'pane-' + name));
+  if (name === 'history' && state.current && !state.current.__new) {
+    loadHistory(state.current.model);
+  }
+}
+
+function onDisplayNameInput() {
+  state.dirty = true;
+  if (state.current && state.current.__new) {
+    const slugInput = document.getElementById('modelSlug');
+    if (!slugInput.dataset.userEdited) {
+      slugInput.value = slugify(document.getElementById('displayName').value);
+    }
+  }
+}
+
+function slugify(s) {
+  return (s || '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+// -------- Capabilities --------
+function renderCapabilities(caps) {
+  const row = document.getElementById('capsRow');
+  const userCaps = new Set(caps);
+  state.list.forEach(b => (b.capabilities || []).forEach(c => userCaps.add(c)));
+  const options = Array.from(new Set([...COMMON_CAPABILITIES, ...userCaps])).sort();
+
+  const tagsHTML = caps.map((c, i) => `
+    <span class="tag">${escapeHTML(c)}<span class="remove" onclick="removeCapability(${i})">×</span></span>
+  `).join('');
+
+  const optionsHTML = options
+    .filter(o => !caps.includes(o))
+    .map(o => `<option value="${escapeHTML(o)}">${escapeHTML(o)}</option>`)
+    .join('');
+
+  row.innerHTML = tagsHTML + `
+    <span class="tag-input-wrap">
+      <select id="capSelect" onchange="addCapabilityFromSelect()">
+        <option value="">Add existing…</option>
+        ${optionsHTML}
+      </select>
+      <input type="text" id="capInput" placeholder="+ custom" onkeydown="if(event.key==='Enter'){event.preventDefault();addCapabilityFromInput();}">
+    </span>
+  `;
+}
+
+function addCapabilityFromSelect() {
+  const sel = document.getElementById('capSelect');
+  if (!sel.value) return;
+  state.current.capabilities = [...(state.current.capabilities || []), sel.value];
+  state.dirty = true;
+  renderCapabilities(state.current.capabilities);
+}
+
+function addCapabilityFromInput() {
+  const inp = document.getElementById('capInput');
+  const v = inp.value.trim();
+  if (!v) return;
+  state.current.capabilities = [...(state.current.capabilities || []), v];
+  state.dirty = true;
+  renderCapabilities(state.current.capabilities);
+}
+
+function removeCapability(idx) {
+  state.current.capabilities.splice(idx, 1);
+  state.dirty = true;
+  renderCapabilities(state.current.capabilities);
+}
+
+// -------- Global rules --------
+function renderGlobalRules(rules) {
+  const rows = document.getElementById('globalRulesRows');
+  const entries = Object.entries(rules || {});
+  if (!entries.length) {
+    rows.innerHTML = '<div class="empty" style="padding:10px">No rules yet</div>';
+    return;
+  }
+  rows.innerHTML = entries.map(([k, v], i) => `
+    <div class="kv-row">
+      <input type="text" placeholder="key" value="${escapeHTML(k)}" onchange="updateGlobalRule(${i}, 'key', this.value)">
+      <input type="text" placeholder="value" value="${escapeHTML(v)}" onchange="updateGlobalRule(${i}, 'value', this.value)">
+      <button class="btn-del" onclick="deleteGlobalRule(${i})" title="Remove">×</button>
+    </div>
+  `).join('');
+}
+
+function addGlobalRule() {
+  state.current.global_formatting_rules = state.current.global_formatting_rules || {};
+  const base = 'rule';
+  let n = 1;
+  while (state.current.global_formatting_rules[base + n]) n++;
+  state.current.global_formatting_rules[base + n] = '';
+  state.dirty = true;
+  renderGlobalRules(state.current.global_formatting_rules);
+}
+
+function updateGlobalRule(idx, kind, value) {
+  const entries = Object.entries(state.current.global_formatting_rules || {});
+  const [k, v] = entries[idx];
+  const next = {};
+  entries.forEach(([ek, ev], i) => {
+    if (i === idx) {
+      if (kind === 'key') next[value] = v;
+      else next[k] = value;
+    } else next[ek] = ev;
+  });
+  state.current.global_formatting_rules = next;
+  state.dirty = true;
+}
+
+function deleteGlobalRule(idx) {
+  const entries = Object.entries(state.current.global_formatting_rules || {});
+  entries.splice(idx, 1);
+  state.current.global_formatting_rules = Object.fromEntries(entries);
+  state.dirty = true;
+  renderGlobalRules(state.current.global_formatting_rules);
+}
+
+// -------- Tools --------
+function renderTools(tools) {
+  const list = document.getElementById('toolsList');
+  const names = Object.keys(tools || {});
+  if (!names.length) {
+    list.innerHTML = '<div class="empty" style="padding:20px">No tools configured</div>';
+    return;
+  }
+  list.innerHTML = names.map(name => renderToolCard(name, tools[name] || {})).join('');
+}
+
+function renderToolCard(name, tool) {
+  const warningsHTML = (tool.warnings || []).map((w, i) => `
+    <div class="list-row">
+      <input type="text" value="${escapeHTML(w)}" onchange="updateToolListItem('${name}', 'warnings', ${i}, this.value)">
+      <button class="btn-del" onclick="deleteToolListItem('${name}', 'warnings', ${i})">×</button>
+    </div>
+  `).join('');
+
+  const rulesEntries = Object.entries(tool.formatting_rules || {});
+  const rulesHTML = rulesEntries.map(([k, v], i) => `
+    <div class="kv-row">
+      <input type="text" placeholder="key" value="${escapeHTML(k)}" onchange="updateToolRule('${name}', ${i}, 'key', this.value)">
+      <input type="text" placeholder="value" value="${escapeHTML(v)}" onchange="updateToolRule('${name}', ${i}, 'value', this.value)">
+      <button class="btn-del" onclick="deleteToolRule('${name}', ${i})">×</button>
+    </div>
+  `).join('');
+
+  const examplesHTML = (tool.examples || []).map((ex, i) => renderExampleCard(name, i, ex)).join('');
+
+  return `
+    <div class="tool-card" data-tool="${escapeHTML(name)}">
+      <div class="tool-head" onclick="toggleTool('${name}')">
+        <span class="arrow">▶</span>
+        <span class="name">${escapeHTML(name)}</span>
+        <span class="actions" onclick="event.stopPropagation()">
+          <button class="btn" onclick="renameTool('${name}')">Rename</button>
+          <button class="btn danger" onclick="deleteTool('${name}')">Delete</button>
+        </span>
+      </div>
+      <div class="tool-body">
+        <div class="field">
+          <label>Description</label>
+          <textarea onchange="updateToolField('${name}', 'description', this.value)">${escapeHTML(tool.description || '')}</textarea>
+        </div>
+        <div class="field">
+          <label>Output hints</label>
+          <textarea onchange="updateToolField('${name}', 'output_hints', this.value)">${escapeHTML(tool.output_hints || '')}</textarea>
+        </div>
+        <div class="field">
+          <label>Warnings</label>
+          <div class="list-rows">${warningsHTML}</div>
+          <button class="btn" style="margin-top:6px" onclick="addToolListItem('${name}', 'warnings')">+ Add warning</button>
+        </div>
+        <div class="field">
+          <label>Formatting rules</label>
+          <div class="kv-rows">${rulesHTML}</div>
+          <button class="btn" style="margin-top:6px" onclick="addToolRule('${name}')">+ Add rule</button>
+        </div>
+        <div class="field">
+          <label>Examples</label>
+          <div>${examplesHTML || '<div class="empty" style="padding:10px">No examples</div>'}</div>
+          <button class="btn" style="margin-top:6px" onclick="addExample('${name}')">+ Add example</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderExampleCard(toolName, idx, ex) {
+  ex = ex || {};
+  const args = ex.tool_call && ex.tool_call.arguments ? ex.tool_call.arguments : {};
+  const argRows = Object.entries(args).map(([k, v], i) => `
+    <div class="kv-row">
+      <input type="text" placeholder="arg name" value="${escapeHTML(k)}" onchange="updateExampleArg('${toolName}', ${idx}, ${i}, 'key', this.value)">
+      <input type="text" placeholder="value" value="${escapeHTML(formatArgValue(v))}" onchange="updateExampleArg('${toolName}', ${idx}, ${i}, 'value', this.value)">
+      <button class="btn-del" onclick="deleteExampleArg('${toolName}', ${idx}, ${i})">×</button>
+    </div>
+  `).join('');
+
+  return `
+    <div class="example-card">
+      <div class="example-head">
+        <span>Example ${idx + 1}</span>
+        <button class="btn danger" onclick="deleteExample('${toolName}', ${idx})">Delete</button>
+      </div>
+      <div class="field">
+        <label>User query</label>
+        <input type="text" value="${escapeHTML(ex.user_query || '')}" onchange="updateExampleField('${toolName}', ${idx}, 'user_query', this.value)">
+      </div>
+      <div class="field">
+        <label>Tool call — name</label>
+        <input type="text" value="${escapeHTML((ex.tool_call && ex.tool_call.name) || toolName)}" onchange="updateExampleField('${toolName}', ${idx}, 'tool_call.name', this.value)">
+      </div>
+      <div class="field">
+        <label>Tool call — arguments</label>
+        <div class="kv-rows">${argRows}</div>
+        <button class="btn" style="margin-top:6px" onclick="addExampleArg('${toolName}', ${idx})">+ Add argument</button>
+      </div>
+    </div>
+  `;
+}
+
+function formatArgValue(v) {
+  if (v === null || v === undefined) return '';
+  if (typeof v === 'object') return JSON.stringify(v);
+  return String(v);
+}
+
+function parseArgValue(s) {
+  if (s === '') return '';
+  if (/^-?\d+$/.test(s)) return parseInt(s, 10);
+  if (/^-?\d+\.\d+$/.test(s)) return parseFloat(s);
+  if (s === 'true') return true;
+  if (s === 'false') return false;
+  if ((s.startsWith('{') && s.endsWith('}')) || (s.startsWith('[') && s.endsWith(']'))) {
+    try { return JSON.parse(s); } catch (_) { /* fall through */ }
+  }
+  return s;
+}
+
+function toggleTool(name) {
+  const card = document.querySelector(`.tool-card[data-tool="${CSS.escape(name)}"]`);
+  if (card) card.classList.toggle('open');
+}
+
+function addTool() {
+  const name = prompt('Tool name (e.g. query_radiation):');
+  if (!name) return;
+  if (!/^[a-z][a-z0-9_]*$/i.test(name)) {
+    alert('Tool name must start with a letter and contain only letters, digits, and underscores.');
+    return;
+  }
+  state.current.tools = state.current.tools || {};
+  if (state.current.tools[name]) {
+    alert('A tool with that name already exists.');
+    return;
+  }
+  state.current.tools[name] = { description: '', examples: [], output_hints: '', formatting_rules: {}, warnings: [] };
+  state.dirty = true;
+  renderTools(state.current.tools);
+}
+
+function renameTool(oldName) {
+  const newName = prompt('New tool name:', oldName);
+  if (!newName || newName === oldName) return;
+  if (!/^[a-z][a-z0-9_]*$/i.test(newName)) {
+    alert('Tool name must start with a letter and contain only letters, digits, and underscores.');
+    return;
+  }
+  if (state.current.tools[newName]) {
+    alert('A tool with that name already exists.');
+    return;
+  }
+  state.current.tools[newName] = state.current.tools[oldName];
+  delete state.current.tools[oldName];
+  state.dirty = true;
+  renderTools(state.current.tools);
+}
+
+function deleteTool(name) {
+  if (!confirm('Delete tool "' + name + '"?')) return;
+  delete state.current.tools[name];
+  state.dirty = true;
+  renderTools(state.current.tools);
+}
+
+function updateToolField(name, field, value) {
+  state.current.tools[name] = state.current.tools[name] || {};
+  state.current.tools[name][field] = value;
+  state.dirty = true;
+}
+
+function addToolListItem(name, field) {
+  state.current.tools[name] = state.current.tools[name] || {};
+  state.current.tools[name][field] = state.current.tools[name][field] || [];
+  state.current.tools[name][field].push('');
+  state.dirty = true;
+  renderTools(state.current.tools);
+}
+
+function updateToolListItem(name, field, idx, value) {
+  state.current.tools[name][field][idx] = value;
+  state.dirty = true;
+}
+
+function deleteToolListItem(name, field, idx) {
+  state.current.tools[name][field].splice(idx, 1);
+  state.dirty = true;
+  renderTools(state.current.tools);
+}
+
+function addToolRule(name) {
+  state.current.tools[name].formatting_rules = state.current.tools[name].formatting_rules || {};
+  let i = 1;
+  while (state.current.tools[name].formatting_rules['rule' + i]) i++;
+  state.current.tools[name].formatting_rules['rule' + i] = '';
+  state.dirty = true;
+  renderTools(state.current.tools);
+}
+
+function updateToolRule(name, idx, kind, value) {
+  const entries = Object.entries(state.current.tools[name].formatting_rules || {});
+  const [k, v] = entries[idx];
+  const next = {};
+  entries.forEach(([ek, ev], i) => {
+    if (i === idx) {
+      if (kind === 'key') next[value] = v;
+      else next[k] = value;
+    } else next[ek] = ev;
+  });
+  state.current.tools[name].formatting_rules = next;
+  state.dirty = true;
+}
+
+function deleteToolRule(name, idx) {
+  const entries = Object.entries(state.current.tools[name].formatting_rules || {});
+  entries.splice(idx, 1);
+  state.current.tools[name].formatting_rules = Object.fromEntries(entries);
+  state.dirty = true;
+  renderTools(state.current.tools);
+}
+
+function addExample(name) {
+  state.current.tools[name].examples = state.current.tools[name].examples || [];
+  state.current.tools[name].examples.push({ user_query: '', tool_call: { name: name, arguments: {} } });
+  state.dirty = true;
+  renderTools(state.current.tools);
+}
+
+function deleteExample(name, idx) {
+  state.current.tools[name].examples.splice(idx, 1);
+  state.dirty = true;
+  renderTools(state.current.tools);
+}
+
+function updateExampleField(name, idx, field, value) {
+  const ex = state.current.tools[name].examples[idx];
+  if (field === 'user_query') {
+    ex.user_query = value;
+  } else if (field === 'tool_call.name') {
+    ex.tool_call = ex.tool_call || {};
+    ex.tool_call.name = value;
+  }
+  state.dirty = true;
+}
+
+function addExampleArg(name, idx) {
+  const ex = state.current.tools[name].examples[idx];
+  ex.tool_call = ex.tool_call || { name: name, arguments: {} };
+  ex.tool_call.arguments = ex.tool_call.arguments || {};
+  let i = 1;
+  while (ex.tool_call.arguments['arg' + i] !== undefined) i++;
+  ex.tool_call.arguments['arg' + i] = '';
+  state.dirty = true;
+  renderTools(state.current.tools);
+}
+
+function updateExampleArg(name, exIdx, argIdx, kind, value) {
+  const ex = state.current.tools[name].examples[exIdx];
+  const entries = Object.entries(ex.tool_call.arguments || {});
+  const [k, v] = entries[argIdx];
+  const next = {};
+  entries.forEach(([ek, ev], i) => {
+    if (i === argIdx) {
+      if (kind === 'key') next[value] = v;
+      else next[k] = parseArgValue(value);
+    } else next[ek] = ev;
+  });
+  ex.tool_call.arguments = next;
+  state.dirty = true;
+}
+
+function deleteExampleArg(name, exIdx, argIdx) {
+  const ex = state.current.tools[name].examples[exIdx];
+  const entries = Object.entries(ex.tool_call.arguments || {});
+  entries.splice(argIdx, 1);
+  ex.tool_call.arguments = Object.fromEntries(entries);
+  state.dirty = true;
+  renderTools(state.current.tools);
+}
+
+// -------- Save / Delete / Restore --------
+function collectPayload() {
+  const p = {
+    display_name: document.getElementById('displayName').value.trim(),
+    capabilities: state.current.capabilities || [],
+    system_prompt: document.getElementById('systemPrompt').value,
+    tools: state.current.tools || {},
+    global_formatting_rules: state.current.global_formatting_rules || {}
+  };
+  if (state.current.__new) {
+    const slug = document.getElementById('modelSlug').value.trim();
+    if (slug) p.model = slug;
+  }
+  return p;
+}
+
+async function saveCurrent() {
+  if (!state.current) return;
+  const payload = collectPayload();
+  if (!payload.display_name) {
+    setStatus('editorStatus', 'Display name is required', 'err');
+    return;
+  }
+  setStatus('editorStatus', 'Saving…');
+  try {
+    if (state.current.__new) {
+      const res = await apiFetch('/api/admin/ai-hints', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      state.dirty = false;
+      await loadList();
+      await selectBot(res.model);
+      setStatus('editorStatus', 'Created', 'ok');
+    } else {
+      await apiFetch('/api/admin/ai-hints/' + encodeURIComponent(state.current.model), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      state.dirty = false;
+      await loadList();
+      await selectBot(state.current.model);
+      setStatus('editorStatus', 'Saved', 'ok');
+    }
+  } catch (e) {
+    setStatus('editorStatus', e.message, 'err');
+  }
+}
+
+async function deleteCurrent() {
+  if (!state.current || state.current.__new) return;
+  if (!confirm('Soft-delete "' + state.current.display_name + '"? You can restore it from the list with "Show deleted".')) return;
+  try {
+    await apiFetch('/api/admin/ai-hints/' + encodeURIComponent(state.current.model), { method: 'DELETE' });
+    setStatus('editorStatus', 'Deleted', 'ok');
+    state.current = null;
+    await loadList();
+    renderEditor();
+  } catch (e) {
+    setStatus('editorStatus', e.message, 'err');
+  }
+}
+
+async function restoreCurrent() {
+  if (!state.current || state.current.__new) return;
+  try {
+    await apiFetch('/api/admin/ai-hints/' + encodeURIComponent(state.current.model) + '/restore', { method: 'POST' });
+    await loadList();
+    await selectBot(state.current.model);
+    setStatus('editorStatus', 'Restored', 'ok');
+  } catch (e) {
+    setStatus('editorStatus', e.message, 'err');
+  }
+}
+
+async function takeSnapshot() {
+  if (!state.current || state.current.__new) return;
+  try {
+    await apiFetch('/api/admin/ai-hints/' + encodeURIComponent(state.current.model) + '/snapshot', { method: 'POST' });
+    setStatus('editorStatus', 'Snapshot saved', 'ok');
+    if (document.querySelector('.sub-tabs button.active').dataset.pane === 'history') {
+      loadHistory(state.current.model);
+    }
+  } catch (e) {
+    setStatus('editorStatus', e.message, 'err');
+  }
+}
+
+async function reloadIntoMemory() {
+  setStatus('editorStatus', 'Reloading…');
+  try {
+    const res = await apiFetch('/api/admin/ai-hints/reload', { method: 'POST' });
+    setStatus('editorStatus', 'Reloaded ' + res.loaded + ' bot(s) into memory', 'ok');
+  } catch (e) {
+    setStatus('editorStatus', e.message, 'err');
+  }
+}
+
+function exportCurrent() {
+  if (!state.current || state.current.__new) return;
+  const url = '/api/admin/ai-hints/' + encodeURIComponent(state.current.model) + '/export' +
+    (PASSWORD ? '?password=' + encodeURIComponent(PASSWORD) : '');
+  window.open(url, '_blank');
+}
+
+function importJSON() {
+  document.getElementById('importFileInput').click();
+}
+
+async function onImportFile(evt) {
+  const file = evt.target.files && evt.target.files[0];
+  evt.target.value = '';
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const payload = JSON.parse(text);
+    const res = await apiFetch('/api/admin/ai-hints/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    setStatus('editorStatus', 'Imported ' + res.model, 'ok');
+    await loadList();
+    await selectBot(res.model);
+  } catch (e) {
+    setStatus('editorStatus', 'Import failed: ' + e.message, 'err');
+  }
+}
+
+// -------- History --------
+async function loadHistory(model) {
+  const el = document.getElementById('historyList');
+  el.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const data = await apiFetch('/api/admin/ai-hints/' + encodeURIComponent(model) + '/history');
+    const items = (data && data.data) || [];
+    if (!items.length) {
+      el.innerHTML = '<div class="empty">No history snapshots yet</div>';
+      return;
+    }
+    el.innerHTML = items.map(it => `
+      <div class="history-row">
+        <div>
+          <span class="change-kind ${escapeHTML(it.change_kind)}">${escapeHTML(it.change_kind)}</span>
+          <span style="margin-left:10px">${escapeHTML(new Date(it.changed_at).toLocaleString())}</span>
+        </div>
+        <button class="btn" onclick="restoreHistory('${model}', ${it.id})">Restore this version</button>
+      </div>
+    `).join('');
+  } catch (e) {
+    el.innerHTML = '<div class="empty" style="color:#f44336">' + escapeHTML(e.message) + '</div>';
+  }
+}
+
+async function restoreHistory(model, id) {
+  if (!confirm('Restore this version? The current state will be snapshotted first.')) return;
+  try {
+    await apiFetch('/api/admin/ai-hints/' + encodeURIComponent(model) + '/history/' + id + '/restore', { method: 'POST' });
+    await loadList();
+    await selectBot(model);
+    showPane('history');
+    setStatus('editorStatus', 'Restored from history', 'ok');
+  } catch (e) {
+    setStatus('editorStatus', e.message, 'err');
+  }
+}
+
+// -------- Utils --------
+function escapeHTML(s) {
+  return String(s === null || s === undefined ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Track that the user hand-edited the slug so we stop auto-deriving it.
+document.addEventListener('DOMContentLoaded', function() {
+  const slugInput = document.getElementById('modelSlug');
+  if (slugInput) slugInput.addEventListener('input', function() { slugInput.dataset.userEdited = '1'; });
+  ['displayName', 'systemPrompt'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', function() { state.dirty = true; });
+  });
+  buildAdminTabs();
+  loadList();
+});
+
+window.addEventListener('beforeunload', function(e) {
+  if (state.dirty) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+</script>
+</body>
+</html>

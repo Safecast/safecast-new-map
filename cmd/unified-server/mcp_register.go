@@ -10,10 +10,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -552,18 +552,42 @@ func RegisterMCP() {
 		log.Printf("Warning: DuckDB initialization failed: %v (analytics features disabled)", err)
 	}
 
-	// Initialize hints loader
-	hintsDir := os.Getenv("MCP_HINTS_DIR")
-	if hintsDir == "" {
-		execPath, _ := os.Executable()
-		hintsDir = filepath.Join(filepath.Dir(execPath), "hints")
+	// Initialize hints source. MCP_HINTS_DIR overrides with an on-disk path
+	// (useful for devs who want to edit JSON without rebuilds). Otherwise we
+	// fall back to the hints directory embedded into the binary — this works
+	// regardless of where the binary runs from (production /usr/local/bin,
+	// local dev CWD, etc.).
+	var (
+		hintsFS    fs.FS
+		hintsLabel string
+	)
+	if mcpHintsDir := os.Getenv("MCP_HINTS_DIR"); mcpHintsDir != "" {
+		hintsFS = os.DirFS(mcpHintsDir)
+		hintsLabel = mcpHintsDir
+	} else {
+		sub, err := fs.Sub(embeddedHintsFS, "hints")
+		if err != nil {
+			log.Fatalf("[ai_hints] failed to open embedded hints: %v", err)
+		}
+		hintsFS = sub
+		hintsLabel = "embedded://hints"
 	}
 
-	mcpHintsLoader = modeladapter.NewHintsLoader(hintsDir)
+	mcpHintsLoader = modeladapter.NewHintsLoaderFS(hintsFS)
+	// File-based load runs first so the loader is usable even when the DB is
+	// down. seedAIHintsDBFromFS copies missing rows into Postgres, then the DB
+	// load replaces the in-memory map so admin edits become the source of
+	// truth.
 	if err := mcpHintsLoader.Load(); err != nil {
-		log.Printf("Warning: failed to load hints: %v (using default hints)", err)
+		log.Printf("Warning: failed to load hints from %s: %v", hintsLabel, err)
+	}
+	seedAIHintsDBFromFS(hintsFS, hintsLabel)
+	if count, err := loadAIHintsFromDB(mcpHintsLoader); err != nil {
+		log.Printf("Warning: failed to load hints from DB: %v (using %s)", err, hintsLabel)
+	} else if count > 0 {
+		log.Printf("Loaded %d AI hint rows from DB: %v", count, mcpHintsLoader.GetAllModels())
 	} else {
-		log.Printf("Loaded hints for models: %v", mcpHintsLoader.GetAllModels())
+		log.Printf("Loaded hints for models from %s: %v", hintsLabel, mcpHintsLoader.GetAllModels())
 	}
 
 	mcpModelAdapter = modeladapter.NewAdapter()
@@ -679,7 +703,7 @@ func RegisterMCP() {
 	log.Printf("MCP Server starting on port %s", mcpPort)
 	log.Println("  SSE endpoint: /mcp/sse")
 	log.Println("  Streamable HTTP endpoint: /mcp-http")
-	log.Printf("  Hints directory: %s", hintsDir)
+	log.Printf("  Hints source: %s", hintsLabel)
 	log.Println("  REST API: /api/...")
 	log.Println("  Swagger UI: /mcp-api/")
 
