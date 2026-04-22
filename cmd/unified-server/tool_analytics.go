@@ -11,6 +11,7 @@ import (
 
 var queryAnalyticsToolDef = mcp.NewTool("query_analytics",
 	mcp.WithDescription("Get usage statistics for MCP tools (call counts, duration). Powered by DuckDB local logs."),
+	mcp.WithReadOnlyHintAnnotation(true),
 )
 
 var radiationStatsToolDef = mcp.NewTool("radiation_stats",
@@ -20,6 +21,7 @@ var radiationStatsToolDef = mcp.NewTool("radiation_stats",
 		mcp.Enum("year", "month", "overall"),
 		mcp.DefaultString("year"),
 	),
+	mcp.WithReadOnlyHintAnnotation(true),
 )
 
 // Handlers
