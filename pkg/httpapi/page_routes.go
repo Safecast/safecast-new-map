@@ -28,6 +28,7 @@ type PageRoutesConfig struct {
 	AdminTranslationsPageHandler http.HandlerFunc
 	AdminTourPageHandler         http.HandlerFunc
 	AdminAIHintsPageHandler      http.HandlerFunc
+	AdminHelpPageHandler         http.HandlerFunc
 }
 
 // RegisterPageRoutes attaches UI/admin page routes to mux.
@@ -88,4 +89,5 @@ func RegisterPageRoutes(mux *http.ServeMux, cfg PageRoutesConfig) {
 	registerOptionalAdmin("/admin/translations", cfg.AdminTranslationsPageHandler)
 	registerOptionalAdmin("/admin/tour", cfg.AdminTourPageHandler)
 	registerOptionalAdmin("/admin/ai-hints", cfg.AdminAIHintsPageHandler)
+	registerOptionalAdmin("/admin/help", cfg.AdminHelpPageHandler)
 }
