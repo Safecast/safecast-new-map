@@ -835,6 +835,7 @@ func main() {
 	var adminTranslationsPageHandler http.HandlerFunc
 	var adminTourPageHandler http.HandlerFunc
 	var adminAIHintsPageHandler http.HandlerFunc
+	var adminHelpPageHandler http.HandlerFunc
 
 	// Register authentication and admin page handlers only when auth is enabled.
 	if authManager != nil {
@@ -952,6 +953,16 @@ func main() {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.Write(data)
 		}
+
+		adminHelpPageHandler = func(w http.ResponseWriter, r *http.Request) {
+			data, err := content.ReadFile("public_html/admin-help.html")
+			if err != nil {
+				http.Error(w, "Page not found", http.StatusNotFound)
+				return
+			}
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Write(data)
+		}
 	}
 
 	httpapi.RegisterPageRoutes(http.DefaultServeMux, httpapi.PageRoutesConfig{
@@ -970,6 +981,7 @@ func main() {
 		AdminTranslationsPageHandler: adminTranslationsPageHandler,
 		AdminTourPageHandler:         adminTourPageHandler,
 		AdminAIHintsPageHandler:      adminAIHintsPageHandler,
+		AdminHelpPageHandler:         adminHelpPageHandler,
 	})
 
 	// Legacy public endpoints (non-/api) live in one registrar to keep route
