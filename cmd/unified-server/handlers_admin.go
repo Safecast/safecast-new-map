@@ -443,6 +443,12 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return ""
 	}() + `">AI Hints</a>
+		<a href="/admin/help` + func() string {
+		if password != "" {
+			return "?password=" + password
+		}
+		return ""
+	}() + `">Help</a>
 	</div>
 	<div class="nav">
 		<div class="nav-left">
@@ -2436,6 +2442,12 @@ func adminTracksHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return ""
 	}() + `">AI Hints</a>
+		<a href="/admin/help` + func() string {
+		if password != "" {
+			return "?password=" + password
+		}
+		return ""
+	}() + `">Help</a>
 	</div>
 	<div class="nav">
 		<div class="nav-left">

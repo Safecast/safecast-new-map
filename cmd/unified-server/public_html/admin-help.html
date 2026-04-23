@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Help - Safecast</title>
+  <script>
+  (function() {
+    var saved = localStorage.getItem('safecastDocTheme');
+    var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.setAttribute('data-theme', saved || (prefersDark ? 'dark' : 'light'));
+  })();
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/images/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/images/favicon-16x16.png">
+  <link rel="manifest" href="/static/images/site.webmanifest">
+  <style>
+    :root {
+      --bg-primary: #f5f5f5;
+      --bg-card: white;
+      --text-primary: #333;
+      --text-secondary: #666;
+      --text-muted: #999;
+      --border-color: #ddd;
+      --link-color: #0066cc;
+      --shadow: 0 1px 3px rgba(0,0,0,0.1);
+      --th-bg: #424242;
+      --hover-bg: #f9f9f9;
+      --btn-border-radius: 8px;
+      --tab-active-bg: #2196F3;
+      --tab-active-text: white;
+      --note-bg: #e3f2fd;
+      --note-border: #90caf9;
+      --warn-bg: #fff3e0;
+      --warn-border: #ffb74d;
+      --tip-bg: #e8f5e9;
+      --tip-border: #a5d6a7;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1a1a1a;
+        --bg-card: #2b2b2b;
+        --text-primary: #eee;
+        --text-secondary: #aaa;
+        --text-muted: #777;
+        --border-color: #444;
+        --link-color: #90caf9;
+        --shadow: 0 1px 3px rgba(255,255,255,0.1);
+        --th-bg: #616161;
+        --hover-bg: #333;
+        --tab-active-bg: #1976D2;
+        --note-bg: #1a2733;
+        --note-border: #1565c0;
+        --warn-bg: #2a1f0f;
+        --warn-border: #e65100;
+        --tip-bg: #0f2318;
+        --tip-border: #2e7d32;
+        color-scheme: dark;
+      }
+    }
+    :root[data-theme='light'] {
+      --bg-primary: #f5f5f5; --bg-card: #fff; --text-primary: #333;
+      --text-secondary: #666; --text-muted: #999; --border-color: #ddd;
+      --link-color: #0066cc; --shadow: 0 1px 3px rgba(0,0,0,0.1);
+      --hover-bg: #f9f9f9; --th-bg: #424242; color-scheme: light;
+      --note-bg: #e3f2fd; --note-border: #90caf9;
+      --warn-bg: #fff3e0; --warn-border: #ffb74d;
+      --tip-bg: #e8f5e9; --tip-border: #a5d6a7;
+    }
+    :root[data-theme='dark'] {
+      --bg-primary: #1a1a1a; --bg-card: #2b2b2b; --text-primary: #eee;
+      --text-secondary: #aaa; --text-muted: #777; --border-color: #444;
+      --link-color: #90caf9; --shadow: 0 1px 3px rgba(255,255,255,0.07);
+      --hover-bg: #333; --th-bg: #616161; color-scheme: dark;
+      --tab-active-bg: #1976D2;
+      --note-bg: #1a2733; --note-border: #1565c0;
+      --warn-bg: #2a1f0f; --warn-border: #e65100;
+      --tip-bg: #0f2318; --tip-border: #2e7d32;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-primary); color: var(--text-primary); transition: background 0.2s, color 0.2s; line-height: 1.6; }
+
+    .top-nav { background: #1a3a5c; color: #fff; padding: 0 24px; display: flex; align-items: center; gap: 16px; height: 52px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); position: sticky; top: 0; z-index: 100; }
+    .nav-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; color: #fff; font-weight: 700; font-size: 17px; white-space: nowrap; }
+    .nav-logo img { height: 28px; width: 28px; object-fit: contain; }
+    .nav-sep { color: rgba(255,255,255,0.3); font-size: 18px; }
+    .nav-title { font-size: 15px; font-weight: 600; color: #d0e8ff; white-space: nowrap; }
+    .nav-spacer { flex: 1; }
+    .back-link { color: #afd4f5; text-decoration: none; font-size: 13px; white-space: nowrap; }
+    .back-link:hover { color: #fff; }
+    #theme-toggle { background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.25); border-radius: 6px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
+    #theme-toggle:hover { background: rgba(255,255,255,0.22); }
+
+    .admin-tabs { display: flex; gap: 2px; margin-top: 10px; margin-bottom: 10px; background: var(--border-color); border-radius: 8px; overflow: hidden; }
+    .admin-tabs a, .admin-tabs span { padding: 10px 20px; text-decoration: none; color: var(--text-secondary); background: var(--bg-card); font-weight: 500; font-size: 0.95em; transition: background 0.2s; white-space: nowrap; }
+    .admin-tabs a:hover { background: var(--hover-bg); color: var(--text-primary); }
+    .admin-tabs a.active { background: var(--tab-active-bg); color: var(--tab-active-text); }
+
+    .page-layout { display: grid; grid-template-columns: 220px 1fr; gap: 24px; padding: 20px 24px; max-width: 1400px; }
+    @media (max-width: 860px) {
+      .page-layout { grid-template-columns: 1fr; }
+      .toc-sidebar { display: none; }
+    }
+
+    /* Table of contents */
+    .toc-sidebar { position: sticky; top: 72px; max-height: calc(100vh - 90px); overflow-y: auto; align-self: start; }
+    .toc { background: var(--bg-card); border-radius: 8px; padding: 14px; box-shadow: var(--shadow); }
+    .toc h3 { font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 10px; }
+    .toc ul { list-style: none; }
+    .toc li { margin-bottom: 2px; }
+    .toc a { display: block; padding: 4px 8px; border-radius: 5px; text-decoration: none; color: var(--text-secondary); font-size: 0.9em; }
+    .toc a:hover { background: var(--hover-bg); color: var(--text-primary); }
+    .toc a.sub { padding-left: 20px; font-size: 0.85em; color: var(--text-muted); }
+    .toc a.sub:hover { color: var(--text-primary); }
+    .toc a.toc-hidden { opacity: 0.3; pointer-events: none; }
+
+    /* Main content */
+    .help-content { min-width: 0; }
+
+    .intro { background: var(--bg-card); border-radius: 8px; padding: 20px; margin-bottom: 24px; box-shadow: var(--shadow); }
+    .intro h1 { font-size: 1.5em; margin-bottom: 8px; }
+    .intro p { color: var(--text-secondary); }
+
+    .section { background: var(--bg-card); border-radius: 8px; padding: 24px; margin-bottom: 20px; box-shadow: var(--shadow); scroll-margin-top: 72px; }
+    .section h2 { font-size: 1.25em; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid var(--border-color); display: flex; align-items: center; gap: 10px; }
+    .section h2 .tab-badge { background: var(--tab-active-bg); color: white; font-size: 0.7em; padding: 2px 8px; border-radius: 10px; font-weight: 600; vertical-align: middle; }
+    .section h3 { font-size: 1em; margin-top: 20px; margin-bottom: 8px; color: var(--text-secondary); text-transform: uppercase; font-size: 0.8em; letter-spacing: 0.05em; }
+    .section p { margin-bottom: 10px; color: var(--text-secondary); }
+    .section ul { margin: 8px 0 12px 18px; }
+    .section li { margin-bottom: 5px; color: var(--text-secondary); }
+
+    /* Column tables */
+    .col-table { width: 100%; border-collapse: collapse; font-size: 0.88em; margin-bottom: 16px; }
+    .col-table th { background: var(--th-bg); color: white; padding: 8px 12px; text-align: left; font-weight: 600; }
+    .col-table td { padding: 7px 12px; border-bottom: 1px solid var(--border-color); }
+    .col-table tr:hover td { background: var(--hover-bg); }
+    .col-table td:first-child { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; white-space: nowrap; color: var(--link-color); }
+
+    /* Action pills */
+    .actions-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 16px; }
+    .action-pill { background: var(--hover-bg); border: 1px solid var(--border-color); border-radius: 20px; padding: 4px 12px; font-size: 0.85em; color: var(--text-secondary); }
+    .action-pill.green { background: #e8f5e9; border-color: #a5d6a7; color: #2e7d32; }
+    .action-pill.blue { background: #e3f2fd; border-color: #90caf9; color: #1565c0; }
+    .action-pill.red { background: #ffebee; border-color: #ef9a9a; color: #c62828; }
+    .action-pill.purple { background: #f3e5f5; border-color: #ce93d8; color: #6a1b9a; }
+    .action-pill.orange { background: #fff3e0; border-color: #ffb74d; color: #e65100; }
+    :root[data-theme='dark'] .action-pill.green { background: #1b3a1f; border-color: #388e3c; color: #81c784; }
+    :root[data-theme='dark'] .action-pill.blue { background: #0d2137; border-color: #1565c0; color: #90caf9; }
+    :root[data-theme='dark'] .action-pill.red { background: #2a0f0f; border-color: #c62828; color: #ef9a9a; }
+    :root[data-theme='dark'] .action-pill.purple { background: #1f0f2a; border-color: #6a1b9a; color: #ce93d8; }
+    :root[data-theme='dark'] .action-pill.orange { background: #2a1500; border-color: #e65100; color: #ffb74d; }
+
+    /* Sub-tabs */
+    .sub-table-section { border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 14px; overflow: hidden; }
+    .sub-table-header { background: var(--hover-bg); padding: 10px 14px; font-weight: 600; font-size: 0.9em; border-bottom: 1px solid var(--border-color); cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center; }
+    .sub-table-header:hover { background: var(--border-color); }
+    .sub-table-body { padding: 14px; }
+    .sub-table-body p { margin-bottom: 8px; font-size: 0.9em; color: var(--text-secondary); }
+
+    /* Callout boxes */
+    .note { background: var(--note-bg); border-left: 4px solid var(--note-border); padding: 10px 14px; border-radius: 0 6px 6px 0; margin: 12px 0; font-size: 0.9em; }
+    .note strong { color: var(--text-primary); }
+    .warn { background: var(--warn-bg); border-left: 4px solid var(--warn-border); padding: 10px 14px; border-radius: 0 6px 6px 0; margin: 12px 0; font-size: 0.9em; }
+    .warn strong { color: var(--text-primary); }
+    .tip { background: var(--tip-bg); border-left: 4px solid var(--tip-border); padding: 10px 14px; border-radius: 0 6px 6px 0; margin: 12px 0; font-size: 0.9em; }
+    .tip strong { color: var(--text-primary); }
+
+    kbd { display: inline-block; padding: 1px 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--hover-bg); font-family: monospace; font-size: 0.85em; }
+
+    /* Search */
+    .search-bar { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
+    .search-bar input { flex: 1; padding: 9px 14px; border: 1px solid var(--border-color); border-radius: var(--btn-border-radius); background: var(--bg-card); color: var(--text-primary); font-size: 0.95em; outline: none; }
+    .search-bar input:focus { border-color: var(--tab-active-bg); box-shadow: 0 0 0 2px rgba(33,150,243,0.15); }
+    .search-bar .clear-btn { padding: 9px 14px; border: 1px solid var(--border-color); border-radius: var(--btn-border-radius); background: var(--bg-card); color: var(--text-secondary); cursor: pointer; font-size: 0.9em; white-space: nowrap; }
+    .search-bar .clear-btn:hover { background: var(--hover-bg); }
+    .search-count { font-size: 0.85em; color: var(--text-muted); white-space: nowrap; min-width: 80px; }
+    mark { background: #fff176; color: #333; border-radius: 2px; padding: 0 1px; }
+    :root[data-theme='dark'] mark { background: #f57f17; color: #fff; }
+    .section.search-hidden { display: none; }
+    .no-results { text-align: center; padding: 40px; color: var(--text-muted); display: none; }
+  </style>
+</head>
+<body>
+<nav class="top-nav">
+  <a href="/" class="nav-logo">
+    <img src="/static/images/safecast-logo-squared.png" alt="Safecast">
+    Safecast
+  </a>
+  <span class="nav-sep">|</span>
+  <span class="nav-title">Admin Help</span>
+  <span class="nav-spacer"></span>
+  <a href="/" class="back-link">← Back to Map</a>
+  <button id="theme-toggle" onclick="toggleTheme()">🌙 Dark Mode</button>
+</nav>
+
+<div style="padding: 0 24px;">
+  <div class="admin-tabs" id="adminTabs"></div>
+</div>
+
+<div class="page-layout">
+
+  <!-- Table of Contents -->
+  <aside class="toc-sidebar">
+    <nav class="toc">
+      <h3>On this page</h3>
+      <ul>
+        <li><a href="#access">Access &amp; Authentication</a></li>
+        <li><a href="#users">Users</a></li>
+        <li><a href="#uploads">Uploads</a></li>
+        <li><a href="#mcp">MCP Analytics</a></li>
+        <li><a class="sub" href="#mcp-chat">Chat Questions</a></li>
+        <li><a class="sub" href="#mcp-tool">Tool Usage</a></li>
+        <li><a class="sub" href="#mcp-ailog">AI Query Log</a></li>
+        <li><a class="sub" href="#mcp-cache">Cached Insights</a></li>
+        <li><a class="sub" href="#mcp-loc">Location Notes</a></li>
+        <li><a href="#realtime">Realtime</a></li>
+        <li><a href="#translations">Translations</a></li>
+        <li><a href="#tour">Tour Steps</a></li>
+        <li><a href="#ai-hints">AI Hints</a></li>
+      </ul>
+    </nav>
+  </aside>
+
+  <!-- Main help content -->
+  <main class="help-content">
+
+    <div class="intro">
+      <h1>Safecast Admin Help</h1>
+      <p>This guide explains every admin tab, page, and data table. Use the table of contents on the left to jump to a section, or scroll through. All admin pages share a common tab bar at the top for navigation between sections.</p>
+      <div class="search-bar">
+        <input type="search" id="helpSearch" placeholder="Search help (e.g. &quot;delete&quot;, &quot;API key&quot;, &quot;translations&quot;)..." autocomplete="off" oninput="doSearch(this.value)">
+        <span class="search-count" id="searchCount"></span>
+        <button class="clear-btn" id="clearBtn" onclick="clearSearch()" style="display:none">Clear</button>
+      </div>
+    </div>
+
+    <div class="no-results" id="noResults">No sections match your search.</div>
+
+    <!-- ACCESS -->
+    <section class="section" id="access">
+      <h2>Access &amp; Authentication</h2>
+      <p>Admin pages can be accessed in two ways:</p>
+      <ul>
+        <li><strong>Session login:</strong> Log in with an account that has the Admin flag set. The admin tabs appear automatically once you are authenticated.</li>
+        <li><strong>URL password:</strong> Append <code>?password=YOUR_ADMIN_PASSWORD</code> to any admin URL. This is forwarded automatically as you navigate between tabs.</li>
+      </ul>
+      <div class="note"><strong>Note:</strong> The URL password method is useful for direct links and API testing, but session-based login is recommended for regular use.</div>
+      <p>Admin pages always send <code>Cache-Control: no-cache</code> headers so CloudFront never serves a stale admin view.</p>
+    </section>
+
+    <!-- USERS -->
+    <section class="section" id="users">
+      <h2>Users <span class="tab-badge">Tab</span></h2>
+      <p>Manage all registered user accounts. Data is loaded server-side with pagination; the table supports per-column filtering within the current page, plus a server-side search across all pages.</p>
+
+      <h3>Table columns</h3>
+      <table class="col-table">
+        <thead><tr><th>Column</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>ID</td><td>Auto-incremented internal user ID.</td></tr>
+          <tr><td>Email</td><td>Primary login email address. Must be unique.</td></tr>
+          <tr><td>Username</td><td>Optional display name (max 50 chars). May be blank.</td></tr>
+          <tr><td>External ID</td><td>Identifier from an external identity provider, if any.</td></tr>
+          <tr><td>API Key</td><td>Token used for <code>X-API-Key</code> header authentication on API calls.</td></tr>
+          <tr><td>Status</td><td><strong>Active</strong> (green) or <strong>Inactive</strong> (red). Inactive users cannot log in.</td></tr>
+          <tr><td>Admin</td><td><strong>Admin</strong> (purple) or <strong>User</strong> (grey). Admins can access all admin pages when logged in.</td></tr>
+          <tr><td>Email Verified</td><td><strong>Verified</strong> (green) or <strong>Unverified</strong> (orange). Unverified users cannot log in until they confirm their email.</td></tr>
+          <tr><td>Created</td><td>UTC timestamp when the account was created.</td></tr>
+          <tr><td>Last Login</td><td>UTC timestamp of the most recent successful login, or "Never".</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Actions</h3>
+      <div class="actions-list">
+        <span class="action-pill green">Add User</span>
+        <span class="action-pill blue">Edit</span>
+        <span class="action-pill purple">Make Admin / Remove Admin</span>
+        <span class="action-pill orange">Reset Password</span>
+        <span class="action-pill red">Delete</span>
+        <span class="action-pill red">Delete Selected</span>
+      </div>
+      <ul>
+        <li><strong>Add User</strong> — Opens a modal to create a new account. Email and password are required. Status, Admin, and Email Verified flags can be set at creation time.</li>
+        <li><strong>Edit</strong> — Opens the same modal pre-filled. Leave the password field blank to keep the existing password.</li>
+        <li><strong>Make Admin / Remove Admin</strong> — Toggles admin privileges with a confirmation prompt.</li>
+        <li><strong>Reset Password</strong> — Sends a password-reset email to the user's address. Requires SMTP to be configured.</li>
+        <li><strong>Delete</strong> — Permanently deletes the user. Cannot be undone.</li>
+        <li><strong>Delete Selected</strong> — Appears when one or more checkboxes are ticked; deletes all selected users at once.</li>
+      </ul>
+
+      <h3>Search &amp; filtering</h3>
+      <p>The <strong>Search</strong> box (top-right) performs a server-side search across email, username, and ID — it queries all pages, not just the current view. The per-column filter inputs in the table header filter only the rows visible in the current page. Combine both for precise results.</p>
+
+      <h3>Pagination</h3>
+      <p>Use the page-size selector (25 / 50 / 100 / 200) and First / Prev / Next / Last buttons at both the top and bottom of the table to navigate. The page-size selectors are kept in sync.</p>
+
+      <div class="tip"><strong>Tip:</strong> Column widths are resizable — drag the right edge of any header to adjust.</div>
+    </section>
+
+    <!-- UPLOADS -->
+    <section class="section" id="uploads">
+      <h2>Uploads <span class="tab-badge">Tab</span></h2>
+      <p>Browse and manage all files uploaded by users (bGeigie logs, CSV tracks, etc.). Each row represents one upload event.</p>
+
+      <h3>Table columns</h3>
+      <table class="col-table">
+        <thead><tr><th>Column</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>ID</td><td>Internal upload ID.</td></tr>
+          <tr><td>User</td><td>Linked user account, shown as a clickable email address that filters uploads to that user. Shows "Guest" if no account was linked at upload time.</td></tr>
+          <tr><td>Filename</td><td>Original filename as uploaded.</td></tr>
+          <tr><td>Type</td><td>Detected file type (e.g. bGeigie log, CSV).</td></tr>
+          <tr><td>Status</td><td>Processing state: <em>pending</em>, <em>processing</em>, <em>done</em>, or <em>error</em>.</td></tr>
+          <tr><td>Measurements</td><td>Number of data points imported from this file.</td></tr>
+          <tr><td>Uploaded At</td><td>UTC timestamp of the upload.</td></tr>
+          <tr><td>Error</td><td>Processing error message, if any.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Actions</h3>
+      <div class="actions-list">
+        <span class="action-pill orange">Edit metadata</span>
+        <span class="action-pill blue">Import from Safecast API</span>
+        <span class="action-pill red">Delete</span>
+        <span class="action-pill red">Delete Selected</span>
+      </div>
+      <ul>
+        <li><strong>Edit metadata</strong> — Update the upload's description or linked user.</li>
+        <li><strong>Import from Safecast API</strong> — Fetches historical bGeigie drive logs from the public Safecast API and imports them into the database.</li>
+        <li><strong>Delete / Delete Selected</strong> — Permanently removes the upload record and its associated measurements. Cannot be undone.</li>
+      </ul>
+
+      <h3>Filtering by user</h3>
+      <p>Click on a user's email in the User column to filter the list to that user's uploads. A <strong>Clear filter</strong> link appears at the top when a user filter is active.</p>
+
+      <div class="note"><strong>Note:</strong> Uploads page is rendered server-side (unlike other admin pages which are pure SPAs), so navigation after filtering works via URL query parameters.</div>
+    </section>
+
+    <!-- MCP ANALYTICS -->
+    <section class="section" id="mcp">
+      <h2>MCP Analytics <span class="tab-badge">Tab</span></h2>
+      <p>View analytics data collected from the AI assistant (MCP server). Five sub-tables are available via the sub-tab bar near the top of the page. All sub-tables support search, sorting, column resize, Export CSV, Delete Selected, and Delete All.</p>
+
+      <div class="note"><strong>Requires DuckLake:</strong> This page needs the <code>DUCKLAKE_PG_URL</code> environment variable set and the <code>ducklake_catalog</code> PostgreSQL database accessible. If analytics are unavailable, the page shows an error message.</div>
+
+      <!-- Chat Questions -->
+      <div class="sub-table-section" id="mcp-chat">
+        <div class="sub-table-header">Chat Questions</div>
+        <div class="sub-table-body">
+          <p>Every conversation sent to the AI assistant. Each row is one session.</p>
+          <table class="col-table">
+            <thead><tr><th>Column</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>ID</td><td>Auto-incremented session ID.</td></tr>
+              <tr><td>Timestamp</td><td>UTC time of the request.</td></tr>
+              <tr><td>Question</td><td>The user's question text. Click to expand the full text in a modal.</td></tr>
+              <tr><td>Answer</td><td>The AI's response. Click to expand.</td></tr>
+              <tr><td>Source</td><td>Which AI model or source served the answer (e.g. <em>claude</em>, <em>cache</em>).</td></tr>
+              <tr><td>Model</td><td>Specific model version used.</td></tr>
+              <tr><td>IP</td><td>Client IP address.</td></tr>
+              <tr><td>Country</td><td>Geo-resolved country from the IP.</td></tr>
+              <tr><td>Mobile</td><td>Whether the request came from a mobile device.</td></tr>
+              <tr><td>OS</td><td>Operating system parsed from user-agent.</td></tr>
+              <tr><td>Browser</td><td>Browser name parsed from user-agent.</td></tr>
+              <tr><td>History</td><td>Number of prior turns in the conversation context.</td></tr>
+              <tr><td>👍 / 👎</td><td>Thumbs-up / thumbs-down feedback counts. Green when positive, red when negative.</td></tr>
+              <tr><td>Session</td><td>Anonymous session identifier for grouping multi-turn conversations.</td></tr>
+            </tbody>
+          </table>
+          <p>Editable columns (via the Edit button): Question, Answer, Source, Model, Country, Browser, OS.</p>
+        </div>
+      </div>
+
+      <!-- Tool Usage -->
+      <div class="sub-table-section" id="mcp-tool">
+        <div class="sub-table-header">Tool Usage</div>
+        <div class="sub-table-body">
+          <p>Each row records a single MCP tool call made during a chat session.</p>
+          <table class="col-table">
+            <thead><tr><th>Column</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>Timestamp</td><td>UTC time of the tool call.</td></tr>
+              <tr><td>Tool</td><td>Name of the MCP tool invoked (e.g. <em>query_radiation</em>, <em>get_area_stats</em>).</td></tr>
+              <tr><td>Duration (ms)</td><td>How long the tool call took in milliseconds.</td></tr>
+              <tr><td>Results</td><td>Number of rows or items returned by the tool.</td></tr>
+              <tr><td>Client</td><td>Client identifier or source of the request.</td></tr>
+              <tr><td>User ID</td><td>Internal user ID if the caller was authenticated.</td></tr>
+              <tr><td>Email</td><td>User email if authenticated.</td></tr>
+              <tr><td>Params</td><td>JSON parameters passed to the tool. Click to expand.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- AI Query Log -->
+      <div class="sub-table-section" id="mcp-ailog">
+        <div class="sub-table-header">AI Query Log</div>
+        <div class="sub-table-body">
+          <p>Stores AI-generated SQL or DuckDB queries created during tool calls. Useful for auditing what queries the AI produced in response to user questions.</p>
+          <table class="col-table">
+            <thead><tr><th>Column</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>Timestamp</td><td>UTC time of the query.</td></tr>
+              <tr><td>Query</td><td>The SQL/DuckDB query generated by the AI. Click to expand.</td></tr>
+              <tr><td>Tool</td><td>The MCP tool that invoked this query.</td></tr>
+              <tr><td>Duration (ms)</td><td>Execution time of the query.</td></tr>
+              <tr><td>Results</td><td>Number of rows returned.</td></tr>
+              <tr><td>Error</td><td>Error message if the query failed.</td></tr>
+              <tr><td>Commit</td><td>Git commit hash of the server at query time — useful for correlating behavior with deployments.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Cached Insights -->
+      <div class="sub-table-section" id="mcp-cache">
+        <div class="sub-table-header">Cached Insights</div>
+        <div class="sub-table-body">
+          <p>The semantic question-answer cache. When the AI generates a high-quality response, it may be stored here and reused for semantically similar future questions, reducing latency and cost.</p>
+          <table class="col-table">
+            <thead><tr><th>Column</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>ID</td><td>Cache entry ID.</td></tr>
+              <tr><td>Timestamp</td><td>When the entry was cached.</td></tr>
+              <tr><td>Question</td><td>The canonical question text. Click to expand.</td></tr>
+              <tr><td>Answer</td><td>The cached answer. Click to expand.</td></tr>
+              <tr><td>Source Chat</td><td>ID of the original chat_questions row this was derived from.</td></tr>
+            </tbody>
+          </table>
+          <p>Editable columns: Question, Answer. Delete individual entries or all entries to force the AI to generate fresh answers.</p>
+        </div>
+      </div>
+
+      <!-- Location Notes -->
+      <div class="sub-table-section" id="mcp-loc">
+        <div class="sub-table-header">Location Notes</div>
+        <div class="sub-table-body">
+          <p>Geographic context notes injected into AI responses when the user queries a known location. Allows editors to add authoritative descriptions for specific areas.</p>
+          <table class="col-table">
+            <thead><tr><th>Column</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>ID</td><td>Entry ID.</td></tr>
+              <tr><td>Lat / Lon</td><td>Center coordinate of the location, in decimal degrees.</td></tr>
+              <tr><td>Radius (m)</td><td>Radius in meters around the coordinate within which this note applies.</td></tr>
+              <tr><td>Note</td><td>The context text to include in AI responses. Click to expand.</td></tr>
+              <tr><td>Timestamp</td><td>When the entry was created or last updated.</td></tr>
+            </tbody>
+          </table>
+          <p>Editable columns: Note, Lat, Lon, Radius (m).</p>
+        </div>
+      </div>
+
+      <h3>Common controls (all sub-tables)</h3>
+      <ul>
+        <li><strong>Search</strong> — Full-text search across all visible columns. Press <kbd>Enter</kbd> or click Search.</li>
+        <li><strong>Export CSV</strong> — Downloads all rows matching the current search as a CSV file.</li>
+        <li><strong>Delete Selected</strong> — Deletes checked rows only. The button shows a count of selected rows.</li>
+        <li><strong>Delete All</strong> — Deletes all rows (or all matching the current search). Prompts for confirmation.</li>
+        <li><strong>Edit button</strong> — Opens an inline editor for the row's editable fields.</li>
+        <li><strong>Column filter row</strong> — Type in any header filter box to narrow the current page client-side.</li>
+      </ul>
+      <div class="tip"><strong>Tip:</strong> Click any truncated cell to expand its full content in a popup modal. Press <kbd>Esc</kbd> to dismiss.</div>
+    </section>
+
+    <!-- REALTIME -->
+    <section class="section" id="realtime">
+      <h2>Realtime <span class="tab-badge">Tab</span></h2>
+      <p>Shows the latest measurements from real-time fixed sensors: Pointcast, Solarcast, and bGeigieZen devices. These measurements are fetched periodically from the Safecast realtime feed and stored in the <code>realtime_measurements</code> table.</p>
+
+      <h3>Table columns</h3>
+      <table class="col-table">
+        <thead><tr><th>Column</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>ID</td><td>Internal measurement ID.</td></tr>
+          <tr><td>Device ID</td><td>Numeric device identifier from the Safecast API.</td></tr>
+          <tr><td>Device Name</td><td>Human-readable device name (click to expand long names).</td></tr>
+          <tr><td>Tube</td><td>Geiger tube model (e.g. LND7317, SBM-20).</td></tr>
+          <tr><td>Transport</td><td>Connectivity type (WiFi, cellular, etc.).</td></tr>
+          <tr><td>Country</td><td>Country where the device is located.</td></tr>
+          <tr><td>Value</td><td>Radiation reading in the unit shown in the Unit column (displayed to 4 decimal places).</td></tr>
+          <tr><td>Unit</td><td>Measurement unit (typically <em>cpm</em> or <em>μSv/h</em>).</td></tr>
+          <tr><td>Lat / Lon</td><td>GPS coordinates of the device (6 decimal places).</td></tr>
+          <tr><td>Measured At</td><td>Timestamp when the sensor recorded the reading.</td></tr>
+          <tr><td>Fetched At</td><td>Timestamp when the server fetched this data from the Safecast API.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Actions</h3>
+      <div class="actions-list">
+        <span class="action-pill green">Export CSV</span>
+        <span class="action-pill red">Delete Selected</span>
+        <span class="action-pill red">Delete All</span>
+      </div>
+      <p>Use <strong>Delete All</strong> to purge stale realtime data and let the fetcher repopulate. This table is automatically refreshed by the background fetcher; deletion is safe.</p>
+      <div class="note"><strong>Note:</strong> Realtime data is only available when the server is started with the <code>-safecast-realtime</code> flag.</div>
+    </section>
+
+    <!-- TRANSLATIONS -->
+    <section class="section" id="translations">
+      <h2>Translations <span class="tab-badge">Tab</span></h2>
+      <p>Manage the UI text strings for all supported languages (30+). Translations are stored in the <code>translations</code> PostgreSQL table and loaded into memory at startup. Edits take effect immediately after clicking <strong>Reload into Memory</strong> — no server restart required.</p>
+
+      <h3>Table columns</h3>
+      <table class="col-table">
+        <thead><tr><th>Column</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>ID</td><td>Internal row ID.</td></tr>
+          <tr><td>Lang</td><td>Two-letter language code (e.g. <em>en</em>, <em>ja</em>, <em>cs</em>).</td></tr>
+          <tr><td>Key</td><td>Identifier used in templates (e.g. <em>legend_safe</em>, <em>nav_map</em>).</td></tr>
+          <tr><td>Value</td><td>Translated text in that language. Click the cell or Edit button to edit. Hover to preview long values.</td></tr>
+          <tr><td>Updated</td><td>UTC timestamp of the last edit.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Actions</h3>
+      <div class="actions-list">
+        <span class="action-pill blue">+ Add Translation</span>
+        <span class="action-pill orange">Edit</span>
+        <span class="action-pill red">Delete</span>
+        <span class="action-pill green">Reload into Memory</span>
+      </div>
+      <ul>
+        <li><strong>+ Add Translation</strong> — Opens a modal to create a new key/language pair. Language code and key are required.</li>
+        <li><strong>Edit</strong> — Opens the modal for the selected row. Language code and key are locked; only the value can be changed.</li>
+        <li><strong>Delete</strong> — Removes a single translation row permanently.</li>
+        <li><strong>Reload into Memory</strong> — Applies all DB changes to the running server without a restart.</li>
+      </ul>
+
+      <h3>Filtering &amp; search</h3>
+      <p>Use the <strong>language dropdown</strong> to show only one language. Use the <strong>search box</strong> to filter by key or value text. Both filters work together and apply server-side across all pages.</p>
+
+      <div class="warn"><strong>Important:</strong> The string "Safecast" must never be translated (e.g. not チチャ in Japanese). It is a proper noun and must remain "Safecast" in every language.</div>
+      <div class="tip"><strong>Tip:</strong> Press <kbd>Ctrl</kbd>+<kbd>S</kbd> (or <kbd>Cmd</kbd>+<kbd>S</kbd>) while the edit modal is open to save. Press <kbd>Esc</kbd> to cancel.</div>
+      <div class="note"><strong>How English fallback works:</strong> If a key is missing in a language, the English value is shown automatically. You don't need to add English entries for every language — just translate the keys that differ.</div>
+    </section>
+
+    <!-- TOUR STEPS -->
+    <section class="section" id="tour">
+      <h2>Tour Steps <span class="tab-badge">Tab</span></h2>
+      <p>Manage the guided tour shown to new users when they first open the map. Each step highlights a UI element and shows a tooltip. Steps are ordered and can be enabled or disabled individually.</p>
+
+      <h3>Table columns</h3>
+      <table class="col-table">
+        <thead><tr><th>Column</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>⠿ (drag)</td><td>Drag handle — drag rows to reorder steps. The order is saved immediately on drop.</td></tr>
+          <tr><td>#</td><td>Display order number (1 = first step).</td></tr>
+          <tr><td>Step key</td><td>Unique identifier for this step (e.g. <em>upload_btn</em>). Used for translations.</td></tr>
+          <tr><td>Target selector</td><td>CSS selector for the element to spotlight. A pick-element button lets you choose live on the map. Leave blank (with "Center" checked) to show a centered modal step.</td></tr>
+          <tr><td>Text</td><td>Tooltip text in the currently selected editing language. Edit inline.</td></tr>
+          <tr><td>Conditions</td><td>Colored badges showing when this step is visible: Login required, Admin only, Feature gate, Viewport (desktop/mobile), First-time only.</td></tr>
+          <tr><td>On</td><td>Toggle switch — green means enabled and shown to users; grey means disabled and skipped.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Actions</h3>
+      <div class="actions-list">
+        <span class="action-pill blue">+ New step</span>
+        <span class="action-pill purple">▶ Preview tour</span>
+        <span class="action-pill orange">Edit conditions</span>
+        <span class="action-pill green">Save text</span>
+        <span class="action-pill red">Delete step</span>
+      </div>
+      <ul>
+        <li><strong>+ New step</strong> — Opens the conditions modal in "create" mode. Set the key, selector, and visibility conditions, then save. After creation, edit the text inline in the table.</li>
+        <li><strong>▶ Preview tour</strong> — Opens the map in a new tab and immediately starts the tour so you can see how it looks to users.</li>
+        <li><strong>Edit conditions</strong> (orange button) — Opens the conditions modal for an existing step. Conditions include: require login, require admin, feature gate, viewport restriction, and first-time-only flag.</li>
+        <li><strong>Save</strong> (green) — Saves inline text edits for a row.</li>
+        <li><strong>Delete</strong> — Permanently removes the step.</li>
+      </ul>
+
+      <h3>Language selector</h3>
+      <p>The <strong>Editing language</strong> dropdown controls which translation is shown in the Text column. Select a language to view and edit the tour text in that language. New languages appear automatically when translations for tour-step keys are added in the Translations tab.</p>
+
+      <h3>Condition badges</h3>
+      <ul>
+        <li><span style="background:#4CAF50;color:white;padding:1px 6px;border-radius:3px;font-size:0.8em;">Login</span> — Step only shows to logged-in users.</li>
+        <li><span style="background:#FF9800;color:white;padding:1px 6px;border-radius:3px;font-size:0.8em;">Admin</span> — Step only shows to admin users.</li>
+        <li><span style="background:#9C27B0;color:white;padding:1px 6px;border-radius:3px;font-size:0.8em;">Feature</span> — Step only shows when a specific feature flag is active (e.g. AI assistant enabled).</li>
+        <li><span style="background:#03A9F4;color:white;padding:1px 6px;border-radius:3px;font-size:0.8em;">Viewport</span> — Step only shows on desktop or mobile.</li>
+        <li><span style="background:#795548;color:white;padding:1px 6px;border-radius:3px;font-size:0.8em;">First-time</span> — Step only shows during the user's first-ever tour run.</li>
+      </ul>
+
+      <div class="tip"><strong>Tip:</strong> Drag rows to reorder — the order persists to the database immediately on drop, no Save button needed.</div>
+    </section>
+
+    <!-- AI HINTS -->
+    <section class="section" id="ai-hints">
+      <h2>AI Hints <span class="tab-badge">Tab</span></h2>
+      <p>Configure context hints that are injected into the AI assistant's system prompt. Hints improve the AI's domain knowledge and allow tuning of tool behavior without code changes. Hints are grouped by <strong>bot</strong> (a named configuration profile).</p>
+
+      <h3>Layout</h3>
+      <p>The page has a two-column layout:</p>
+      <ul>
+        <li><strong>Left sidebar</strong> — Lists all bot groups. Click a bot to open its editor. Deleted bots are hidden by default; toggle "Show deleted" to see them.</li>
+        <li><strong>Right editor</strong> — Four sub-tabs: General, Global rules, Tools, and History.</li>
+      </ul>
+
+      <h3>Bot groups</h3>
+      <ul>
+        <li><strong>+ Add bot</strong> — Creates a new bot group. Enter a display name; the model slug (routing key) is derived automatically and locked after creation.</li>
+        <li><strong>Delete</strong> — Soft-deletes the bot (it remains in history). Shown in the sidebar with strikethrough when "Show deleted" is on.</li>
+        <li><strong>Restore</strong> — Undeletes a soft-deleted bot.</li>
+      </ul>
+
+      <h3>General sub-tab</h3>
+      <table class="col-table">
+        <thead><tr><th>Field</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>Display name</td><td>Human-readable name shown in the sidebar.</td></tr>
+          <tr><td>Model slug</td><td>The MCP routing key (read-only after creation). Derived from the display name.</td></tr>
+          <tr><td>Capabilities</td><td>Tags describing what this bot can do (e.g. <em>radiation_data</em>, <em>realtime</em>). Used for routing and context.</td></tr>
+          <tr><td>System prompt</td><td>The base system prompt prepended to every conversation for this bot.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Global rules sub-tab</h3>
+      <p>A list of rule strings appended to the system prompt. Each rule is a plain-text statement that guides the AI's behavior (e.g. "Always cite data sources", "Respond in the user's language").</p>
+
+      <h3>Tools sub-tab</h3>
+      <p>Per-tool configuration cards. Each MCP tool can have:</p>
+      <ul>
+        <li><strong>Description override</strong> — Replaces the tool's default description in the AI's tool list.</li>
+        <li><strong>Parameter hints</strong> — Key-value pairs giving the AI guidance on how to fill specific parameters.</li>
+        <li><strong>Examples</strong> — Sample question → expected tool call pairs to help the AI learn the intended usage.</li>
+      </ul>
+
+      <h3>History sub-tab</h3>
+      <p>An audit log of every change made to this bot, with the kind of change (<em>update</em>, <em>delete</em>, <em>restore</em>, <em>import</em>, <em>snapshot</em>) and a timestamp.</p>
+
+      <h3>Toolbar actions</h3>
+      <div class="actions-list">
+        <span class="action-pill green">Save</span>
+        <span class="action-pill blue">Reload into Memory</span>
+        <span class="action-pill blue">Snapshot</span>
+        <span class="action-pill blue">Export JSON</span>
+        <span class="action-pill orange">Import JSON</span>
+        <span class="action-pill red">Delete</span>
+      </div>
+      <ul>
+        <li><strong>Save</strong> — Writes changes to the database.</li>
+        <li><strong>Reload into Memory</strong> — Re-reads all hints from the database and applies them to the running server without a restart.</li>
+        <li><strong>Snapshot</strong> — Manually saves a history checkpoint without changing any data. Useful before making large edits.</li>
+        <li><strong>Export JSON</strong> — Downloads the current bot's full configuration as a JSON file.</li>
+        <li><strong>Import JSON</strong> — Replaces the current bot's configuration with a JSON file. Prompts for confirmation. A history entry of kind <em>import</em> is recorded.</li>
+      </ul>
+
+      <div class="warn"><strong>Important:</strong> Always click <strong>Reload into Memory</strong> after saving changes. Without this step, the running server continues using the previous hints until it is restarted.</div>
+      <div class="note"><strong>Note:</strong> The model slug is the key used by the MCP client to route requests to a specific bot. Changing it would require updating the MCP client configuration as well.</div>
+    </section>
+
+  </main>
+</div><!-- .page-layout -->
+
+<script>
+// --- Help search ---
+// Store original innerHTML of each section so we can restore it on clear.
+const sections = Array.from(document.querySelectorAll('.help-content .section'));
+const sectionOriginals = sections.map(s => s.innerHTML);
+
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function doSearch(query) {
+  const q = query.trim();
+  const clearBtn = document.getElementById('clearBtn');
+  const countEl = document.getElementById('searchCount');
+  const noResults = document.getElementById('noResults');
+
+  // Restore originals first (removes previous highlights)
+  sections.forEach((s, i) => { s.innerHTML = sectionOriginals[i]; });
+
+  if (!q) {
+    clearSearch();
+    return;
+  }
+
+  clearBtn.style.display = '';
+
+  const re = new RegExp(escapeRegex(q), 'gi');
+  let totalMatches = 0;
+  let visibleSections = 0;
+
+  sections.forEach((section, i) => {
+    // Check for matches in the original plain text
+    const plainText = section.textContent;
+    if (!re.test(plainText)) {
+      section.classList.add('search-hidden');
+      return;
+    }
+    re.lastIndex = 0;
+    section.classList.remove('search-hidden');
+    visibleSections++;
+
+    // Highlight: walk text nodes only, skip script/style
+    let matches = highlightInElement(section, re);
+    totalMatches += matches;
+    re.lastIndex = 0;
+  });
+
+  // Update TOC dimming
+  document.querySelectorAll('.toc a').forEach(a => {
+    const href = a.getAttribute('href');
+    if (!href || !href.startsWith('#')) return;
+    const target = document.getElementById(href.slice(1));
+    if (target) {
+      a.classList.toggle('toc-hidden', target.classList.contains('search-hidden'));
+    }
+  });
+
+  noResults.style.display = visibleSections === 0 ? 'block' : 'none';
+  countEl.textContent = totalMatches > 0 ? totalMatches + ' match' + (totalMatches !== 1 ? 'es' : '') : '';
+}
+
+function highlightInElement(el, re) {
+  let count = 0;
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      const p = node.parentNode;
+      if (!p) return NodeFilter.FILTER_REJECT;
+      const tag = p.tagName && p.tagName.toLowerCase();
+      if (tag === 'script' || tag === 'style' || tag === 'mark') return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
+
+  const nodesToReplace = [];
+  let n;
+  while ((n = walker.nextNode())) {
+    if (re.test(n.nodeValue)) nodesToReplace.push(n);
+    re.lastIndex = 0;
+  }
+
+  nodesToReplace.forEach(node => {
+    const frag = document.createDocumentFragment();
+    let last = 0;
+    let m;
+    re.lastIndex = 0;
+    while ((m = re.exec(node.nodeValue)) !== null) {
+      frag.appendChild(document.createTextNode(node.nodeValue.slice(last, m.index)));
+      const mark = document.createElement('mark');
+      mark.textContent = m[0];
+      frag.appendChild(mark);
+      last = m.index + m[0].length;
+      count++;
+    }
+    frag.appendChild(document.createTextNode(node.nodeValue.slice(last)));
+    node.parentNode.replaceChild(frag, node);
+    re.lastIndex = 0;
+  });
+
+  return count;
+}
+
+function clearSearch() {
+  const q = document.getElementById('helpSearch');
+  q.value = '';
+  document.getElementById('clearBtn').style.display = 'none';
+  document.getElementById('searchCount').textContent = '';
+  document.getElementById('noResults').style.display = 'none';
+  sections.forEach((s, i) => {
+    s.innerHTML = sectionOriginals[i];
+    s.classList.remove('search-hidden');
+  });
+  document.querySelectorAll('.toc a').forEach(a => a.classList.remove('toc-hidden'));
+}
+
+// Keyboard shortcut: / focuses search
+document.addEventListener('keydown', e => {
+  if (e.key === '/' && document.activeElement !== document.getElementById('helpSearch')) {
+    e.preventDefault();
+    document.getElementById('helpSearch').focus();
+  }
+  if (e.key === 'Escape') {
+    clearSearch();
+    document.getElementById('helpSearch').blur();
+  }
+});
+</script>
+
+<script>
+function buildAdminTabs() {
+  const pw = new URLSearchParams(window.location.search).get('password') || '';
+  const tabs = [
+    { label: 'Users', href: '/admin/users' },
+    { label: 'Uploads', href: '/admin/uploads' },
+    { label: 'MCP Analytics', href: '/admin/mcp' },
+    { label: 'Realtime', href: '/admin/realtime' },
+    { label: 'Translations', href: '/admin/translations' },
+    { label: 'Tour Steps', href: '/admin/tour' },
+    { label: 'AI Hints', href: '/admin/ai-hints' },
+    { label: 'Help', href: '/admin/help', active: true }
+  ];
+  const container = document.getElementById('adminTabs');
+  tabs.forEach(t => {
+    const href = t.href + (pw ? '?password=' + encodeURIComponent(pw) : '');
+    container.innerHTML += '<a href="' + href + '" class="' + (t.active ? 'active' : '') + '">' + t.label + '</a>';
+  });
+}
+
+buildAdminTabs();
+</script>
+
+<script>
+(function() {
+  function applyLabel() {
+    var btn = document.getElementById('theme-toggle');
+    if (btn) btn.textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
+  }
+  applyLabel();
+  window.toggleTheme = function() {
+    var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('safecastDocTheme', next);
+    applyLabel();
+  };
+})();
+</script>
+</body>
+</html>
