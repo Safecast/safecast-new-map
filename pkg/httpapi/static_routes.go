@@ -12,16 +12,18 @@ type StaticRoutesConfig struct {
 }
 
 // RegisterStaticRoutes attaches static asset routes to mux.
-// /static serves files from embedded assets and /js serves files from a
-// filesystem directory for runtime JS worker compatibility.
+// Both /static/ and /js/ serve from the embedded StaticFS so they work
+// regardless of the process working directory in production.
 func RegisterStaticRoutes(mux *http.ServeMux, cfg StaticRoutesConfig) {
 	if mux == nil {
 		return
 	}
 	if cfg.StaticFS != nil {
-		mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(cfg.StaticFS))))
-	}
-	if cfg.JSDir != "" {
+		fileServer := http.FileServer(http.FS(cfg.StaticFS))
+		mux.Handle("/static/", http.StripPrefix("/static/", fileServer))
+		// /js/foo.js → js/foo.js inside StaticFS (i.e. public_html/js/foo.js).
+		mux.Handle("/js/", fileServer)
+	} else if cfg.JSDir != "" {
 		mux.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir(cfg.JSDir))))
 	}
 }

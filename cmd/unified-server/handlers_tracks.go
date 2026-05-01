@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/binary"
@@ -13,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/vmihailenco/msgpack/v5"
 	"safecast-new-map/pkg/database"
@@ -668,18 +670,44 @@ func streamMarkersHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 	}
 	w.Header().Set("Cache-Control", "no-cache")
+	// Disable nginx response buffering so chunks reach the client as they're flushed.
+	w.Header().Set("X-Accel-Buffering", "no")
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
 		return
 	}
 
+	// Coalesce small per-marker writes into ~64KB chunks before they hit the
+	// chunked HTTP encoder. Without this, each marker becomes its own chunk +
+	// flush, which serializes ~70k tiny writes for a single viewport.
+	bw := bufio.NewWriterSize(w, 64*1024)
+
+	// Batch network flushes: flush when the buffered writer fills naturally,
+	// or every flushEveryMarkers, or every flushEveryDur — whichever comes first.
+	const flushEveryMarkers = 256
+	const flushEveryDur = 50 * time.Millisecond
+	pending := 0
+	lastFlush := time.Now()
+	flush := func() {
+		_ = bw.Flush()
+		flusher.Flush()
+		pending = 0
+		lastFlush = time.Now()
+	}
+	maybeFlush := func() {
+		pending++
+		if pending >= flushEveryMarkers || time.Since(lastFlush) >= flushEveryDur {
+			flush()
+		}
+	}
+
 	// Helper to write a msgpack frame: 4-byte length prefix + data
 	writeMsgpackFrame := func(data []byte) {
 		lenBuf := make([]byte, 4)
 		binary.BigEndian.PutUint32(lenBuf, uint32(len(data)))
-		w.Write(lenBuf)
-		w.Write(data)
+		bw.Write(lenBuf)
+		bw.Write(data)
 	}
 
 	// Emit realtime markers first when enabled.
@@ -689,10 +717,10 @@ func streamMarkersHandler(w http.ResponseWriter, r *http.Request) {
 			writeMsgpackFrame(b)
 		} else {
 			b, _ := json.Marshal(m)
-			fmt.Fprintf(w, "data: %s\n\n", b)
+			fmt.Fprintf(bw, "data: %s\n\n", b)
 		}
 	}
-	flusher.Flush()
+	flush()
 
 	for {
 		select {
@@ -706,11 +734,11 @@ func streamMarkersHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				if useMsgpack {
 					// Send zero-length frame as error indicator
-					w.Write([]byte{0, 0, 0, 0})
+					bw.Write([]byte{0, 0, 0, 0})
 				} else {
-					fmt.Fprintf(w, "event: done\ndata: %v\n\n", err)
+					fmt.Fprintf(bw, "event: done\ndata: %v\n\n", err)
 				}
-				flusher.Flush()
+				flush()
 				return
 			}
 			errCh = nil
@@ -718,11 +746,11 @@ func streamMarkersHandler(w http.ResponseWriter, r *http.Request) {
 			if !ok {
 				if useMsgpack {
 					// Send zero-length frame as end marker
-					w.Write([]byte{0, 0, 0, 0})
+					bw.Write([]byte{0, 0, 0, 0})
 				} else {
-					fmt.Fprint(w, "event: done\ndata: end\n\n")
+					fmt.Fprint(bw, "event: done\ndata: end\n\n")
 				}
-				flusher.Flush()
+				flush()
 				return
 			}
 			if useMsgpack {
@@ -730,9 +758,9 @@ func streamMarkersHandler(w http.ResponseWriter, r *http.Request) {
 				writeMsgpackFrame(b)
 			} else {
 				b, _ := json.Marshal(m)
-				fmt.Fprintf(w, "data: %s\n\n", b)
+				fmt.Fprintf(bw, "data: %s\n\n", b)
 			}
-			flusher.Flush()
+			maybeFlush()
 		}
 	}
 }
