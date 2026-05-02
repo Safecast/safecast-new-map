@@ -1701,6 +1701,31 @@ body, html {
           color: var(--modal-text);
         }
 
+        .live-modal-actions {
+          display: flex;
+          gap: 8px;
+          align-self: flex-end;
+          align-items: center;
+          margin-top: 8px;
+        }
+
+        .live-modal-radnote-btn {
+          padding: 6px 14px;
+          background: #2a7de1;
+          border: 1px solid #2a7de1;
+          border-radius: 6px;
+          color: #ffffff;
+          font-family: inherit;
+          font-size: var(--font-size-sm);
+          text-decoration: none;
+          cursor: pointer;
+          transition: background 0.15s ease;
+        }
+        .live-modal-radnote-btn:hover {
+          background: #1a5fb4;
+          border-color: #1a5fb4;
+        }
+
         /* --- Tutorial overlay --- */
         #tutorial-overlay {
           position: fixed;
@@ -2270,7 +2295,10 @@ body, html {
         <p id="liveChartEmpty" class="live-chart-empty"></p>
       </div>
     </div>
-    <button type="button" class="live-modal-close" id="liveModalClose"></button>
+    <div class="live-modal-actions">
+      <a id="liveModalRadnoteBtn" class="live-modal-radnote-btn" href="#" target="_blank" rel="noopener noreferrer" style="display:none;"></a>
+      <button type="button" class="live-modal-close" id="liveModalClose"></button>
+    </div>
   </div>
 </div>
 
@@ -7179,6 +7207,20 @@ async function openLiveModal(deviceID, fallback) {
 
   const closeBtn = document.getElementById('liveModalClose');
   if (closeBtn) closeBtn.textContent = translate('live_chart_close');
+
+  const radnoteBtn = document.getElementById('liveModalRadnoteBtn');
+  if (radnoteBtn) {
+    if (deviceID) {
+      const radnoteDevice = deviceID.startsWith('note:dev:')
+        ? deviceID.slice('note:'.length)
+        : 'dev:' + deviceID;
+      radnoteBtn.href = 'https://dashboard.radnote.org/d/cdq671mxg2cjka/radnote-overview?orgId=1&var-device=' + encodeURIComponent(radnoteDevice) + '&kiosk';
+      radnoteBtn.textContent = translate('live_marker_radnote_link');
+      radnoteBtn.style.display = '';
+    } else {
+      radnoteBtn.style.display = 'none';
+    }
+  }
 
   const fallbackMarker = {
     deviceID: fallback && fallback.device ? String(fallback.device) : (fallback && fallback.id ? String(fallback.id) : ''),
