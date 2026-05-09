@@ -522,6 +522,70 @@ body, html {
           overflow-y: auto; /* Allow scrolling for many uploads */
         }
 
+        /* Upload summary panel */
+        #uploadSummary {
+          display: none;
+          padding: 4px 0 0;
+        }
+        #uploadSummary h3 {
+          margin: 0 0 14px;
+          font-size: 1.1rem;
+          color: #4caf50;
+        }
+        .upload-summary-grid {
+          display: grid;
+          grid-template-columns: auto 1fr;
+          gap: 6px 16px;
+          font-size: 0.88rem;
+          margin-bottom: 16px;
+        }
+        .upload-summary-grid .label {
+          color: var(--muted-text, #888);
+          white-space: nowrap;
+        }
+        .upload-summary-grid .value {
+          font-weight: 600;
+          word-break: break-word;
+        }
+        #uploadSummarySpectrumArea {
+          display: none;
+          margin-bottom: 16px;
+        }
+        #uploadSummarySpectrumArea h4 {
+          margin: 0 0 8px;
+          font-size: 0.9rem;
+          color: var(--muted-text, #888);
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+        }
+        #uploadSummarySpectrumCanvas {
+          width: 100%;
+          height: 180px;
+          display: block;
+          border-radius: 4px;
+          cursor: crosshair;
+        }
+        #uploadSummaryIsotopeList {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+          gap: 2px 10px;
+          font-size: 0.78rem;
+          margin-top: 8px;
+        }
+        #uploadSummaryBtn {
+          display: block;
+          width: 100%;
+          padding: 10px;
+          background: #4caf50;
+          color: #fff;
+          border: none;
+          border-radius: 6px;
+          font-size: 0.95rem;
+          cursor: pointer;
+        }
+        #uploadSummaryBtn:hover { background: #43a047; }
+
         /* Individual file upload progress */
         .file-progress {
           margin-bottom: 15px;
@@ -1701,6 +1765,31 @@ body, html {
           color: var(--modal-text);
         }
 
+        .live-modal-actions {
+          display: flex;
+          gap: 8px;
+          align-self: flex-end;
+          align-items: center;
+          margin-top: 8px;
+        }
+
+        .live-modal-radnote-btn {
+          padding: 6px 14px;
+          background: #2a7de1;
+          border: 1px solid #2a7de1;
+          border-radius: 6px;
+          color: #ffffff;
+          font-family: inherit;
+          font-size: var(--font-size-sm);
+          text-decoration: none;
+          cursor: pointer;
+          transition: background 0.15s ease;
+        }
+        .live-modal-radnote-btn:hover {
+          background: #1a5fb4;
+          border-color: #1a5fb4;
+        }
+
         /* --- Tutorial overlay --- */
         #tutorial-overlay {
           position: fixed;
@@ -1981,6 +2070,18 @@ body, html {
     <div id="fileOverlay" style="display: none;">
       <div id="fileProgressContainer">
         <!-- Upload progress entries inserted here dynamically -->
+      </div>
+      <div id="uploadSummaryPanel" style="display:none; background:var(--progress-bg); color:var(--progress-color); padding:20px; border-radius:10px; max-width:600px; width:100%; box-shadow:var(--progress-shadow);">
+        <div id="uploadSummary">
+          <h3>&#10003; Upload complete</h3>
+          <div class="upload-summary-grid" id="uploadSummaryGrid"></div>
+          <div id="uploadSummarySpectrumArea">
+            <h4>Energy Spectrum</h4>
+            <canvas id="uploadSummarySpectrumCanvas"></canvas>
+            <div id="uploadSummaryIsotopeList"></div>
+          </div>
+          <button id="uploadSummaryBtn">View on Map &rarr;</button>
+        </div>
       </div>
     </div>
 
@@ -2270,7 +2371,10 @@ body, html {
         <p id="liveChartEmpty" class="live-chart-empty"></p>
       </div>
     </div>
-    <button type="button" class="live-modal-close" id="liveModalClose"></button>
+    <div class="live-modal-actions">
+      <a id="liveModalRadnoteBtn" class="live-modal-radnote-btn" href="#" target="_blank" rel="noopener noreferrer" style="display:none;"></a>
+      <button type="button" class="live-modal-close" id="liveModalClose"></button>
+    </div>
   </div>
 </div>
 
@@ -7180,6 +7284,20 @@ async function openLiveModal(deviceID, fallback) {
   const closeBtn = document.getElementById('liveModalClose');
   if (closeBtn) closeBtn.textContent = translate('live_chart_close');
 
+  const radnoteBtn = document.getElementById('liveModalRadnoteBtn');
+  if (radnoteBtn) {
+    if (deviceID) {
+      const radnoteDevice = deviceID.startsWith('note:dev:')
+        ? deviceID.slice('note:'.length)
+        : 'dev:' + deviceID;
+      radnoteBtn.href = 'https://dashboard.radnote.org/d/cdq671mxg2cjka/radnote-overview?orgId=1&var-device=' + encodeURIComponent(radnoteDevice) + '&kiosk';
+      radnoteBtn.textContent = translate('live_marker_radnote_link');
+      radnoteBtn.style.display = '';
+    } else {
+      radnoteBtn.style.display = 'none';
+    }
+  }
+
   const fallbackMarker = {
     deviceID: fallback && fallback.device ? String(fallback.device) : (fallback && fallback.id ? String(fallback.id) : ''),
     deviceName: fallback && fallback.name ? fallback.name : '',
@@ -9254,6 +9372,9 @@ function selectHomeSearchResult(result, query) {
         const fileOverlay          = document.getElementById('fileOverlay');
         const fileProgressContainer = document.getElementById('fileProgressContainer');
         fileProgressContainer.innerHTML = '';
+        fileProgressContainer.style.display = '';
+        document.getElementById('uploadSummaryPanel').style.display = 'none';
+        document.getElementById('uploadSummarySpectrumArea').style.display = 'none';
         fileOverlay.style.display  = 'flex';
 
         let lastTrackURL     = null;
@@ -9348,7 +9469,15 @@ function selectHomeSearchResult(result, query) {
                         pendingCoordinateUpdate = {
                           trackID: data.trackID,
                           fileName: elem.fileName,
-                          trackURL: data.redirectURL
+                          trackURL: data.redirectURL,
+                          pointCount:       data.pointCount       || 0,
+                          dateFrom:         data.dateFrom         || 0,
+                          dateTo:           data.dateTo           || 0,
+                          avgDoseRate:      data.avgDoseRate      || 0,
+                          minDoseRate:      data.minDoseRate      || 0,
+                          maxDoseRate:      data.maxDoseRate      || 0,
+                          filenames:        data.filenames        || [],
+                          spectrumMarkerID: data.spectrumMarkerID || 0,
                         };
                       } else {
                         elem.serverProcessing.innerText = translate('processing_on_server') + ' 100%';
@@ -9360,14 +9489,18 @@ function selectHomeSearchResult(result, query) {
                       }
                     });
 
-                    // All files processed, redirect or update
+                    // All files processed — show summary or redirect
                     setTimeout(() => {
-                      fileOverlay.style.display = 'none';
                       if (pendingCoordinateUpdate) {
+                        fileOverlay.style.display = 'none';
                         showCoordinateDialog(pendingCoordinateUpdate.trackID, pendingCoordinateUpdate.fileName, pendingCoordinateUpdate.trackURL);
+                      } else if (lastTrackURL && data.pointCount > 0) {
+                        fileProgressContainer.style.display = 'none';
+                        showUploadSummary(data, lastTrackURL);
                       } else if (lastTrackURL) {
                         window.location.href = lastTrackURL;
                       } else {
+                        fileOverlay.style.display = 'none';
                         updateMarkers();
                       }
                     }, 700);
@@ -9456,8 +9589,74 @@ function selectHomeSearchResult(result, query) {
       let isPickingLocation = false;
       let pickLocationHandler = null;
 
+      function showUploadSummary(summaryData, redirectURL) {
+        const panel = document.getElementById('uploadSummaryPanel');
+        const grid  = document.getElementById('uploadSummaryGrid');
+        panel.style.display = 'block';
+        document.getElementById('uploadSummary').style.display = 'block';
+        // Make sure the overlay is visible
+        const fileOverlay = document.getElementById('fileOverlay');
+        if (fileOverlay) {
+          document.getElementById('fileProgressContainer').style.display = 'none';
+          fileOverlay.style.display = 'flex';
+        }
+
+        const fmtDate = ts => ts ? new Date(ts * 1000).toLocaleString() : '—';
+        const fmtDose = v => v > 0 ? v.toFixed(4) + ' µSv/h' : '—';
+        const rows = [
+          ['Points imported', (summaryData.pointCount || 0).toLocaleString()],
+        ];
+        if (summaryData.dateFrom && summaryData.dateTo && summaryData.dateFrom === summaryData.dateTo) {
+          rows.push(['Captured', fmtDate(summaryData.dateFrom)]);
+        } else {
+          rows.push(['From', fmtDate(summaryData.dateFrom)]);
+          rows.push(['To',   fmtDate(summaryData.dateTo)]);
+        }
+        rows.push(
+          ['Avg dose rate', fmtDose(summaryData.avgDoseRate)],
+          ['Min dose rate', fmtDose(summaryData.minDoseRate)],
+          ['Max dose rate', fmtDose(summaryData.maxDoseRate)],
+        );
+        if (summaryData.filenames && summaryData.filenames.length) {
+          rows.push(['File(s)', summaryData.filenames.join(', ')]);
+        }
+        grid.innerHTML = rows.map(([l, v]) =>
+          `<span class="label">${l}</span><span class="value">${v}</span>`
+        ).join('');
+
+        const btn = document.getElementById('uploadSummaryBtn');
+        btn.onclick = () => {
+          if (redirectURL) {
+            window.location.href = redirectURL;
+          } else {
+            document.getElementById('fileOverlay').style.display = 'none';
+            updateMarkers();
+          }
+        };
+
+        document.getElementById('uploadSummarySpectrumArea').style.display = 'none';
+        if (summaryData.spectrumMarkerID) {
+          fetchSpectrum(summaryData.spectrumMarkerID).then(spectrum => {
+            if (!spectrum) return;
+            const area   = document.getElementById('uploadSummarySpectrumArea');
+            const canvas = document.getElementById('uploadSummarySpectrumCanvas');
+            area.style.display = 'block';
+            requestAnimationFrame(() => { drawSpectrumChart(canvas, spectrum); });
+            const isotopeListEl = document.getElementById('uploadSummaryIsotopeList');
+            const isotopeList = buildIsotopeReferenceList();
+            isotopeListEl.innerHTML = isotopeList.map(item => {
+              const c = getIsotopeColor(item.name);
+              return `<div style="display:flex;gap:6px;align-items:baseline;padding:2px 4px;border-radius:3px;">` +
+                `<span style="font-weight:600;color:${c};min-width:80px;">${item.name}:</span>` +
+                `<span style="font-family:monospace;opacity:0.85;">${item.energies} keV</span></div>`;
+            }).join('');
+          });
+        }
+      }
+
       function showCoordinateDialog(trackID, fileName, trackURL) {
-        pendingCoordinateUpdate = { trackID, fileName, trackURL };
+        // Preserve summary fields already stored in pendingCoordinateUpdate (e.g. from SSE event)
+        pendingCoordinateUpdate = Object.assign(pendingCoordinateUpdate || {}, { trackID, fileName, trackURL });
         const dialog = document.getElementById('coordinateInputDialog');
         const statusEl = document.getElementById('coordInputStatus');
         const errorEl = document.getElementById('coordInputError');
@@ -9540,13 +9739,13 @@ function selectHomeSearchResult(result, query) {
           const result = await response.json();
 
           if (response.ok && result.status === 'success') {
-            // Success! Navigate to the track page
             const trackURL = pendingCoordinateUpdate ? pendingCoordinateUpdate.trackURL : null;
             hideCoordinateDialog();
-            if (trackURL) {
+            if (pendingCoordinateUpdate && pendingCoordinateUpdate.pointCount > 0) {
+              showUploadSummary(pendingCoordinateUpdate, trackURL);
+            } else if (trackURL) {
               window.location.href = trackURL;
             } else {
-              // Fallback to map location if trackURL is not available
               const zoom = 15;
               window.location.href = `/#${zoom}/${lat}/${lon}`;
             }

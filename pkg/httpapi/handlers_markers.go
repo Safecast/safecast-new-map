@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"time"
 
-	"safecast-new-map/pkg/auth"
 	"safecast-new-map/pkg/database"
 )
 
@@ -81,8 +80,8 @@ func (s *Server) updateCoordinates(w http.ResponseWriter, r *http.Request) {
 	if !requireMethod(w, r, http.MethodPost) {
 		return
 	}
-	if !auth.IsStaticAdminAuthorized(r, s.Config.AdminPassword) {
-		auth.ChallengeStaticAdminBasic(w)
+	if !s.isAdminAuthorized(r) {
+		writeJSONError(w, http.StatusUnauthorized, "admin access required")
 		return
 	}
 	if s.DB == nil || s.DB.DB == nil {

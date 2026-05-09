@@ -129,6 +129,15 @@ type UploadProgress struct {
 	NeedsCoordinates bool
 	TrackID          string
 	FileName         string
+	// Summary fields populated on successful completion
+	PointCount       int
+	DateFrom         int64
+	DateTo           int64
+	AvgDoseRate      float64
+	MinDoseRate      float64
+	MaxDoseRate      float64
+	Filenames        []string
+	SpectrumMarkerID int64
 	mu               sync.RWMutex
 }
 
@@ -775,6 +784,7 @@ func main() {
 		CompileVersion:          CompileVersion,
 		DBType:                  *dbType,
 		AdminPassword:           *adminPassword,
+		AuthManager:             authManager,
 		APIDocsArchiveEnabled:   apiDocsArchiveEnabled,
 		APIDocsArchiveRoute:     apiDocsArchiveRoute,
 		APIDocsArchiveFrequency: apiDocsArchiveFrequency,

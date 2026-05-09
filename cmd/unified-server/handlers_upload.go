@@ -118,6 +118,14 @@ func progressHandler(w http.ResponseWriter, r *http.Request) {
 			needsCoordinates := prog.NeedsCoordinates
 			progTrackID := prog.TrackID
 			fileName := prog.FileName
+			pointCount := prog.PointCount
+			dateFrom := prog.DateFrom
+			dateTo := prog.DateTo
+			avgDoseRate := prog.AvgDoseRate
+			minDoseRate := prog.MinDoseRate
+			maxDoseRate := prog.MaxDoseRate
+			filenames := prog.Filenames
+			spectrumMarkerID := prog.SpectrumMarkerID
 			prog.mu.RUnlock()
 
 			percent := 0
@@ -134,11 +142,67 @@ func progressHandler(w http.ResponseWriter, r *http.Request) {
 					fmt.Fprintf(w, "data: {\"current\":%d,\"total\":%d,\"percent\":%d,\"complete\":true,\"error\":%q}\n\n",
 						current, total, percent, errMsg)
 				} else if complete && needsCoordinates {
-					fmt.Fprintf(w, "data: {\"current\":%d,\"total\":%d,\"percent\":100,\"complete\":true,\"redirectURL\":%q,\"needsCoordinates\":true,\"trackID\":%q,\"fileName\":%q}\n\n",
-						current, total, redirectURL, progTrackID, fileName)
+					type sseNeedsCoords struct {
+						Current          int      `json:"current"`
+						Total            int      `json:"total"`
+						Percent          int      `json:"percent"`
+						Complete         bool     `json:"complete"`
+						RedirectURL      string   `json:"redirectURL"`
+						NeedsCoordinates bool     `json:"needsCoordinates"`
+						TrackID          string   `json:"trackID"`
+						FileName         string   `json:"fileName"`
+						PointCount       int      `json:"pointCount"`
+						DateFrom         int64    `json:"dateFrom"`
+						DateTo           int64    `json:"dateTo"`
+						AvgDoseRate      float64  `json:"avgDoseRate"`
+						MinDoseRate      float64  `json:"minDoseRate"`
+						MaxDoseRate      float64  `json:"maxDoseRate"`
+						Filenames        []string `json:"filenames"`
+						SpectrumMarkerID int64    `json:"spectrumMarkerID,omitempty"`
+					}
+					payload, _ := json.Marshal(sseNeedsCoords{
+						Current: current, Total: total, Percent: 100, Complete: true,
+						RedirectURL: redirectURL, NeedsCoordinates: true,
+						TrackID: progTrackID, FileName: fileName,
+						PointCount:       pointCount,
+						DateFrom:         dateFrom,
+						DateTo:           dateTo,
+						AvgDoseRate:      avgDoseRate,
+						MinDoseRate:      minDoseRate,
+						MaxDoseRate:      maxDoseRate,
+						Filenames:        filenames,
+						SpectrumMarkerID: spectrumMarkerID,
+					})
+					fmt.Fprintf(w, "data: %s\n\n", payload)
 				} else if complete {
-					fmt.Fprintf(w, "data: {\"current\":%d,\"total\":%d,\"percent\":100,\"complete\":true,\"redirectURL\":%q}\n\n",
-						current, total, redirectURL)
+					type sseComplete struct {
+						Current          int      `json:"current"`
+						Total            int      `json:"total"`
+						Percent          int      `json:"percent"`
+						Complete         bool     `json:"complete"`
+						RedirectURL      string   `json:"redirectURL"`
+						PointCount       int      `json:"pointCount"`
+						DateFrom         int64    `json:"dateFrom"`
+						DateTo           int64    `json:"dateTo"`
+						AvgDoseRate      float64  `json:"avgDoseRate"`
+						MinDoseRate      float64  `json:"minDoseRate"`
+						MaxDoseRate      float64  `json:"maxDoseRate"`
+						Filenames        []string `json:"filenames"`
+						SpectrumMarkerID int64    `json:"spectrumMarkerID,omitempty"`
+					}
+					payload, _ := json.Marshal(sseComplete{
+						Current: current, Total: total, Percent: 100, Complete: true,
+						RedirectURL:      redirectURL,
+						PointCount:       pointCount,
+						DateFrom:         dateFrom,
+						DateTo:           dateTo,
+						AvgDoseRate:      avgDoseRate,
+						MinDoseRate:      minDoseRate,
+						MaxDoseRate:      maxDoseRate,
+						Filenames:        filenames,
+						SpectrumMarkerID: spectrumMarkerID,
+					})
+					fmt.Fprintf(w, "data: %s\n\n", payload)
 				} else {
 					fmt.Fprintf(w, "data: {\"current\":%d,\"total\":%d,\"percent\":%d,\"complete\":false}\n\n",
 						current, total, percent)
@@ -278,6 +342,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		backgroundImport := false
 		isSpectrumUpload := false
 		var lastError error
+		var successFilenames []string
 
 		for _, fd := range fileDataList {
 			reader := newBytesFile(fd.content)
@@ -399,6 +464,8 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 				logT(trackID, "Upload", "✓ upload record inserted successfully")
 			}
 
+			successFilenames = append(successFilenames, fd.filename)
+
 			// Update bounds
 			if bbox.MinLat != 90 || bbox.MaxLat != -90 || bbox.MinLon != 180 || bbox.MaxLon != -180 {
 				hasBounds = true
@@ -415,6 +482,36 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 					global.MaxLon = bbox.MaxLon
 				}
 			}
+		}
+
+		// Query summary stats for the imported track
+		var summaryPointCount int
+		var summaryDateFrom, summaryDateTo int64
+		var summaryAvg, summaryMin, summaryMax float64
+		var summarySpectrumMarkerID int64
+		if lastError == nil && len(successFilenames) > 0 {
+			var q string
+			if *dbType == "pgx" {
+				q = `SELECT COUNT(*), COALESCE(MIN(date),0), COALESCE(MAX(date),0),
+				     COALESCE(AVG(doseRate),0), COALESCE(MIN(doseRate),0), COALESCE(MAX(doseRate),0)
+				     FROM markers WHERE trackID = $1`
+			} else {
+				q = `SELECT COUNT(*), COALESCE(MIN(date),0), COALESCE(MAX(date),0),
+				     COALESCE(AVG(doseRate),0), COALESCE(MIN(doseRate),0), COALESCE(MAX(doseRate),0)
+				     FROM markers WHERE trackID = ?`
+			}
+			_ = db.DB.QueryRowContext(context.Background(), q, trackID).Scan(
+				&summaryPointCount, &summaryDateFrom, &summaryDateTo,
+				&summaryAvg, &summaryMin, &summaryMax,
+			)
+			// Find the first marker with spectrum data for this track
+			var specQ string
+			if *dbType == "pgx" {
+				specQ = `SELECT id FROM markers WHERE trackID = $1 AND has_spectrum = true ORDER BY id LIMIT 1`
+			} else {
+				specQ = `SELECT id FROM markers WHERE trackID = ? AND has_spectrum = 1 ORDER BY id LIMIT 1`
+			}
+			_ = db.DB.QueryRowContext(context.Background(), specQ, trackID).Scan(&summarySpectrumMarkerID)
 		}
 
 		// Build redirect URL
@@ -446,6 +543,14 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 				prog.Error = lastError.Error()
 			} else {
 				prog.RedirectURL = trackURL
+				prog.PointCount = summaryPointCount
+				prog.DateFrom = summaryDateFrom
+				prog.DateTo = summaryDateTo
+				prog.AvgDoseRate = summaryAvg
+				prog.MinDoseRate = summaryMin
+				prog.MaxDoseRate = summaryMax
+				prog.Filenames = successFilenames
+				prog.SpectrumMarkerID = summarySpectrumMarkerID
 				if isSpectrumUpload && needsCoordinates {
 					prog.NeedsCoordinates = true
 					prog.TrackID = trackID
