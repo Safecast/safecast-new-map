@@ -26,6 +26,7 @@ type WebConfig struct {
 	CompileVersion          string
 	DBType                  string
 	AdminPassword           string
+	AuthManager             *auth.Manager
 	APIDocsArchiveEnabled   bool
 	APIDocsArchiveRoute     string
 	APIDocsArchiveFrequency string
@@ -64,9 +65,35 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/spectrum/", s.spectrum)
 	mux.HandleFunc("/api/track-info/", s.trackInfo)
 	mux.HandleFunc("/api/markers/spectra", s.markersWithSpectra)
-	mux.HandleFunc("/api/update-coordinates", auth.RequireStaticAdminBasic(s.Config.AdminPassword, s.updateCoordinates))
+	if s.Config.AuthManager != nil {
+		// When session auth is available, accept logged-in admin OR ?password= param (no Basic Auth challenge).
+		mux.HandleFunc("/api/update-coordinates", s.Config.AuthManager.OptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+			if !checkAdminAccess(w, r, s.Config.AdminPassword) {
+				return
+			}
+			s.updateCoordinates(w, r)
+		}))
+	} else {
+		mux.HandleFunc("/api/update-coordinates", auth.RequireStaticAdminBasic(s.Config.AdminPassword, s.updateCoordinates))
+	}
 	mux.HandleFunc("/api/tracks/bounds", s.apiTracksBounds)
 	mux.HandleFunc("/qrpng", s.qrPng)
+}
+
+// isAdminAuthorized returns true when the request is authorized as admin via any of:
+// session-based admin user, ?password= URL param, or HTTP Basic Auth credentials.
+func (s *Server) isAdminAuthorized(r *http.Request) bool {
+	if s.Config.AdminPassword == "" {
+		return true
+	}
+	if user, ok := auth.GetUserFromContext(r.Context()); ok && user.IsAdmin {
+		return true
+	}
+	if r.URL.Query().Get("password") == s.Config.AdminPassword {
+		return true
+	}
+	_, pass, ok := r.BasicAuth()
+	return ok && pass == s.Config.AdminPassword
 }
 
 // gzipWrap compresses the response with gzip when the client sends Accept-Encoding: gzip.

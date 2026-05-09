@@ -1488,6 +1488,7 @@
     "live_chart_day": "Last 24 hours",
     "live_chart_month": "Last 30 days",
     "live_marker_chart_link": "Open radiation charts",
+    "live_marker_radnote_link": "View on detailed dashboard",
     "live_marker_country": "Country hint",
     "live_marker_desc_generic": "This Safecast sensor",
     "live_marker_desc_location": "reports from [[place]]",
