@@ -66,6 +66,8 @@ type RegisterConfig struct {
 	AdminAIHintsImportHandler        http.HandlerFunc
 	AdminAIHintsByIDHandler          http.HandlerFunc
 	AdminAIHintsHandler              http.HandlerFunc
+	AdminQAEmbeddingsByIDHandler     http.HandlerFunc
+	AdminQAEmbeddingsHandler         http.HandlerFunc
 
 	Logf func(string, ...any)
 }
@@ -199,6 +201,11 @@ func registerAuthAndAdminRoutes(mux *http.ServeMux, cfg RegisterConfig) {
 	registerOptionalAdmin(RouteAPIAdminAIHintsImport, cfg.AdminAIHintsImportHandler)
 	registerOptionalAdmin(RouteAPIAdminAIHintsByID, cfg.AdminAIHintsByIDHandler)
 	registerOptionalAdmin(RouteAPIAdminAIHints, cfg.AdminAIHintsHandler)
+
+	// Q&A semantic-cache admin endpoints: by-id subtree handles both detail
+	// (GET /{id}) and actions (POST /{id}/{action}), then the list root.
+	registerOptionalAdmin(RouteAPIAdminQAEmbeddingsByID, cfg.AdminQAEmbeddingsByIDHandler)
+	registerOptionalAdmin(RouteAPIAdminQAEmbeddings, cfg.AdminQAEmbeddingsHandler)
 
 	registerOptionalPublic := func(path string, handler http.HandlerFunc) {
 		if handler == nil {

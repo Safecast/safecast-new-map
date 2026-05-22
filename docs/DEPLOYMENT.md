@@ -163,7 +163,36 @@ The unified server uses DuckLake for analytics (tool usage logs, chat questions)
 - `DUCKLAKE_PG_URL` — PostgreSQL connection for DuckLake catalog (e.g., `dbname=ducklake_catalog host=localhost user=ducklake_rw`)
 - `DUCKLAKE_DATA_PATH` — Directory for Parquet data files (e.g., `/var/lib/safecast/ducklake/`)
 
-**Shared tables:** `chat_questions`, `mcp_query_log`, `mcp_ai_query_log`
+**Shared tables:** `chat_questions`, `mcp_query_log`, `mcp_ai_query_log`,
+`qa_embeddings` (semantic chat cache), `location_knowledge` (curated geo notes).
+
+### Q&A Semantic Cache (May 2026)
+
+The web-chat assistant caches answered questions in `qa_embeddings` and serves
+paraphrased repeats without re-calling the LLM. Hit criteria: cosine similarity
+≥ 0.85, `feedback_score > 0`, `status='active'`, matching `lang`.
+
+**Admin UI:** `/admin/qa-embeddings` — searchable/sortable, promote / demote /
+archive / restore actions per row.
+
+**Schema:** base table is created at startup; curation columns (`used_count`,
+`last_used_at`, `status`, `lang`) are applied in-place via idempotent
+`ALTER TABLE ADD COLUMN IF NOT EXISTS` on every boot. Standalone migration
+file: `migrations/add_qa_embeddings_columns.sql`.
+
+**Manual inspection** (DuckDB CLI against the live catalog):
+```sql
+ATTACH 'ducklake:postgres:dbname=ducklake_catalog host=localhost user=ducklake_rw'
+       AS analytics (DATA_PATH '/var/lib/safecast/ducklake/');
+USE analytics;
+SELECT id, chat_id, feedback_score, used_count, status, lang,
+       LEFT(question, 80) AS q
+FROM qa_embeddings
+ORDER BY created_at DESC
+LIMIT 20;
+```
+
+The cache only runs when the unified server is built with `-tags duckdb`.
 
 ## Translations (i18n)
 
