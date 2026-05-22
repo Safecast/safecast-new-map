@@ -312,7 +312,7 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 
 		if len(embedding) > 0 {
 			// 1. Check semantic cache: high-similarity + positive feedback → return instantly.
-			if cachedAnswer, _ := checkSemanticCache(embedding, chatReq.Message, chatReq.TrackID); cachedAnswer != "" {
+			if cachedAnswer, _ := checkSemanticCache(embedding, chatReq.Message, chatReq.TrackID, chatReq.Lang); cachedAnswer != "" {
 				writeChunkBuffered(w, chunk{Type: "text", Text: cachedAnswer}, &buffer, isCloudFront)
 				writeChunkBuffered(w, chunk{Type: "done", ChatID: embeddingChatID, Cached: true}, &buffer, isCloudFront)
 				if isCloudFront {
@@ -493,7 +493,7 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 
 		// 3. Async: store Q&A + embedding in semantic cache for future lookups.
 		if len(embedding) > 0 && finalAnswer != "" {
-			storeQAEmbeddingAsync(ctx, embeddingChatID, chatQuestion, finalAnswer, embedding)
+			storeQAEmbeddingAsync(ctx, embeddingChatID, chatQuestion, finalAnswer, embedding, chatReq.Lang)
 		}
 	}
 }

@@ -53,6 +53,12 @@ const (
 	RouteAPIAdminAIHintsByID   = "/api/admin/ai-hints/"
 	RouteAPIAdminAIHints       = "/api/admin/ai-hints"
 
+	// Q&A semantic-cache admin routes. By-id (with trailing slash) is the
+	// prefix-match subtree that also handles /{id}/{action}; the bare list
+	// route must be registered after it so ServeMux longest-prefix matches.
+	RouteAPIAdminQAEmbeddingsByID = "/api/admin/qa-embeddings/"
+	RouteAPIAdminQAEmbeddings     = "/api/admin/qa-embeddings"
+
 	RouteAPISensors              = "/api/sensors"
 	RouteAPISensorsExport        = "/api/sensors/export"
 	RouteAPISensorByID           = "/api/sensor/"

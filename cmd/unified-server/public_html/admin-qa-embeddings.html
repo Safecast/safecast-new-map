@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Q&amp;A Cache - Safecast Admin</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/images/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/images/favicon-16x16.png">
+  <style>
+    :root {
+      --bg-primary: #f5f5f5;
+      --bg-card: white;
+      --text-primary: #333;
+      --text-secondary: #666;
+      --text-muted: #999;
+      --border-color: #ddd;
+      --link-color: #0066cc;
+      --shadow: 0 1px 3px rgba(0,0,0,0.1);
+      --th-bg: #424242;
+      --hover-bg: #f9f9f9;
+      --btn-border-radius: 8px;
+      --tab-active-bg: #2196F3;
+      --tab-active-text: white;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1a1a1a;
+        --bg-card: #2b2b2b;
+        --text-primary: #eee;
+        --text-secondary: #aaa;
+        --text-muted: #777;
+        --border-color: #444;
+        --link-color: #90caf9;
+        --shadow: 0 1px 3px rgba(255,255,255,0.1);
+        --th-bg: #616161;
+        --hover-bg: #333;
+        --tab-active-bg: #1976D2;
+        color-scheme: dark;
+      }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-primary); color: var(--text-primary); padding: 20px; }
+    h1 { margin-bottom: 15px; font-size: 1.6em; }
+
+    .admin-tabs { display: flex; gap: 2px; margin-top: 10px; margin-bottom: 10px; background: var(--border-color); border-radius: 8px; overflow: hidden; flex-wrap: wrap; }
+    .admin-tabs a { padding: 10px 20px; text-decoration: none; color: var(--text-secondary); background: var(--bg-card); font-weight: 500; font-size: 0.95em; transition: background 0.2s; }
+    .admin-tabs a:hover { background: var(--hover-bg); color: var(--text-primary); }
+    .admin-tabs a.active { background: var(--tab-active-bg); color: var(--tab-active-text); }
+
+    .controls { display: flex; gap: 10px; align-items: center; margin-bottom: 15px; flex-wrap: wrap; }
+    .controls input[type="text"], .controls select { padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--btn-border-radius); background: var(--bg-card); color: var(--text-primary); font-size: 0.95em; }
+    .controls input[type="text"] { min-width: 280px; }
+    .controls button { padding: 8px 16px; border: 1px solid var(--border-color); border-radius: var(--btn-border-radius); background: var(--bg-card); color: var(--text-primary); cursor: pointer; font-size: 0.95em; }
+    .controls button:hover { background: var(--hover-bg); }
+
+    .summary { margin-bottom: 10px; color: var(--text-secondary); font-size: 0.9em; }
+
+    .table-wrap { overflow-x: auto; background: var(--bg-card); border-radius: 8px; box-shadow: var(--shadow); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+    th { background: var(--th-bg); color: white; padding: 10px 12px; text-align: left; white-space: nowrap; position: sticky; top: 0; }
+    td { padding: 8px 12px; border-bottom: 1px solid var(--border-color); vertical-align: top; }
+    tr:hover { background: var(--hover-bg); }
+    .sortable { cursor: pointer; user-select: none; position: relative; padding-right: 20px; }
+    .sortable:hover { background: rgba(255,255,255,0.1); }
+    .sortable::after { content: '\21C5'; position: absolute; right: 4px; opacity: 0.5; }
+    .sortable.asc::after  { content: '\25B2'; opacity: 1; }
+    .sortable.desc::after { content: '\25BC'; opacity: 1; }
+
+    .col-id        { width: 110px; }
+    .col-question  { max-width: 460px; }
+    .col-question-text { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .col-score     { width: 70px;  text-align: right; }
+    .col-used      { width: 70px;  text-align: right; }
+    .col-status    { width: 90px; }
+    .col-lang      { width: 70px; }
+    .col-date      { width: 140px; }
+    .col-actions   { width: 200px; white-space: nowrap; }
+
+    .pagination { display: flex; gap: 5px; align-items: center; justify-content: center; margin-top: 15px; flex-wrap: wrap; }
+    .pagination button { padding: 6px 12px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-card); color: var(--text-primary); cursor: pointer; }
+    .pagination button:hover { background: var(--hover-bg); }
+    .pagination button.active { background: var(--tab-active-bg); color: white; border-color: var(--tab-active-bg); }
+    .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .no-data { text-align: center; padding: 40px; color: var(--text-muted); }
+    .loading { text-align: center; padding: 40px; color: var(--text-muted); }
+
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.8em; font-weight: 600; }
+    .badge-active   { background: #4CAF50; color: white; }
+    .badge-demoted  { background: #FF9800; color: white; }
+    .badge-archived { background: #9E9E9E; color: white; }
+    .badge-lang     { background: var(--tab-active-bg); color: white; }
+    .score-pos { color: #4CAF50; font-weight: 600; }
+    .score-neg { color: #f44336; font-weight: 600; }
+    .score-zero { color: var(--text-muted); }
+
+    .btn-view    { background: #2196F3; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.85em; margin: 0 2px; }
+    .btn-promote { background: #4CAF50; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.85em; margin: 0 2px; }
+    .btn-demote  { background: #FF9800; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.85em; margin: 0 2px; }
+    .btn-archive { background: #9E9E9E; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.85em; margin: 0 2px; }
+    .btn-restore { background: #2196F3; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.85em; margin: 0 2px; }
+    .btn-view:hover, .btn-promote:hover, .btn-demote:hover, .btn-archive:hover, .btn-restore:hover { opacity: 0.85; }
+
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
+    .modal-overlay.visible { display: flex; align-items: center; justify-content: center; }
+    .modal { background: var(--bg-card); border-radius: 12px; padding: 24px; max-width: 900px; width: 95%; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+    .modal h3 { margin-bottom: 15px; }
+    .modal .field-label { font-weight: 600; color: var(--text-secondary); margin-top: 10px; font-size: 0.85em; }
+    .modal .field-value { padding: 8px 12px; background: var(--bg-primary); border-radius: 6px; margin-top: 4px; white-space: pre-wrap; word-break: break-word; line-height: 1.5; }
+    .modal .btn-row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+    .modal .btn-cancel { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); padding: 10px 24px; border-radius: var(--btn-border-radius); cursor: pointer; }
+
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0; }
+    .page-header h1 { margin: 0; }
+    .back-to-map-btn { background: #2196F3 !important; color: white !important; padding: 8px 16px; border-radius: var(--btn-border-radius); text-decoration: none !important; font-weight: 500; transition: background 0.2s; }
+    .back-to-map-btn:hover { background: #1976D2 !important; }
+  </style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>Q&amp;A Cache</h1>
+  <a href="/" class="back-to-map-btn">Back to Map</a>
+</div>
+
+<div class="admin-tabs" id="adminTabs"></div>
+
+<div class="controls">
+  <select id="statusFilter" onchange="onFilterChange()">
+    <option value="">All statuses</option>
+  </select>
+  <select id="langFilter" onchange="onFilterChange()">
+    <option value="">All languages</option>
+  </select>
+  <select id="scoreFilter" onchange="onFilterChange()">
+    <option value="">All scores</option>
+    <option value="pos">Positive only</option>
+    <option value="zero">Zero</option>
+    <option value="neg">Negative</option>
+  </select>
+  <input type="text" id="searchInput" placeholder="Search question or answer text..." onkeydown="if(event.key==='Enter')doSearch()">
+  <button onclick="doSearch()">Search</button>
+  <button onclick="clearSearch()">Clear</button>
+  <span class="summary" id="summary"></span>
+</div>
+
+<div class="table-wrap">
+  <div class="loading" id="loading">Loading...</div>
+  <table id="dataTable" style="display:none">
+    <thead>
+      <tr>
+        <th class="col-id sortable" onclick="sortBy('id')">ID</th>
+        <th class="col-question">Question</th>
+        <th class="col-score sortable" onclick="sortBy('feedback_score')">Score</th>
+        <th class="col-used sortable" onclick="sortBy('used_count')">Used</th>
+        <th class="col-status sortable" onclick="sortBy('status')">Status</th>
+        <th class="col-lang sortable" onclick="sortBy('lang')">Lang</th>
+        <th class="col-date sortable" onclick="sortBy('created_at')">Created</th>
+        <th class="col-date sortable" onclick="sortBy('last_used_at')">Last used</th>
+        <th class="col-actions">Actions</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+  <div class="no-data" id="noData" style="display:none">No cached Q&amp;A pairs found.</div>
+</div>
+
+<div class="pagination" id="pagination"></div>
+
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3>Cached Q&amp;A</h3>
+    <div class="field-label">Question</div>
+    <div class="field-value" id="modalQuestion"></div>
+    <div class="field-label">Answer</div>
+    <div class="field-value" id="modalAnswer"></div>
+    <div class="field-label">Metadata</div>
+    <div class="field-value" id="modalMeta" style="font-family: monospace; font-size: 0.85em;"></div>
+    <div class="btn-row">
+      <button class="btn-cancel" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const PASSWORD = new URLSearchParams(window.location.search).get('password') || '';
+const PASSWORD_QS = PASSWORD ? '?password=' + encodeURIComponent(PASSWORD) : '';
+
+let currentSort = 'created_at';
+let currentOrder = 'desc';
+let currentLimit = 50;
+let currentOffset = 0;
+let currentSearch = '';
+let currentStatus = '';
+let currentLang = '';
+let currentScore = '';
+
+function renderAdminTabs() {
+  const tabs = [
+    { label: 'Users', href: '/admin/users' },
+    { label: 'Uploads', href: '/admin/uploads' },
+    { label: 'MCP Analytics', href: '/admin/mcp' },
+    { label: 'Realtime', href: '/admin/realtime' },
+    { label: 'Translations', href: '/admin/translations' },
+    { label: 'Tour Steps', href: '/admin/tour' },
+    { label: 'AI Hints', href: '/admin/ai-hints' },
+    { label: 'Help', href: '/admin/help' },
+    { label: 'Q&A Cache', href: '/admin/qa-embeddings', active: true }
+  ];
+  const container = document.getElementById('adminTabs');
+  tabs.forEach(t => {
+    const href = t.href + PASSWORD_QS;
+    container.innerHTML += `<a href="${href}" class="${t.active ? 'active' : ''}">${t.label}</a>`;
+  });
+}
+
+function fmtDate(s) {
+  if (!s) return '<span style="color: var(--text-muted)">—</span>';
+  return String(s).substring(0, 19).replace('T', ' ');
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str == null ? '' : String(str);
+  return div.innerHTML;
+}
+
+function scoreClass(n) {
+  if (n > 0) return 'score-pos';
+  if (n < 0) return 'score-neg';
+  return 'score-zero';
+}
+
+function statusBadge(s) {
+  const cls = s === 'demoted' ? 'badge-demoted' : (s === 'archived' ? 'badge-archived' : 'badge-active');
+  return `<span class="badge ${cls}">${escapeHtml(s)}</span>`;
+}
+
+async function fetchData() {
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('dataTable').style.display = 'none';
+  document.getElementById('noData').style.display = 'none';
+
+  const params = new URLSearchParams({
+    sort: currentSort,
+    order: currentOrder,
+    limit: currentLimit,
+    offset: currentOffset,
+  });
+  if (currentSearch) params.set('search', currentSearch);
+  if (currentStatus) params.set('status', currentStatus);
+  if (currentLang) params.set('lang', currentLang);
+  if (currentScore) params.set('score', currentScore);
+  if (PASSWORD) params.set('password', PASSWORD);
+
+  try {
+    const resp = await fetch('/api/admin/qa-embeddings?' + params.toString());
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const json = await resp.json();
+    renderTable(json);
+    populateFilters(json);
+    updateSortIndicators();
+  } catch (e) {
+    document.getElementById('loading').textContent = 'Error: ' + e.message;
+  }
+}
+
+function populateFilters(json) {
+  const statusSel = document.getElementById('statusFilter');
+  const langSel = document.getElementById('langFilter');
+  if (statusSel.options.length <= 1 && Array.isArray(json.statuses)) {
+    json.statuses.forEach(s => {
+      const o = document.createElement('option');
+      o.value = s; o.textContent = s || '(none)';
+      statusSel.appendChild(o);
+    });
+  }
+  if (langSel.options.length <= 1 && Array.isArray(json.languages)) {
+    json.languages.forEach(l => {
+      const o = document.createElement('option');
+      o.value = l; o.textContent = l || '(none)';
+      langSel.appendChild(o);
+    });
+  }
+}
+
+function renderTable(json) {
+  document.getElementById('loading').style.display = 'none';
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+  if (!json.data || json.data.length === 0) {
+    document.getElementById('noData').style.display = 'block';
+    document.getElementById('summary').textContent = '0 rows';
+    document.getElementById('pagination').innerHTML = '';
+    return;
+  }
+
+  document.getElementById('dataTable').style.display = 'table';
+  json.data.forEach(row => {
+    const tr = document.createElement('tr');
+    const isArchived = row.status === 'archived';
+    const restoreOrArchive = isArchived
+      ? `<button class="btn-restore" onclick="doAction(${row.id}, 'restore')" title="Restore">⤴</button>`
+      : `<button class="btn-archive" onclick="doAction(${row.id}, 'archive')" title="Archive">🗑</button>`;
+    tr.innerHTML = `
+      <td class="col-id">${row.id}</td>
+      <td class="col-question">
+        <div class="col-question-text" title="${escapeHtml(row.question)}">${escapeHtml(row.question)}</div>
+        <small style="color: var(--text-muted)">${row.answer_len} char answer · chat_id ${row.chat_id}</small>
+      </td>
+      <td class="col-score ${scoreClass(row.feedback_score)}">${row.feedback_score > 0 ? '+' : ''}${row.feedback_score}</td>
+      <td class="col-used">${row.used_count}</td>
+      <td class="col-status">${statusBadge(row.status)}</td>
+      <td class="col-lang">${row.lang ? `<span class="badge badge-lang">${escapeHtml(row.lang)}</span>` : '<span style="color: var(--text-muted)">—</span>'}</td>
+      <td class="col-date">${fmtDate(row.created_at)}</td>
+      <td class="col-date">${fmtDate(row.last_used_at)}</td>
+      <td class="col-actions">
+        <button class="btn-view"    onclick="viewRow(${row.id})"           title="View">👁</button>
+        <button class="btn-promote" onclick="doAction(${row.id}, 'promote')" title="Promote (+1)">⬆</button>
+        <button class="btn-demote"  onclick="doAction(${row.id}, 'demote')"  title="Demote (-1)">⬇</button>
+        ${restoreOrArchive}
+      </td>`;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('summary').textContent =
+    `Showing ${currentOffset + 1}–${Math.min(currentOffset + json.data.length, json.total)} of ${json.total}`;
+  renderPagination(json.total);
+}
+
+function renderPagination(total) {
+  const container = document.getElementById('pagination');
+  container.innerHTML = '';
+  const pages = Math.ceil(total / currentLimit);
+  const curPage = Math.floor(currentOffset / currentLimit) + 1;
+  const mkBtn = (label, page, active=false, disabled=false) => {
+    const b = document.createElement('button');
+    b.textContent = label;
+    if (active) b.classList.add('active');
+    if (disabled) b.disabled = true;
+    b.onclick = () => { currentOffset = (page - 1) * currentLimit; fetchData(); };
+    container.appendChild(b);
+  };
+  mkBtn('‹', curPage - 1, false, curPage <= 1);
+  const start = Math.max(1, curPage - 3);
+  const end = Math.min(pages, curPage + 3);
+  if (start > 1) mkBtn('1', 1);
+  if (start > 2) { const s = document.createElement('span'); s.textContent = '…'; s.style.padding='0 6px'; container.appendChild(s); }
+  for (let p = start; p <= end; p++) mkBtn(String(p), p, p === curPage);
+  if (end < pages - 1) { const s = document.createElement('span'); s.textContent = '…'; s.style.padding='0 6px'; container.appendChild(s); }
+  if (end < pages) mkBtn(String(pages), pages);
+  mkBtn('›', curPage + 1, false, curPage >= pages);
+}
+
+function sortBy(col) {
+  if (currentSort === col) {
+    currentOrder = currentOrder === 'desc' ? 'asc' : 'desc';
+  } else {
+    currentSort = col;
+    currentOrder = (col === 'question' || col === 'lang' || col === 'status') ? 'asc' : 'desc';
+  }
+  currentOffset = 0;
+  fetchData();
+}
+
+function updateSortIndicators() {
+  document.querySelectorAll('th.sortable').forEach(th => {
+    th.classList.remove('asc', 'desc');
+    const col = th.getAttribute('onclick')?.match(/sortBy\('(\w+)'\)/)?.[1];
+    if (col === currentSort) th.classList.add(currentOrder);
+  });
+}
+
+function doSearch() {
+  currentSearch = document.getElementById('searchInput').value.trim();
+  currentOffset = 0;
+  fetchData();
+}
+function clearSearch() {
+  document.getElementById('searchInput').value = '';
+  currentSearch = '';
+  currentOffset = 0;
+  fetchData();
+}
+function onFilterChange() {
+  currentStatus = document.getElementById('statusFilter').value;
+  currentLang   = document.getElementById('langFilter').value;
+  currentScore  = document.getElementById('scoreFilter').value;
+  currentOffset = 0;
+  fetchData();
+}
+
+async function viewRow(id) {
+  try {
+    const resp = await fetch('/api/admin/qa-embeddings/' + id + PASSWORD_QS);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const r = await resp.json();
+    document.getElementById('modalQuestion').textContent = r.question || '';
+    document.getElementById('modalAnswer').textContent = r.answer || '';
+    document.getElementById('modalMeta').textContent = JSON.stringify({
+      id: r.id,
+      chat_id: r.chat_id,
+      feedback_score: r.feedback_score,
+      used_count: r.used_count,
+      status: r.status,
+      lang: r.lang,
+      created_at: r.created_at,
+      last_used_at: r.last_used_at
+    }, null, 2);
+    document.getElementById('modalOverlay').classList.add('visible');
+  } catch (e) {
+    alert('Failed to load: ' + e.message);
+  }
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('visible');
+}
+
+async function doAction(id, action) {
+  if (action === 'archive' && !confirm('Archive this Q&A? It will no longer be served from cache, but the row is kept for audit.')) return;
+  try {
+    const resp = await fetch('/api/admin/qa-embeddings/' + id + '/' + action + PASSWORD_QS, { method: 'POST' });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    fetchData();
+  } catch (e) {
+    alert('Action failed: ' + e.message);
+  }
+}
+
+renderAdminTabs();
+fetchData();
+</script>
+</body>
+</html>

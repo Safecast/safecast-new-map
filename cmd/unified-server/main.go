@@ -836,6 +836,7 @@ func main() {
 	var adminTourPageHandler http.HandlerFunc
 	var adminAIHintsPageHandler http.HandlerFunc
 	var adminHelpPageHandler http.HandlerFunc
+	var adminQAEmbeddingsPageHandler http.HandlerFunc
 
 	// Register authentication and admin page handlers only when auth is enabled.
 	if authManager != nil {
@@ -963,6 +964,16 @@ func main() {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.Write(data)
 		}
+
+		adminQAEmbeddingsPageHandler = func(w http.ResponseWriter, r *http.Request) {
+			data, err := content.ReadFile("public_html/admin-qa-embeddings.html")
+			if err != nil {
+				http.Error(w, "Page not found", http.StatusNotFound)
+				return
+			}
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Write(data)
+		}
 	}
 
 	httpapi.RegisterPageRoutes(http.DefaultServeMux, httpapi.PageRoutesConfig{
@@ -982,6 +993,7 @@ func main() {
 		AdminTourPageHandler:         adminTourPageHandler,
 		AdminAIHintsPageHandler:      adminAIHintsPageHandler,
 		AdminHelpPageHandler:         adminHelpPageHandler,
+		AdminQAEmbeddingsPageHandler: adminQAEmbeddingsPageHandler,
 	})
 
 	// Legacy public endpoints (non-/api) live in one registrar to keep route
@@ -1023,6 +1035,8 @@ func main() {
 	var adminAIHintsImportAPIHandler http.HandlerFunc
 	var adminAIHintsByIDAPIHandler http.HandlerFunc
 	var adminAIHintsAPIHandler http.HandlerFunc
+	var adminQAEmbeddingsAPIHandler http.HandlerFunc
+	var adminQAEmbeddingsByIDAPIHandler http.HandlerFunc
 	if authManager != nil {
 		adminMCPDataAPIHandler = adminMCPDataHandler
 		adminMCPExportAPIHandler = adminMCPExportHandler
@@ -1127,6 +1141,38 @@ func main() {
 				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			}
 		}
+
+		// Q&A semantic-cache admin API. The list root serves GET only; the by-id
+		// subtree dispatches to detail (GET /{id}) or actions (POST /{id}/{action}).
+		adminQAEmbeddingsAPIHandler = func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodGet {
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			adminQAEmbeddingsListHandler(w, r)
+		}
+		adminQAEmbeddingsByIDAPIHandler = func(w http.ResponseWriter, r *http.Request) {
+			stripped := strings.TrimPrefix(r.URL.Path, "/api/admin/qa-embeddings/")
+			stripped = strings.Trim(stripped, "/")
+			parts := strings.Split(stripped, "/")
+			if len(parts) == 0 || parts[0] == "" {
+				http.Error(w, "Missing id", http.StatusBadRequest)
+				return
+			}
+			id, err := strconv.ParseInt(parts[0], 10, 64)
+			if err != nil {
+				http.Error(w, "Invalid id", http.StatusBadRequest)
+				return
+			}
+			switch {
+			case len(parts) == 1 && r.Method == http.MethodGet:
+				adminQAEmbeddingsDetailHandler(w, r, id)
+			case len(parts) == 2 && r.Method == http.MethodPost:
+				adminQAEmbeddingsActionHandler(w, r, id, parts[1])
+			default:
+				http.Error(w, "Not found", http.StatusNotFound)
+			}
+		}
 	}
 
 	httpapi.Register(http.DefaultServeMux, httpapi.RegisterConfig{
@@ -1166,6 +1212,8 @@ func main() {
 		AdminAIHintsImportHandler:        adminAIHintsImportAPIHandler,
 		AdminAIHintsByIDHandler:          adminAIHintsByIDAPIHandler,
 		AdminAIHintsHandler:              adminAIHintsAPIHandler,
+		AdminQAEmbeddingsByIDHandler:     adminQAEmbeddingsByIDAPIHandler,
+		AdminQAEmbeddingsHandler:         adminQAEmbeddingsAPIHandler,
 		APISensorsHandler:                restHandler.handleSensors,
 		APISensorsExportHandler:          restHandler.handleSensorsExport,
 		APISensorByIDHandler:             restHandler.handleSensor,

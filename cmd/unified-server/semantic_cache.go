@@ -14,6 +14,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -43,6 +44,8 @@ type qaEntry struct {
 	Answer        string
 	Embedding     []float32
 	FeedbackScore int
+	Status        string // 'active' | 'demoted' | 'archived'
+	Lang          string // IETF language tag; empty = legacy/unknown
 }
 
 // trackIDRegexp matches 5–10 character alphanumeric track IDs as whole words.
@@ -73,8 +76,11 @@ func extractTrackID(s string) string {
 // cosine similarity to the given embedding.
 // trackID is the explicit track the user is viewing (may be ""); question is
 // used as a fallback to extract a track ID when trackID is empty. Cache hits
-// from a different track are never returned. Returns ("", 0) on miss.
-func checkSemanticCache(embedding []float32, question, trackID string) (answer string, chatID int64) {
+// from a different track are never returned. lang scopes the lookup to entries
+// produced by the same language (legacy/empty-lang rows are matched too, so
+// a freshly migrated cache continues to serve hits during transition).
+// Returns ("", 0) on miss.
+func checkSemanticCache(embedding []float32, question, trackID, lang string) (answer string, chatID int64) {
 	if !duckDBAvailable() || len(embedding) == 0 {
 		return "", 0
 	}
@@ -93,6 +99,12 @@ func checkSemanticCache(embedding []float32, question, trackID string) (answer s
 	var bestScore float32
 	var best *qaEntry
 	for i := range entries {
+		// Cross-language hits would surface a Japanese answer for an English
+		// question (or vice versa). Reject unless the stored lang is empty,
+		// which keeps legacy pre-migration rows usable.
+		if lang != "" && entries[i].Lang != "" && entries[i].Lang != lang {
+			continue
+		}
 		if queryTrackID != "" {
 			if !strings.Contains(entries[i].Question, queryTrackID) &&
 				!strings.Contains(entries[i].Answer, queryTrackID) {
@@ -105,6 +117,14 @@ func checkSemanticCache(embedding []float32, question, trackID string) (answer s
 		}
 	}
 	if bestScore >= cacheHitThreshold && best != nil {
+		// Bump usage stats so the admin tab can sort by popularity. Failure
+		// here is non-fatal — the cache hit still serves correctly.
+		if _, err := duckDB.Exec(
+			`UPDATE qa_embeddings SET used_count = COALESCE(used_count, 0) + 1, last_used_at = now() WHERE id = ?`,
+			best.ID,
+		); err != nil {
+			log.Printf("qa_embeddings usage bump (non-fatal): %v", err)
+		}
 		return best.Answer, best.ChatID
 	}
 	return "", 0
@@ -196,7 +216,8 @@ func getLocationKnowledge() string {
 
 // storeQAEmbeddingAsync saves a new Q&A + embedding in the background.
 // embeddingChatID is the ID to use as chat_id (for later feedback linkage).
-func storeQAEmbeddingAsync(ctx context.Context, embeddingChatID int64, question, answer string, embedding []float32) {
+// lang records the language of the exchange so future lookups can scope by it.
+func storeQAEmbeddingAsync(ctx context.Context, embeddingChatID int64, question, answer string, embedding []float32, lang string) {
 	go func() {
 		if !duckDBAvailable() || len(embedding) == 0 {
 			return
@@ -207,8 +228,9 @@ func storeQAEmbeddingAsync(ctx context.Context, embeddingChatID int64, question,
 		}
 		id := time.Now().UnixMilli() // UnixNano exceeds JS MAX_SAFE_INTEGER
 		if _, err := duckDB.Exec(
-			`INSERT INTO qa_embeddings (id, chat_id, question, answer, embedding, feedback_score) VALUES (?, ?, ?, ?, ?, 0)`,
-			id, embeddingChatID, question, answer, string(embJSON),
+			`INSERT INTO qa_embeddings (id, chat_id, question, answer, embedding, feedback_score, used_count, status, lang)
+			 VALUES (?, ?, ?, ?, ?, 0, 0, 'active', ?)`,
+			id, embeddingChatID, question, answer, string(embJSON), lang,
 		); err != nil {
 			log.Printf("store qa_embedding: %v", err)
 		}
@@ -282,54 +304,54 @@ func extractLocationKnowledge(chatID int64) {
 	}
 }
 
-// loadQAEmbeddingsForTrack fetches positively-rated Q&A rows that mention
-// the given track ID in the question or answer text.
+// loadQAEmbeddingsForTrack fetches positively-rated, active Q&A rows that
+// mention the given track ID in the question or answer text.
+// COALESCE on status/lang keeps legacy rows (pre-migration) visible.
 func loadQAEmbeddingsForTrack(trackID string) ([]qaEntry, error) {
 	like := "%" + trackID + "%"
 	rows, err := duckDB.Query(
-		`SELECT id, chat_id, question, answer, embedding, feedback_score FROM qa_embeddings
+		`SELECT id, chat_id, question, answer, embedding, feedback_score,
+		        COALESCE(status, 'active'), COALESCE(lang, '')
+		 FROM qa_embeddings
 		 WHERE feedback_score > 0
-		 AND (question LIKE ? OR answer LIKE ?)`,
+		   AND COALESCE(status, 'active') = 'active'
+		   AND (question LIKE ? OR answer LIKE ?)`,
 		like, like,
 	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-
-	var entries []qaEntry
-	for rows.Next() {
-		var e qaEntry
-		var embJSON string
-		if err := rows.Scan(&e.ID, &e.ChatID, &e.Question, &e.Answer, &embJSON, &e.FeedbackScore); err != nil {
-			continue
-		}
-		if err := json.Unmarshal([]byte(embJSON), &e.Embedding); err != nil {
-			continue
-		}
-		entries = append(entries, e)
-	}
-	return entries, rows.Err()
+	return scanQAEntries(rows)
 }
 
-// loadQAEmbeddings fetches Q&A rows from DuckLake.
+// loadQAEmbeddings fetches active Q&A rows from DuckLake.
 // If positiveOnly is true, only rows with feedback_score > 0 are returned.
+// Demoted/archived rows are always excluded.
 func loadQAEmbeddings(positiveOnly bool) ([]qaEntry, error) {
-	query := `SELECT id, chat_id, question, answer, embedding, feedback_score FROM qa_embeddings`
+	query := `SELECT id, chat_id, question, answer, embedding, feedback_score,
+	                 COALESCE(status, 'active'), COALESCE(lang, '')
+	          FROM qa_embeddings
+	          WHERE COALESCE(status, 'active') = 'active'`
 	if positiveOnly {
-		query += ` WHERE feedback_score > 0`
+		query += ` AND feedback_score > 0`
 	}
 	rows, err := duckDB.Query(query)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+	return scanQAEntries(rows)
+}
 
+// scanQAEntries reads the columns produced by loadQAEmbeddings* into qaEntry
+// values. Rows with unparseable embeddings are silently dropped.
+func scanQAEntries(rows *sql.Rows) ([]qaEntry, error) {
 	var entries []qaEntry
 	for rows.Next() {
 		var e qaEntry
 		var embJSON string
-		if err := rows.Scan(&e.ID, &e.ChatID, &e.Question, &e.Answer, &embJSON, &e.FeedbackScore); err != nil {
+		if err := rows.Scan(&e.ID, &e.ChatID, &e.Question, &e.Answer, &embJSON, &e.FeedbackScore, &e.Status, &e.Lang); err != nil {
 			continue
 		}
 		if err := json.Unmarshal([]byte(embJSON), &e.Embedding); err != nil {
