@@ -175,6 +175,10 @@ func createDuckDBSchema() error {
 		)`,
 		// Semantic cache: stores embeddings + user feedback for past Q&A pairs.
 		// embedding is stored as a JSON array of float32 values (VARCHAR).
+		// status: 'active' | 'demoted' | 'archived' — only 'active' rows are
+		// eligible for cache hits / RAG retrieval. used_count and last_used_at
+		// power popularity sorting in the admin tab. lang scopes lookups so a
+		// Japanese question never matches an English cached answer.
 		`CREATE TABLE IF NOT EXISTS qa_embeddings (
 			id BIGINT,
 			chat_id BIGINT,
@@ -182,6 +186,10 @@ func createDuckDBSchema() error {
 			answer VARCHAR,
 			embedding VARCHAR,
 			feedback_score INTEGER DEFAULT 0,
+			used_count INTEGER DEFAULT 0,
+			last_used_at TIMESTAMPTZ,
+			status VARCHAR DEFAULT 'active',
+			lang VARCHAR DEFAULT '',
 			created_at TIMESTAMPTZ DEFAULT now()
 		)`,
 		// Curated geographic knowledge: confirmed explanations for elevated/unusual
@@ -200,6 +208,22 @@ func createDuckDBSchema() error {
 	for _, ddl := range tables {
 		if _, err := duckDB.Exec(ddl); err != nil {
 			return fmt.Errorf("create schema: %w", err)
+		}
+	}
+
+	// In-place column migrations for existing installs. CREATE TABLE IF NOT
+	// EXISTS will not add new columns to a pre-existing table, so we issue
+	// idempotent ALTER TABLE ADD COLUMN IF NOT EXISTS statements after.
+	// Failures are non-fatal (most commonly: column already added).
+	migrations := []string{
+		`ALTER TABLE qa_embeddings ADD COLUMN IF NOT EXISTS used_count INTEGER DEFAULT 0`,
+		`ALTER TABLE qa_embeddings ADD COLUMN IF NOT EXISTS last_used_at TIMESTAMPTZ`,
+		`ALTER TABLE qa_embeddings ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'active'`,
+		`ALTER TABLE qa_embeddings ADD COLUMN IF NOT EXISTS lang VARCHAR DEFAULT ''`,
+	}
+	for _, m := range migrations {
+		if _, err := duckDB.Exec(m); err != nil {
+			log.Printf("qa_embeddings migration warning (may already be applied): %v", err)
 		}
 	}
 

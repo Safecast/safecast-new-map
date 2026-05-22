@@ -329,6 +329,41 @@ Access the admin panel at `/admin/users?password=your-secure-password` or log in
 | MCP Analytics | `/admin/mcp` | Monitor MCP tool usage and AI query logs |
 | Realtime | `/admin/realtime` | Manage real-time sensor device data |
 | Translations | `/admin/translations` | Edit, add, and delete UI translations for all 29 languages |
+| Q&A Cache | `/admin/qa-embeddings` | Browse, curate, promote/demote, or archive entries in the semantic chat cache |
+
+### Q&A Cache Curation
+
+The web-chat assistant uses a semantic cache so paraphrased repeat questions
+return without re-calling the LLM. Each answered chat is embedded (pure-Go
+feature hashing) and stored in DuckLake `qa_embeddings`. A new question is
+served from cache when its cosine similarity to a stored entry exceeds 0.85,
+the entry has `feedback_score > 0`, status is `active`, and language matches.
+
+**Admin tab** (`/admin/qa-embeddings`):
+- Searchable on question/answer text, sortable on every column
+- Filter by status (`active` / `demoted` / `archived`), language, and feedback-score sign
+- View full Q&A in a modal (the raw embedding vector is never sent to the browser)
+- Per-row actions:
+  - **Promote** — `feedback_score += 1`, force `status='active'`
+  - **Demote** — `feedback_score -= 1`, `status='demoted'` (hidden from cache, kept for audit)
+  - **Archive** — `status='archived'` (kept for audit only)
+  - **Restore** — bring `archived` / `demoted` rows back to `active`
+
+**Schema** (`qa_embeddings`, DuckLake catalog):
+- Base columns: `id`, `chat_id`, `question`, `answer`, `embedding`, `feedback_score`, `created_at`
+- Curation columns (added by `migrations/add_qa_embeddings_columns.sql`):
+  - `used_count INTEGER` — bumped on every cache hit
+  - `last_used_at TIMESTAMPTZ` — most recent cache hit
+  - `status VARCHAR` — `active` | `demoted` | `archived`
+  - `lang VARCHAR` — IETF language tag; lookups never cross languages
+
+The migration is applied automatically by `cmd/unified-server/duckdb_analytics.go`
+at startup via idempotent `ALTER TABLE ADD COLUMN IF NOT EXISTS` statements;
+the standalone SQL file is the authoritative record for ops.
+
+The cache only runs when the unified server is built with `-tags duckdb`. Without
+it, the table is never created and the admin tab returns "Analytics database not
+available."
 
 ### Translation Management
 
