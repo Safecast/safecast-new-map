@@ -6523,6 +6523,10 @@ function drawLiveChart(canvas, radiationPoints, extrasByKey, options) {
     maxX = minX + 1;
   }
   const bucketSeconds = typeof opts.bucketSeconds === 'number' ? opts.bucketSeconds : 0;
+  // When peakPrimary is set (e.g. the 30-day view) the main radiation line plots
+  // each bucket's peak rather than its average, so transient spikes stay visible.
+  const peakPrimary = !!opts.peakPrimary;
+  const radVal = (p) => (peakPrimary && typeof p.max === 'number' && p.max > p.value) ? p.max : p.value;
 
   let minY;
   let maxY;
@@ -6542,7 +6546,8 @@ function drawLiveChart(canvas, radiationPoints, extrasByKey, options) {
       series.forEach(point => {
         if (point.timestamp >= minX && point.timestamp <= maxX) {
           if (point.value < visibleMinY) visibleMinY = point.value;
-          if (point.value > visibleMaxY) visibleMaxY = point.value;
+          const hi = (typeof point.max === 'number' && point.max > point.value) ? point.max : point.value;
+          if (hi > visibleMaxY) visibleMaxY = hi;
           hasVisible = true;
         }
       });
@@ -6566,7 +6571,8 @@ function drawLiveChart(canvas, radiationPoints, extrasByKey, options) {
     let foundMax = -Infinity;
     if (hasRadiation) {
       radiationPoints.forEach(function(point) {
-        if (point.value > foundMax) foundMax = point.value;
+        const hi = (typeof point.max === 'number' && point.max > point.value) ? point.max : point.value;
+        if (hi > foundMax) foundMax = hi;
       });
     } else if (extraKeys.length > 0) {
       const key = extraKeys[0];
@@ -6785,10 +6791,29 @@ function drawLiveChart(canvas, radiationPoints, extrasByKey, options) {
 
     const pts = radiationPoints.map(p => ({
       x: getX(p.timestamp),
-      y: getY(p.value),
-      val: p.value,
+      y: getY(radVal(p)),
+      val: radVal(p),
       ts: p.timestamp
     }));
+
+    // Daily peak/average overlay setup. The solid line (pts) is whichever is
+    // primary for this range; the other is drawn as a faint dashed reference.
+    // Actual drawing happens AFTER the main gradient fill so it isn't overpainted.
+    const hasMax = radiationPoints.some(p => typeof p.max === 'number' && p.max > p.value);
+    const bezierPath = (arr) => {
+      const path = new Path2D();
+      path.moveTo(arr[0].x, arr[0].y);
+      for (let i = 0; i < arr.length - 1; i++) {
+        const p1 = arr[i], p2 = arr[i + 1];
+        const p0 = arr[i - 1] || p1, p3 = arr[i + 2] || p2;
+        const dx = p2.x - p1.x;
+        path.bezierCurveTo(
+          p1.x + dx * tension * 3, p1.y + (p2.y - p0.y) * tension,
+          p2.x - dx * tension * 3, p2.y - (p3.y - p1.y) * tension,
+          p2.x, p2.y);
+      }
+      return path;
+    };
 
     // Build paths for fill and stroke
     const fillPath = new Path2D();
@@ -6838,7 +6863,36 @@ function drawLiveChart(canvas, radiationPoints, extrasByKey, options) {
     ctx.fillStyle = fillGradient;
     ctx.fill(fillPath);
 
+    // Peak/average overlay, drawn over the main fill so it stays visible.
+    if (hasMax) {
+      const avgPts = radiationPoints.map(p => ({ x: getX(p.timestamp), y: getY(p.value) }));
+      const maxPts = radiationPoints.map(p => ({
+        x: getX(p.timestamp),
+        y: getY((typeof p.max === 'number' && p.max > p.value) ? p.max : p.value)
+      }));
+      const peakVal = radiationPoints.reduce((m, p) => Math.max(m, (typeof p.max === 'number' ? p.max : p.value)), 0);
+      const peakColor = radiationLineColor(peakVal);
+      ctx.save();
+      // On the day view (avg primary) shade the band up to the peak; on the
+      // peak-primary month view the area under the peak is already filled.
+      if (!peakPrimary) {
+        const envPath = bezierPath(maxPts);
+        for (let i = avgPts.length - 1; i >= 0; i--) envPath.lineTo(avgPts[i].x, avgPts[i].y);
+        envPath.closePath();
+        ctx.fillStyle = colorWithAlpha(peakColor, 0.22);
+        ctx.fill(envPath);
+      }
+      // Faint dashed reference = whichever line is NOT the primary solid one.
+      const refPts = peakPrimary ? avgPts : maxPts;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 3]);
+      ctx.strokeStyle = colorWithAlpha(peakColor, peakPrimary ? 0.6 : 0.9);
+      ctx.stroke(bezierPath(refPts));
+      ctx.restore();
+    }
+
     // Draw the line in ONE single stroke for perfect smoothing
+    ctx.setLineDash([]);
     ctx.strokeStyle = mainGradient;
     ctx.stroke(linePath);
   } else if (hasRadiation && radiationPoints.length === 1) {
@@ -7016,10 +7070,18 @@ function drawLiveChart(canvas, radiationPoints, extrasByKey, options) {
     if (closest && minDist < rangeX * 0.05) { 
       const date = new Date(closest.timestamp * 1000);
       const timeStr = date.toLocaleString(lang, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-      const valStr = formatChartValue(closest.value, precisionY);
-      const unit = hasRadiation && radiationPoints.includes(closest) ? getPrimaryUnitLabel() : '';
-      
-      tooltip.innerHTML = `<strong>${valStr} ${unit}</strong><br>${timeStr}`;
+      const isRad = hasRadiation && radiationPoints.includes(closest);
+      const unit = isRad ? getPrimaryUnitLabel() : '';
+      const hasPeak = isRad && typeof closest.max === 'number' && closest.max > closest.value;
+      let headStr, subLine = '';
+      if (isRad && peakPrimary && hasPeak) {
+        headStr = formatChartValue(closest.max, precisionY);
+        subLine = `<br>avg ${formatChartValue(closest.value, precisionY)} ${unit}`;
+      } else {
+        headStr = formatChartValue(closest.value, precisionY);
+        if (hasPeak) subLine = `<br>peak ${formatChartValue(closest.max, precisionY)} ${unit}`;
+      }
+      tooltip.innerHTML = `<strong>${headStr} ${unit}</strong>${subLine}<br>${timeStr}`;
       tooltip.style.display = 'block';
       tooltip.style.left = (e.clientX + 10) + 'px';
       tooltip.style.top = (e.clientY + 10) + 'px';
@@ -7176,6 +7238,12 @@ function updateChartWindowLabel(rangeKey, ranges) {
   const range = ranges && ranges[rangeKey];
   if (!range || !range.bucketSeconds) {
     el.textContent = '';
+    return;
+  }
+  if (rangeKey === 'month') {
+    // The 30-day view plots each day's peak; the shaded band is the daily average.
+    const t = translate('live_chart_daily_peak');
+    el.textContent = (t && t !== 'live_chart_daily_peak') ? t : 'Daily peak · band shows daily average';
     return;
   }
   const windowText = formatAveragingWindow(range.bucketSeconds);
@@ -7362,7 +7430,7 @@ async function openLiveModal(deviceID, fallback) {
       }
       
       if (rangeKey === 'day') { options.tickUnit = 'hour'; options.tickSegments = 24; }
-      else if (rangeKey === 'month') { options.tickUnit = 'day'; options.tickSegments = 24; }
+      else if (rangeKey === 'month') { options.tickUnit = 'day'; options.tickSegments = 24; options.peakPrimary = true; }
       else if (rangeKey === 'all') { options.tickUnit = 'month'; options.tickSegments = 24; }
 
       if (canvas && hasSeries) {

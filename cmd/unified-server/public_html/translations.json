@@ -1484,6 +1484,7 @@
     "license_title": "License",
     "live_chart_all": "All readings",
     "live_chart_averaged": "Averaged over [[window]]",
+    "live_chart_daily_peak": "Daily peak · band shows daily average",
     "live_chart_close": "Close",
     "live_chart_day": "Last 24 hours",
     "live_chart_month": "Last 30 days",
