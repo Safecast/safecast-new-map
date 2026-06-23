@@ -2918,6 +2918,57 @@ ON CONFLICT(device_id,measured_at) DO NOTHING`,
 	})
 }
 
+// InsertRealtimeMeasurements stores many readings efficiently. For PostgreSQL it
+// uses chunked multi-row INSERTs (one round-trip per chunk) so backfilling a
+// device's full history doesn't fan out into thousands of serialized writes.
+// Other drivers fall back to the per-row path, which is correct if slower.
+func (db *Database) InsertRealtimeMeasurements(ms []RealtimeMeasurement, dbType string) error {
+	if len(ms) == 0 {
+		return nil
+	}
+	if strings.ToLower(dbType) != "pgx" {
+		for _, m := range ms {
+			if err := db.InsertRealtimeMeasurement(m, dbType); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	const cols = 12
+	const chunkRows = 500 // 500*12 = 6000 params, well under Postgres' 65535 limit
+	return db.withSerializedConnectionFor(context.Background(), WorkloadRealtime, func(ctx context.Context, conn *sql.DB) error {
+		for start := 0; start < len(ms); start += chunkRows {
+			end := start + chunkRows
+			if end > len(ms) {
+				end = len(ms)
+			}
+			chunk := ms[start:end]
+
+			var sb strings.Builder
+			sb.WriteString(`INSERT INTO realtime_measurements (device_id,transport,device_name,tube,country,value,unit,lat,lon,measured_at,fetched_at,extra) VALUES `)
+			args := make([]any, 0, len(chunk)*cols)
+			for i, m := range chunk {
+				if i > 0 {
+					sb.WriteByte(',')
+				}
+				base := i * cols
+				fmt.Fprintf(&sb, "($%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d)",
+					base+1, base+2, base+3, base+4, base+5, base+6,
+					base+7, base+8, base+9, base+10, base+11, base+12)
+				args = append(args, m.DeviceID, m.Transport, m.DeviceName, m.Tube, m.Country,
+					m.Value, m.Unit, m.Lat, m.Lon, m.MeasuredAt, m.FetchedAt, m.Extra)
+			}
+			sb.WriteString(` ON CONFLICT ON CONSTRAINT realtime_unique DO NOTHING`)
+
+			if _, err := conn.ExecContext(ctx, sb.String(), args...); err != nil {
+				return fmt.Errorf("batch insert realtime: %w", err)
+			}
+		}
+		return nil
+	})
+}
+
 // GetLatestRealtimeByBounds returns the newest reading per device within bounds.
 // We keep SQL portable and filter duplicates in Go, following "Clear is better than clever".
 func (db *Database) GetLatestRealtimeByBounds(ctx context.Context, minLat, minLon, maxLat, maxLon float64, dbType string) ([]Marker, error) {
