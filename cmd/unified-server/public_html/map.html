@@ -6863,8 +6863,10 @@ function drawLiveChart(canvas, radiationPoints, extrasByKey, options) {
     ctx.fillStyle = fillGradient;
     ctx.fill(fillPath);
 
-    // Peak/average overlay, drawn over the main fill so it stays visible.
-    if (hasMax) {
+    // Peak overlay for the intraday (day) view only: shade up to the bucket peak
+    // and trace it. The peak-primary 30-day view already plots the peak as its
+    // main line, so it needs no average line or band.
+    if (hasMax && !peakPrimary) {
       const avgPts = radiationPoints.map(p => ({ x: getX(p.timestamp), y: getY(p.value) }));
       const maxPts = radiationPoints.map(p => ({
         x: getX(p.timestamp),
@@ -6873,21 +6875,15 @@ function drawLiveChart(canvas, radiationPoints, extrasByKey, options) {
       const peakVal = radiationPoints.reduce((m, p) => Math.max(m, (typeof p.max === 'number' ? p.max : p.value)), 0);
       const peakColor = radiationLineColor(peakVal);
       ctx.save();
-      // On the day view (avg primary) shade the band up to the peak; on the
-      // peak-primary month view the area under the peak is already filled.
-      if (!peakPrimary) {
-        const envPath = bezierPath(maxPts);
-        for (let i = avgPts.length - 1; i >= 0; i--) envPath.lineTo(avgPts[i].x, avgPts[i].y);
-        envPath.closePath();
-        ctx.fillStyle = colorWithAlpha(peakColor, 0.22);
-        ctx.fill(envPath);
-      }
-      // Faint dashed reference = whichever line is NOT the primary solid one.
-      const refPts = peakPrimary ? avgPts : maxPts;
+      const envPath = bezierPath(maxPts);
+      for (let i = avgPts.length - 1; i >= 0; i--) envPath.lineTo(avgPts[i].x, avgPts[i].y);
+      envPath.closePath();
+      ctx.fillStyle = colorWithAlpha(peakColor, 0.22);
+      ctx.fill(envPath);
       ctx.lineWidth = 1.5;
       ctx.setLineDash([4, 3]);
-      ctx.strokeStyle = colorWithAlpha(peakColor, peakPrimary ? 0.6 : 0.9);
-      ctx.stroke(bezierPath(refPts));
+      ctx.strokeStyle = colorWithAlpha(peakColor, 0.9);
+      ctx.stroke(bezierPath(maxPts));
       ctx.restore();
     }
 
@@ -7074,9 +7070,9 @@ function drawLiveChart(canvas, radiationPoints, extrasByKey, options) {
       const unit = isRad ? getPrimaryUnitLabel() : '';
       const hasPeak = isRad && typeof closest.max === 'number' && closest.max > closest.value;
       let headStr, subLine = '';
-      if (isRad && peakPrimary && hasPeak) {
-        headStr = formatChartValue(closest.max, precisionY);
-        subLine = `<br>avg ${formatChartValue(closest.value, precisionY)} ${unit}`;
+      if (isRad && peakPrimary) {
+        // 30-day view: report the day's peak only, no average.
+        headStr = formatChartValue(hasPeak ? closest.max : closest.value, precisionY);
       } else {
         headStr = formatChartValue(closest.value, precisionY);
         if (hasPeak) subLine = `<br>peak ${formatChartValue(closest.max, precisionY)} ${unit}`;
@@ -7241,9 +7237,9 @@ function updateChartWindowLabel(rangeKey, ranges) {
     return;
   }
   if (rangeKey === 'month') {
-    // The 30-day view plots each day's peak; the shaded band is the daily average.
+    // The 30-day view plots each day's peak value (not the average).
     const t = translate('live_chart_daily_peak');
-    el.textContent = (t && t !== 'live_chart_daily_peak') ? t : 'Daily peak · band shows daily average';
+    el.textContent = (t && t !== 'live_chart_daily_peak') ? t : 'Daily peak';
     return;
   }
   const windowText = formatAveragingWindow(range.bucketSeconds);
