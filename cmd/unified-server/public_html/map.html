@@ -6523,10 +6523,6 @@ function drawLiveChart(canvas, radiationPoints, extrasByKey, options) {
     maxX = minX + 1;
   }
   const bucketSeconds = typeof opts.bucketSeconds === 'number' ? opts.bucketSeconds : 0;
-  // When peakPrimary is set (e.g. the 30-day view) the main radiation line plots
-  // each bucket's peak rather than its average, so transient spikes stay visible.
-  const peakPrimary = !!opts.peakPrimary;
-  const radVal = (p) => (peakPrimary && typeof p.max === 'number' && p.max > p.value) ? p.max : p.value;
 
   let minY;
   let maxY;
@@ -6791,8 +6787,8 @@ function drawLiveChart(canvas, radiationPoints, extrasByKey, options) {
 
     const pts = radiationPoints.map(p => ({
       x: getX(p.timestamp),
-      y: getY(radVal(p)),
-      val: radVal(p),
+      y: getY(p.value),
+      val: p.value,
       ts: p.timestamp
     }));
 
@@ -6863,10 +6859,10 @@ function drawLiveChart(canvas, radiationPoints, extrasByKey, options) {
     ctx.fillStyle = fillGradient;
     ctx.fill(fillPath);
 
-    // Peak overlay for the intraday (day) view only: shade up to the bucket peak
-    // and trace it. The peak-primary 30-day view already plots the peak as its
-    // main line, so it needs no average line or band.
-    if (hasMax && !peakPrimary) {
+    // Peak overlay: solid line is the bucket average; shade up to the bucket
+    // peak and trace it as a dotted line so transient spikes stay visible on
+    // both the 24-hour (hourly) and 30-day (daily) charts.
+    if (hasMax) {
       const avgPts = radiationPoints.map(p => ({ x: getX(p.timestamp), y: getY(p.value) }));
       const maxPts = radiationPoints.map(p => ({
         x: getX(p.timestamp),
@@ -7069,15 +7065,10 @@ function drawLiveChart(canvas, radiationPoints, extrasByKey, options) {
       const isRad = hasRadiation && radiationPoints.includes(closest);
       const unit = isRad ? getPrimaryUnitLabel() : '';
       const hasPeak = isRad && typeof closest.max === 'number' && closest.max > closest.value;
-      let headStr, subLine = '';
-      if (isRad && peakPrimary) {
-        // 30-day view: report the day's peak only, no average.
-        headStr = formatChartValue(hasPeak ? closest.max : closest.value, precisionY);
-      } else {
-        headStr = formatChartValue(closest.value, precisionY);
-        if (hasPeak) subLine = `<br>peak ${formatChartValue(closest.max, precisionY)} ${unit}`;
-      }
-      tooltip.innerHTML = `<strong>${headStr} ${unit}</strong>${subLine}<br>${timeStr}`;
+      const valStr = formatChartValue(closest.value, precisionY);
+      let subLine = '';
+      if (hasPeak) subLine = `<br>peak ${formatChartValue(closest.max, precisionY)} ${unit}`;
+      tooltip.innerHTML = `<strong>${valStr} ${unit}</strong>${subLine}<br>${timeStr}`;
       tooltip.style.display = 'block';
       tooltip.style.left = (e.clientX + 10) + 'px';
       tooltip.style.top = (e.clientY + 10) + 'px';
@@ -7234,12 +7225,6 @@ function updateChartWindowLabel(rangeKey, ranges) {
   const range = ranges && ranges[rangeKey];
   if (!range || !range.bucketSeconds) {
     el.textContent = '';
-    return;
-  }
-  if (rangeKey === 'month') {
-    // The 30-day view plots each day's peak value (not the average).
-    const t = translate('live_chart_daily_max');
-    el.textContent = (t && t !== 'live_chart_daily_max') ? t : 'Daily peak';
     return;
   }
   const windowText = formatAveragingWindow(range.bucketSeconds);
@@ -7426,7 +7411,7 @@ async function openLiveModal(deviceID, fallback) {
       }
       
       if (rangeKey === 'day') { options.tickUnit = 'hour'; options.tickSegments = 24; }
-      else if (rangeKey === 'month') { options.tickUnit = 'day'; options.tickSegments = 24; options.peakPrimary = true; }
+      else if (rangeKey === 'month') { options.tickUnit = 'day'; options.tickSegments = 24; }
       else if (rangeKey === 'all') { options.tickUnit = 'month'; options.tickSegments = 24; }
 
       if (canvas && hasSeries) {
