@@ -89,6 +89,7 @@ func resampleRealtimePoints(points []realtimePoint, bucket int64) []realtimePoin
 	out := make([]realtimePoint, 0, len(points))
 	currentBucket := (points[0].Timestamp / bucket) * bucket
 	var sum float64
+	var max float64
 	var count int
 	for _, p := range points {
 		bucketID := (p.Timestamp / bucket) * bucket
@@ -96,18 +97,24 @@ func resampleRealtimePoints(points []realtimePoint, bucket int64) []realtimePoin
 			out = append(out, realtimePoint{
 				Timestamp: currentBucket + bucket/2,
 				Value:     sum / float64(count),
+				Max:       max,
 			})
 			currentBucket = bucketID
 			sum = 0
+			max = 0
 			count = 0
 		}
 		sum += p.Value
+		if count == 0 || p.Value > max {
+			max = p.Value
+		}
 		count++
 	}
 	if count > 0 {
 		out = append(out, realtimePoint{
 			Timestamp: currentBucket + bucket/2,
 			Value:     sum / float64(count),
+			Max:       max,
 		})
 	}
 	return out
