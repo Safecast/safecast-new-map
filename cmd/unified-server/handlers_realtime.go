@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"log"
 	"math"
+	"context"
 	"net/http"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"safecast-new-map/pkg/database"
@@ -467,6 +469,39 @@ func collectRealtimeMeasurements(input <-chan realtimeMeasurementPayload, now ti
 	return agg
 }
 
+// deviceLogBackfillCooldown limits how often we re-download a device's
+// multi-MB ttserve log. Notecards upload in batches every few hours, so 15
+// minutes is frequent enough to catch new data without redundant downloads.
+const deviceLogBackfillCooldown = 15 * time.Minute
+
+var (
+	deviceLogBackfillMu sync.Mutex
+	deviceLogBackfillAt = map[string]time.Time{}
+)
+
+// backfillDeviceLogIfStale ingests a device's full-resolution ttserve history
+// into realtime_measurements, unless it was already done within the cooldown.
+// It runs synchronously so the response that follows includes the new peaks.
+func backfillDeviceLogIfStale(ctx context.Context, device string, now time.Time) {
+	deviceLogBackfillMu.Lock()
+	last, seen := deviceLogBackfillAt[device]
+	if seen && now.Sub(last) < deviceLogBackfillCooldown {
+		deviceLogBackfillMu.Unlock()
+		return
+	}
+	deviceLogBackfillAt[device] = now
+	deviceLogBackfillMu.Unlock()
+
+	stored, err := safecastrealtime.BackfillDeviceHistory(ctx, db, *dbType, device, now)
+	if err != nil {
+		log.Printf("device-log backfill %s: %v", device, err)
+		return
+	}
+	if stored > 0 {
+		log.Printf("device-log backfill %s: stored %d readings", device, stored)
+	}
+}
+
 // realtimeHistoryHandler returns one year of realtime measurements for a device.
 // The handler keeps the response lightweight so the frontend can draw Grafana-style
 // charts without shipping a dedicated dashboard backend.
@@ -497,6 +532,15 @@ func realtimeHistoryHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := time.Now()
+
+	// Pull the device's full-resolution history from ttserve's device-log so
+	// transient peaks (hidden by the latest-value /devices poll) are stored
+	// before we build the chart. Gated by a per-device cooldown so opening the
+	// modal repeatedly doesn't re-download the multi-MB log each time.
+	if strings.HasPrefix(device, "note:") {
+		backfillDeviceLogIfStale(r.Context(), device, now)
+	}
+
 	rows, err := db.GetRealtimeHistory(device, 0, *dbType)
 	if err != nil {
 		http.Error(w, "history error", http.StatusInternalServerError)
