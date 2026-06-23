@@ -7238,8 +7238,8 @@ function updateChartWindowLabel(rangeKey, ranges) {
   }
   if (rangeKey === 'month') {
     // The 30-day view plots each day's peak value (not the average).
-    const t = translate('live_chart_daily_peak');
-    el.textContent = (t && t !== 'live_chart_daily_peak') ? t : 'Daily peak';
+    const t = translate('live_chart_daily_max');
+    el.textContent = (t && t !== 'live_chart_daily_max') ? t : 'Daily peak';
     return;
   }
   const windowText = formatAveragingWindow(range.bucketSeconds);
