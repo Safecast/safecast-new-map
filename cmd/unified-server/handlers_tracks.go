@@ -770,6 +770,9 @@ func streamMarkersHandler(w http.ResponseWriter, r *http.Request) {
 type realtimePoint struct {
 	Timestamp int64   `json:"timestamp"`
 	Value     float64 `json:"value"`
+	// Max holds the peak sample within an aggregation bucket so charts can show
+	// transient spikes that the averaged Value would otherwise hide.
+	Max float64 `json:"max,omitempty"`
 }
 
 // rangeSummary describes the plotted window and aggregation bucket.
