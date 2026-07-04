@@ -4023,13 +4023,48 @@ function tsToNiceStr(ts){
     .toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
 }
 
+function createMarkerDateRange() {
+  return { minTs: Infinity, maxTs: -Infinity, hasHistoricalMarkers: false };
+}
 
-// absolute month difference between two unix timestamps
-function monthsApart(ts0, ts1){
-  const d0 = new Date(ts0 * 1000);
-  const d1 = new Date(ts1 * 1000);
-  return Math.abs((d1.getFullYear() - d0.getFullYear()) * 12 +
-    (d1.getMonth()     - d0.getMonth()));
+function observeMarkerDateRange(range, marker) {
+  if (!range || !marker || marker.speed < 0 || !Number.isFinite(marker.date)) return;
+  range.minTs = Math.min(range.minTs, marker.date);
+  range.maxTs = Math.max(range.maxTs, marker.date);
+  range.hasHistoricalMarkers = true;
+}
+
+function normalizedDateSliderRange(range) {
+  if (!range || !range.hasHistoricalMarkers || !Number.isFinite(range.minTs) || !Number.isFinite(range.maxTs)) {
+    return null;
+  }
+  if (range.minTs === range.maxTs) {
+    return [range.minTs - 3600, range.maxTs + 3600];
+  }
+  return [range.minTs, range.maxTs];
+}
+
+function shouldShowDateSlider(range) {
+  return !!normalizedDateSliderRange(range);
+}
+
+function syncDateSliderToMarkerRange(range) {
+  const sliderRange = normalizedDateSliderRange(range);
+  const needSlider = shouldShowDateSlider(range);
+  if (window.__setDateSliderVisibility) {
+    window.__setDateSliderVisibility(needSlider);
+  }
+  if (!needSlider) return;
+
+  const minTs = sliderRange[0];
+  const maxTs = sliderRange[1];
+  if (window.__initSliderOnce) {
+    window.__initSliderOnce(minTs, maxTs);
+    window.__initSliderOnce = null;
+  }
+  if (window.__syncDateSliders) {
+    window.__syncDateSliders(minTs, maxTs);
+  }
 }
 
 /**
@@ -4751,7 +4786,7 @@ document.addEventListener('DOMContentLoaded', function () {
 function createDateRangeSlider(){
 
   let sliderBox, yearSlider, monthSlider;
-  let mode  = 'year';                // 'year' | 'month'
+  let mode  = 'month';               // 'year' | 'month'
   let initY = false, initM = false;  // lazy init flags
   let sliderTooltipHandle = null;    // tooltip helper for hover hints
 
@@ -4766,8 +4801,8 @@ function createDateRangeSlider(){
       sliderBox.innerHTML = `
         <button id="btnBack" class="slider-back-btn" title="${translate('back_to_all_tracks')}">&#8592;</button>
         <div class="slider-toggle">
-          <button id="btnYear"  class="active">Y</button>
-          <button id="btnMonth">M</button>
+          <button id="btnMonth" class="active">M</button>
+          <button id="btnYear">Y</button>
         </div>
         <div id="lblMax" class="slider-label"></div>
         <div id="yearSlider"></div>
@@ -4874,6 +4909,7 @@ function createDateRangeSlider(){
         }
       });
       yearSlider.noUiSlider.on('change', updateDateFilter);
+      yearSlider.style.display = 'none';
       initY = true;
     }
 
@@ -4896,7 +4932,7 @@ function createDateRangeSlider(){
         lblMax().textContent = tsToNiceStr(v1);
       });
       monthSlider.noUiSlider.on('change', updateDateFilter);
-      monthSlider.style.display = 'none';
+      monthSlider.style.display = 'block';
       initM = true;
     }
 
@@ -5488,7 +5524,16 @@ function updateMarkers(){
   }
 
   const tracks = new Set();
-  let minTs = Infinity, maxTs = -Infinity;
+  const markerDateRange = createMarkerDateRange();
+  let activeSources = 0;
+  let completedSources = 0;
+
+  function finishMarkerSource() {
+    completedSources++;
+    if (completedSources < activeSources) return;
+    if (loadingEl) loadingEl.style.display = 'none';
+    syncDateSliderToMarkerRange(markerDateRange);
+  }
 
   // PARALLEL TILE-BASED LOADING WITH CACHING
   // At low zoom (<=7): Use 1 large tile for simplicity
@@ -5519,8 +5564,6 @@ function updateMarkers(){
       ];
     }
 
-    let activeSources = 0;
-
     // Open parallel SSE connections for each tile (or use cache)
     tiles.forEach((tile, idx) => {
       const params = { ...baseParams, ...tile };
@@ -5531,7 +5574,7 @@ function updateMarkers(){
         // Use cached data - render immediately
         console.log(`[Cache HIT] Tile ${idx} from cache`);
         cached.forEach(markerData => {
-          renderCachedMarker(markerData, tracks, minTs, maxTs, savedRange, zoom);
+          renderCachedMarker(markerData, tracks, markerDateRange, savedRange, zoom);
         });
       } else {
         // Cache miss - fetch from server
@@ -5539,12 +5582,8 @@ function updateMarkers(){
         activeSources++;
         const es = new EventSource('/stream_markers?' + new URLSearchParams(params));
         window.markerStreamSources.push(es);
-        setupMarkerStream(es, tracks, minTs, maxTs, savedRange, idx, cacheKey, () => {
-          activeSources--;
-          // Note: loadingEl is available through closure from updateMarkers()
-          if (activeSources === 0 && loadingEl) {
-            loadingEl.style.display = 'none';
-          }
+        setupMarkerStream(es, tracks, markerDateRange, savedRange, idx, cacheKey, () => {
+          finishMarkerSource();
         }, zoom, loadingEl);
       }
     });
@@ -5558,13 +5597,17 @@ function updateMarkers(){
     if (activeSources === 0 && loadingEl) {
       loadingEl.style.display = 'none';
     }
+    if (activeSources === 0) {
+      syncDateSliderToMarkerRange(markerDateRange);
+    }
   } else {
     // Single stream for track view or zoomed-out view (no caching for these)
+    activeSources = 1;
     const es = new EventSource('/stream_markers?' + new URLSearchParams(baseParams));
     markerStreamSource = es;
     window.markerStreamSources = [es];
-    setupMarkerStream(es, tracks, minTs, maxTs, savedRange, 0, null, () => {
-      if (loadingEl) loadingEl.style.display = 'none';
+    setupMarkerStream(es, tracks, markerDateRange, savedRange, 0, null, () => {
+      finishMarkerSource();
     }, zoom, loadingEl);
   }
 }
@@ -5844,12 +5887,13 @@ function createMarkerFromData(m, zoom) {
 }
 
 // Helper function to render a cached marker
-function renderCachedMarker(m, tracks, minTs, maxTs, savedRange, zoom) {
+function renderCachedMarker(m, tracks, markerDateRange, savedRange, zoom) {
   // NOTE: Server-side density-based sampling is now enabled for zoom < 8
   // No client-side sampling needed - server already reduces data at low zoom
 
   const isLive = m.speed < 0;
   if (!isLive && m.trackID) tracks.add(m.trackID);
+  observeMarkerDateRange(markerDateRange, m);
 
   if (savedRange && (m.date < savedRange[0] || m.date > savedRange[1])) return;
 
@@ -5871,7 +5915,7 @@ function renderCachedMarker(m, tracks, minTs, maxTs, savedRange, zoom) {
 }
 
 // Helper function to setup marker stream event handlers
-function setupMarkerStream(es, tracks, minTs, maxTs, savedRange, tileIndex, cacheKey, onDone, zoom, loadingEl) {
+function setupMarkerStream(es, tracks, markerDateRange, savedRange, tileIndex, cacheKey, onDone, zoom, loadingEl) {
   // Debug: Verify loadingEl is defined
   if (!loadingEl) {
     console.warn('WARNING: loadingEl is undefined in setupMarkerStream! This will cause errors.');
@@ -5924,21 +5968,6 @@ function setupMarkerStream(es, tracks, minTs, maxTs, savedRange, tileIndex, cach
     }
 
     if (onDone) onDone();
-    const dateSpanMonths = (isFinite(minTs) && isFinite(maxTs))
-                            ? monthsApart(minTs, maxTs) : 0;
-    const needSlider = isTrackView
-      ? (isFinite(minTs) && isFinite(maxTs))
-      : (tracks.size > 1 && dateSpanMonths > 1);
-    if (window.__setDateSliderVisibility){
-      window.__setDateSliderVisibility(needSlider);
-    }
-    if (needSlider && window.__initSliderOnce && isFinite(minTs) && isFinite(maxTs)){
-      window.__initSliderOnce(minTs, maxTs);
-      window.__initSliderOnce = null;
-    }
-    if (needSlider && window.__syncDateSliders && isFinite(minTs) && isFinite(maxTs)){
-      window.__syncDateSliders(minTs, maxTs);
-    }
 
     // Fit map to track bounds if in track view and no URL bounds were provided
     if (isTrackView && markerBounds.hasData) {
@@ -5973,8 +6002,7 @@ function setupMarkerStream(es, tracks, minTs, maxTs, savedRange, tileIndex, cach
   const handleParsedMarker = (m) => {
     const isLive = m.speed < 0; // negative speed denotes realtime marker
     if (!isLive && m.trackID) tracks.add(m.trackID);
-    minTs = Math.min(minTs, m.date);
-    maxTs = Math.max(maxTs, m.date);
+    observeMarkerDateRange(markerDateRange, m);
 
     // Update bounds as markers load
     if (!isLive) {
