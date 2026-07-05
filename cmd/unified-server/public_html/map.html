@@ -4255,7 +4255,8 @@ function updateLegendDisplay() {
   // Use local refs to ensure we have valid data
   var steps = (typeof currentColoring !== 'undefined' && currentColoring === 'chicha') ? schemeChicha : schemeSafecast;
   
-  // Set height
+  // Set height and anchor to bottom (near theme toggle), not top
+  legendBox.style.top = 'auto';
   legendBox.style.height = (typeof currentColoring !== 'undefined' && currentColoring === 'chicha') ? '180px' : '500px';
 
   // Build gradient string manually for maximum compatibility
