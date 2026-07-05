@@ -4961,6 +4961,13 @@ function createDateRangeSlider(){
       !!saved && !(saved[0] === prevFull?.[0] && saved[1] === prevFull?.[1]) &&
       !(saved[0] === fullRange[0] && saved[1] === fullRange[1]);
 
+    // Migrate sessions poisoned by the old auto-save: a saved range that
+    // merely mirrors a viewport full range is not a user filter — drop it
+    // so it stops filtering markers on the next redraw.
+    if (!hasCustom && saved) {
+      sessionStorage.removeItem('dateRangeState');
+    }
+
     // Update YEAR slider bounds
     const minYear = new Date(minTs*1000).getUTCFullYear();
     const maxYear = new Date(maxTs*1000).getUTCFullYear();
@@ -4984,8 +4991,11 @@ function createDateRangeSlider(){
         lblMin().textContent = tsToNiceStr(minTs);
         lblMax().textContent = tsToNiceStr(maxTs);
       }
-      // persist that "no filter" means full range
-      saveDateRangeState([minTs,maxTs]);
+      // "No filter" is represented by the ABSENCE of saved state.
+      // Auto-saving the viewport's data range here poisoned the filter:
+      // the next viewport applied the previous viewport's range as a hard
+      // date filter, progressively dropping markers (and churning the
+      // tile cache via constant filter-state changes).
     }
   };
 
@@ -5001,8 +5011,7 @@ function createDateRangeSlider(){
       lblMin().textContent = (mode==='year') ? rY.min : tsToNiceStr(rM.min);
       lblMax().textContent = (mode==='year') ? rY.max : tsToNiceStr(rM.max);
 
-      // remember "no filter" == full range of the viewport
-      saveDateRangeState([rM.min, rM.max]);
+      // "No filter" == no saved state (removed above); do not re-save here.
       debounceUpdateMarkers();
     }
   };
@@ -6012,6 +6021,14 @@ function setupMarkerStream(es, tracks, markerDateRange, savedRange, tileIndex, c
       markerBounds.maxLon = Math.max(markerBounds.maxLon, m.lon);
       markerBounds.hasData = true;
     }
+
+    // Cache the UNFILTERED marker so cache hits can re-apply the current
+    // filters at render time. Caching post-filter data poisoned the tile
+    // cache: points dropped by a stale date range were lost for the TTL.
+    if (tileMarkers) {
+      tileMarkers.push(m);
+    }
+
     if (savedRange && (m.date < savedRange[0] || m.date > savedRange[1])) return;
 
     // Show spectrum markers independently from speed filter if spectrum toggle is on
@@ -6033,11 +6050,6 @@ function setupMarkerStream(es, tracks, markerDateRange, savedRange, tileIndex, c
     markerCount++;
     queueMarkerForBatch(marker, m.id);
     circleMarkers[m.id || m.trackID] = marker;
-
-    // Collect marker data for caching
-    if (tileMarkers) {
-      tileMarkers.push(m);
-    }
   };
 
   // Register handler for worker messages (if using worker)
