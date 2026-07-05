@@ -1120,7 +1120,10 @@ CREATE TABLE IF NOT EXISTS uploads (
   user_id         TEXT,
   username        TEXT,
   internal_user_id TEXT,
-  detector        TEXT
+  detector        TEXT,
+  name            TEXT,
+  notes           TEXT,
+  comment         TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_uploads_track_id ON uploads(track_id);
@@ -1204,6 +1207,51 @@ CREATE TABLE IF NOT EXISTS translations (
 
 CREATE INDEX IF NOT EXISTS idx_translations_lang ON translations(language_code);
 CREATE INDEX IF NOT EXISTS idx_translations_key ON translations(key);
+
+CREATE TABLE IF NOT EXISTS tour_steps (
+  id BIGSERIAL PRIMARY KEY,
+  step_key VARCHAR(64) NOT NULL UNIQUE,
+  sort_order INTEGER NOT NULL,
+  selector TEXT NOT NULL,
+  center BOOLEAN NOT NULL DEFAULT FALSE,
+  enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  require_login BOOLEAN,
+  require_admin BOOLEAN,
+  show_if_feature VARCHAR(64),
+  viewport VARCHAR(16) NOT NULL DEFAULT 'any',
+  first_time_only BOOLEAN NOT NULL DEFAULT FALSE,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT tour_steps_viewport_check CHECK (viewport IN ('any', 'desktop', 'mobile'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_tour_steps_order ON tour_steps(sort_order);
+
+CREATE TABLE IF NOT EXISTS ai_hints (
+  id BIGSERIAL PRIMARY KEY,
+  model VARCHAR(64) NOT NULL UNIQUE,
+  display_name TEXT NOT NULL,
+  capabilities JSONB NOT NULL DEFAULT '[]'::jsonb,
+  system_prompt TEXT NOT NULL DEFAULT '',
+  tools JSONB NOT NULL DEFAULT '{}'::jsonb,
+  global_formatting_rules JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_hints_model ON ai_hints(model);
+CREATE INDEX IF NOT EXISTS idx_ai_hints_deleted_at ON ai_hints(deleted_at);
+
+CREATE TABLE IF NOT EXISTS ai_hints_history (
+  id BIGSERIAL PRIMARY KEY,
+  model VARCHAR(64) NOT NULL,
+  snapshot JSONB NOT NULL,
+  change_kind VARCHAR(32) NOT NULL,
+  changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_hints_history_model ON ai_hints_history(model);
+CREATE INDEX IF NOT EXISTS idx_ai_hints_history_changed_at ON ai_hints_history(changed_at DESC);
 `
 
 	case "sqlite", "chai":
@@ -1301,7 +1349,10 @@ CREATE TABLE IF NOT EXISTS uploads (
   user_id         TEXT,
   username        TEXT,
   internal_user_id TEXT,
-  detector        TEXT
+  detector        TEXT,
+  name            TEXT,
+  notes           TEXT,
+  comment         TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_uploads_track_id ON uploads(track_id);
 CREATE INDEX IF NOT EXISTS idx_uploads_created_at ON uploads(created_at);
@@ -1387,6 +1438,51 @@ CREATE TABLE IF NOT EXISTS translations (
 
 CREATE INDEX IF NOT EXISTS idx_translations_lang ON translations(language_code);
 CREATE INDEX IF NOT EXISTS idx_translations_key ON translations(key);
+
+CREATE TABLE IF NOT EXISTS tour_steps (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  step_key TEXT NOT NULL UNIQUE,
+  sort_order INTEGER NOT NULL,
+  selector TEXT NOT NULL,
+  center INTEGER NOT NULL DEFAULT 0,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  require_login INTEGER,
+  require_admin INTEGER,
+  show_if_feature TEXT,
+  viewport TEXT NOT NULL DEFAULT 'any',
+  first_time_only INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT DEFAULT (datetime('now')),
+  CONSTRAINT tour_steps_viewport_check CHECK (viewport IN ('any', 'desktop', 'mobile'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_tour_steps_order ON tour_steps(sort_order);
+
+CREATE TABLE IF NOT EXISTS ai_hints (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  model TEXT NOT NULL UNIQUE,
+  display_name TEXT NOT NULL,
+  capabilities TEXT NOT NULL DEFAULT '[]',
+  system_prompt TEXT NOT NULL DEFAULT '',
+  tools TEXT NOT NULL DEFAULT '{}',
+  global_formatting_rules TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  deleted_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_hints_model ON ai_hints(model);
+CREATE INDEX IF NOT EXISTS idx_ai_hints_deleted_at ON ai_hints(deleted_at);
+
+CREATE TABLE IF NOT EXISTS ai_hints_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  model TEXT NOT NULL,
+  snapshot TEXT NOT NULL,
+  change_kind TEXT NOT NULL,
+  changed_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_hints_history_model ON ai_hints_history(model);
+CREATE INDEX IF NOT EXISTS idx_ai_hints_history_changed_at ON ai_hints_history(changed_at DESC);
 `
 
 	case "duckdb":
@@ -1489,7 +1585,10 @@ CREATE TABLE IF NOT EXISTS uploads (
   user_id         TEXT,
   username        TEXT,
   internal_user_id TEXT,
-  detector        TEXT
+  detector        TEXT,
+  name            TEXT,
+  notes           TEXT,
+  comment         TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_uploads_track_id ON uploads(track_id);
 CREATE INDEX IF NOT EXISTS idx_uploads_created_at ON uploads(created_at);
@@ -1562,6 +1661,54 @@ CREATE TABLE IF NOT EXISTS email_verification_tokens (
 
 CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_token ON email_verification_tokens(token);
 CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_user_id ON email_verification_tokens(user_id);
+
+CREATE SEQUENCE IF NOT EXISTS tour_steps_id_seq START 1;
+CREATE TABLE IF NOT EXISTS tour_steps (
+  id BIGINT PRIMARY KEY DEFAULT nextval('tour_steps_id_seq'),
+  step_key TEXT NOT NULL UNIQUE,
+  sort_order INTEGER NOT NULL,
+  selector TEXT NOT NULL,
+  center BOOLEAN NOT NULL DEFAULT FALSE,
+  enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  require_login BOOLEAN,
+  require_admin BOOLEAN,
+  show_if_feature TEXT,
+  viewport TEXT NOT NULL DEFAULT 'any',
+  first_time_only BOOLEAN NOT NULL DEFAULT FALSE,
+  updated_at TIMESTAMP DEFAULT NOW(),
+  CONSTRAINT tour_steps_viewport_check CHECK (viewport IN ('any', 'desktop', 'mobile'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_tour_steps_order ON tour_steps(sort_order);
+
+CREATE SEQUENCE IF NOT EXISTS ai_hints_id_seq START 1;
+CREATE TABLE IF NOT EXISTS ai_hints (
+  id BIGINT PRIMARY KEY DEFAULT nextval('ai_hints_id_seq'),
+  model TEXT NOT NULL UNIQUE,
+  display_name TEXT NOT NULL,
+  capabilities JSON NOT NULL DEFAULT '[]',
+  system_prompt TEXT NOT NULL DEFAULT '',
+  tools JSON NOT NULL DEFAULT '{}',
+  global_formatting_rules JSON NOT NULL DEFAULT '{}',
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_hints_model ON ai_hints(model);
+CREATE INDEX IF NOT EXISTS idx_ai_hints_deleted_at ON ai_hints(deleted_at);
+
+CREATE SEQUENCE IF NOT EXISTS ai_hints_history_id_seq START 1;
+CREATE TABLE IF NOT EXISTS ai_hints_history (
+  id BIGINT PRIMARY KEY DEFAULT nextval('ai_hints_history_id_seq'),
+  model TEXT NOT NULL,
+  snapshot JSON NOT NULL,
+  change_kind TEXT NOT NULL,
+  changed_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_hints_history_model ON ai_hints_history(model);
+CREATE INDEX IF NOT EXISTS idx_ai_hints_history_changed_at ON ai_hints_history(changed_at DESC);
 `
 
 	case "clickhouse":
@@ -1884,6 +2031,9 @@ func (db *Database) ensureUploadsMetadataColumns(dbType string) error {
 	required := []column{
 		{name: "source", def: "source TEXT"},
 		{name: "source_id", def: "source_id TEXT"},
+		{name: "name", def: "name TEXT"},
+		{name: "notes", def: "notes TEXT"},
+		{name: "comment", def: "comment TEXT"},
 	}
 
 	switch strings.ToLower(dbType) {
@@ -1905,7 +2055,12 @@ func (db *Database) ensureUploadsMetadataColumns(dbType string) error {
 		return nil
 
 	case "clickhouse":
-		// ClickHouse schema already contains these columns.
+		for _, col := range required {
+			stmt := fmt.Sprintf("ALTER TABLE uploads ADD COLUMN IF NOT EXISTS %s String", col.name)
+			if _, err := db.DB.Exec(stmt); err != nil {
+				return err
+			}
+		}
 		return nil
 
 	default:
