@@ -1014,6 +1014,7 @@ func main() {
 	// routes avoids surprises for operators scanning main() for handlers.
 	limiter := httpapi.NewRateLimiter(time.Minute)
 	apiHandler := httpapi.NewHandler(db, *dbType, archiveGen, limiter, log.Printf, archiveFrequency)
+	apiHandler.PublicBaseURL = *baseURL // viewer-facing base URL for short links behind CloudFront
 	restHandler := &RESTHandler{}
 
 	// Keep MCP/realtime/translations admin APIs aligned with the legacy behavior:

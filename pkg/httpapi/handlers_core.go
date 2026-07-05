@@ -35,6 +35,10 @@ type Handler struct {
 	Logf             func(string, ...any)
 	Cache            *ResponseCache
 	TrackInfo        *TrackInfoCache // Cache expensive COUNT(DISTINCT) metadata so /api stays fast even on huge datasets.
+	// PublicBaseURL is the viewer-facing base URL (e.g. https://simplemap.safecast.org),
+	// wired from the -base-url flag. Behind CloudFront the origin only sees the internal
+	// origin host as Host, so short links need this to accept and emit the public domain.
+	PublicBaseURL string
 }
 
 // NewHandler constructs a Handler with sane defaults.
@@ -183,8 +187,10 @@ func (h *Handler) handleShorten(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	scheme := requestScheme(r)
-	host := requestHost(r)
+	// The viewer-facing scheme/host used to build the short link. Behind
+	// CloudFront the origin only sees the internal origin host, so we resolve
+	// the public host from -base-url / Referer rather than r.Host alone.
+	scheme, host := h.publicBase(r)
 	if host == "" {
 		writeJSONError(w, http.StatusBadRequest, "missing host")
 		return
@@ -210,11 +216,16 @@ func (h *Handler) handleShorten(w http.ResponseWriter, r *http.Request) {
 			writeJSONError(w, http.StatusBadRequest, "unsupported scheme")
 			return
 		}
-		if !strings.EqualFold(strings.TrimSpace(parsed.Host), host) {
+		// Accept the app's own host under any of its faces (public domain,
+		// origin host, Referer). Truly foreign hosts are still rejected. We
+		// then rebuild the stored target against the canonical public host so
+		// the link is same-origin and uses the viewer-facing domain.
+		if !h.shortLinkAllowedHosts(r)[strings.ToLower(strings.TrimSpace(parsed.Host))] {
 			writeJSONError(w, http.StatusBadRequest, "foreign host rejected")
 			return
 		}
-		target = parsed.String()
+		rebuilt := &url.URL{Scheme: scheme, Host: host, Path: parsed.Path, RawQuery: parsed.RawQuery}
+		target = rebuilt.String()
 	}
 
 	if len(target) > 4096 {
@@ -1462,6 +1473,67 @@ func requestHost(r *http.Request) string {
 		return forwarded
 	}
 	return ""
+}
+
+// isLocalHost reports whether host is a loopback/dev host we should not treat
+// as the canonical public host for building short links.
+func isLocalHost(host string) bool {
+	host = strings.ToLower(strings.TrimSpace(host))
+	if i := strings.LastIndexByte(host, ':'); i >= 0 {
+		host = host[:i] // strip :port
+	}
+	switch host {
+	case "localhost", "127.0.0.1", "0.0.0.0", "::1", "":
+		return true
+	}
+	return false
+}
+
+// hostFromURL parses raw and returns its lowercase host, or "" if it has none.
+func hostFromURL(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	if u, err := url.Parse(raw); err == nil {
+		return strings.ToLower(strings.TrimSpace(u.Host))
+	}
+	return ""
+}
+
+// publicBase returns the viewer-facing scheme+host used to build short links.
+// Behind CloudFront the Host the origin sees is the internal origin domain, so
+// we prefer the configured -base-url, then the Referer (which CloudFront
+// forwards and which carries the real viewer domain), then the request host.
+func (h *Handler) publicBase(r *http.Request) (scheme, host string) {
+	if h.PublicBaseURL != "" {
+		if u, err := url.Parse(h.PublicBaseURL); err == nil && u.Host != "" && !isLocalHost(u.Host) {
+			return u.Scheme, u.Host
+		}
+	}
+	if ref := strings.TrimSpace(r.Header.Get("Referer")); ref != "" {
+		if u, err := url.Parse(ref); err == nil && u.Host != "" && !isLocalHost(u.Host) {
+			return u.Scheme, u.Host
+		}
+	}
+	return requestScheme(r), requestHost(r)
+}
+
+// shortLinkAllowedHosts is the set of lowercase hosts an incoming absolute URL
+// may carry: the request host, the configured public host, and the Referer
+// host. Truly foreign hosts (e.g. evil.com) are still rejected.
+func (h *Handler) shortLinkAllowedHosts(r *http.Request) map[string]bool {
+	allowed := map[string]bool{}
+	add := func(host string) {
+		host = strings.ToLower(strings.TrimSpace(host))
+		if host != "" {
+			allowed[host] = true
+		}
+	}
+	add(requestHost(r))
+	add(hostFromURL(h.PublicBaseURL))
+	add(hostFromURL(r.Header.Get("Referer")))
+	return allowed
 }
 
 func parseIntDefault(v string, def int) int {
