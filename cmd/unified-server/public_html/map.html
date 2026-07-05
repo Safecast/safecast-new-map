@@ -5346,57 +5346,16 @@ function prefetchTrackInfo(trackID) {
 /* ============================================
  * TILE CACHE - Client-side marker data cache
  * ============================================ */
-const tileCache = {
-  cache: new Map(),
-  maxSize: 100, // Cache up to 100 tiles
-  ttl: 5 * 60 * 1000, // 5 minutes
-
-  makeKey(zoom, minLat, minLon, maxLat, maxLon) {
-    // Round coordinates to reduce cache key variations
-    const precision = zoom >= 10 ? 4 : 3;
-    return `${zoom}_${minLat.toFixed(precision)}_${minLon.toFixed(precision)}_${maxLat.toFixed(precision)}_${maxLon.toFixed(precision)}`;
-  },
-
-  get(key) {
-    const entry = this.cache.get(key);
-    if (!entry) return null;
-
-    // Check if expired
-    if (Date.now() - entry.timestamp > this.ttl) {
-      this.cache.delete(key);
-      return null;
-    }
-
-    entry.lastAccess = Date.now();
-    return entry.data;
-  },
-
-  set(key, data) {
-    // Implement LRU eviction
-    if (this.cache.size >= this.maxSize) {
-      // Remove oldest accessed entry
-      let oldestKey = null;
-      let oldestTime = Infinity;
-      for (const [k, v] of this.cache.entries()) {
-        if (v.lastAccess < oldestTime) {
-          oldestTime = v.lastAccess;
-          oldestKey = k;
-        }
-      }
-      if (oldestKey) this.cache.delete(oldestKey);
-    }
-
-    this.cache.set(key, {
-      data: data,
-      timestamp: Date.now(),
-      lastAccess: Date.now()
-    });
-  },
-
-  clear() {
-    this.cache.clear();
-  }
-};
+// STAGE 1 UPSTREAM ALIGNMENT (chicha-isotope-map):
+// The per-viewport-quadrant tileCache was removed. It served stale/partial
+// marker sets on zoom (the "caching issue"). Upstream instead streams fresh
+// on every load and guards against stale renders with a monotonic load token:
+// each updateMarkers() call bumps markerLoadToken, and every async callback
+// checks isActiveLoad() so a superseded zoom/pan silently drops its work.
+var markerLoadToken = 0;
+function isActiveLoad(token) {
+  return token === markerLoadToken;
+}
 
 /* ===== MARKER BATCHING SYSTEM ===== */
 const markerBatch = [];
@@ -5609,9 +5568,11 @@ function updateMarkers(){
     return;
   }
 
+  // Claim this load. Any stream/render still running from a previous call is
+  // now stale: its callbacks check isActiveLoad(loadToken) and drop their work.
+  const loadToken = ++markerLoadToken;
+
   // Close any in-flight streams now that we know we're going to fetch.
-  // (Moved here from the top of the function so the early-returns above don't
-  // kill a loading stream and leave the map blank.)
   closeMarkerStreams();
 
   // Show spinner only when we are actually going to fetch data
@@ -5621,48 +5582,20 @@ function updateMarkers(){
   lastFilterState = newFilterState;
   lastLoadedMarkerZoom = zoom;
 
-  // If filters changed, clear all markers to re-filter them
-  if (filterChanged) {
-    // CRITICAL: Clear the batch queue FIRST before flushing
-    // This prevents queued markers from being added after we clear the map
-    markerBatch.length = 0;  // Clear the batch array
-    cancelPendingFlush();
-
-    // Remove all markers from map and return to pool
-    for (const key in circleMarkers) {
-      const marker = circleMarkers[key];
-      map.removeLayer(marker);
-      markerPool.release(marker);
-    }
-    circleMarkers = {};
-    markerQuadTree.clear();  // Clear spatial index
-
-    // Clear tile cache when filters change so we fetch fresh data
-    tileCache.clear();
-    console.log('Speed filter changed - cleared all markers, batch queue, and cache');
-  } else if (!currentTrackID && !currentTrackIDs) {
-    // In global view: remove only markers that are now off-screen
-    // Skip this for track view since we load ALL track markers regardless of viewport
-    // PERFORMANCE: Use QuadTree for O(log n) spatial query instead of O(n) iteration
-    const range = {
-      minLat: bounds.getSouthWest().lat,
-      maxLat: bounds.getNorthEast().lat,
-      minLon: bounds.getSouthWest().lng,
-      maxLon: bounds.getNorthEast().lng
-    };
-
-    const outsideMarkers = markerQuadTree.queryOutside(range);
-
-    for (const point of outsideMarkers) {
-      if (circleMarkers[point.id]) {
-        const marker = circleMarkers[point.id];
-        map.removeLayer(marker);
-        markerPool.release(marker);  // Return to pool for reuse
-        delete circleMarkers[point.id];
-        markerQuadTree.remove(point);
-      }
-    }
+  // Clean slate every load (upstream model): clear the batch queue, remove all
+  // rendered markers, and reset the spatial index. Streaming fresh from the
+  // server — with no client tile cache — is what removes the stale/partial
+  // marker bugs. The load token prevents a superseded stream from repopulating.
+  markerBatch.length = 0;
+  cancelPendingFlush();
+  for (const key in circleMarkers) {
+    const marker = circleMarkers[key];
+    if (!marker) continue;
+    map.removeLayer(marker);
+    markerPool.release(marker);
   }
+  circleMarkers = {};
+  markerQuadTree.clear();  // Spatial index is rebuilt as markers stream in (used by findNearestDanger)
 
   const tracks = new Set();
   const markerDateRange = createMarkerDateRange();
@@ -5670,30 +5603,27 @@ function updateMarkers(){
   let completedSources = 0;
 
   function finishMarkerSource() {
+    if (!isActiveLoad(loadToken)) return;  // A newer load superseded us
     completedSources++;
     if (completedSources < activeSources) return;
     if (loadingEl) loadingEl.style.display = 'none';
     syncDateSliderToMarkerRange(markerDateRange);
   }
 
-  // PARALLEL TILE-BASED LOADING WITH CACHING
-  // At low zoom (<=7): Use 1 large tile for simplicity
-  // At high zoom (>=8): Split viewport into 2x2 grid (4 tiles) for parallel loading
-  // Cache enabled for all zoom levels (except track view)
-  // Disable during background refresh to reduce database load
-  const useTiles = !currentTrackID && !currentTrackIDs && !window.isBackgroundRefresh; // Use tiles + cache for all zoom levels, except track view and background refresh
-  const useSingleTile = zoom <= 7; // At low zoom, use single tile to reduce request overhead
+  // PARALLEL TILE-BASED LOADING (no cache)
+  // At low zoom (<=7): one large tile. At high zoom (>=8): 2x2 grid streamed
+  // in parallel for throughput. Track view uses a single world-bounds stream.
+  const useTiles = !currentTrackID && !currentTrackIDs && !window.isBackgroundRefresh;
+  const useSingleTile = zoom <= 7;
 
   if (useTiles) {
     let tiles;
-    
+
     if (useSingleTile) {
-      // Single large tile at low zoom for simpler batching
       tiles = [
         { minLat: baseParams.minLat, maxLat: baseParams.maxLat, minLon: baseParams.minLon, maxLon: baseParams.maxLon }
       ];
     } else {
-      // 2x2 grid at high zoom for parallel loading
       const latMid = (baseParams.minLat + baseParams.maxLat) / 2;
       const lonMid = (baseParams.minLon + baseParams.maxLon) / 2;
 
@@ -5705,49 +5635,26 @@ function updateMarkers(){
       ];
     }
 
-    // Open parallel SSE connections for each tile (or use cache)
-    tiles.forEach((tile, idx) => {
+    tiles.forEach((tile) => {
       const params = { ...baseParams, ...tile };
-      const cacheKey = tileCache.makeKey(zoom, tile.minLat, tile.minLon, tile.maxLat, tile.maxLon);
-      const cached = tileCache.get(cacheKey);
-
-      if (cached) {
-        // Use cached data - render immediately
-        console.log(`[Cache HIT] Tile ${idx} from cache`);
-        cached.forEach(markerData => {
-          renderCachedMarker(markerData, tracks, markerDateRange, savedRange, zoom);
-        });
-      } else {
-        // Cache miss - fetch from server
-        console.log(`[Cache MISS] Tile ${idx} fetching...`);
-        activeSources++;
-        const es = new EventSource('/stream_markers?' + new URLSearchParams(params));
-        window.markerStreamSources.push(es);
-        setupMarkerStream(es, tracks, markerDateRange, savedRange, idx, cacheKey, () => {
-          finishMarkerSource();
-        }, zoom, loadingEl);
-      }
+      activeSources++;
+      const es = new EventSource('/stream_markers?' + new URLSearchParams(params));
+      window.markerStreamSources.push(es);
+      setupMarkerStream(es, tracks, markerDateRange, savedRange, loadToken, () => {
+        finishMarkerSource();
+      }, zoom, loadingEl);
     });
 
-    // Use first stream as primary for backwards compatibility
     if (window.markerStreamSources.length > 0) {
       markerStreamSource = window.markerStreamSources[0];
     }
-
-    // If all tiles were cached, hide loading immediately
-    if (activeSources === 0 && loadingEl) {
-      loadingEl.style.display = 'none';
-    }
-    if (activeSources === 0) {
-      syncDateSliderToMarkerRange(markerDateRange);
-    }
   } else {
-    // Single stream for track view or zoomed-out view (no caching for these)
+    // Single stream for track view: all markers for the track(s), world bounds.
     activeSources = 1;
     const es = new EventSource('/stream_markers?' + new URLSearchParams(baseParams));
     markerStreamSource = es;
     window.markerStreamSources = [es];
-    setupMarkerStream(es, tracks, markerDateRange, savedRange, 0, null, () => {
+    setupMarkerStream(es, tracks, markerDateRange, savedRange, loadToken, () => {
       finishMarkerSource();
     }, zoom, loadingEl);
   }
@@ -6027,36 +5934,8 @@ function createMarkerFromData(m, zoom) {
   return marker;
 }
 
-// Helper function to render a cached marker
-function renderCachedMarker(m, tracks, markerDateRange, savedRange, zoom) {
-  // NOTE: Server-side density-based sampling is now enabled for zoom < 8
-  // No client-side sampling needed - server already reduces data at low zoom
-
-  const isLive = m.speed < 0;
-  if (!isLive && m.trackID) tracks.add(m.trackID);
-  observeMarkerDateRange(markerDateRange, m);
-
-  if (savedRange && (m.date < savedRange[0] || m.date > savedRange[1])) return;
-
-  // Show spectrum markers independently from speed filter if spectrum toggle is on
-  if (m.hasSpectrum) {
-    if (!loadSpeedFilterState().spectrum) return;
-    // Skip speed filter for spectrum markers when spectrum toggle is on
-  } else {
-    // Apply speed filter for non-spectrum markers
-    if (!shouldDisplayBySpeed(m.speed)) return;
-  }
-
-  // OPTIMIZED: Use unified marker creation function
-  const marker = createMarkerFromData(m, zoom);
-  if (!marker) return; // Marker filtered out (e.g., old realtime device)
-
-  queueMarkerForBatch(marker, m.id);
-  circleMarkers[m.id || m.trackID] = marker;
-}
-
 // Helper function to setup marker stream event handlers
-function setupMarkerStream(es, tracks, markerDateRange, savedRange, tileIndex, cacheKey, onDone, zoom, loadingEl) {
+function setupMarkerStream(es, tracks, markerDateRange, savedRange, loadToken, onDone, zoom, loadingEl) {
   // Debug: Verify loadingEl is defined
   if (!loadingEl) {
     console.warn('WARNING: loadingEl is undefined in setupMarkerStream! This will cause errors.');
@@ -6072,9 +5951,6 @@ function setupMarkerStream(es, tracks, markerDateRange, savedRange, tileIndex, c
   // Track bounds while loading markers
   let markerBounds = { minLat: 90, minLon: 180, maxLat: -90, maxLon: -180, hasData: false };
 
-  // Collect markers for caching
-  const tileMarkers = cacheKey ? [] : null;
-
   // Unique ID for this stream (for worker message routing)
   const currentStreamId = ++workerStreamId;
 
@@ -6082,6 +5958,10 @@ function setupMarkerStream(es, tracks, markerDateRange, savedRange, tileIndex, c
   const handleStreamComplete = () => {
     // Cleanup worker handler for this stream
     workerMessageHandlers.delete(currentStreamId);
+    es.close();
+
+    // A newer load superseded this one — drop its results entirely.
+    if (!isActiveLoad(loadToken)) return;
 
     const batchStart = performance.now();
     flushMarkerBatch(true);  // Flush any remaining markers
@@ -6101,12 +5981,6 @@ function setupMarkerStream(es, tracks, markerDateRange, savedRange, tileIndex, c
 
     // Update adaptive debounce metrics
     updateRenderMetrics(markerCount, totalTime);
-
-    // Store tile data in cache
-    if (cacheKey && tileMarkers) {
-      tileCache.set(cacheKey, tileMarkers);
-      console.log(`[Cache STORE] Tile ${tileIndex}: ${tileMarkers.length} markers cached`);
-    }
 
     if (onDone) onDone();
 
@@ -6136,11 +6010,12 @@ function setupMarkerStream(es, tracks, markerDateRange, savedRange, tileIndex, c
     } catch (err) {
       console.error('Error hiding loading element:', err);
     }
-    es.close();
   };
 
   // Handler for processing a parsed marker (used by both worker and main thread paths)
   const handleParsedMarker = (m) => {
+    if (!isActiveLoad(loadToken)) return;  // Superseded load — ignore late markers
+
     const isLive = m.speed < 0; // negative speed denotes realtime marker
     if (!isLive && m.trackID) tracks.add(m.trackID);
     observeMarkerDateRange(markerDateRange, m);
@@ -6152,13 +6027,6 @@ function setupMarkerStream(es, tracks, markerDateRange, savedRange, tileIndex, c
       markerBounds.minLon = Math.min(markerBounds.minLon, m.lon);
       markerBounds.maxLon = Math.max(markerBounds.maxLon, m.lon);
       markerBounds.hasData = true;
-    }
-
-    // Cache the UNFILTERED marker so cache hits can re-apply the current
-    // filters at render time. Caching post-filter data poisoned the tile
-    // cache: points dropped by a stale date range were lost for the TTL.
-    if (tileMarkers) {
-      tileMarkers.push(m);
     }
 
     if (savedRange && (m.date < savedRange[0] || m.date > savedRange[1])) return;
