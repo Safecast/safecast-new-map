@@ -4593,9 +4593,6 @@ document.addEventListener('DOMContentLoaded', function () {
   if (Array.isArray(initialMarkers) && initialMarkers.length > 0) {
     isTrackView = true;
 
-    // Don't show initialMarkers immediately; load them in parts via get_markers
-    map.on('load', debounceUpdateMarkers);
-
     // Adjust marker size on zoom
     map.on('zoomend', function() {
       invalidateMarkerStyleCache();  // Clear style cache on zoom
@@ -4605,17 +4602,19 @@ document.addEventListener('DOMContentLoaded', function () {
     map.on('moveend', debounceUpdateMarkers);
   } else {
     // Dynamic marker updates in global mode
-    map.on('load', debounceUpdateMarkers);
     map.on('zoomend', function() {
       adjustMarkerRadius();
       debounceUpdateMarkers();
     });
     map.on('moveend', debounceUpdateMarkers);
-    debounceUpdateMarkers;
   }
 
-  // Load map state from URL
+  // Load map state from URL (may call setView, which fires moveend → debounceUpdateMarkers).
+  // Call debounceUpdateMarkers() explicitly here as the fallback: if loadMapFromUrl() ends
+  // up at the same position as the map's initial center (e.g. first visit with no stored
+  // state), Leaflet won't fire moveend and the map would stay blank until the user pans.
   loadMapFromUrl();
+  debounceUpdateMarkers();
 
   // Update URL on map changes
   map.on('baselayerchange', updateUrl);
@@ -5423,12 +5422,6 @@ function updateMarkers(){
 
   const loadingEl = document.getElementById('loadingOverlay');
 
-  if (markerStreamSource) markerStreamSource.close();
-  if (window.markerStreamSources) {
-    window.markerStreamSources.forEach(source => source.close());
-  }
-  window.markerStreamSources = [];
-
   const zoom   = map.getZoom();
   const bounds = map.getBounds();
 
@@ -5448,7 +5441,7 @@ function updateMarkers(){
     baseParams.maxLat = 90;
     baseParams.maxLon = 180;
   }
-  
+
   // When viewing multiple tracks, load all markers for those tracks
   if (currentTrackIDs && currentTrackIDs.length > 0) {
     baseParams.trackIDs = currentTrackIDs.join(',');
@@ -5466,11 +5459,13 @@ function updateMarkers(){
 
   const savedRange = loadDateRangeState();
 
-  // Skip if viewport hasn't meaningfully changed (prevents unnecessary redraws)
+  // Check viewport/filter state BEFORE closing in-flight streams.
+  // The old order closed streams first, so an unchanged-viewport early-return
+  // killed the loading stream and left the map blank until the next user action.
   const newViewportKey = getViewportKey();
   const newFilterState = getFilterStateKey();
   const filterChanged = lastFilterState !== newFilterState;
-  
+
   if (lastViewportKey === newViewportKey && lastFilterState === newFilterState && !currentTrackID && !currentTrackIDs) {
     // Viewport and filters unchanged in global view - skip full redraw
     return;
@@ -5482,6 +5477,15 @@ function updateMarkers(){
     // Track view: markers already loaded and filters unchanged - skip reload
     return;
   }
+
+  // Close any in-flight streams now that we know we're going to fetch.
+  // (Moved here from the top of the function so the early-returns above don't
+  // kill a loading stream and leave the map blank.)
+  if (markerStreamSource) markerStreamSource.close();
+  if (window.markerStreamSources) {
+    window.markerStreamSources.forEach(source => source.close());
+  }
+  window.markerStreamSources = [];
 
   // Show spinner only when we are actually going to fetch data
   if (loadingEl) loadingEl.style.display='block';
