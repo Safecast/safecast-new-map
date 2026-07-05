@@ -3676,11 +3676,19 @@ function initMarkerWorker() {
   }
 }
 
-// Initialize worker on page load
-if (typeof Worker !== 'undefined') {
-  // Defer initialization to avoid blocking page load
-  setTimeout(initMarkerWorker, 100);
-}
+// DISABLED (upstream alignment): the marker parse worker is intentionally not
+// initialized. It parses asynchronously, but handleStreamComplete deletes the
+// stream's worker handler synchronously when the SSE 'done' event fires — so
+// every marker still queued in the worker at that moment looked up a deleted
+// handler and was silently dropped. Because the server coalesces markers into
+// 64KB bursts followed immediately by 'done', large tiles lost most/all of
+// their markers (whole regions vanished on the map). Upstream chicha-isotope-map
+// has no worker and parses on the main thread, where SSE 'data:' events are
+// dispatched in order and fully queued before 'done'. Main-thread JSON.parse of
+// a viewport's markers is only a few ms, so the worker's benefit was marginal.
+// setupMarkerStream falls back to synchronous main-thread parsing when
+// markerWorker is null. See initMarkerWorker() above if this is ever revived —
+// it must first implement a worker drain/ack before deleting the handler.
 /* ===== END WORKER ===== */
 
 /* ===== MESSAGEPACK BINARY STREAMING =====
