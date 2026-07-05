@@ -290,6 +290,43 @@ func TestHandleShorten(t *testing.T) {
 			t.Errorf("got %d, want 200; body: %s", rec.Code, rec.Body.String())
 		}
 	})
+	// Reproduce the CloudFront case: the origin sees the internal origin host
+	// as Host, but the client shortens a public-domain URL. The public host is
+	// recovered from the configured base URL, and the short link uses it.
+	t.Run("public host accepted via base URL and used in short link", func(t *testing.T) {
+		h.PublicBaseURL = "https://simplemap.safecast.org"
+		defer func() { h.PublicBaseURL = "" }()
+		req := httptest.NewRequest(http.MethodPost, "/api/shorten",
+			strings.NewReader(`{"url":"https://simplemap.safecast.org/?zoom=15","commit":false}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Host = "origin-simplemap.safecast.org" // internal origin host CloudFront sends
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("got %d, want 200; body: %s", rec.Code, rec.Body.String())
+		}
+		var out map[string]interface{}
+		if err := json.NewDecoder(rec.Body).Decode(&out); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		if short, _ := out["short"].(string); !strings.HasPrefix(short, "https://simplemap.safecast.org/s/") {
+			t.Errorf("short link should use public host, got %q", short)
+		}
+	})
+	// Same case but the public host is recovered from the Referer header
+	// (CloudFront forwards Referer even when it does not forward the viewer Host).
+	t.Run("public host accepted via Referer", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/api/shorten",
+			strings.NewReader(`{"url":"https://simplemap.safecast.org/?zoom=15","commit":false}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Referer", "https://simplemap.safecast.org/?zoom=15")
+		req.Host = "origin-simplemap.safecast.org"
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Errorf("got %d, want 200; body: %s", rec.Code, rec.Body.String())
+		}
+	})
 }
 
 func TestHandleTracksByYear(t *testing.T) {
