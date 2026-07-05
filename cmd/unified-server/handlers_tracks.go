@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"log"
@@ -20,6 +21,13 @@ import (
 	"safecast-new-map/pkg/database"
 	safecastrealtime "safecast-new-map/pkg/safecast-realtime"
 )
+
+func logRealtimeQueryError(err error) {
+	if err == nil || errors.Is(err, context.Canceled) {
+		return
+	}
+	logRealtimeQueryError(err)
+}
 
 func trackHandler(w http.ResponseWriter, r *http.Request) {
 	lang := getPreferredLanguage(r)
@@ -345,7 +353,7 @@ func getMarkersHandler(w http.ResponseWriter, r *http.Request) {
 				}
 				markers = append(markers, rt...)
 			} else {
-				log.Printf("realtime query: %v", err)
+				logRealtimeQueryError(err)
 			}
 		}
 	} else {
@@ -370,7 +378,7 @@ func getMarkersHandler(w http.ResponseWriter, r *http.Request) {
 				}
 				markers = append(markers, rt...)
 			} else {
-				log.Printf("realtime query: %v", err)
+				logRealtimeQueryError(err)
 			}
 		}
 	}
@@ -391,6 +399,39 @@ func aggregateMarkers(ctx context.Context, base <-chan database.Marker, updates 
 	out := make(chan database.Marker)
 	go func() {
 		defer close(out)
+
+		// At zoom ≥ 13 every marker is distinct enough to show individually —
+		// skip cell-based deduplication so walking tracks retain all points.
+		if zoom >= 13 {
+			for base != nil || updates != nil {
+				select {
+				case <-ctx.Done():
+					return
+				case m, ok := <-base:
+					if !ok {
+						base = nil
+						continue
+					}
+					select {
+					case out <- m:
+					case <-ctx.Done():
+						return
+					}
+				case m, ok := <-updates:
+					if !ok {
+						updates = nil
+						continue
+					}
+					select {
+					case out <- m:
+					case <-ctx.Done():
+						return
+					}
+				}
+			}
+			return
+		}
+
 		cells := make(map[string]database.Marker)
 		scale := math.Pow(2, float64(zoom))
 		baseCh := base
@@ -457,6 +498,9 @@ func calculateSampleRate(zoom int, minLat, minLon, maxLat, maxLon float64) float
 	latSpan := maxLat - minLat
 	lonSpan := maxLon - minLon
 	area := latSpan * lonSpan
+	if area <= 1 {
+		return 1.0
+	}
 
 	// For very large areas at low zoom, more aggressive sampling is needed
 	// At zoom 7, Europe view is ~9.5 lat × 19.5 lon ≈ 185 sq degrees
@@ -646,7 +690,7 @@ func streamMarkersHandler(w http.ResponseWriter, r *http.Request) {
 		var err error
 		rtMarks, err = db.GetLatestRealtimeByBounds(ctx, minLat, minLon, maxLat, maxLon, *dbType)
 		if err != nil {
-			log.Printf("realtime query: %v", err)
+			logRealtimeQueryError(err)
 		}
 		// Log bounds alongside count to help diagnose empty map tiles.
 		log.Printf("realtime markers: %d lat[%f,%f] lon[%f,%f]", len(rtMarks), minLat, maxLat, minLon, maxLon)

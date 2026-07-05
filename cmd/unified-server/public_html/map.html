@@ -235,6 +235,103 @@ body, html {
           color: var(--modal-text);
         }
 
+        #legend {
+          position: absolute;
+          top: 284px;
+          bottom: 104px;
+          right: 20px;
+          background: var(--control-bg);
+          border: var(--legend-border);
+          border-radius: 4px;
+          box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+          padding: 4px;
+          font-size: var(--font-size-xs);
+          cursor: pointer;
+          z-index: 1000;
+          font-family: var(--font-family-base);
+          display: flex;
+          box-sizing: border-box;
+        }
+
+        #legend.legend--safecast {
+          height: auto;
+          min-height: 0;
+        }
+
+        #legend.legend--chicha {
+          height: min(160px, calc(100vh - 388px));
+          bottom: auto;
+        }
+
+        #legend-bar {
+          width: 18px;
+          margin-right: 6px;
+          border-radius: 10px;
+          border: 1px solid rgba(0,0,0,0.2);
+          flex: 0 0 auto;
+        }
+
+        #legend-labels {
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          height: 100%;
+          font-weight: 700;
+          min-width: 30px;
+          text-align: left;
+          line-height: 1;
+        }
+
+        #legend-unit-overlay {
+          position: absolute;
+          bottom: 14px;
+          right: 4px;
+          width: 100%;
+          text-align: center;
+          font-size: var(--font-size-xs);
+          font-weight: 700;
+          color: white;
+          text-shadow: 0 1px 3px rgba(0,0,0,0.9), 0 0 6px rgba(0,0,0,0.7);
+          pointer-events: none;
+        }
+
+        @media (max-width: 600px) {
+          #legend {
+            right: 20px;
+            padding: 3px;
+            font-size: var(--font-size-xxs);
+          }
+
+          #legend.legend--safecast {
+            height: auto;
+            min-height: 0;
+          }
+
+          #legend.legend--chicha {
+            height: 140px;
+          }
+
+          #legend-bar {
+            width: 16px;
+            margin-right: 5px;
+          }
+
+          #legend-labels {
+            min-width: 26px;
+          }
+
+          #legend-unit-overlay {
+            bottom: 10px;
+            font-size: var(--font-size-xxs);
+          }
+        }
+
+        @media (max-height: 560px) {
+          #legend.legend--chicha {
+            height: 120px;
+          }
+        }
+
         /* Old short link display - now hidden, replaced by icon button */
         #shortLinkDisplay {
           display: none !important;
@@ -929,11 +1026,12 @@ body, html {
         .search-container {
           position: absolute;
           top: 20px;
-          left: 50%;
-          transform: translateX(-50%);
+          left: 64px;
+          right: 140px;
           z-index: 1001;
-          width: 90%;
+          width: auto;
           max-width: 400px;
+          margin: 0 auto;
         }
 
         /* Search input field */
@@ -981,6 +1079,25 @@ body, html {
 
         .search-results.active {
           display: block;
+        }
+
+        @media (max-width: 760px) {
+          .search-container {
+            max-width: none;
+            margin: 0;
+          }
+        }
+
+        @media (max-width: 420px) {
+          .search-container {
+            left: 56px;
+            right: 132px;
+          }
+
+          .search-input {
+            padding-left: 10px;
+            padding-right: 32px;
+          }
         }
 
         .search-result-item {
@@ -2057,25 +2174,11 @@ body, html {
   transition: background 0.2s;">⇄</button>
 
 <!-- Compact Legend (clickable) -->
-<div id="legend" role="button" tabindex="0" aria-label="{{translate "legend_button_tooltip"}}" style="
-  position: absolute;
-  bottom: 50px;
-  right: 10px;
-  background: var(--control-bg);
-  border: var(--legend-border);
-  border-radius: 4px;
-  box-shadow: 0 1px 5px rgba(0,0,0,0.65);
-  padding: 5px;
-  font-size: var(--font-size-sm);
-  cursor: pointer;
-  z-index: 1000;
-  font-family: var(--font-family-base);
-  height: 500px;
-  display: flex;">
-    <div id="legend-bar" style="width:24px; margin-right:8px; border-radius:12px; border: 1px solid rgba(0,0,0,0.2);"></div>
-    <div id="legend-labels" style="display:flex; flex-direction:column; justify-content:space-between; height:100%; font-weight:bold; min-width:35px; text-align:left;">
+<div id="legend" class="legend--safecast" role="button" tabindex="0" aria-label="{{translate "legend_button_tooltip"}}">
+    <div id="legend-bar"></div>
+    <div id="legend-labels">
     </div>
-    <div style="position:absolute; bottom:20px;right:5px;width:100%;text-align:center; font-size:15px; font-weight:bold; color:white; text-shadow: 0 1px 3px rgba(0,0,0,0.9), 0 0 6px rgba(0,0,0,0.7);">
+    <div id="legend-unit-overlay">
        <span id="legend-unit-label">µSv/h</span>
     </div>
 </div>
@@ -2539,7 +2642,8 @@ body, html {
       // Check authentication status on page load
       async function checkAuthStatus() {
         try {
-          const response = await fetch('/api/user/profile');
+          const profileURL = new URL('/api/user/profile', window.location.href);
+          const response = await fetch(profileURL.href, { credentials: 'same-origin' });
           if (response.ok) {
             currentUser = await response.json();
             updateUIForLoggedInUser();
@@ -3539,6 +3643,7 @@ var currentTrackID = null;
 var currentTrackSourceURL = null;
 var currentTrackIDs = null;  // For multiple tracks view
 var lastViewportKey = null;
+var lastLoadedMarkerZoom = null;
 var lastFilterState = null;  // Track filter state to detect changes
 
 /* ===== WEB WORKER FOR JSON PARSING ===== */
@@ -4610,11 +4715,8 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // Load map state from URL (may call setView, which fires moveend → debounceUpdateMarkers).
-  // Call debounceUpdateMarkers() explicitly here as the fallback: if loadMapFromUrl() ends
-  // up at the same position as the map's initial center (e.g. first visit with no stored
-  // state), Leaflet won't fire moveend and the map would stay blank until the user pans.
   loadMapFromUrl();
-  debounceUpdateMarkers();
+  scheduleInitialMarkerRefreshAfterMapStateLoad();
 
   // Update URL on map changes
   map.on('baselayerchange', updateUrl);
@@ -5010,7 +5112,8 @@ function createDateRangeSlider(){
       lblMin().textContent = (mode==='year') ? rY.min : tsToNiceStr(rM.min);
       lblMax().textContent = (mode==='year') ? rY.max : tsToNiceStr(rM.max);
 
-      // "No filter" == no saved state (removed above); do not re-save here.
+      clearRenderedMarkers();
+      lastViewportKey = null;
       debounceUpdateMarkers();
     }
   };
@@ -5402,6 +5505,33 @@ function getCachedMarkerStyle(doseRate, zoom, speed) {
   return style;
 }
 
+function closeMarkerStreams() {
+  if (markerStreamSource) {
+    markerStreamSource.close();
+    markerStreamSource = null;
+  }
+  if (window.markerStreamSources) {
+    window.markerStreamSources.forEach(function(source) {
+      if (source) source.close();
+    });
+  }
+  window.markerStreamSources = [];
+}
+
+function clearRenderedMarkers() {
+  markerBatch.length = 0;
+  cancelPendingFlush();
+
+  for (const key in circleMarkers) {
+    const marker = circleMarkers[key];
+    if (!marker) continue;
+    map.removeLayer(marker);
+    markerPool.release(marker);
+  }
+  circleMarkers = {};
+  markerQuadTree.clear();
+}
+
 // Clear cache when zoom changes
 function invalidateMarkerStyleCache() {
   if (lastStyleCacheZoom !== map.getZoom()) {
@@ -5465,33 +5595,31 @@ function updateMarkers(){
   const newViewportKey = getViewportKey();
   const newFilterState = getFilterStateKey();
   const filterChanged = lastFilterState !== newFilterState;
+  const zoomChanged = lastLoadedMarkerZoom !== null && lastLoadedMarkerZoom !== zoom;
 
   if (lastViewportKey === newViewportKey && lastFilterState === newFilterState && !currentTrackID && !currentTrackIDs) {
     // Viewport and filters unchanged in global view - skip full redraw
     return;
   }
 
-  // In track view, only reload if filters changed or this is the first load
-  // We load ALL markers at once, so viewport changes don't require reloading
-  if ((currentTrackID || currentTrackIDs) && !filterChanged && Object.keys(circleMarkers).length > 0) {
-    // Track view: markers already loaded and filters unchanged - skip reload
+  // In track view, only reload if filters changed, zoom changed, or this is the first load.
+  // Zoom changes matter because aggregateMarkers behaviour changes at zoom ≥ 13.
+  if ((currentTrackID || currentTrackIDs) && !filterChanged && !zoomChanged && Object.keys(circleMarkers).length > 0) {
+    // Track view: markers already loaded and nothing relevant changed - skip reload
     return;
   }
 
   // Close any in-flight streams now that we know we're going to fetch.
   // (Moved here from the top of the function so the early-returns above don't
   // kill a loading stream and leave the map blank.)
-  if (markerStreamSource) markerStreamSource.close();
-  if (window.markerStreamSources) {
-    window.markerStreamSources.forEach(source => source.close());
-  }
-  window.markerStreamSources = [];
+  closeMarkerStreams();
 
   // Show spinner only when we are actually going to fetch data
   if (loadingEl) loadingEl.style.display='block';
 
   lastViewportKey = newViewportKey;
-  lastFilterState = newFilterState;  // Track filter state to detect future changes
+  lastFilterState = newFilterState;
+  lastLoadedMarkerZoom = zoom;
 
   // If filters changed, clear all markers to re-filter them
   if (filterChanged) {
@@ -8275,6 +8403,25 @@ function updateRenderMetrics(markerCount, renderTimeMs) {
   lastMarkerCount = markerCount;
   // Exponential moving average: 70% old, 30% new for stability
   lastRenderTime = lastRenderTime * 0.7 + renderTimeMs * 0.3;
+}
+
+function scheduleInitialMarkerRefreshAfterMapStateLoad() {
+  map.whenReady(function() {
+    const forceInitialMarkerLoad = function() {
+      if (Object.keys(circleMarkers).length > 0) return;
+      if (map.invalidateSize) map.invalidateSize(false);
+      closeMarkerStreams();
+      markerBatch.length = 0;
+      cancelPendingFlush();
+      lastViewportKey = null;
+      updateMarkers();
+    };
+    window.requestAnimationFrame(function() {
+      window.requestAnimationFrame(forceInitialMarkerLoad);
+    });
+    window.setTimeout(forceInitialMarkerLoad, 250);
+    window.setTimeout(forceInitialMarkerLoad, 1000);
+  });
 }
 
 function debounceUpdateMarkers() {
