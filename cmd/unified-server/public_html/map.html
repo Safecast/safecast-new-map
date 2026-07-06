@@ -10394,11 +10394,17 @@ function selectHomeSearchResult(result, query) {
       border: var(--modal-border);
       font-family: var(--font-family-base);
       margin-left: 10px;
-      transition: left 0.3s ease;
+      /* Hidden when closed so the off-screen panel's border/box-shadow can't
+         bleed a sliver back onto the map (esp. on phones at left:-100vw).
+         visibility is delayed until the slide-out finishes so it still animates. */
+      visibility: hidden;
+      transition: left 0.3s ease, visibility 0s linear 0.3s;
     }
 
     #safecast-ai-panel.open {
       left: 10px;
+      visibility: visible;
+      transition: left 0.3s ease, visibility 0s linear 0s;
     }
 
     /* Phones: full-width panel, no margin gap */
