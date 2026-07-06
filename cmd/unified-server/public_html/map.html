@@ -240,6 +240,8 @@ body, html {
           top: 284px;
           bottom: 104px;
           right: 20px;
+          /* Desktop: scale with viewport but never exceed 540px tall. */
+          max-height: 540px;
           background: var(--control-bg);
           border: var(--legend-border);
           border-radius: 4px;
@@ -4316,6 +4318,42 @@ function loadColoringPreference() {
 var currentUnit = loadUnitPreference();
 
 /**
+ * Size the (bottom-anchored) legend box responsively.
+ * - Fills the vertical space between the control-icon stack and the bottom
+ *   toggles, so it scales with the viewport instead of a fixed height.
+ * - Capped at 540px on desktop (per design).
+ * - Never rises above the icon stack (locate/QR/etc.) — prevents the mobile
+ *   overlap where a tall fixed height pushed the legend top over the icons.
+ */
+function sizeLegendBox() {
+  var legendBox = document.getElementById('legend');
+  if (!legendBox) return;
+  var isChicha = (typeof currentColoring !== 'undefined' && currentColoring === 'chicha');
+  var bottomOffset = 104; // matches CSS `#legend { bottom: 104px }`
+  var margin = 16;        // clearance below the icon stack
+  var iconStack = document.querySelector('.locate-btn-container');
+  var iconsBottom = iconStack ? iconStack.getBoundingClientRect().bottom : 224;
+  var avail = window.innerHeight - bottomOffset - (iconsBottom + margin);
+  var maxH = isChicha ? 180 : 540;
+  var minH = isChicha ? 120 : 160;
+  var h = Math.max(minH, Math.min(maxH, avail));
+  legendBox.style.height = Math.round(h) + 'px';
+}
+
+// Keep the legend correctly sized as the viewport changes.
+window.addEventListener('resize', sizeLegendBox);
+
+// Re-size the legend whenever the control-icon stack above it changes size
+// (buttons like the short-link / back-to-all appear after load), so the
+// legend top always stays clear of the icons.
+(function observeIconStack() {
+  var iconStack = document.querySelector('.locate-btn-container');
+  if (iconStack && typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(sizeLegendBox).observe(iconStack);
+  }
+})();
+
+/**
  * Update the legend display to show values in the current unit.
  * This updates both the range labels in the compact legend.
  */
@@ -4332,9 +4370,11 @@ function updateLegendDisplay() {
   // Use local refs to ensure we have valid data
   var steps = (typeof currentColoring !== 'undefined' && currentColoring === 'chicha') ? schemeChicha : schemeSafecast;
   
-  // Set height and anchor to bottom (near theme toggle), not top
+  // Anchor to bottom (near theme toggle), not top, and size responsively:
+  // scale with the viewport, cap at 540px on desktop, and never let the top
+  // edge rise into the control icons stacked above (locate/QR/etc.) on mobile.
   legendBox.style.top = 'auto';
-  legendBox.style.height = (typeof currentColoring !== 'undefined' && currentColoring === 'chicha') ? '180px' : '500px';
+  sizeLegendBox();
 
   // Build gradient string manually for maximum compatibility
   var colorStrings = [];
