@@ -1088,10 +1088,81 @@ body, html {
           }
         }
 
+        /* Logged-in menu (username + Profile/Admin/Logout) is much wider than
+           the Login pill it replaces and otherwise collides with the search
+           field down to tablet widths — hide the username and shrink the
+           pills so the row fits clear of the search box. */
+        @media (max-width: 900px) {
+          /* #userMenu carries inline right:20px, so !important is needed to
+             shrink its offset. */
+          #userMenu {
+            right: 8px !important;
+            padding: 4px 8px;
+          }
+
+          #userMenuName {
+            display: none;
+          }
+
+          #userMenu a,
+          #userMenu button {
+            padding: 3px 8px !important;
+            font-size: 10px !important;
+            text-align: center;
+          }
+        }
+
+        /* Phone: shrink the stacked Login/Upload pills so the search field
+           keeps usable width instead of being squeezed to ~170px. */
+        @media (max-width: 600px) {
+          /* #loginButton carries inline right:20px, so !important is
+             needed here to shrink its offset on phones. */
+          #loginButton {
+            right: 8px !important;
+          }
+
+          .upload-btn-container {
+            right: 8px;
+          }
+
+          /* #loginButton's inner <button> carries inline width:100px. */
+          #loginButton button {
+            width: auto !important;
+            padding: 6px 12px !important;
+            font-size: 12px !important;
+          }
+
+          .upload-btn {
+            width: auto;
+            padding: 6px 12px;
+            font-size: 12px;
+          }
+
+          /* Even with the username hidden, "Profile"+"Admin"+"Logout" side by
+             side is still wider than the phone budget — stack them into a
+             3-row column instead. */
+          #userMenu > div {
+            flex-direction: column;
+            align-items: stretch !important;
+            gap: 4px !important;
+          }
+
+          /* Only push the Upload button down when the taller logged-in
+             column is actually showing (see body.logged-in, toggled by
+             updateUIForLoggedInUser/Out) — keeps the anon layout unchanged. */
+          body.logged-in .upload-btn-container {
+            top: 100px;
+          }
+
+          .search-container {
+            right: 100px;
+          }
+        }
+
         @media (max-width: 420px) {
           .search-container {
             left: 56px;
-            right: 132px;
+            right: 92px;
           }
 
           .search-input {
@@ -2678,6 +2749,11 @@ body, html {
         } else {
           if (adminBtn) adminBtn.style.display = 'none';
         }
+
+        // Lets responsive CSS distinguish the (wider) logged-in menu from the
+        // Login pill, e.g. to only push the Upload button down on phones
+        // when the taller logged-in menu is actually showing.
+        document.body.classList.add('logged-in');
       }
 
       function updateUIForLoggedOutUser() {
@@ -2686,6 +2762,7 @@ body, html {
 
         if (loginBtn) loginBtn.style.display = 'block';
         if (userMenu) userMenu.style.display = 'none';
+        document.body.classList.remove('logged-in');
       }
 
       // Login function
