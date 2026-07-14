@@ -22,12 +22,54 @@ https://simplemap.safecast.org/ogc
 
 ## Using it in QGIS
 
-1. Layer → Add Layer → **Add WFS / OGC API - Features Layer…**
-2. **New** connection, URL: `https://simplemap.safecast.org/ogc`
-3. Connect → QGIS discovers the `sensors` collection → Add.
+### 1. Add the connection
 
-The layer refreshes by bounding box as you pan/zoom. Each point carries the
-current `value` + `unit`, so you can style/graduate by radiation level.
+1. Layer → Add Layer → **Add WFS / OGC API - Features Layer…**
+   (or Data Source Manager → **WFS / OGC API - Features**).
+2. **New** connection:
+   - **Name:** e.g. `Safecast`
+   - **URL:** `https://simplemap.safecast.org/ogc`
+   - **Version:** must be **`OGC API - Features`** (not WFS 1.0/1.1/2.0 — those
+     expect classic XML GetCapabilities, which this endpoint does not serve).
+   - Authentication: **No Authentication**.
+3. **OK** → **Connect**. The `sensors — Safecast fixed sensors (live)`
+   collection appears.
+4. Select it → **Add** (**once** — clicking Add repeatedly stacks duplicate
+   layers) → **Close**.
+
+Most live sensors are in Japan; pan there if the canvas looks empty. The layer
+re-queries by bounding box as you pan/zoom.
+
+### 2. Style by radiation level
+
+Each point carries the current `value` + `unit`.
+
+1. Right-click the layer → **Properties → Symbology**.
+2. Top dropdown: **Graduated**. **Value:** `value`.
+3. Pick a **Color ramp** (e.g. white→red), set **Classes** to ~7.
+4. Click **Classify** (required — the class list is empty until you do),
+   then **Apply** → **OK**.
+
+**Mode:** *Equal Count (Quantile)* highlights relative highs; *Natural Breaks
+(Jenks)* or *Equal Interval* better reflects absolute levels.
+
+> **Unit caveat.** The `value` field mixes units across sensor types (`unit` is
+> often `lnd_7318c_cps`, but varies by device). A single graduated ramp
+> therefore compares slightly different quantities — fine for a quick overview,
+> but do not read the colours as calibrated µSv/h across all devices. Filter or
+> facet by `unit` (or `type`) for like-for-like comparison.
+
+### Troubleshooting
+
+- **"Download of landing page failed: Missing information in response"** — the
+  connection Version is set to a classic WFS version. Set it to
+  **OGC API - Features**. (QGIS also requires the landing page to expose a
+  `service-desc` link to the OpenAPI doc at `/ogc/api`; the server provides
+  this.)
+- **Empty canvas** — pan to Japan, or check the layer's bbox filter isn't
+  excluding everything.
+- **Multiple identical `sensors` layers** — Add was clicked more than once;
+  right-click the extras → **Remove Layer**.
 
 ## Endpoints
 
