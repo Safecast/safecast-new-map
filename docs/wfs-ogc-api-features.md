@@ -70,18 +70,29 @@ Historical bGeigie drive data (the dataset behind the old te512 raster map,
 millions of points). Requires real bbox paging via `offset`/`next`; add a case
 to `ogcCollections()` / `ogcItems()` in `ogcapi.go` when the paged query lands.
 
-## Deployment note (nginx)
+## Deployment note (nginx / CloudFront)
 
-`/ogc` and `/ogc/` must be routed to unified-server on **port 8765**, like the
-other `/api/` locations. Add to both nginx site configs
-(`origin-simplemap.safecast.org` and `simplemap.safecast.org`):
+**No dedicated nginx block is required.** Both site configs
+(`origin-simplemap.safecast.org` and `simplemap.safecast.org`) already have a
+`location /` catch-all that proxies everything to unified-server on port 8765,
+which covers `/ogc`. (Only paths with their own specific `location` rule — the
+`/api/*`, `/mcp*`, `/assistant/`, `/docs/` blocks — bypass the catch-all.)
 
-```nginx
-location /ogc { proxy_pass http://127.0.0.1:8765; }
-location /ogc/ { proxy_pass http://127.0.0.1:8765; }
+Verify after deploy:
+
+```bash
+curl -s https://simplemap.safecast.org/ogc
+curl -s "https://simplemap.safecast.org/ogc/collections/sensors/items?bbox=139,35,140,36&limit=1"
 ```
 
-Then reload nginx and verify: `curl -s https://simplemap.safecast.org/ogc`.
+**CloudFront host caveat.** `simplemap.safecast.org` is fronted by CloudFront,
+which rewrites the `Host` header to the origin (`origin-simplemap.safecast.org`)
+before it reaches nginx. The server builds its self/next/items links from that
+host, so discovery links in responses resolve to `origin-simplemap.safecast.org`
+rather than `simplemap.safecast.org`. This works for QGIS because the origin host
+is publicly reachable with a valid cert — link-following just bypasses the CDN
+cache. To make links use the public host, honor `X-Forwarded-Host` in
+`ogcBaseURL()` (and have nginx/CloudFront forward the original host).
 
 ## Example
 
