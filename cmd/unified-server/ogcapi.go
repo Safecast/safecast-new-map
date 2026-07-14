@@ -73,6 +73,8 @@ func (h *RESTHandler) handleOGCAPI(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case path == "" || path == "/":
 		h.ogcLanding(w, r)
+	case path == "/api":
+		h.ogcAPIDoc(w, r)
 	case path == "/conformance":
 		h.ogcConformance(w, r)
 	case path == "/collections":
@@ -96,8 +98,59 @@ func (h *RESTHandler) ogcLanding(w http.ResponseWriter, r *http.Request) {
 		"description": "Safecast radiation data as OGC API - Features (WFS) collections for GIS clients.",
 		"links": []ogcLink{
 			{Href: base, Rel: "self", Type: "application/json", Title: "This document"},
+			{Href: base + "/api", Rel: "service-desc", Type: "application/vnd.oai.openapi+json;version=3.0", Title: "API definition"},
 			{Href: base + "/conformance", Rel: "conformance", Type: "application/json", Title: "Conformance"},
 			{Href: base + "/collections", Rel: "data", Type: "application/json", Title: "Feature collections"},
+		},
+	})
+}
+
+// ogcAPIDoc serves a minimal OpenAPI 3.0 definition. QGIS requires the
+// service-desc link and reads the items `limit` schema to size its paging.
+func (h *RESTHandler) ogcAPIDoc(w http.ResponseWriter, r *http.Request) {
+	base := ogcBaseURL(r) + ogcBase
+	ogcWriteJSON(w, http.StatusOK, map[string]any{
+		"openapi": "3.0.2",
+		"info": map[string]any{
+			"title":       "Safecast OGC API - Features",
+			"description": "Safecast radiation data as OGC API - Features collections.",
+			"version":     "1.0.0",
+		},
+		"servers": []map[string]any{{"url": base}},
+		"paths": map[string]any{
+			"/collections/{collectionId}/items": map[string]any{
+				"get": map[string]any{
+					"summary":     "Retrieve features of a collection",
+					"operationId": "getFeatures",
+					"parameters": []map[string]any{
+						{
+							"name": "collectionId", "in": "path", "required": true,
+							"schema": map[string]any{"type": "string"},
+						},
+						{
+							"name": "bbox", "in": "query", "required": false,
+							"schema": map[string]any{
+								"type": "array", "minItems": 4, "maxItems": 4,
+								"items": map[string]any{"type": "number"},
+							},
+						},
+						{
+							"name": "limit", "in": "query", "required": false,
+							"schema": map[string]any{
+								"type": "integer", "minimum": 1,
+								"maximum": ogcMaxLimit, "default": ogcDefaultLimit,
+							},
+						},
+						{
+							"name": "offset", "in": "query", "required": false,
+							"schema": map[string]any{"type": "integer", "minimum": 0, "default": 0},
+						},
+					},
+					"responses": map[string]any{
+						"200": map[string]any{"description": "GeoJSON FeatureCollection"},
+					},
+				},
+			},
 		},
 	})
 }
