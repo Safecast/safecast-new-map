@@ -1226,6 +1226,10 @@ func main() {
 	// Nominatim directly (browsers cannot set User-Agent in fetch()).
 	http.DefaultServeMux.HandleFunc("/api/geocode", handleGeocode)
 
+	// OGC API - Features (WFS) endpoint for QGIS / GIS clients.
+	http.DefaultServeMux.HandleFunc(ogcBase, restHandler.handleOGCAPI)
+	http.DefaultServeMux.HandleFunc(ogcBase+"/", restHandler.handleOGCAPI)
+
 	// Register MCP Server (AI assistant, REST API, Swagger) on port 3333
 	// Uses existing PostgreSQL (db) and DuckDB (duckDB) connections
 	RegisterMCP()
