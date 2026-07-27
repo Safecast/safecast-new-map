@@ -30,6 +30,7 @@ type WebConfig struct {
 	APIDocsArchiveRoute     string
 	APIDocsArchiveFrequency string
 	DebugIPAllowlist        map[string]struct{}
+	AuthManager             *auth.Manager // Optional; enables session-owner checks on /api/update-coordinates.
 }
 
 // Server holds dependencies for docs, spectrum, track-info, markers, bounds, short URLs, and QR handlers.
@@ -64,7 +65,12 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/spectrum/", s.spectrum)
 	mux.HandleFunc("/api/track-info/", s.trackInfo)
 	mux.HandleFunc("/api/markers/spectra", s.markersWithSpectra)
-	mux.HandleFunc("/api/update-coordinates", auth.RequireStaticAdminBasic(s.Config.AdminPassword, s.updateCoordinates))
+	updateCoordinatesHandler := http.HandlerFunc(s.updateCoordinates)
+	if s.Config.AuthManager != nil {
+		mux.HandleFunc("/api/update-coordinates", s.Config.AuthManager.OptionalAuth(updateCoordinatesHandler.ServeHTTP))
+	} else {
+		mux.HandleFunc("/api/update-coordinates", updateCoordinatesHandler.ServeHTTP)
+	}
 	mux.HandleFunc("/api/tracks/bounds", s.apiTracksBounds)
 	mux.HandleFunc("/qrpng", s.qrPng)
 }
