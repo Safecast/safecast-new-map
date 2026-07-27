@@ -143,6 +143,12 @@ func convertRCXMLSpectrum(rd *RCXMLResultData, rawData []byte) (*database.Spectr
 	if realTime == 0 {
 		realTime = liveTime
 	}
+	// RadiaCode files often omit LiveTime and only report MeasurementTime (real time).
+	// Fall back to it for rate calculations so markers aren't filtered as zero-dose.
+	effectiveTime := liveTime
+	if effectiveTime == 0 {
+		effectiveTime = realTime
+	}
 
 	// Parse timestamp from StartTime
 	timestamp := time.Now().Unix()
@@ -188,13 +194,13 @@ func convertRCXMLSpectrum(rd *RCXMLResultData, rawData []byte) (*database.Spectr
 
 	// Calculate dose rate and count rate
 	doseRate := 0.0
-	if liveTime > 0 {
-		doseRate = CalculateDoseRate(channels, liveTime, calibration)
+	if effectiveTime > 0 {
+		doseRate = CalculateDoseRate(channels, effectiveTime, calibration)
 	}
 
 	countRate := 0.0
-	if liveTime > 0 {
-		countRate = float64(sumChannels(channels)) / liveTime
+	if effectiveTime > 0 {
+		countRate = float64(sumChannels(channels)) / effectiveTime
 	}
 
 	// Create marker (no GPS coordinates in this format - user can add manually)
