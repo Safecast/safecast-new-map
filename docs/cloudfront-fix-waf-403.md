@@ -41,14 +41,16 @@ Change the following rules from **Block** to **Count**:
 | `SizeRestrictions_BODY` | **Count** | Allows large POST bodies for file uploads |
 | `SizeRestrictions_Cookie_HEADER` | **Count** | Prevents session cookie size blocking |
 | `SizeRestrictions_URIPATH` | **Count** | Prevents URI path length blocking |
+| `CrossSiteScripting_BODY` | **Count** | Tag-heavy XML upload bodies (e.g. RadiaCode spectrum exports) false-positive as XSS; see [spectrum-xml-upload-troubleshooting.md](spectrum-xml-upload-troubleshooting.md) |
 
 **Important:** Keep all other rules as **Block** to maintain security:
 - `SizeRestrictions_QUERYSTRING` - Block
 - `EC2MetaDataSSRF_BODY` - Block
 - `GenericLFI_BODY` - Block
 - `GenericRFI_BODY` - Block
-- `CrossSiteScripting_BODY` - Block
 - All other security rules - Block
+
+> **Note:** We tried scoping the `CrossSiteScripting_BODY` override to `/upload` only via a `ScopeDownStatement`, but this CloudFront-managed (free-tier) Web ACL rejects it with `WAFFeatureNotIncludedInPricingPlanException` — scope-down statements require a standalone paid WAFv2 ACL. So this override, like the `SizeRestrictions_*` ones above, applies site-wide.
 
 ### Step 4: Save Configuration
 
