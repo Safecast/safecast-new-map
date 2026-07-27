@@ -13,6 +13,7 @@ import (
 	"testing/fstest"
 	"time"
 
+	"safecast-new-map/pkg/auth"
 	"safecast-new-map/pkg/database"
 	_ "safecast-new-map/pkg/database/drivers"
 )
@@ -354,6 +355,47 @@ func TestUpdateCoordinates(t *testing.T) {
 		}
 		if out["status"] != "success" {
 			t.Errorf("status = %v, want success", out["status"])
+		}
+	})
+
+	t.Run("session user who owns the track succeeds without admin auth", func(t *testing.T) {
+		srvAuth := newTestServerWithAdmin(t, "secret123")
+		ctx := context.Background()
+		_, err := srvAuth.DB.DB.ExecContext(ctx,
+			`INSERT INTO uploads (filename, track_id, created_at, recording_date, internal_user_id) VALUES (?, ?, ?, ?, ?)`,
+			"owned.xml", "owned-track", time.Now().Unix(), time.Now().Unix(), "42")
+		if err != nil {
+			t.Fatalf("seed owned upload: %v", err)
+		}
+		_, err = srvAuth.DB.DB.ExecContext(ctx, `INSERT INTO tracks (trackID) VALUES (?)`, "owned-track")
+		if err != nil {
+			t.Fatalf("seed owned track: %v", err)
+		}
+
+		body := `{"trackID":"owned-track","lat":35.7,"lon":139.8}`
+		req := httptest.NewRequest(http.MethodPost, "/api/update-coordinates", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req = req.WithContext(auth.WithAuthContext(req.Context(), &auth.User{ID: 42}))
+		rec := httptest.NewRecorder()
+		srvAuth.updateCoordinates(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Errorf("got status %d, want 200", rec.Code)
+		}
+	})
+
+	t.Run("session user who does not own the track returns 403, no Basic Auth challenge", func(t *testing.T) {
+		srvAuth := newTestServerWithAdmin(t, "secret123")
+		body := `{"trackID":"` + webTestTrackID + `","lat":35.7,"lon":139.8}`
+		req := httptest.NewRequest(http.MethodPost, "/api/update-coordinates", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req = req.WithContext(auth.WithAuthContext(req.Context(), &auth.User{ID: 999}))
+		rec := httptest.NewRecorder()
+		srvAuth.updateCoordinates(rec, req)
+		if rec.Code != http.StatusForbidden {
+			t.Errorf("got status %d, want 403", rec.Code)
+		}
+		if rec.Header().Get("WWW-Authenticate") != "" {
+			t.Error("did not expect WWW-Authenticate header for a logged-in non-owner")
 		}
 	})
 }

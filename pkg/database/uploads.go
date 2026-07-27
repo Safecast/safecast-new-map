@@ -304,6 +304,28 @@ func (db *Database) DeleteTrack(ctx context.Context, trackID string) error {
 	return nil
 }
 
+// TrackBelongsToUser reports whether the given track was uploaded by internalUserID.
+func (db *Database) TrackBelongsToUser(ctx context.Context, trackID, internalUserID string) (bool, error) {
+	if trackID == "" || internalUserID == "" {
+		return false, nil
+	}
+
+	query := "SELECT 1 FROM uploads WHERE track_id = ? AND internal_user_id = ? LIMIT 1"
+	if db.Driver == "pgx" || db.Driver == "duckdb" {
+		query = "SELECT 1 FROM uploads WHERE track_id = $1 AND internal_user_id = $2 LIMIT 1"
+	}
+
+	var exists int
+	err := db.DB.QueryRowContext(ctx, query, trackID, internalUserID).Scan(&exists)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 // CheckImportExists returns true if a Safecast import ID has already been imported AND has data points.
 func (db *Database) CheckImportExists(ctx context.Context, sourceType string, importID int64) (bool, error) {
 	var query string

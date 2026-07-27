@@ -779,6 +779,7 @@ func main() {
 		APIDocsArchiveRoute:     apiDocsArchiveRoute,
 		APIDocsArchiveFrequency: apiDocsArchiveFrequency,
 		DebugIPAllowlist:        debugIPAllowlist,
+		AuthManager:             authManager,
 	}
 	webServer := httpapi.NewWebServer(db, content, webConfig, log.Printf)
 
