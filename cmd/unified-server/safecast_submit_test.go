@@ -63,9 +63,9 @@ func newSafecastSubmitTestDB(t *testing.T) *database.Database {
 	return db
 }
 
-func insertTestUpload(t *testing.T, db *database.Database, trackID, filename string) {
+func insertTestUpload(t *testing.T, db *database.Database, trackID, filename string) int64 {
 	t.Helper()
-	_, err := db.InsertUpload(context.Background(), database.Upload{
+	id, err := db.InsertUpload(context.Background(), database.Upload{
 		Filename: filename,
 		TrackID:  trackID,
 		Source:   "user-upload",
@@ -73,13 +73,14 @@ func insertTestUpload(t *testing.T, db *database.Database, trackID, filename str
 	if err != nil {
 		t.Fatalf("InsertUpload: %v", err)
 	}
+	return id
 }
 
-func getSafecastStatus(t *testing.T, db *database.Database, trackID string) (importID, submitErr string) {
+func getSafecastStatus(t *testing.T, db *database.Database, uploadID int64) (importID, submitErr string) {
 	t.Helper()
 	var i, e *string
 	err := db.DB.QueryRowContext(context.Background(),
-		`SELECT safecast_import_id, safecast_submit_error FROM uploads WHERE track_id = ?`, trackID).Scan(&i, &e)
+		`SELECT safecast_import_id, safecast_submit_error FROM uploads WHERE id = ?`, uploadID).Scan(&i, &e)
 	if err != nil {
 		t.Fatalf("query upload status: %v", err)
 	}
@@ -99,8 +100,8 @@ func TestSubmitToSafecastIfNeeded_SkipsWhenNoCredentials(t *testing.T) {
 	safecastSubmitClient = fake
 	defer func() { safecastSubmitClient = orig }()
 
-	insertTestUpload(t, db, "track-1", "log1.log")
-	submitToSafecastIfNeeded("track-1", "log1.log", []byte("data"), "", "", db)
+	uploadID := insertTestUpload(t, db, "track-1", "log1.log")
+	submitToSafecastIfNeeded("track-1", uploadID, "log1.log", []byte("data"), "", "", db)
 
 	if fake.checkCalled || fake.submitCalled {
 		t.Fatal("expected no upstream calls when credentials are empty")
@@ -114,8 +115,8 @@ func TestSubmitToSafecastIfNeeded_SkipsWhenAlreadyExists(t *testing.T) {
 	safecastSubmitClient = fake
 	defer func() { safecastSubmitClient = orig }()
 
-	insertTestUpload(t, db, "track-2", "log2.log")
-	submitToSafecastIfNeeded("track-2", "log2.log", []byte("data"), "key", "7", db)
+	uploadID := insertTestUpload(t, db, "track-2", "log2.log")
+	submitToSafecastIfNeeded("track-2", uploadID, "log2.log", []byte("data"), "key", "7", db)
 
 	if !fake.checkCalled {
 		t.Fatal("expected CheckExists to be called")
@@ -123,7 +124,7 @@ func TestSubmitToSafecastIfNeeded_SkipsWhenAlreadyExists(t *testing.T) {
 	if fake.submitCalled {
 		t.Fatal("expected Submit not to be called when already exists")
 	}
-	importID, _ := getSafecastStatus(t, db, "track-2")
+	importID, _ := getSafecastStatus(t, db, uploadID)
 	if importID != "" {
 		t.Errorf("expected no import id recorded, got %q", importID)
 	}
@@ -136,8 +137,8 @@ func TestSubmitToSafecastIfNeeded_SubmitsAndRecordsSuccess(t *testing.T) {
 	safecastSubmitClient = fake
 	defer func() { safecastSubmitClient = orig }()
 
-	insertTestUpload(t, db, "track-3", "log3.log")
-	submitToSafecastIfNeeded("track-3", "log3.log", []byte("data"), "key", "7", db)
+	uploadID := insertTestUpload(t, db, "track-3", "log3.log")
+	submitToSafecastIfNeeded("track-3", uploadID, "log3.log", []byte("data"), "key", "7", db)
 
 	if !fake.submitCalled {
 		t.Fatal("expected Submit to be called")
@@ -145,7 +146,7 @@ func TestSubmitToSafecastIfNeeded_SubmitsAndRecordsSuccess(t *testing.T) {
 	if fake.gotAPIKey != "key" || fake.gotUserID != "7" || fake.gotFilename != "log3.log" {
 		t.Errorf("unexpected CheckExists args: apiKey=%q userID=%q filename=%q", fake.gotAPIKey, fake.gotUserID, fake.gotFilename)
 	}
-	importID, submitErr := getSafecastStatus(t, db, "track-3")
+	importID, submitErr := getSafecastStatus(t, db, uploadID)
 	if importID != "999" {
 		t.Errorf("got importID %q, want %q", importID, "999")
 	}
@@ -161,10 +162,10 @@ func TestSubmitToSafecastIfNeeded_RecordsSubmitFailure(t *testing.T) {
 	safecastSubmitClient = fake
 	defer func() { safecastSubmitClient = orig }()
 
-	insertTestUpload(t, db, "track-4", "log4.log")
-	submitToSafecastIfNeeded("track-4", "log4.log", []byte("data"), "key", "7", db)
+	uploadID := insertTestUpload(t, db, "track-4", "log4.log")
+	submitToSafecastIfNeeded("track-4", uploadID, "log4.log", []byte("data"), "key", "7", db)
 
-	importID, submitErr := getSafecastStatus(t, db, "track-4")
+	importID, submitErr := getSafecastStatus(t, db, uploadID)
 	if importID != "" {
 		t.Errorf("expected no import id on failure, got %q", importID)
 	}
@@ -180,15 +181,42 @@ func TestSubmitToSafecastIfNeeded_RecordsCheckExistsFailure(t *testing.T) {
 	safecastSubmitClient = fake
 	defer func() { safecastSubmitClient = orig }()
 
-	insertTestUpload(t, db, "track-5", "log5.log")
-	submitToSafecastIfNeeded("track-5", "log5.log", []byte("data"), "key", "7", db)
+	uploadID := insertTestUpload(t, db, "track-5", "log5.log")
+	submitToSafecastIfNeeded("track-5", uploadID, "log5.log", []byte("data"), "key", "7", db)
 
 	if fake.submitCalled {
 		t.Fatal("expected Submit not to be called when CheckExists errors")
 	}
-	_, submitErr := getSafecastStatus(t, db, "track-5")
+	_, submitErr := getSafecastStatus(t, db, uploadID)
 	if submitErr == "" {
 		t.Error("expected check-exists error to be recorded")
+	}
+}
+
+func TestSubmitToSafecastIfNeeded_KeyedByUploadIDNotTrackID(t *testing.T) {
+	// Two files uploaded in one request share the same track_id (assigned once
+	// per request). Their statuses must not clobber each other.
+	db := newSafecastSubmitTestDB(t)
+	uploadA := insertTestUpload(t, db, "shared-track", "a.log")
+	uploadB := insertTestUpload(t, db, "shared-track", "b.log")
+
+	fakeA := &fakeSafecastSubmitter{submitID: "111"}
+	orig := safecastSubmitClient
+	safecastSubmitClient = fakeA
+	submitToSafecastIfNeeded("shared-track", uploadA, "a.log", []byte("data"), "key", "7", db)
+
+	fakeB := &fakeSafecastSubmitter{submitID: "222"}
+	safecastSubmitClient = fakeB
+	submitToSafecastIfNeeded("shared-track", uploadB, "b.log", []byte("data"), "key", "7", db)
+	safecastSubmitClient = orig
+
+	importIDA, _ := getSafecastStatus(t, db, uploadA)
+	importIDB, _ := getSafecastStatus(t, db, uploadB)
+	if importIDA != "111" {
+		t.Errorf("got upload A importID %q, want %q", importIDA, "111")
+	}
+	if importIDB != "222" {
+		t.Errorf("got upload B importID %q, want %q", importIDB, "222")
 	}
 }
 

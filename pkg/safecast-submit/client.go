@@ -10,6 +10,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"path"
 	"time"
 )
 
@@ -75,10 +76,17 @@ func (c *Client) ResolveUserID(ctx context.Context, apiKey string) (string, erro
 	return fmt.Sprintf("%d", me.ID), nil
 }
 
+// bgeigieImportSourceSummary mirrors the nested source.url structure of a
+// bgeigie_imports.json list entry: the uploaded filename is the basename of
+// this URL, not a top-level field (confirmed against the live API).
+type bgeigieImportSourceSummary struct {
+	URL string `json:"url"`
+}
+
 // bgeigieImportSummary is the subset of a bgeigie_imports.json list entry we need.
 type bgeigieImportSummary struct {
-	ID     int64  `json:"id"`
-	Source string `json:"source"`
+	ID     int64                      `json:"id"`
+	Source bgeigieImportSourceSummary `json:"source"`
 }
 
 // CheckExists reports whether the given user already has a bgeigie import whose
@@ -116,7 +124,7 @@ func (c *Client) CheckExists(ctx context.Context, apiKey, safecastUserID, filena
 	}
 
 	for _, imp := range imports {
-		if imp.Source == filename {
+		if path.Base(imp.Source.URL) == filename {
 			return true, nil
 		}
 	}
