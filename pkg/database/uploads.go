@@ -9,17 +9,17 @@ import (
 
 // Upload represents a file upload record for tracking purposes.
 type Upload struct {
-	ID            int64  `json:"id"`
-	Filename      string `json:"filename"`
-	FileType      string `json:"fileType"`
-	TrackID       string `json:"trackID"`
-	FileSize      int64  `json:"fileSize"`
-	UploadIP      string `json:"uploadIP"`
-	CreatedAt     int64  `json:"createdAt"`
-	RecordingDate int64  `json:"recordingDate,omitempty"` // Earliest marker date for this track
-	Source        string `json:"source,omitempty"`        // Import source (e.g., "safecast-api", "user-upload")
-	SourceID      string `json:"sourceID,omitempty"`      // External reference ID (e.g., Safecast import ID)
-	SourceURL     string `json:"sourceURL,omitempty"`     // Source file URL (e.g., S3 URL)
+	ID             int64  `json:"id"`
+	Filename       string `json:"filename"`
+	FileType       string `json:"fileType"`
+	TrackID        string `json:"trackID"`
+	FileSize       int64  `json:"fileSize"`
+	UploadIP       string `json:"uploadIP"`
+	CreatedAt      int64  `json:"createdAt"`
+	RecordingDate  int64  `json:"recordingDate,omitempty"`  // Earliest marker date for this track
+	Source         string `json:"source,omitempty"`         // Import source (e.g., "safecast-api", "user-upload")
+	SourceID       string `json:"sourceID,omitempty"`       // External reference ID (e.g., Safecast import ID)
+	SourceURL      string `json:"sourceURL,omitempty"`      // Source file URL (e.g., S3 URL)
 	UserID         string `json:"userID,omitempty"`         // User ID from source (e.g., Safecast user ID)
 	Username       string `json:"username,omitempty"`       // Username from source (fetched from API)
 	InternalUserID string `json:"internalUserID,omitempty"` // Internal user ID from users table (for authenticated uploads)
@@ -27,6 +27,39 @@ type Upload struct {
 	Name           string `json:"name,omitempty"`           // Display name (admin-editable)
 	Notes          string `json:"notes,omitempty"`          // Admin notes
 	Comment        string `json:"comment,omitempty"`        // User-supplied description from Safecast API
+
+	SafecastImportID      string `json:"safecastImportID,omitempty"`      // bgeigie_imports id, once submitted to api.safecast.org
+	SubmittedToSafecastAt int64  `json:"submittedToSafecastAt,omitempty"` // Unix timestamp of successful submit
+	SafecastSubmitError   string `json:"safecastSubmitError,omitempty"`   // Last submit failure reason, if any
+}
+
+// UpdateUploadSafecastStatus records the outcome of submitting an upload to
+// api.safecast.org, keyed by track ID. A successful submit sets importID and
+// clears any previous error; a failed submit sets submitErr and leaves importID empty.
+func (db *Database) UpdateUploadSafecastStatus(ctx context.Context, trackID, importID, submitErr string) error {
+	var submittedAt sql.NullInt64
+	if importID != "" {
+		submittedAt = sql.NullInt64{Int64: time.Now().Unix(), Valid: true}
+	}
+
+	var query string
+	var args []interface{}
+
+	switch db.Driver {
+	case "pgx", "duckdb":
+		query = `UPDATE uploads SET safecast_import_id = $1, submitted_to_safecast_at = to_timestamp($2), safecast_submit_error = $3 WHERE track_id = $4`
+		args = []interface{}{importID, submittedAt, submitErr, trackID}
+	case "sqlite", "chai":
+		query = `UPDATE uploads SET safecast_import_id = ?, submitted_to_safecast_at = ?, safecast_submit_error = ? WHERE track_id = ?`
+		args = []interface{}{importID, submittedAt, submitErr, trackID}
+	default:
+		return fmt.Errorf("unsupported database driver: %s", db.Driver)
+	}
+
+	if _, err := db.DB.ExecContext(ctx, query, args...); err != nil {
+		return fmt.Errorf("update upload safecast status: %w", err)
+	}
+	return nil
 }
 
 // InsertUpload records a file upload in the uploads table.

@@ -448,6 +448,21 @@
     <div id="copyMsg" style="display: none; margin-top: 8px; font-size: 12px; color: var(--primary-color);">{{translate "profile_copied"}}</div>
   </div>
 
+  <!-- Safecast API Key (auto-submit bGeigie uploads to api.safecast.org) -->
+  <div class="card">
+    <h2>{{translate "profile_safecast_key_title"}}</h2>
+    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+      {{translate "profile_safecast_key_desc"}}
+    </p>
+    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+      <input type="text" id="safecastApiKeyInput" placeholder="{{translate "profile_safecast_key_placeholder"}}" style="flex: 1; min-width: 240px; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary);">
+      <button onclick="saveSafecastKey()">{{translate "profile_safecast_key_save"}}</button>
+      <button class="secondary" onclick="clearSafecastKey()">{{translate "profile_safecast_key_clear"}}</button>
+    </div>
+    <div id="safecastKeyStatus" style="font-size: 13px; color: var(--text-muted); margin-top: 8px;"></div>
+    <div id="safecastKeyMsg" style="display: none; margin-top: 8px;"></div>
+  </div>
+
   <!-- Uploads / Tracks -->
   <div class="card">
     <h2>{{translate "profile_uploads"}}</h2>
@@ -549,6 +564,11 @@
     password_changed: '{{translate "profile_password_changed"}}',
     password_failed: '{{translate "profile_password_failed"}}',
     network_error: '{{translate "profile_network_error"}}',
+    safecast_key_active: '{{translate "profile_safecast_key_active"}}',
+    safecast_key_inactive: '{{translate "profile_safecast_key_inactive"}}',
+    safecast_key_saved: '{{translate "profile_safecast_key_saved"}}',
+    safecast_key_cleared: '{{translate "profile_safecast_key_cleared"}}',
+    safecast_key_failed: '{{translate "profile_safecast_key_failed"}}',
   };
   let currentUser = null;
   let selectedTracks = new Set();
@@ -581,6 +601,7 @@
     document.getElementById('profileUsername').textContent = currentUser.username || '-';
     document.getElementById('profileEmail').textContent = currentUser.email;
     document.getElementById('profileApiKey').textContent = currentUser.api_key || 'None';
+    renderSafecastKeyStatus();
 
     const statusEl = document.getElementById('profileStatus');
     let badges = '';
@@ -963,6 +984,55 @@
       msgEl.textContent = _t.network_error;
       msgEl.style.display = 'block';
     }
+  }
+
+  function renderSafecastKeyStatus() {
+    const statusEl = document.getElementById('safecastKeyStatus');
+    const input = document.getElementById('safecastApiKeyInput');
+    if (currentUser.safecast_api_key) {
+      statusEl.textContent = _t.safecast_key_active + ' (id ' + currentUser.safecast_user_id + ')';
+      input.value = currentUser.safecast_api_key;
+    } else {
+      statusEl.textContent = _t.safecast_key_inactive;
+      input.value = '';
+    }
+  }
+
+  async function submitSafecastKey(apiKey) {
+    const msgEl = document.getElementById('safecastKeyMsg');
+    try {
+      const res = await fetch('/api/user/safecast-credentials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ safecast_api_key: apiKey })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        currentUser.safecast_api_key = data.safecast_api_key;
+        currentUser.safecast_user_id = data.safecast_user_id;
+        renderSafecastKeyStatus();
+        msgEl.className = 'msg msg-success';
+        msgEl.textContent = apiKey ? _t.safecast_key_saved : _t.safecast_key_cleared;
+      } else {
+        msgEl.className = 'msg msg-error';
+        msgEl.textContent = data.error || _t.safecast_key_failed;
+      }
+      msgEl.style.display = 'block';
+    } catch (e) {
+      msgEl.className = 'msg msg-error';
+      msgEl.textContent = _t.network_error;
+      msgEl.style.display = 'block';
+    }
+  }
+
+  function saveSafecastKey() {
+    const apiKey = document.getElementById('safecastApiKeyInput').value.trim();
+    if (!apiKey) return;
+    submitSafecastKey(apiKey);
+  }
+
+  function clearSafecastKey() {
+    submitSafecastKey('');
   }
 
   init();

@@ -11,9 +11,10 @@ const (
 	RouteAPIAuthResetPassword  = "/api/auth/reset-password"
 	RouteAPIAuthVerifyEmail    = "/api/auth/verify-email"
 
-	RouteAPIUserProfile        = "/api/user/profile"
-	RouteAPIUserChangePassword = "/api/user/change-password"
-	RouteAPIUserUploads        = "/api/user/uploads"
+	RouteAPIUserProfile             = "/api/user/profile"
+	RouteAPIUserChangePassword      = "/api/user/change-password"
+	RouteAPIUserUploads             = "/api/user/uploads"
+	RouteAPIUserSafecastCredentials = "/api/user/safecast-credentials"
 
 	RouteAPIAdminUsers       = "/api/admin/users"
 	RouteAPIAdminUsersCreate = "/api/admin/users/create"

@@ -1123,7 +1123,10 @@ CREATE TABLE IF NOT EXISTS uploads (
   detector        TEXT,
   name            TEXT,
   notes           TEXT,
-  comment         TEXT
+  comment         TEXT,
+  safecast_import_id TEXT,
+  submitted_to_safecast_at TIMESTAMPTZ,
+  safecast_submit_error TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_uploads_track_id ON uploads(track_id);
@@ -1147,7 +1150,9 @@ CREATE TABLE IF NOT EXISTS users (
   external_id     TEXT,
   external_source TEXT,
   requires_password_setup BOOLEAN DEFAULT FALSE,
-  api_key         TEXT
+  api_key         TEXT,
+  safecast_api_key TEXT,
+  safecast_user_id TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
@@ -1352,7 +1357,10 @@ CREATE TABLE IF NOT EXISTS uploads (
   detector        TEXT,
   name            TEXT,
   notes           TEXT,
-  comment         TEXT
+  comment         TEXT,
+  safecast_import_id TEXT,
+  submitted_to_safecast_at INTEGER,
+  safecast_submit_error TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_uploads_track_id ON uploads(track_id);
 CREATE INDEX IF NOT EXISTS idx_uploads_created_at ON uploads(created_at);
@@ -1375,7 +1383,9 @@ CREATE TABLE IF NOT EXISTS users (
   external_id     TEXT,
   external_source TEXT,
   requires_password_setup INTEGER DEFAULT 0,
-  api_key         TEXT
+  api_key         TEXT,
+  safecast_api_key TEXT,
+  safecast_user_id TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
@@ -1588,7 +1598,10 @@ CREATE TABLE IF NOT EXISTS uploads (
   detector        TEXT,
   name            TEXT,
   notes           TEXT,
-  comment         TEXT
+  comment         TEXT,
+  safecast_import_id TEXT,
+  submitted_to_safecast_at TIMESTAMP,
+  safecast_submit_error TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_uploads_track_id ON uploads(track_id);
 CREATE INDEX IF NOT EXISTS idx_uploads_created_at ON uploads(created_at);
@@ -1612,7 +1625,9 @@ CREATE TABLE IF NOT EXISTS users (
   external_id     TEXT,
   external_source TEXT,
   requires_password_setup BOOLEAN DEFAULT FALSE,
-  api_key         TEXT
+  api_key         TEXT,
+  safecast_api_key TEXT,
+  safecast_user_id TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
@@ -1829,6 +1844,10 @@ ORDER BY (created_at, id);`,
 	if err := db.ensureUploadsMetadataColumns(cfg.DBType); err != nil {
 		return fmt.Errorf("add uploads metadata columns: %w", err)
 	}
+	// Add api.safecast.org credential columns to users table
+	if err := db.ensureUsersSafecastColumns(cfg.DBType); err != nil {
+		return fmt.Errorf("add users safecast columns: %w", err)
+	}
 
 	return nil
 }
@@ -2034,6 +2053,9 @@ func (db *Database) ensureUploadsMetadataColumns(dbType string) error {
 		{name: "name", def: "name TEXT"},
 		{name: "notes", def: "notes TEXT"},
 		{name: "comment", def: "comment TEXT"},
+		{name: "safecast_import_id", def: "safecast_import_id TEXT"},
+		{name: "submitted_to_safecast_at", def: "submitted_to_safecast_at TIMESTAMPTZ"},
+		{name: "safecast_submit_error", def: "safecast_submit_error TEXT"},
 	}
 
 	switch strings.ToLower(dbType) {
@@ -2104,6 +2126,78 @@ func (db *Database) ensureUploadsMetadataColumns(dbType string) error {
 		indexStmt := "CREATE INDEX IF NOT EXISTS idx_uploads_source_id ON uploads(source, source_id)"
 		if _, err := db.DB.Exec(indexStmt); err != nil {
 			return fmt.Errorf("create uploads source index: %w", err)
+		}
+
+		return nil
+	}
+}
+
+// ensureUsersSafecastColumns upgrades the users table with api.safecast.org credential
+// columns, added lazily so existing installations keep working without manual SQL.
+func (db *Database) ensureUsersSafecastColumns(dbType string) error {
+	type column struct {
+		name string
+		def  string
+	}
+	required := []column{
+		{name: "safecast_api_key", def: "safecast_api_key TEXT"},
+		{name: "safecast_user_id", def: "safecast_user_id TEXT"},
+	}
+
+	switch strings.ToLower(dbType) {
+	case "pgx", "duckdb":
+		for _, col := range required {
+			stmt := fmt.Sprintf("ALTER TABLE users ADD COLUMN IF NOT EXISTS %s", col.def)
+			if _, err := db.DB.Exec(stmt); err != nil {
+				return err
+			}
+		}
+		return nil
+
+	case "clickhouse":
+		for _, col := range required {
+			stmt := fmt.Sprintf("ALTER TABLE users ADD COLUMN IF NOT EXISTS %s String", col.name)
+			if _, err := db.DB.Exec(stmt); err != nil {
+				return err
+			}
+		}
+		return nil
+
+	default:
+		// SQLite-style engines require manual detection before issuing ALTER TABLE statements.
+		rows, err := db.DB.Query(`PRAGMA table_info(users);`)
+		if err != nil {
+			return fmt.Errorf("describe users: %w", err)
+		}
+		defer rows.Close()
+
+		present := make(map[string]bool)
+		for rows.Next() {
+			var (
+				cid     int
+				name    string
+				ctype   string
+				notnull int
+				dflt    sql.NullString
+				pk      int
+			)
+			if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err != nil {
+				return fmt.Errorf("scan pragma: %w", err)
+			}
+			present[name] = true
+		}
+		if err := rows.Err(); err != nil {
+			return fmt.Errorf("iterate pragma: %w", err)
+		}
+
+		for _, col := range required {
+			if present[col.name] {
+				continue
+			}
+			stmt := fmt.Sprintf("ALTER TABLE users ADD COLUMN %s", col.def)
+			if _, err := db.DB.Exec(stmt); err != nil {
+				return err
+			}
 		}
 
 		return nil

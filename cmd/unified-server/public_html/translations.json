@@ -1702,7 +1702,17 @@
     "webchat_copied": "Copied!",
     "webchat_no_conversation": "No conversation to download yet!",
     "webchat_thinking": "...thinking...",
-    "ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system."
+    "ai_generated_note": "This data was retrieved by an AI assistant using Safecast tools. The interpretation and presentation of this data may be influenced by the AI system.",
+    "profile_safecast_key_title": "Safecast API Key",
+    "profile_safecast_key_desc": "Enter your api.safecast.org API key to automatically submit your bGeigie log uploads there too. Leave blank to disable.",
+    "profile_safecast_key_placeholder": "Your api.safecast.org API key",
+    "profile_safecast_key_save": "Save",
+    "profile_safecast_key_clear": "Clear",
+    "profile_safecast_key_active": "Auto-submit is active",
+    "profile_safecast_key_inactive": "Auto-submit is not set up",
+    "profile_safecast_key_saved": "Safecast API key saved",
+    "profile_safecast_key_cleared": "Safecast API key cleared",
+    "profile_safecast_key_failed": "Failed to save Safecast API key"
   },
   "es": {
     "api_example_archive_desc": "Descarga un paquete tgz con todos los archivos .json publicados cuando el archivo JSON está activado.",
