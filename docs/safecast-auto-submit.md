@@ -24,9 +24,19 @@ GET https://api.safecast.org/bgeigie_imports.json?api_key=<key>&by_user_id=<id>&
 ```
 `BgeigieImportsController#index` supports `has_scope :by_user_id` →
 `BgeigieImport.where(user_id: user_id)`, and `has_scope :q` →
-`filter_by_text_fields`, which includes `lower(source) LIKE '%query%'` (`source` is the
-stored filename). Combining both scopes filters to "this user's imports matching this
-filename."
+`filter_by_text_fields`, which includes `lower(source) LIKE '%query%'` against the
+DB column (a filename). Combining both scopes narrows to "this user's imports
+matching this filename" — verified live (`?by_user_id=1458&q=30181012` returns
+only the 6 imports whose source matches).
+
+**JSON shape (verified against the live API, corrected from an earlier assumption):**
+each list entry's `source` field is a nested object, not a string:
+```json
+{"id": 38803, "source": {"url": "https://.../uploads/bgeigie_import/source/38803/30181012.log"}, ...}
+```
+The uploaded filename is `path.Base(source.url)`, not a top-level `source` string
+and not the `name` field (`name` is a generated display string like
+`"bGeigie Import #38803"`, not the original filename).
 
 ### Submit a log file
 ```
