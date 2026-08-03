@@ -26,9 +26,11 @@ var safecastSubmitClient safecastSubmitter = safecastsubmit.NewClient()
 
 // submitToSafecastIfNeeded best-effort submits a bGeigie log to api.safecast.org
 // on behalf of the uploading user, using their own Safecast API key. It never
-// blocks or fails the local upload: every outcome is logged and recorded on the
-// upload row, and errors are swallowed here.
-func submitToSafecastIfNeeded(trackID, filename string, content []byte, safecastAPIKey, safecastUserID string, db *database.Database) {
+// blocks or fails the local upload: it runs in its own goroutine (call it with
+// "go"), every outcome is logged and recorded on the upload row (keyed by
+// uploadID, since track_id can be shared across files or reused by duplicate
+// detection), and errors are swallowed here.
+func submitToSafecastIfNeeded(trackID string, uploadID int64, filename string, content []byte, safecastAPIKey, safecastUserID string, db *database.Database) {
 	if safecastAPIKey == "" || safecastUserID == "" {
 		return
 	}
@@ -39,7 +41,7 @@ func submitToSafecastIfNeeded(trackID, filename string, content []byte, safecast
 	exists, err := safecastSubmitClient.CheckExists(ctx, safecastAPIKey, safecastUserID, filename)
 	if err != nil {
 		log.Printf("[safecast-submit] %s: check exists failed for %s: %v", trackID, filename, err)
-		_ = db.UpdateUploadSafecastStatus(context.Background(), trackID, "", err.Error())
+		_ = db.UpdateUploadSafecastStatus(context.Background(), uploadID, "", err.Error())
 		return
 	}
 	if exists {
@@ -50,12 +52,12 @@ func submitToSafecastIfNeeded(trackID, filename string, content []byte, safecast
 	importID, err := safecastSubmitClient.Submit(ctx, safecastAPIKey, filename, content)
 	if err != nil {
 		log.Printf("[safecast-submit] %s: submit failed for %s: %v", trackID, filename, err)
-		_ = db.UpdateUploadSafecastStatus(context.Background(), trackID, "", err.Error())
+		_ = db.UpdateUploadSafecastStatus(context.Background(), uploadID, "", err.Error())
 		return
 	}
 
 	log.Printf("[safecast-submit] %s: submitted %s to api.safecast.org, import id %s", trackID, filename, importID)
-	if err := db.UpdateUploadSafecastStatus(context.Background(), trackID, importID, ""); err != nil {
+	if err := db.UpdateUploadSafecastStatus(context.Background(), uploadID, importID, ""); err != nil {
 		log.Printf("[safecast-submit] %s: failed to record submit status: %v", trackID, err)
 	}
 }

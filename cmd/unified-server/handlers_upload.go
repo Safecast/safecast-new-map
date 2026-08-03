@@ -399,14 +399,15 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 				Source:         "user-upload",
 			}
 			logT(trackID, "Upload", "inserting upload record: user_id=%s, filename=%s", internalUserID, fd.filename)
-			if _, uploadErr := db.InsertUpload(context.Background(), upload); uploadErr != nil {
+			insertedUploadID, uploadErr := db.InsertUpload(context.Background(), upload)
+			if uploadErr != nil {
 				logT(trackID, "Upload", "warning: failed to track upload: %v", uploadErr)
 			} else {
 				logT(trackID, "Upload", "✓ upload record inserted successfully")
 			}
 
-			if isBGeigieUpload {
-				submitToSafecastIfNeeded(trackID, fd.filename, fd.content, safecastAPIKey, safecastUserID, db)
+			if isBGeigieUpload && uploadErr == nil {
+				go submitToSafecastIfNeeded(trackID, insertedUploadID, fd.filename, fd.content, safecastAPIKey, safecastUserID, db)
 			}
 
 			// Update bounds

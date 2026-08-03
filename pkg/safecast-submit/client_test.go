@@ -63,8 +63,8 @@ func TestCheckExists(t *testing.T) {
 		filename   string
 		wantExists bool
 	}{
-		{"match found", `[{"id":1,"source":"2026-01-01_1200.log"}]`, "2026-01-01_1200.log", true},
-		{"no match", `[{"id":1,"source":"other.log"}]`, "2026-01-01_1200.log", false},
+		{"match found", `[{"id":1,"source":{"url":"https://s3.example.com/uploads/bgeigie_import/source/1/2026-01-01_1200.log"}}]`, "2026-01-01_1200.log", true},
+		{"no match", `[{"id":1,"source":{"url":"https://s3.example.com/uploads/bgeigie_import/source/1/other.log"}}]`, "2026-01-01_1200.log", false},
 		{"empty list", `[]`, "2026-01-01_1200.log", false},
 	}
 

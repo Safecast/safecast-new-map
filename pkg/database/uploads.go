@@ -34,9 +34,11 @@ type Upload struct {
 }
 
 // UpdateUploadSafecastStatus records the outcome of submitting an upload to
-// api.safecast.org, keyed by track ID. A successful submit sets importID and
-// clears any previous error; a failed submit sets submitErr and leaves importID empty.
-func (db *Database) UpdateUploadSafecastStatus(ctx context.Context, trackID, importID, submitErr string) error {
+// api.safecast.org, keyed by the upload row's own id (not track_id, which can be
+// shared across files in one request or reused when duplicate detection finds an
+// existing track). A successful submit sets importID and clears any previous
+// error; a failed submit sets submitErr and leaves importID empty.
+func (db *Database) UpdateUploadSafecastStatus(ctx context.Context, uploadID int64, importID, submitErr string) error {
 	var submittedAt sql.NullInt64
 	if importID != "" {
 		submittedAt = sql.NullInt64{Int64: time.Now().Unix(), Valid: true}
@@ -47,11 +49,11 @@ func (db *Database) UpdateUploadSafecastStatus(ctx context.Context, trackID, imp
 
 	switch db.Driver {
 	case "pgx", "duckdb":
-		query = `UPDATE uploads SET safecast_import_id = $1, submitted_to_safecast_at = to_timestamp($2), safecast_submit_error = $3 WHERE track_id = $4`
-		args = []interface{}{importID, submittedAt, submitErr, trackID}
+		query = `UPDATE uploads SET safecast_import_id = $1, submitted_to_safecast_at = to_timestamp($2), safecast_submit_error = $3 WHERE id = $4`
+		args = []interface{}{importID, submittedAt, submitErr, uploadID}
 	case "sqlite", "chai":
-		query = `UPDATE uploads SET safecast_import_id = ?, submitted_to_safecast_at = ?, safecast_submit_error = ? WHERE track_id = ?`
-		args = []interface{}{importID, submittedAt, submitErr, trackID}
+		query = `UPDATE uploads SET safecast_import_id = ?, submitted_to_safecast_at = ?, safecast_submit_error = ? WHERE id = ?`
+		args = []interface{}{importID, submittedAt, submitErr, uploadID}
 	default:
 		return fmt.Errorf("unsupported database driver: %s", db.Driver)
 	}
