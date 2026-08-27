@@ -235,8 +235,11 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Extract authenticated user if present
 	var internalUserID string
+	var safecastAPIKey, safecastUserID string
 	if user, ok := auth.GetUserFromContext(r.Context()); ok {
 		internalUserID = fmt.Sprintf("%d", user.ID)
+		safecastAPIKey = user.SafecastAPIKey
+		safecastUserID = user.SafecastUserID
 		displayName := user.Username
 		if displayName == "" {
 			displayName = user.Email
@@ -281,6 +284,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 		for _, fd := range fileDataList {
 			reader := newBytesFile(fd.content)
+			isBGeigieUpload := false
 
 			var (
 				bbox database.Bounds
@@ -337,11 +341,13 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 				logT(trackID, "Upload", "tgz archive - processing inline")
 				continue
 			case ".log", ".txt":
+				isBGeigieUpload = true
 				bbox, trackID, err = processBGeigieZenFile(reader, trackID, db, *dbType)
 			default:
 				// Sniff for bGeigie $BNRDD content
 				content := string(fd.content[:min(1024, len(fd.content))])
 				if strings.Contains(content, "$BNRDD") {
+					isBGeigieUpload = true
 					logT(trackID, "Upload", "sniffed bGeigie content for %s (ext=%q)", fd.filename, fd.ext)
 					bbox, trackID, err = processBGeigieZenFile(newBytesFile(fd.content), trackID, db, *dbType)
 				} else if strings.HasSuffix(strings.ToLower(fd.filename), ".tar.gz") {
@@ -393,10 +399,15 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 				Source:         "user-upload",
 			}
 			logT(trackID, "Upload", "inserting upload record: user_id=%s, filename=%s", internalUserID, fd.filename)
-			if _, uploadErr := db.InsertUpload(context.Background(), upload); uploadErr != nil {
+			insertedUploadID, uploadErr := db.InsertUpload(context.Background(), upload)
+			if uploadErr != nil {
 				logT(trackID, "Upload", "warning: failed to track upload: %v", uploadErr)
 			} else {
 				logT(trackID, "Upload", "✓ upload record inserted successfully")
+			}
+
+			if isBGeigieUpload && uploadErr == nil {
+				go submitToSafecastIfNeeded(trackID, insertedUploadID, fd.filename, fd.content, safecastAPIKey, safecastUserID, db)
 			}
 
 			// Update bounds
@@ -466,4 +477,3 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 }
-

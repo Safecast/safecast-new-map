@@ -29,11 +29,12 @@ type RegisterConfig struct {
 	AdminPassword string
 
 	// Optional public API handlers that do not belong to auth/admin groups.
-	APISensorsHandler       http.HandlerFunc
-	APISensorsExportHandler http.HandlerFunc
-	APISensorByIDHandler    http.HandlerFunc
-	APIFeedbackHandler      http.HandlerFunc
-	APITrackInsightsHandler http.HandlerFunc
+	APISensorsHandler                 http.HandlerFunc
+	APISensorsExportHandler           http.HandlerFunc
+	APISensorByIDHandler              http.HandlerFunc
+	APIFeedbackHandler                http.HandlerFunc
+	APITrackInsightsHandler           http.HandlerFunc
+	APIUserSafecastCredentialsHandler http.HandlerFunc
 
 	// Admin handlers; each is guarded by optional auth or admin password.
 	AdminUploadsHandler              http.HandlerFunc
@@ -98,6 +99,9 @@ func registerAuthAndAdminRoutes(mux *http.ServeMux, cfg RegisterConfig) {
 		mux.HandleFunc(RouteAPIAuthVerifyEmail, cfg.AuthManager.VerifyEmailHandler)
 		mux.HandleFunc(RouteAPIUserProfile, cfg.AuthManager.RequireAuth(cfg.AuthManager.ProfileHandler))
 		mux.HandleFunc(RouteAPIUserChangePassword, cfg.AuthManager.RequireAuth(cfg.AuthManager.ChangePasswordHandler))
+		if cfg.APIUserSafecastCredentialsHandler != nil {
+			mux.HandleFunc(RouteAPIUserSafecastCredentials, cfg.AuthManager.RequireAuth(cfg.APIUserSafecastCredentialsHandler))
+		}
 		mux.HandleFunc(RouteAPIUserUploads, cfg.AuthManager.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 			handleUserUploads(w, r, cfg)
 		}))
@@ -128,12 +132,12 @@ func registerAuthAndAdminRoutes(mux *http.ServeMux, cfg RegisterConfig) {
 					cfg.AuthManager.AdminResetUserPasswordHandler(w, r)
 				} else if strings.HasSuffix(r.URL.Path, "/regenerate-api-key") {
 					cfg.AuthManager.AdminRegenerateAPIKeyHandler(w, r)
-			} else {
-				writeJSONError(w, http.StatusNotFound, "Not found")
+				} else {
+					writeJSONError(w, http.StatusNotFound, "Not found")
+				}
+			default:
+				httpresp.WriteMethodNotAllowed(w)
 			}
-		default:
-			httpresp.WriteMethodNotAllowed(w)
-		}
 		}))
 	}
 
