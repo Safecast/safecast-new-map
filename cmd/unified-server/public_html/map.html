@@ -193,14 +193,14 @@ body, html {
           color-scheme: dark; /* Force dark scheme when manually selected */
         }
 
-        /* Brighten map tiles in dark mode to improve readability */
+        /* Invert OSM light tiles to approximate a dark basemap (CARTO dark_all now requires an API key) */
         :root[data-theme='dark'] .leaflet-tile-pane {
-           filter: brightness(1.5) contrast(0.85);
+           filter: invert(0.9) hue-rotate(180deg) brightness(0.95) contrast(0.9);
         }
 
         @media (prefers-color-scheme: dark) {
           .leaflet-tile-pane {
-            filter: brightness(1.5) contrast(0.85);
+            filter: invert(0.9) hue-rotate(180deg) brightness(0.95) contrast(0.9);
           }
         }
         
@@ -3654,14 +3654,21 @@ function doseCategory(doseRate) {
 
 
 
+// Leaflet's LatLng.lng is not wrapped to [-180, 180]; after panning across the
+// antimeridian it can read e.g. 363.88 instead of 3.88, which the backend then
+// queries as an out-of-range bounding box (yields zero markers/sensors).
+function wrapLng(lng) {
+  return ((lng + 180) % 360 + 360) % 360 - 180;
+}
+
 // Get current URL params from map state
 function getCurrentUrlParams() {
   var bounds = map.getBounds();
   var layer = map.hasLayer(googleSatellite) ? 'Google Satellite' : 'OpenStreetMap';
   var minLat = bounds.getSouthWest().lat.toFixed(5);
-  var minLon = bounds.getSouthWest().lng.toFixed(5);
+  var minLon = wrapLng(bounds.getSouthWest().lng).toFixed(5);
   var maxLat = bounds.getNorthEast().lat.toFixed(5);
-  var maxLon = bounds.getNorthEast().lng.toFixed(5);
+  var maxLon = wrapLng(bounds.getNorthEast().lng).toFixed(5);
   var zoom = map.getZoom();
 
   return `?minLat=${minLat}&minLon=${minLon}&maxLat=${maxLat}&maxLon=${maxLon}&zoom=${zoom}&layer=${encodeURIComponent(layer)}`;
@@ -4064,9 +4071,9 @@ function getViewportKey() {
   const bounds = map.getBounds();
   const zoom = map.getZoom();
   const minLat = Math.round(bounds.getSouthWest().lat * 100) / 100;
-  const minLon = Math.round(bounds.getSouthWest().lng * 100) / 100;
+  const minLon = Math.round(wrapLng(bounds.getSouthWest().lng) * 100) / 100;
   const maxLat = Math.round(bounds.getNorthEast().lat * 100) / 100;
-  const maxLon = Math.round(bounds.getNorthEast().lng * 100) / 100;
+  const maxLon = Math.round(wrapLng(bounds.getNorthEast().lng) * 100) / 100;
   return `${zoom}_${minLat}_${minLon}_${maxLat}_${maxLon}`;
 }
 
@@ -4769,13 +4776,11 @@ document.addEventListener('DOMContentLoaded', function () {
   // Initialize layers and auto theme switch
   const media = window.matchMedia('(prefers-color-scheme: dark)');
   const osmLight = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-  const osmDark  = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
   window.osmLight = osmLight; // expose for theme toggle
-  window.osmDark  = osmDark;  // expose for theme toggle
   // Google tiles always use satellite imagery for consistent look
   const googleSat   = 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}';
 
-  osmLayer = L.tileLayer(media.matches ? osmDark : osmLight, {
+  osmLayer = L.tileLayer(osmLight, {
     maxZoom: 18,
     attribution: '&copy; OSM contributors'
   });
@@ -5643,9 +5648,9 @@ function updateMarkers(){
   const baseParams = {
     zoom  : zoom,
     minLat: bounds.getSouthWest().lat,
-    minLon: bounds.getSouthWest().lng,
+    minLon: wrapLng(bounds.getSouthWest().lng),
     maxLat: bounds.getNorthEast().lat,
-    maxLon: bounds.getNorthEast().lng
+    maxLon: wrapLng(bounds.getNorthEast().lng)
   };
 
   // When viewing a specific track, use world bounds to load ALL markers, not just viewport
@@ -8972,9 +8977,9 @@ function updateUrl() {
   var bounds = map.getBounds();
   var layer = map.hasLayer(googleSatellite) ? 'Google Satellite' : 'OpenStreetMap';
   var minLat = bounds.getSouthWest().lat.toFixed(5);
-  var minLon = bounds.getSouthWest().lng.toFixed(5);
+  var minLon = wrapLng(bounds.getSouthWest().lng).toFixed(5);
   var maxLat = bounds.getNorthEast().lat.toFixed(5);
-  var maxLon = bounds.getNorthEast().lng.toFixed(5);
+  var maxLon = wrapLng(bounds.getNorthEast().lng).toFixed(5);
   var zoom = map.getZoom();
 
   var legendBox = document.getElementById('legend');
@@ -9912,16 +9917,15 @@ function selectHomeSearchResult(result, query) {
     <!-- Theme toggle script -->
     <script>
       // Synchronize UI theme with map tiles and remember the choice for the session.
+      // Dark mode reuses the OSM light tiles and darkens them via CSS filter on .leaflet-tile-pane
+      // (CARTO's dark_all tile endpoint now requires an API key).
       document.addEventListener('DOMContentLoaded', function () {
         var sw = document.getElementById('themeSwitch');
         if (!sw) return;
         var media = window.matchMedia('(prefers-color-scheme: dark)');
 
         function applyTheme(theme) {
-          document.documentElement.dataset.theme = theme; // switch CSS variables
-          if (window.osmLayer) {
-            window.osmLayer.setUrl(theme === 'dark' ? window.osmDark : window.osmLight);
-          }
+          document.documentElement.dataset.theme = theme; // switch CSS variables + tile filter
           sw.checked = theme === 'dark';
         }
 

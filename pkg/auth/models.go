@@ -16,6 +16,8 @@ type User struct {
 	ExternalSource        string `json:"external_source,omitempty"`
 	RequiresPasswordSetup bool   `json:"requires_password_setup"`
 	APIKey                string `json:"api_key,omitempty"`
+	SafecastAPIKey        string `json:"safecast_api_key,omitempty"`
+	SafecastUserID        string `json:"safecast_user_id,omitempty"`
 }
 
 // Session represents a user session stored in the database.

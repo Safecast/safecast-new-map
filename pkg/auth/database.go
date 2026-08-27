@@ -188,7 +188,8 @@ func GetUserByID(ctx context.Context, db *sql.DB, dbDriver string, userID int64)
 			       EXTRACT(EPOCH FROM updated_at)::BIGINT,
 			       COALESCE(EXTRACT(EPOCH FROM last_login_at)::BIGINT, 0),
 			       is_active, is_admin, COALESCE(external_id, ''), COALESCE(external_source, ''),
-			       requires_password_setup, COALESCE(api_key, '')
+			       requires_password_setup, COALESCE(api_key, ''),
+			       COALESCE(safecast_api_key, ''), COALESCE(safecast_user_id, '')
 			FROM users
 			WHERE id = $1
 		`
@@ -197,7 +198,8 @@ func GetUserByID(ctx context.Context, db *sql.DB, dbDriver string, userID int64)
 			SELECT id, email, password_hash, username, email_verified,
 			       created_at, updated_at, COALESCE(last_login_at, 0),
 			       is_active, COALESCE(is_admin, 0), COALESCE(external_id, ''), COALESCE(external_source, ''),
-			       requires_password_setup, COALESCE(api_key, '')
+			       requires_password_setup, COALESCE(api_key, ''),
+			       COALESCE(safecast_api_key, ''), COALESCE(safecast_user_id, '')
 			FROM users
 			WHERE id = ?
 		`
@@ -215,7 +217,7 @@ func GetUserByID(ctx context.Context, db *sql.DB, dbDriver string, userID int64)
 			&user.ID, &user.Email, &user.PasswordHash, &user.Username,
 			&emailVerifiedInt, &user.CreatedAt, &user.UpdatedAt, &user.LastLoginAt,
 			&isActiveInt, &isAdminInt, &user.ExternalID, &user.ExternalSource, &requiresPasswordSetupInt,
-			&user.APIKey,
+			&user.APIKey, &user.SafecastAPIKey, &user.SafecastUserID,
 		)
 		if err != nil {
 			return nil, err
@@ -229,7 +231,7 @@ func GetUserByID(ctx context.Context, db *sql.DB, dbDriver string, userID int64)
 			&user.ID, &user.Email, &user.PasswordHash, &user.Username,
 			&user.EmailVerified, &user.CreatedAt, &user.UpdatedAt, &user.LastLoginAt,
 			&user.IsActive, &user.IsAdmin, &user.ExternalID, &user.ExternalSource, &user.RequiresPasswordSetup,
-			&user.APIKey,
+			&user.APIKey, &user.SafecastAPIKey, &user.SafecastUserID,
 		)
 		if err != nil {
 			return nil, err
@@ -965,4 +967,35 @@ func RegenerateAPIKey(ctx context.Context, db *sql.DB, dbDriver string, userID i
 	}
 
 	return newAPIKey, nil
+}
+
+// UpdateUserSafecastCredentials sets the user's api.safecast.org API key and the
+// Safecast user id resolved from it. Passing an empty apiKey clears both fields
+// (the feature is opt-in per user).
+func UpdateUserSafecastCredentials(ctx context.Context, db *sql.DB, dbDriver string, userID int64, safecastAPIKey, safecastUserID string) error {
+	now := time.Now().Unix()
+	var query string
+
+	switch dbDriver {
+	case "pgx", "duckdb":
+		query = `
+			UPDATE users
+			SET safecast_api_key = $1, safecast_user_id = $2, updated_at = to_timestamp($3)
+			WHERE id = $4
+		`
+	case "sqlite", "chai":
+		query = `
+			UPDATE users
+			SET safecast_api_key = ?, safecast_user_id = ?, updated_at = ?
+			WHERE id = ?
+		`
+	default:
+		return fmt.Errorf("unsupported database driver: %s", dbDriver)
+	}
+
+	_, err := db.ExecContext(ctx, query, safecastAPIKey, safecastUserID, now, userID)
+	if err != nil {
+		return fmt.Errorf("update safecast credentials: %w", err)
+	}
+	return nil
 }

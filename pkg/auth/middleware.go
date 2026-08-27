@@ -176,7 +176,8 @@ func GetUserByAPIKey(ctx context.Context, db *sql.DB, dbDriver string, apiKey st
 			       EXTRACT(EPOCH FROM updated_at)::BIGINT,
 			       COALESCE(EXTRACT(EPOCH FROM last_login_at)::BIGINT, 0),
 			       is_active, is_admin, COALESCE(external_id, ''), COALESCE(external_source, ''),
-			       requires_password_setup, COALESCE(api_key, '')
+			       requires_password_setup, COALESCE(api_key, ''),
+			       COALESCE(safecast_api_key, ''), COALESCE(safecast_user_id, '')
 			FROM users
 			WHERE api_key = $1 AND is_active = TRUE
 		`
@@ -185,7 +186,8 @@ func GetUserByAPIKey(ctx context.Context, db *sql.DB, dbDriver string, apiKey st
 			SELECT id, email, password_hash, username, email_verified,
 			       created_at, updated_at, COALESCE(last_login_at, 0),
 			       is_active, COALESCE(is_admin, 0), COALESCE(external_id, ''), COALESCE(external_source, ''),
-			       requires_password_setup, COALESCE(api_key, '')
+			       requires_password_setup, COALESCE(api_key, ''),
+			       COALESCE(safecast_api_key, ''), COALESCE(safecast_user_id, '')
 			FROM users
 			WHERE api_key = ? AND is_active = 1
 		`
@@ -203,7 +205,7 @@ func GetUserByAPIKey(ctx context.Context, db *sql.DB, dbDriver string, apiKey st
 			&user.ID, &user.Email, &user.PasswordHash, &user.Username,
 			&emailVerifiedInt, &user.CreatedAt, &user.UpdatedAt, &user.LastLoginAt,
 			&isActiveInt, &isAdminInt, &user.ExternalID, &user.ExternalSource, &requiresPasswordSetupInt,
-			&user.APIKey,
+			&user.APIKey, &user.SafecastAPIKey, &user.SafecastUserID,
 		)
 		if err != nil {
 			return nil, err
@@ -217,7 +219,7 @@ func GetUserByAPIKey(ctx context.Context, db *sql.DB, dbDriver string, apiKey st
 			&user.ID, &user.Email, &user.PasswordHash, &user.Username,
 			&user.EmailVerified, &user.CreatedAt, &user.UpdatedAt, &user.LastLoginAt,
 			&user.IsActive, &user.IsAdmin, &user.ExternalID, &user.ExternalSource, &user.RequiresPasswordSetup,
-			&user.APIKey,
+			&user.APIKey, &user.SafecastAPIKey, &user.SafecastUserID,
 		)
 		if err != nil {
 			return nil, err
@@ -267,9 +269,9 @@ func (m *Manager) setSessionCookie(w http.ResponseWriter, sessionID string, expi
 		Value:    sessionID,
 		Path:     "/",
 		Expires:  time.Unix(expiresAt, 0),
-		HttpOnly: true,                    // Prevent JavaScript access (XSS protection)
-		Secure:   secure,                  // Only send over HTTPS in production
-		SameSite: http.SameSiteLaxMode,    // CSRF protection
+		HttpOnly: true,                 // Prevent JavaScript access (XSS protection)
+		Secure:   secure,               // Only send over HTTPS in production
+		SameSite: http.SameSiteLaxMode, // CSRF protection
 	}
 	http.SetCookie(w, cookie)
 }
