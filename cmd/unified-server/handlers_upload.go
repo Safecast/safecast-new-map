@@ -114,6 +114,13 @@ func progressHandler(w http.ResponseWriter, r *http.Request) {
 			total := prog.Total
 			complete := prog.Complete
 			errMsg := prog.Error
+			var fileErrors map[string]string
+			if len(prog.FileErrors) > 0 {
+				fileErrors = make(map[string]string, len(prog.FileErrors))
+				for k, v := range prog.FileErrors {
+					fileErrors[k] = v
+				}
+			}
 			redirectURL := prog.RedirectURL
 			needsCoordinates := prog.NeedsCoordinates
 			progTrackID := prog.TrackID
@@ -130,15 +137,31 @@ func progressHandler(w http.ResponseWriter, r *http.Request) {
 
 			// Send update if progress changed OR if complete
 			if percent != lastProgress || complete {
-				if errMsg != "" {
-					fmt.Fprintf(w, "data: {\"current\":%d,\"total\":%d,\"percent\":%d,\"complete\":true,\"error\":%q}\n\n",
-						current, total, percent, errMsg)
-				} else if complete && needsCoordinates {
-					fmt.Fprintf(w, "data: {\"current\":%d,\"total\":%d,\"percent\":100,\"complete\":true,\"redirectURL\":%q,\"needsCoordinates\":true,\"trackID\":%q,\"fileName\":%q}\n\n",
-						current, total, redirectURL, progTrackID, fileName)
-				} else if complete {
-					fmt.Fprintf(w, "data: {\"current\":%d,\"total\":%d,\"percent\":100,\"complete\":true,\"redirectURL\":%q}\n\n",
-						current, total, redirectURL)
+				if complete {
+					payload := map[string]any{
+						"current":  current,
+						"total":    total,
+						"percent":  100,
+						"complete": true,
+					}
+					if errMsg != "" {
+						payload["error"] = errMsg
+					}
+					if len(fileErrors) > 0 {
+						payload["fileErrors"] = fileErrors
+					}
+					if redirectURL != "" {
+						payload["redirectURL"] = redirectURL
+					}
+					if needsCoordinates {
+						payload["needsCoordinates"] = true
+						payload["trackID"] = progTrackID
+						payload["fileName"] = fileName
+					}
+					data, jsonErr := json.Marshal(payload)
+					if jsonErr == nil {
+						fmt.Fprintf(w, "data: %s\n\n", data)
+					}
 				} else {
 					fmt.Fprintf(w, "data: {\"current\":%d,\"total\":%d,\"percent\":%d,\"complete\":false}\n\n",
 						current, total, percent)
@@ -250,7 +273,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Initialize progress tracker
 	uploadProgress.Lock()
-	uploadProgress.tracks[trackID] = &UploadProgress{Total: 0, Current: 0, Complete: false}
+	uploadProgress.tracks[trackID] = &UploadProgress{Total: 0, Current: 0, Complete: false, FileErrors: make(map[string]string)}
 	uploadProgress.Unlock()
 
 	// Return immediately with trackID so client can start monitoring progress
@@ -281,6 +304,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		backgroundImport := false
 		isSpectrumUpload := false
 		var lastError error
+		fileErrors := make(map[string]string)
 
 		for _, fd := range fileDataList {
 			reader := newBytesFile(fd.content)
@@ -322,6 +346,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 				} else {
 					logT(trackID, "Upload", "unsupported XML format: %s", fd.filename)
 					lastError = fmt.Errorf("unsupported XML format (not RadiaCode)")
+					fileErrors[fd.filename] = lastError.Error()
 					continue
 				}
 			case ".cim":
@@ -363,6 +388,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 				} else {
 					logT(trackID, "Upload", "unsupported file type: %s (ext=%q)", fd.filename, fd.ext)
 					lastError = fmt.Errorf("unsupported file type: %s", fd.ext)
+					fileErrors[fd.filename] = lastError.Error()
 					continue
 				}
 			}
@@ -370,6 +396,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				logT(trackID, "Upload", "error processing %s: %v", fd.filename, err)
 				lastError = err
+				fileErrors[fd.filename] = err.Error()
 				continue
 			}
 
@@ -460,17 +487,20 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		if prog, exists := uploadProgress.tracks[originalTrackID]; exists {
 			prog.mu.Lock()
 			prog.Complete = true
-			if lastError != nil {
+			prog.FileErrors = fileErrors
+			if lastError != nil && len(fileErrors) == len(fileDataList) {
+				// every file in the batch failed
 				prog.Error = lastError.Error()
-			} else {
+			}
+			if hasBounds && !needsCoordinates {
 				prog.RedirectURL = trackURL
-				if isSpectrumUpload && needsCoordinates {
-					prog.NeedsCoordinates = true
-					prog.TrackID = trackID
-					// Get first filename for display
-					if len(fileDataList) > 0 {
-						prog.FileName = fileDataList[0].filename
-					}
+			}
+			if isSpectrumUpload && needsCoordinates {
+				prog.NeedsCoordinates = true
+				prog.TrackID = trackID
+				// Get first filename for display
+				if len(fileDataList) > 0 {
+					prog.FileName = fileDataList[0].filename
 				}
 			}
 			prog.mu.Unlock()

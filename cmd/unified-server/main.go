@@ -125,6 +125,7 @@ type UploadProgress struct {
 	Current          int
 	Complete         bool
 	Error            string
+	FileErrors       map[string]string
 	RedirectURL      string
 	NeedsCoordinates bool
 	TrackID          string
