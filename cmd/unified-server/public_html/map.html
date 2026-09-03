@@ -9620,7 +9620,11 @@ function selectHomeSearchResult(result, query) {
                     fileProgressElements.forEach(elem => {
                       elem.progressBarInner.classList.remove('processing');
 
-                      if (data.error) {
+                      const fileError = data.fileErrors && data.fileErrors[elem.fileName];
+                      if (fileError) {
+                        elem.serverProcessing.innerText = '✘ Error: ' + fileError;
+                        elem.serverProcessing.style.color = 'red';
+                      } else if (data.error) {
                         elem.serverProcessing.innerText = '✘ Error: ' + data.error;
                         elem.serverProcessing.style.color = 'red';
                       } else if (data.needsCoordinates && data.trackID) {
