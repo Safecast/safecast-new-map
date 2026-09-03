@@ -286,6 +286,13 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			reader := newBytesFile(fd.content)
 			isBGeigieUpload := false
 
+			// Snapshot the marker id high-water mark before parsing this file so we
+			// can later compute recording_date from only the rows *this* file added.
+			// trackID can be an existing, reused ID (see DetectExistingTrackID), so
+			// scoping by trackID alone would pull in every prior upload's markers too.
+			var beforeMaxMarkerID int64
+			_ = db.DB.QueryRowContext(context.Background(), "SELECT COALESCE(MAX(id), 0) FROM markers").Scan(&beforeMaxMarkerID)
+
 			var (
 				bbox database.Bounds
 				err  error
@@ -370,11 +377,11 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			var recordingDate int64
 			var minDateQuery string
 			if *dbType == "pgx" {
-				minDateQuery = `SELECT MIN(date) FROM markers WHERE trackID = $1`
+				minDateQuery = `SELECT MIN(date) FROM markers WHERE trackID = $1 AND id > $2`
 			} else {
-				minDateQuery = `SELECT MIN(date) FROM markers WHERE trackID = ?`
+				minDateQuery = `SELECT MIN(date) FROM markers WHERE trackID = ? AND id > ?`
 			}
-			_ = db.DB.QueryRowContext(context.Background(), minDateQuery, trackID).Scan(&recordingDate)
+			_ = db.DB.QueryRowContext(context.Background(), minDateQuery, trackID, beforeMaxMarkerID).Scan(&recordingDate)
 
 			// Get detector from markers (first non-empty value)
 			var detector string
