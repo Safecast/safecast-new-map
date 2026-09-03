@@ -4021,9 +4021,17 @@ func (db *Database) DetectExistingTrackID(
 		var sb strings.Builder
 		// We write the SELECT+GROUP BY statement by hand so we can reuse it
 		// for every engine without relying on vendor-specific helpers.
-		sb.WriteString("SELECT trackID, COUNT(*) FROM markers WHERE ")
+		//
+		// Each probe point gets its own SUM(CASE WHEN ...) column so we can
+		// tell how many *distinct* probe points a candidate trackID actually
+		// contains, rather than a raw COUNT(*) of matching rows. A track that
+		// happens to store many duplicate/near-duplicate rows for the same
+		// single point must not be able to satisfy the threshold on its own —
+		// that previously caused unrelated drives to be merged into one
+		// trackID (see #azumat-track-merge-bug).
+		sb.WriteString("SELECT trackID")
 
-		args := make([]interface{}, 0, len(block)*4)
+		args := make([]interface{}, 0, len(block)*8)
 		argPos := 0
 		ph := func() string {
 			argPos++
@@ -4033,23 +4041,22 @@ func (db *Database) DetectExistingTrackID(
 			return "?"
 		}
 
+		var where strings.Builder
 		for i, point := range block {
 			if i > 0 {
-				sb.WriteString(" OR ")
+				where.WriteString(" OR ")
 			}
-			sb.WriteString("(lat = ")
-			sb.WriteString(ph())
-			sb.WriteString(" AND lon = ")
-			sb.WriteString(ph())
-			sb.WriteString(" AND date = ")
-			sb.WriteString(ph())
-			sb.WriteString(" AND doseRate = ")
-			sb.WriteString(ph())
-			sb.WriteString(")")
+			cond := fmt.Sprintf("(lat = %s AND lon = %s AND date = %s AND doseRate = %s)",
+				ph(), ph(), ph(), ph())
+			args = append(args, point.lat, point.lon, point.date, point.dose)
+			where.WriteString(cond)
 
+			sb.WriteString(fmt.Sprintf(", SUM(CASE WHEN %s THEN 1 ELSE 0 END)", cond))
 			args = append(args, point.lat, point.lon, point.date, point.dose)
 		}
 
+		sb.WriteString(" FROM markers WHERE ")
+		sb.WriteString(where.String())
 		sb.WriteString(" GROUP BY trackID")
 
 		rows, err := db.DB.Query(sb.String(), args...)
@@ -4058,15 +4065,24 @@ func (db *Database) DetectExistingTrackID(
 		}
 
 		for rows.Next() {
-			var (
-				tid  string
-				hits int
-			)
-			if err := rows.Scan(&tid, &hits); err != nil {
+			counts := make([]sql.NullInt64, len(block))
+			dest := make([]interface{}, len(block)+1)
+			var tid string
+			dest[0] = &tid
+			for i := range counts {
+				dest[i+1] = &counts[i]
+			}
+			if err := rows.Scan(dest...); err != nil {
 				rows.Close()
 				return "", fmt.Errorf("DetectExistingTrackID scan: %w", err)
 			}
-			totals[tid] += hits
+			distinctMatched := 0
+			for _, c := range counts {
+				if c.Valid && c.Int64 > 0 {
+					distinctMatched++
+				}
+			}
+			totals[tid] += distinctMatched
 			if totals[tid] >= threshold {
 				rows.Close()
 				return tid, nil // FOUND!
