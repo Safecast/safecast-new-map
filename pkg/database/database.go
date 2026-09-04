@@ -4041,18 +4041,24 @@ func (db *Database) DetectExistingTrackID(
 			return "?"
 		}
 
+		// Each condition needs its own fresh placeholders (and matching args)
+		// in both the WHERE clause and its CASE column: "?" placeholders bind
+		// positionally, so reusing the same text in two places would require
+		// the same value to satisfy two independent slots.
 		var where strings.Builder
 		for i, point := range block {
 			if i > 0 {
 				where.WriteString(" OR ")
 			}
-			cond := fmt.Sprintf("(lat = %s AND lon = %s AND date = %s AND doseRate = %s)",
+			whereCond := fmt.Sprintf("(lat = %s AND lon = %s AND date = %s AND doseRate = %s)",
 				ph(), ph(), ph(), ph())
 			args = append(args, point.lat, point.lon, point.date, point.dose)
-			where.WriteString(cond)
+			where.WriteString(whereCond)
 
-			sb.WriteString(fmt.Sprintf(", SUM(CASE WHEN %s THEN 1 ELSE 0 END)", cond))
+			caseCond := fmt.Sprintf("(lat = %s AND lon = %s AND date = %s AND doseRate = %s)",
+				ph(), ph(), ph(), ph())
 			args = append(args, point.lat, point.lon, point.date, point.dose)
+			sb.WriteString(fmt.Sprintf(", SUM(CASE WHEN %s THEN 1 ELSE 0 END)", caseCond))
 		}
 
 		sb.WriteString(" FROM markers WHERE ")
