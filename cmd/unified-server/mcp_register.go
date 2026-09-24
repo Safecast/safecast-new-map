@@ -641,8 +641,6 @@ func RegisterMCP() {
 			mcpServer.AddTool(queryAnalyticsToolDef, instrumentMCP("query_analytics", handleQueryAnalytics))
 		case mcpserver.ToolRadiationStats:
 			mcpServer.AddTool(radiationStatsToolDef, instrumentMCP("radiation_stats", handleRadiationStats))
-		case mcpserver.ToolQueryDuckDBLogs:
-			mcpServer.AddTool(queryDuckDBLogsToolDef, instrumentMCP("query_duckdb_logs", handleQueryDuckDBLogs))
 		case mcpserver.ToolQueryExtremeReadings:
 			mcpServer.AddTool(queryExtremeReadingsToolDef, instrumentMCP("query_extreme_readings", handleQueryExtremeReadings))
 		case mcpserver.ToolTopUploaders:

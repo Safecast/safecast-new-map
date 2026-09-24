@@ -19,7 +19,6 @@ const (
 	ToolSensorHistory          ToolKey = "sensor_history"
 	ToolQueryAnalytics         ToolKey = "query_analytics"
 	ToolRadiationStats         ToolKey = "radiation_stats"
-	ToolQueryDuckDBLogs        ToolKey = "query_duckdb_logs"
 	ToolQueryExtremeReadings   ToolKey = "query_extreme_readings"
 	ToolTopUploaders           ToolKey = "top_uploaders"
 	ToolSearchTracksByLocation ToolKey = "search_tracks_by_location"
@@ -41,7 +40,6 @@ var defaultToolOrder = []ToolKey{
 	ToolSensorHistory,
 	ToolQueryAnalytics,
 	ToolRadiationStats,
-	ToolQueryDuckDBLogs,
 	ToolQueryExtremeReadings,
 	ToolTopUploaders,
 	ToolSearchTracksByLocation,
