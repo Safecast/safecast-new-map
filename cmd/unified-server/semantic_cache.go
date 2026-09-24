@@ -34,7 +34,52 @@ const (
 	ragContextThreshold = float32(0.50)
 	// ragTopK: maximum number of similar Q&A pairs to inject.
 	ragTopK = 3
+	// minSharedTokenRatio: without an explicit track-ID anchor, a cache hit
+	// also requires this fraction of the query's tokens to appear in the
+	// candidate's cached question. Feature-hash cosine alone is too
+	// collision-prone for short, topically unrelated queries (e.g. a place
+	// name vs. an unrelated SQL/tool-invocation probe scoring >= 0.85).
+	minSharedTokenRatio = 0.34
 )
+
+// suspiciousQueryRegexp flags questions shaped like raw SQL or MCP tool
+// invocations rather than natural-language queries. These are reconnaissance
+// or injection attempts, not reusable answers, and must never be cached.
+var suspiciousQueryRegexp = regexp.MustCompile(
+	`(?i)\b(select|insert|update|delete|drop|union|exec)\b.{0,40}\b(from|into|table)\b|duckdb_functions\s*\(|ツールで.{0,20}実行`,
+)
+
+func isSuspiciousQuery(s string) bool {
+	return suspiciousQueryRegexp.MatchString(s)
+}
+
+// sharedTokenRatio returns the fraction of a's unique tokens that also
+// appear among b's tokens.
+func sharedTokenRatio(a, b string) float32 {
+	at := tokenize(a)
+	if len(at) == 0 {
+		return 0
+	}
+	bSet := make(map[string]bool, len(at))
+	for _, t := range tokenize(b) {
+		bSet[t] = true
+	}
+	seen := make(map[string]bool, len(at))
+	var shared int
+	for _, t := range at {
+		if seen[t] {
+			continue
+		}
+		seen[t] = true
+		if bSet[t] {
+			shared++
+		}
+	}
+	if len(seen) == 0 {
+		return 0
+	}
+	return float32(shared) / float32(len(seen))
+}
 
 // qaEntry is a row from qa_embeddings.
 type qaEntry struct {
@@ -110,6 +155,8 @@ func checkSemanticCache(embedding []float32, question, trackID, lang string) (an
 				!strings.Contains(entries[i].Answer, queryTrackID) {
 				continue // cached entry is about a different track
 			}
+		} else if sharedTokenRatio(question, entries[i].Question) < minSharedTokenRatio {
+			continue // no track anchor and not enough real token overlap
 		}
 		if s := cosineSimilarity(embedding, entries[i].Embedding); s > bestScore {
 			bestScore = s
@@ -220,6 +267,10 @@ func getLocationKnowledge() string {
 func storeQAEmbeddingAsync(ctx context.Context, embeddingChatID int64, question, answer string, embedding []float32, lang string) {
 	go func() {
 		if !duckDBAvailable() || len(embedding) == 0 {
+			return
+		}
+		if isSuspiciousQuery(question) {
+			log.Printf("semantic cache: skipped storing SQL/tool-invocation-shaped question (chat_id=%d)", embeddingChatID)
 			return
 		}
 		embJSON, err := json.Marshal(embedding)
