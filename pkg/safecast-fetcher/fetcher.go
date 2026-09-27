@@ -296,17 +296,27 @@ func (f *Fetcher) fetchNewImports(ctx context.Context, lastID int64, startPage i
 				f.logf("[safecast-fetcher] page %d: no results, continuing (%d consecutive empty)", page, consecutiveSkipped)
 				// WORKAROUND: Detect stuck pagination - advance date filter after 20 empty pages
 				if consecutiveSkipped >= 20 {
-					if lastImportDate != "" && lastImportDate > currentStartDate {
-						// Only advance if lastImportDate is NEWER (prevent backwards loop)
+					today := time.Now().Format("2006-01-02")
+					if lastImportDate != "" && lastImportDate > currentStartDate && lastImportDate <= today {
+						// Only advance if lastImportDate is NEWER but not in the future
 						f.logf("[safecast-fetcher] backfill: STUCK at page %d - advancing date filter from %s to %s",
 							page, currentStartDate, lastImportDate)
 						currentStartDate = lastImportDate
-					} else if currentStartDate != "" && currentStartDate < time.Now().Format("2006-01-02") {
-						// Advance by 7 days if no newer date available
+					} else if currentStartDate != "" && currentStartDate < today {
+						// Advance by 7 days if no newer date available, but don't go past today
 						nextDate := advanceDate(currentStartDate, 7)
+						if nextDate > today {
+							nextDate = today
+						}
 						f.logf("[safecast-fetcher] backfill: STUCK at page %d - advancing by 7 days: %s -> %s",
 							page, currentStartDate, nextDate)
 						currentStartDate = nextDate
+
+						// If we've reached today, stop — there's nothing further to scan.
+						if currentStartDate >= today {
+							f.logf("[safecast-fetcher] backfill: reached today's date (%s), stopping", today)
+							break
+						}
 					} else {
 						// No date filter, can't advance - stop after 100 pages
 						if consecutiveSkipped >= 100 {
