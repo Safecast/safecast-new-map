@@ -221,6 +221,17 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 	// Get search parameter
 	search := r.URL.Query().Get("search")
 
+	// Get sort parameters (validated against a whitelist in GetUploadsPaginated;
+	// default here only controls what the column headers render as active).
+	sortBy := r.URL.Query().Get("sort")
+	if sortBy == "" {
+		sortBy = "created_at"
+	}
+	sortOrder := strings.ToLower(r.URL.Query().Get("order"))
+	if sortOrder != "asc" {
+		sortOrder = "desc"
+	}
+
 	ctx := r.Context()
 
 	// Get total count for pagination
@@ -238,7 +249,7 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Fetch current page of uploads
-	uploads, err := db.GetUploadsPaginated(ctx, limit, offset, userID, search)
+	uploads, err := db.GetUploadsPaginated(ctx, limit, offset, userID, search, sortBy, sortOrder)
 	if err != nil {
 		log.Printf("Error fetching uploads: %v", err)
 		http.Error(w, "Failed to fetch uploads", http.StatusInternalServerError)
@@ -556,7 +567,46 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		if search != "" {
 			params = append(params, "search="+url.QueryEscape(search))
 		}
+		if sortBy != "created_at" {
+			params = append(params, "sort="+sortBy)
+		}
+		if sortOrder != "desc" {
+			params = append(params, "order="+sortOrder)
+		}
 		return "?" + strings.Join(params, "&")
+	}
+
+	// Helper to build a column-header sort link: clicking a column that's
+	// already the active sort flips its order; clicking a new column sorts
+	// that column descending first. Sorting always resets to page 1.
+	buildSortURL := func(column string) string {
+		nextOrder := "desc"
+		if sortBy == column && sortOrder == "desc" {
+			nextOrder = "asc"
+		}
+		params := []string{}
+		if password != "" {
+			params = append(params, "password="+password)
+		}
+		params = append(params, "page=1")
+		params = append(params, "limit="+strconv.Itoa(limit))
+		if userID != "" {
+			params = append(params, "user_id="+userID)
+		}
+		if search != "" {
+			params = append(params, "search="+url.QueryEscape(search))
+		}
+		params = append(params, "sort="+column)
+		params = append(params, "order="+nextOrder)
+		return "?" + strings.Join(params, "&")
+	}
+
+	// sortHeaderClass returns "asc"/"desc" for the active column's arrow, "" otherwise.
+	sortHeaderClass := func(column string) string {
+		if sortBy != column {
+			return ""
+		}
+		return sortOrder
 	}
 
 	// Previous button
@@ -624,18 +674,18 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 		<thead>
 			<tr>
 				<th class="checkbox-col"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"></th>
-				<th class="sortable" onclick="sortTable(1)" data-type="number">ID<span class="resize-handle"></span></th>
-				<th class="sortable" onclick="sortTable(2)" data-type="text">Filename<span class="resize-handle"></span></th>
-				<th class="sortable" onclick="sortTable(3)" data-type="text">Type<span class="resize-handle"></span></th>
-				<th class="sortable" onclick="sortTable(4)" data-type="text">Track ID<span class="resize-handle"></span></th>
-				<th class="sortable" onclick="sortTable(5)" data-type="text">Detector<span class="resize-handle"></span></th>
-				<th class="sortable" onclick="sortTable(6)" data-type="date">Recording Date<span class="resize-handle"></span></th>
-				<th class="sortable" onclick="sortTable(7)" data-type="text">Size<span class="resize-handle"></span></th>
-				<th class="sortable" onclick="sortTable(8)" data-type="text">Source<span class="resize-handle"></span></th>
-				<th class="sortable" onclick="sortTable(9)" data-type="text">User<span class="resize-handle"></span></th>
-				<th class="sortable" onclick="sortTable(10)" data-type="text">Upload IP<span class="resize-handle"></span></th>
-				<th class="sortable" onclick="sortTable(11)" data-type="date">Upload Time<span class="resize-handle"></span></th>
-				<th class="sortable" onclick="sortTable(12)" data-type="text">Comment<span class="resize-handle"></span></th>
+				<th class="sortable ` + sortHeaderClass("id") + `" onclick="location.href='` + buildSortURL("id") + `'">ID<span class="resize-handle"></span></th>
+				<th class="sortable ` + sortHeaderClass("filename") + `" onclick="location.href='` + buildSortURL("filename") + `'">Filename<span class="resize-handle"></span></th>
+				<th class="sortable ` + sortHeaderClass("file_type") + `" onclick="location.href='` + buildSortURL("file_type") + `'">Type<span class="resize-handle"></span></th>
+				<th class="sortable ` + sortHeaderClass("track_id") + `" onclick="location.href='` + buildSortURL("track_id") + `'">Track ID<span class="resize-handle"></span></th>
+				<th class="sortable ` + sortHeaderClass("detector") + `" onclick="location.href='` + buildSortURL("detector") + `'">Detector<span class="resize-handle"></span></th>
+				<th class="sortable ` + sortHeaderClass("recording_date") + `" onclick="location.href='` + buildSortURL("recording_date") + `'">Recording Date<span class="resize-handle"></span></th>
+				<th class="sortable ` + sortHeaderClass("file_size") + `" onclick="location.href='` + buildSortURL("file_size") + `'">Size<span class="resize-handle"></span></th>
+				<th class="sortable ` + sortHeaderClass("source") + `" onclick="location.href='` + buildSortURL("source") + `'">Source<span class="resize-handle"></span></th>
+				<th class="sortable ` + sortHeaderClass("username") + `" onclick="location.href='` + buildSortURL("username") + `'">User<span class="resize-handle"></span></th>
+				<th class="sortable ` + sortHeaderClass("upload_ip") + `" onclick="location.href='` + buildSortURL("upload_ip") + `'">Upload IP<span class="resize-handle"></span></th>
+				<th class="sortable ` + sortHeaderClass("created_at") + `" onclick="location.href='` + buildSortURL("created_at") + `'">Upload Time<span class="resize-handle"></span></th>
+				<th class="sortable ` + sortHeaderClass("comment") + `" onclick="location.href='` + buildSortURL("comment") + `'">Comment<span class="resize-handle"></span></th>
 				<th>Actions</th>
 			</tr>
 			<tr class="filter-row">
@@ -831,66 +881,8 @@ func adminUploadsHandler(w http.ResponseWriter, r *http.Request) {
 			.catch(err => alert('Error: ' + err));
 		}
 
-		// Sorting functionality
-		let sortDirection = {};
-		function sortTable(columnIndex) {
-			const table = document.getElementById('uploadsTable');
-			const tbody = document.getElementById('uploadsTableBody');
-			const rows = Array.from(tbody.querySelectorAll('tr'));
-			const header = table.querySelector('thead tr:first-child th:nth-child(' + (columnIndex + 1) + ')');
-			const dataType = header.getAttribute('data-type');
-
-			// Toggle sort direction
-			const currentDir = sortDirection[columnIndex] || 'none';
-			sortDirection[columnIndex] = currentDir === 'asc' ? 'desc' : 'asc';
-
-			// Remove sort classes from all headers
-			table.querySelectorAll('.sortable').forEach(h => {
-				h.classList.remove('asc', 'desc');
-			});
-
-			// Add sort class to current header
-			header.classList.add(sortDirection[columnIndex]);
-
-			// Sort rows
-			rows.sort((a, b) => {
-				let aVal = a.cells[columnIndex].textContent.trim();
-				let bVal = b.cells[columnIndex].textContent.trim();
-
-				// Special handling for Source column - sort by numeric import ID
-				if (columnIndex === 7) {
-					const aSourceID = a.cells[columnIndex].getAttribute('data-source-id');
-					const bSourceID = b.cells[columnIndex].getAttribute('data-source-id');
-					aVal = parseInt(aSourceID) || 0;
-					bVal = parseInt(bSourceID) || 0;
-					return sortDirection[columnIndex] === 'asc' ? aVal - bVal : bVal - aVal;
-				}
-
-				// Numeric comparison
-				if (dataType === 'number') {
-					aVal = parseInt(aVal) || 0;
-					bVal = parseInt(bVal) || 0;
-					return sortDirection[columnIndex] === 'asc' ? aVal - bVal : bVal - aVal;
-				}
-
-				// Date comparison
-				if (dataType === 'date') {
-					aVal = new Date(aVal).getTime();
-					bVal = new Date(bVal).getTime();
-					return sortDirection[columnIndex] === 'asc' ? aVal - bVal : bVal - aVal;
-				}
-
-				// Text comparison
-				if (sortDirection[columnIndex] === 'asc') {
-					return aVal.localeCompare(bVal);
-				} else {
-					return bVal.localeCompare(aVal);
-				}
-			});
-
-			// Reappend sorted rows
-			rows.forEach(row => tbody.appendChild(row));
-		}
+		// Sorting is server-side (see column header links); the client no
+		// longer re-sorts rows in place.
 
 		// Filtering functionality
 		function filterTable() {
