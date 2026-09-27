@@ -83,6 +83,7 @@ var safecastFetcherBatchSize = flag.Int("safecast-fetcher-batch-size", 10, "Maxi
 var safecastFetcherStartDate = flag.String("safecast-fetcher-start-date", "", "Only import files uploaded after this date (YYYY-MM-DD format, empty = no filter)")
 var safecastFetcherBackfill = flag.Bool("safecast-fetcher-backfill", false, "Backfill mode: import all matching records from start-date, ignoring what's already in database")
 var safecastFetcherNewestFirst = flag.Bool("safecast-fetcher-newest-first", false, "Fetch newest imports first instead of oldest first")
+var safecastFetcherForceStartDate = flag.Bool("safecast-fetcher-force-start-date", false, "Never override -safecast-fetcher-start-date with the latest imported date; use for one-off historical repair backfills")
 
 // Authentication flags
 var smtpHost = flag.String("smtp-host", "", "SMTP server hostname for sending emails")
@@ -714,15 +715,16 @@ func main() {
 
 		// Start the fetcher
 		safecastfetcher.Start(ctxFetcher, safecastfetcher.Config{
-			DB:           db,
-			DBType:       *dbType,
-			Interval:     *safecastFetcherInterval,
-			BatchSize:    *safecastFetcherBatchSize,
-			StartDate:    *safecastFetcherStartDate,
-			Importer:     importerFunc,
-			Logf:         log.Printf,
-			BackfillMode: *safecastFetcherBackfill,
-			NewestFirst:  *safecastFetcherNewestFirst,
+			DB:             db,
+			DBType:         *dbType,
+			Interval:       *safecastFetcherInterval,
+			BatchSize:      *safecastFetcherBatchSize,
+			StartDate:      *safecastFetcherStartDate,
+			Importer:       importerFunc,
+			Logf:           log.Printf,
+			BackfillMode:   *safecastFetcherBackfill,
+			NewestFirst:    *safecastFetcherNewestFirst,
+			ForceStartDate: *safecastFetcherForceStartDate,
 		})
 
 		log.Printf("safecast API fetcher enabled: interval=%s batch=%d start_date=%s backfill=%v newest_first=%v",
