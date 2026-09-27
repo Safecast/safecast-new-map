@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -140,10 +141,32 @@ func (db *Database) InsertUpload(ctx context.Context, upload Upload) (int64, err
 // GetUploads retrieves upload records, ordered by most recent first.
 // If userID is not empty, only returns uploads from that user.
 func (db *Database) GetUploads(ctx context.Context, limit int, userID string) ([]Upload, error) {
-	return db.GetUploadsPaginated(ctx, limit, 0, userID, "")
+	return db.GetUploadsPaginated(ctx, limit, 0, userID, "", "", "")
 }
 
-func (db *Database) GetUploadsPaginated(ctx context.Context, limit int, offset int, userID string, search string) ([]Upload, error) {
+// uploadSortColumns whitelists the columns the admin uploads table may sort
+// by, mapping the public sort key to the actual SQL expression. Keeping this
+// as an explicit whitelist (rather than passing the column name through)
+// prevents SQL injection via the sort query parameter.
+var uploadSortColumns = map[string]string{
+	"id":             "u.id",
+	"filename":       "u.filename",
+	"file_type":      "u.file_type",
+	"track_id":       "u.track_id",
+	"detector":       "u.detector",
+	"recording_date": "u.recording_date",
+	"file_size":      "u.file_size",
+	"source":         "u.source",
+	"username":       "COALESCE(usr.username, u.username)",
+	"upload_ip":      "u.upload_ip",
+	"created_at":     "u.created_at",
+	"comment":        "u.comment",
+}
+
+// GetUploadsPaginated fetches a page of uploads. sortBy must be a key of
+// uploadSortColumns (or "" for the default); sortOrder is "asc" or "desc"
+// (or "" for the default). Both default to created_at DESC.
+func (db *Database) GetUploadsPaginated(ctx context.Context, limit int, offset int, userID string, search string, sortBy string, sortOrder string) ([]Upload, error) {
 	if limit <= 0 {
 		limit = 100
 	}
@@ -219,7 +242,19 @@ func (db *Database) GetUploadsPaginated(ctx context.Context, limit int, offset i
 		query = baseSelect
 	}
 
-	query += "\nORDER BY u.created_at DESC\n"
+	orderCol, ok := uploadSortColumns[sortBy]
+	if !ok {
+		orderCol = "u.created_at"
+	}
+	orderDir := "DESC"
+	if strings.EqualFold(sortOrder, "asc") {
+		orderDir = "ASC"
+	}
+	query += "\nORDER BY " + orderCol + " " + orderDir
+	if db.Driver == "pgx" || db.Driver == "duckdb" {
+		query += " NULLS LAST"
+	}
+	query += "\n"
 
 	// Add LIMIT and OFFSET with correct parameter numbering
 	if db.Driver == "pgx" || db.Driver == "duckdb" {
