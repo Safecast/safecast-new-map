@@ -286,7 +286,7 @@ func handleUserUploads(w http.ResponseWriter, r *http.Request, cfg RegisterConfi
 
 	internalUserID := fmt.Sprintf("%d", user.ID)
 	ctx := r.Context()
-	uploads, err := cfg.DB.GetUploadsPaginated(ctx, limit, offset, internalUserID, "")
+	uploads, err := cfg.DB.GetUploadsPaginated(ctx, limit, offset, internalUserID, "", "", "")
 	if err != nil {
 		if cfg.Logf != nil {
 			cfg.Logf("Error fetching user uploads: %v", err)
