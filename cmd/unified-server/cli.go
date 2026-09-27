@@ -19,7 +19,7 @@ var cliUsageSections = []usageSection{
 	{Title: "Database", Flags: []string{"db-type", "db-path", "db-conn"}},
 	{Title: "Map defaults", Flags: []string{"default-lat", "default-lon", "default-zoom", "default-layer", "auto-locate-default"}},
 	{Title: "Realtime & archives", Flags: []string{"safecast-realtime", "json-archive-path", "json-archive-frequency", "import-tgz-url", "import-tgz-file"}},
-	{Title: "Safecast API fetcher", Flags: []string{"safecast-fetcher", "safecast-fetcher-interval", "safecast-fetcher-batch-size", "safecast-fetcher-start-date"}},
+	{Title: "Safecast API fetcher", Flags: []string{"safecast-fetcher", "safecast-fetcher-interval", "safecast-fetcher-batch-size", "safecast-fetcher-start-date", "safecast-fetcher-backfill", "safecast-fetcher-newest-first", "safecast-fetcher-force-start-date"}},
 	{Title: "Authentication", Flags: []string{"require-auth", "allow-registration", "session-secret", "session-cookie-name", "session-duration", "base-url"}},
 	{Title: "Email (SMTP)", Flags: []string{"smtp-host", "smtp-port", "smtp-username", "smtp-password", "smtp-from", "smtp-from-name"}},
 	{Title: "Self-upgrade", Flags: []string{"selfupgrade", "selfupgrade-url"}},
