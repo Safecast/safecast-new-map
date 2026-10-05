@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"math"
 	"strings"
+	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 )
@@ -43,6 +45,16 @@ func handleSensorCurrent(ctx context.Context, req mcp.CallToolRequest) (*mcp.Cal
 	maxLat := req.GetFloat("max_lat", 90)
 	minLon := req.GetFloat("min_lon", -180)
 	maxLon := req.GetFloat("max_lon", 180)
+	// Small models often send a tight box around a village; pad to at least ±0.5° (~50 km) so fixed sensors nearby are found.
+	const minHalfSpan = 0.5
+	if maxLat-minLat < 2*minHalfSpan {
+		c := (minLat + maxLat) / 2
+		minLat, maxLat = c-minHalfSpan, c+minHalfSpan
+	}
+	if maxLon-minLon < 2*minHalfSpan {
+		c := (minLon + maxLon) / 2
+		minLon, maxLon = c-minHalfSpan, c+minHalfSpan
+	}
 	limit := req.GetInt("limit", 25)
 
 	if limit < 1 || limit > 1000 {
@@ -174,6 +186,15 @@ func sensorCurrentDB(ctx context.Context, deviceID string, minLat, maxLat, minLo
 				"longitude": r["longitude"],
 			},
 			"type": r["transport"],
+		}
+		// Precompute so small models don't have to convert units or time zones.
+		if t, ok := r["captured_at"].(time.Time); ok {
+			readings[i]["captured_at_utc"] = t.UTC().Format("2006-01-02 15:04 UTC")
+		}
+		if u, ok := unit.(string); ok && strings.HasPrefix(u, "lnd_7318") {
+			if v, ok := r["value"].(float64); ok {
+				readings[i]["usv_h"] = math.Round(v*0.0069*1000) / 1000 // LND 7318: ~0.0069 µSv/h per CPM
+			}
 		}
 	}
 

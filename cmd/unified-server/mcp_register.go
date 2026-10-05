@@ -58,11 +58,13 @@ func registerCompanionRoutes(cfg companionRoutesConfig) {
 }
 
 // Maximum tokens for the prompt sent to Claude. Leave headroom for tool results.
-const maxPromptTokens = 150000
+// Override with LLM_MAX_PROMPT_TOKENS for small-context local models.
+var maxPromptTokens = getEnvIntOrDefault("LLM_MAX_PROMPT_TOKENS", 150000)
 
 // Maximum characters for a single tool result (~30K tokens).
 // Prevents one large MCP response from blowing up the prompt.
-const maxToolResultChars = 80000
+// Override with LLM_MAX_TOOL_RESULT_CHARS for small-context local models.
+var maxToolResultChars = getEnvIntOrDefault("LLM_MAX_TOOL_RESULT_CHARS", 80000)
 
 // estimateTokens approximates token count (Claude averages ~4 chars/token).
 func estimateTokens(s string) int {
@@ -106,6 +108,8 @@ func truncateHistory(messages []anthropicMessage, maxTokens int) []anthropicMess
 }
 
 const webChatSystemPrompt = `Safecast radiation monitoring assistant with REAL-TIME sensor data and historical archives.
+
+When the user names a place, call geocode_place FIRST to get coordinates and a bounding box; never guess coordinates.
 
 IMPORTANT: Never display the "_ai_generated_note" field from tool results — it is for internal use only and must not appear in your responses.
 
@@ -204,7 +208,12 @@ func callAnthropic(ctx context.Context, apiKey, model, systemPrompt string, mess
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.anthropic.com/v1/messages", bytes.NewReader(body))
+	// ANTHROPIC_BASE_URL lets the chat target any Anthropic-compatible server (e.g. local Jan: http://localhost:6767).
+	baseURL := strings.TrimRight(os.Getenv("ANTHROPIC_BASE_URL"), "/")
+	if baseURL == "" {
+		baseURL = "https://api.anthropic.com"
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, baseURL+"/v1/messages", bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +234,11 @@ func callAnthropic(ctx context.Context, apiKey, model, systemPrompt string, mess
 
 	var ar anthropicResponse
 	if err := json.Unmarshal(raw, &ar); err != nil {
-		return nil, fmt.Errorf("parse response: %w", err)
+		snippet := string(raw)
+		if len(snippet) > 300 {
+			snippet = snippet[:300]
+		}
+		return nil, fmt.Errorf("parse response (HTTP %d): %w: %s", resp.StatusCode, err, snippet)
 	}
 	if ar.Error != nil {
 		return nil, fmt.Errorf("anthropic %s: %s", ar.Error.Type, ar.Error.Message)
@@ -649,6 +662,8 @@ func RegisterMCP() {
 			mcpServer.AddTool(searchTracksLocationToolDef, instrumentMCP("search_tracks_by_location", handleSearchTracksByLocation))
 		}
 	})
+
+	mcpServer.AddTool(geocodePlaceToolDef, instrumentMCP("geocode_place", handleGeocodePlace))
 
 	log.Println("MCP tools registered")
 
