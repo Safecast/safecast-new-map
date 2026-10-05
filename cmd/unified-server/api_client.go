@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -223,9 +225,13 @@ func normalizeGetMarker(m map[string]any) map[string]any {
 
 // jsonResult serializes v to indented JSON and returns it as a tool result.
 func jsonResult(v any) (*mcp.CallToolResult, error) {
-	data, err := json.MarshalIndent(v, "", "  ")
-	if err != nil {
+	// SetEscapeHTML(false) keeps "&" literal so URL templates the model copies into markdown links stay valid.
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(v); err != nil {
 		return mcp.NewToolResultError("failed to serialize response"), nil
 	}
-	return mcp.NewToolResultText(string(data)), nil
+	return mcp.NewToolResultText(strings.TrimRight(buf.String(), "\n")), nil
 }
