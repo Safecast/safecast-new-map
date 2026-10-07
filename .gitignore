@@ -49,3 +49,6 @@ API users_*.csv
 
 # Ignore Claude settings
 .claude/settings.json
+
+# Local Cursor rules (only one developer uses Cursor)
+.cursor/rules/
