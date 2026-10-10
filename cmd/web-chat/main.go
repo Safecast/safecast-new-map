@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	mcpclient "github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -300,9 +301,180 @@ func mcpToolsToAnthropic(tools []mcp.Tool) []anthropicTool {
 	return out
 }
 
+// ── OpenAI-compatible provider (vLLM / Cohere Compatibility API) ───────────
+
+type llmConfig struct {
+	provider string // "anthropic" | "openai"
+	apiKey   string
+	model    string
+	baseURL  string // openai only, e.g. http://localhost:8000/v1
+}
+
+type openAIFunction struct {
+	Name      string          `json:"name"`
+	Arguments string          `json:"arguments,omitempty"`  // response: JSON string
+	Parameters json.RawMessage `json:"parameters,omitempty"` // request: tool schema
+	Description string         `json:"description,omitempty"`
+}
+
+type openAIToolCall struct {
+	ID       string         `json:"id"`
+	Type     string         `json:"type"`
+	Function openAIFunction `json:"function"`
+}
+
+type openAITool struct {
+	Type     string         `json:"type"`
+	Function openAIFunction `json:"function"`
+}
+
+type openAIMessage struct {
+	Role       string           `json:"role"`
+	Content    string           `json:"content,omitempty"`
+	ToolCalls  []openAIToolCall `json:"tool_calls,omitempty"`
+	ToolCallID string           `json:"tool_call_id,omitempty"`
+}
+
+type openAIRequest struct {
+	Model     string          `json:"model"`
+	MaxTokens int             `json:"max_tokens"`
+	Messages  []openAIMessage `json:"messages"`
+	Tools     []openAITool    `json:"tools,omitempty"`
+}
+
+type openAIResponse struct {
+	Choices []struct {
+		Message      openAIMessage `json:"message"`
+		FinishReason string        `json:"finish_reason"`
+	} `json:"choices"`
+	Error *struct {
+		Type    string `json:"type"`
+		Message string `json:"message"`
+	} `json:"error,omitempty"`
+}
+
+// anthropicToOpenAIMessages translates our internal Anthropic-shaped history
+// into OpenAI chat-completion messages.
+func anthropicToOpenAIMessages(system string, messages []anthropicMessage) []openAIMessage {
+	out := []openAIMessage{{Role: "system", Content: system}}
+	for _, m := range messages {
+		switch c := m.Content.(type) {
+		case string:
+			out = append(out, openAIMessage{Role: m.Role, Content: c})
+		case []contentBlock:
+			msg := openAIMessage{Role: m.Role}
+			var toolResults []openAIMessage
+			for _, b := range c {
+				switch b.Type {
+				case "text":
+					msg.Content += b.Text
+				case "tool_use":
+					msg.ToolCalls = append(msg.ToolCalls, openAIToolCall{
+						ID:   b.ID,
+						Type: "function",
+						Function: openAIFunction{
+							Name:      b.Name,
+							Arguments: string(b.Input),
+						},
+					})
+				case "tool_result":
+					// Each tool_result becomes its own role:"tool" message.
+					toolResults = append(toolResults, openAIMessage{
+						Role:       "tool",
+						ToolCallID: b.ToolUseID,
+						Content:    b.Content,
+					})
+				}
+			}
+			if msg.Content != "" || len(msg.ToolCalls) > 0 {
+				out = append(out, msg)
+			}
+			out = append(out, toolResults...)
+		}
+	}
+	return out
+}
+
+func callOpenAI(ctx context.Context, cfg llmConfig, messages []anthropicMessage, tools []anthropicTool) (*anthropicResponse, error) {
+	messages = truncateHistory(messages, maxPromptTokens)
+
+	oaTools := make([]openAITool, 0, len(tools))
+	for _, t := range tools {
+		oaTools = append(oaTools, openAITool{
+			Type: "function",
+			Function: openAIFunction{
+				Name:        t.Name,
+				Description: t.Description,
+				Parameters:  t.InputSchema,
+			},
+		})
+	}
+
+	reqBody := openAIRequest{
+		Model:     cfg.model,
+		MaxTokens: 4096,
+		Messages:  anthropicToOpenAIMessages(systemPrompt, messages),
+		Tools:     oaTools,
+	}
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, err
+	}
+
+	url := strings.TrimRight(cfg.baseURL, "/") + "/chat/completions"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if cfg.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+cfg.apiKey)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var or openAIResponse
+	if err := json.Unmarshal(raw, &or); err != nil {
+		return nil, fmt.Errorf("parse response: %w", err)
+	}
+	if or.Error != nil {
+		return nil, fmt.Errorf("openai %s: %s", or.Error.Type, or.Error.Message)
+	}
+	if len(or.Choices) == 0 {
+		return nil, fmt.Errorf("openai: empty choices")
+	}
+
+	choice := or.Choices[0]
+	ar := &anthropicResponse{}
+	if choice.Message.Content != "" {
+		ar.Content = append(ar.Content, contentBlock{Type: "text", Text: choice.Message.Content})
+	}
+	for _, tc := range choice.Message.ToolCalls {
+		ar.Content = append(ar.Content, contentBlock{
+			Type:  "tool_use",
+			ID:    tc.ID,
+			Name:  tc.Function.Name,
+			Input: json.RawMessage(tc.Function.Arguments),
+		})
+	}
+	if choice.FinishReason != "tool_calls" {
+		ar.StopReason = "end_turn"
+	}
+	return ar, nil
+}
+
 // ── Chat handler ───────────────────────────────────────────────────────────
 
-func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
+func handleChat(mcpURL string, cfg llmConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// CORS preflight
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -396,7 +568,13 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 		messages = append(messages, anthropicMessage{Role: "user", Content: chatReq.Message})
 
 		for {
-			resp, err := callAnthropic(ctx, apiKey, model, messages, tools)
+			var resp *anthropicResponse
+			var err error
+			if cfg.provider == "openai" {
+				resp, err = callOpenAI(ctx, cfg, messages, tools)
+			} else {
+				resp, err = callAnthropic(ctx, cfg.apiKey, cfg.model, messages, tools)
+			}
 			if err != nil {
 				writeChunkBuffered(w, chunk{Type: "error", Error: err.Error()}, &buffer, isCloudfFront)
 				if isCloudfFront {
@@ -478,13 +656,29 @@ func handleChat(mcpURL, apiKey, model string) http.HandlerFunc {
 // ── Main ───────────────────────────────────────────────────────────────────
 
 func main() {
-	apiKey := os.Getenv("ANTHROPIC_API_KEY")
-	if apiKey == "" {
-		log.Fatal("ANTHROPIC_API_KEY is required")
+	cfg := llmConfig{
+		provider: os.Getenv("LLM_PROVIDER"),
+		baseURL:  os.Getenv("LLM_BASE_URL"),
+		apiKey:   os.Getenv("LLM_API_KEY"),
+		model:    os.Getenv("LLM_MODEL"),
 	}
-	model := os.Getenv("CLAUDE_MODEL")
-	if model == "" {
-		model = "claude-haiku-4-5-20251001"
+	if cfg.provider == "" {
+		cfg.provider = "anthropic"
+	}
+	if cfg.apiKey == "" {
+		cfg.apiKey = os.Getenv("ANTHROPIC_API_KEY")
+	}
+	if cfg.model == "" {
+		cfg.model = os.Getenv("CLAUDE_MODEL")
+	}
+	if cfg.model == "" {
+		cfg.model = "claude-haiku-4-5-20251001"
+	}
+	if cfg.provider == "anthropic" && cfg.apiKey == "" {
+		log.Fatal("ANTHROPIC_API_KEY (or LLM_API_KEY) is required")
+	}
+	if cfg.provider == "openai" && cfg.baseURL == "" {
+		log.Fatal("LLM_BASE_URL is required when LLM_PROVIDER=openai")
 	}
 	mcpURL := os.Getenv("MCP_URL")
 	if mcpURL == "" {
@@ -504,12 +698,12 @@ func main() {
 		w.Header().Set("Cache-Control", "public, max-age=86400")
 		w.Write(logoPNG)
 	})
-	http.HandleFunc("/chat", handleChat(mcpURL, apiKey, model))
+	http.HandleFunc("/chat", handleChat(mcpURL, cfg))
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, "ok")
 	})
 
-	log.Printf("Safecast web-chat on :%s  MCP→%s  model=%s", port, mcpURL, model)
+	log.Printf("Safecast web-chat on :%s  MCP→%s  provider=%s  model=%s", port, mcpURL, cfg.provider, cfg.model)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
