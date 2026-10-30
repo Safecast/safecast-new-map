@@ -43,6 +43,7 @@ import (
 	"safecast-new-map/pkg/email"
 	"safecast-new-map/pkg/httpapi"
 	"safecast-new-map/pkg/jsonarchive"
+	"safecast-new-map/pkg/kriging"
 	"safecast-new-map/pkg/logger"
 	safecastfetcher "safecast-new-map/pkg/safecast-fetcher"
 	safecastrealtime "safecast-new-map/pkg/safecast-realtime"
@@ -1002,6 +1003,9 @@ func main() {
 
 	// Legacy public endpoints (non-/api) live in one registrar to keep route
 	// ownership explicit and avoid growth of direct HandleFunc wiring in main().
+	// Kriging stays in pkg/kriging. This call only publishes its routes.
+	kriging.Register(http.DefaultServeMux, db)
+
 	httpapi.RegisterLegacyRoutes(http.DefaultServeMux, httpapi.LegacyRoutesConfig{
 		AuthManager:            authManager,
 		RequireAuth:            *requireAuth,
