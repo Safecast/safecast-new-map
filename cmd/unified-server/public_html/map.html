@@ -4591,8 +4591,7 @@ document.addEventListener('DOMContentLoaded', function () {
         fetch('/api/track/' + encodeURIComponent(currentTrackID) + '/insights')
           .then(function(r) { return r.json(); })
           .then(function(ins) {
-            var hasData = (ins.insights && ins.insights.length > 0) ||
-                          (ins.location_notes && ins.location_notes.length > 0);
+            var hasData = ins.insights && ins.insights.length > 0;
             if (hasData && window.aiOpenPanel && window.aiAddMessageUI) {
               window.aiOpenPanel();
               var bubble = window.aiAddMessageUI('bot', '');
@@ -11789,7 +11788,7 @@ function selectHomeSearchResult(result, query) {
           wrap.appendChild(card);
         });
 
-        if (data.location_notes && data.location_notes.length > 0) {
+        if (false && data.location_notes && data.location_notes.length > 0) { // location notes disabled: not track-specific
           var nlbl = document.createElement('div');
           nlbl.style.cssText = 'font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;opacity:.5;margin-top:4px;';
           nlbl.textContent = 'Location Notes (' + data.location_notes.length + ')';
@@ -11851,7 +11850,7 @@ function selectHomeSearchResult(result, query) {
             window.aiOpenPanel();
 
             var hasInsights = data.insights && data.insights.length > 0;
-            var hasNotes    = data.location_notes && data.location_notes.length > 0;
+            var hasNotes    = false; // location notes disabled
 
             if (hasInsights || hasNotes) {
               if (window.aiAddMessageUI) {
