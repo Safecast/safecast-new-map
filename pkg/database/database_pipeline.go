@@ -251,6 +251,19 @@ func (db *Database) withSerializedConnection(ctx context.Context, fn func(contex
 	return db.withSerializedConnectionFor(ctx, WorkloadGeneral, fn)
 }
 
+// WithWebRead runs fn on the web-read lane of the single-writer pipeline.
+// Tile scans use it so a DuckDB or SQLite read cannot overlap a write.
+// The timeout matches other map reads: a disconnected client drops the lane,
+// and a scan cannot hold the only writer indefinitely.
+func (db *Database) WithWebRead(ctx context.Context, fn func(context.Context, *sql.DB) error) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctx, cancel := context.WithTimeout(ctx, serializedWaitFloor)
+	defer cancel()
+	return db.withSerializedConnectionFor(ctx, WorkloadWebRead, fn)
+}
+
 func (db *Database) withSerializedConnectionFor(ctx context.Context, kind WorkloadKind, fn func(context.Context, *sql.DB) error) error {
 	if db == nil || db.DB == nil {
 		return fmt.Errorf("database unavailable")

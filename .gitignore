@@ -1,3 +1,6 @@
+# Rendered map tiles. Rebuilt on demand from markers; not source data.
+tile-cache/
+
 # Database files
 *.genji
 *.sqlite
