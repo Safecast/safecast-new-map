@@ -57,17 +57,27 @@
   window.installRadiationTiles = function (map) {
     var layer = null;
     var sparse = L.layerGroup();
-    var note = null;
     var original = window.updateMarkers;
+    var lastSpan = '';
+    var spanToken = 0;
 
-    function ensureNote() {
-      var legend = document.getElementById('legend');
-      if (!legend || note) return;
-      note = document.createElement('div');
-      note.id = 'radiation-tile-note';
-      note.style.cssText = 'font-size:11px;line-height:1.3;padding:4px 6px 6px;max-width:190px;';
-      note.textContent = 'Color is the highest dose in each square. Fainter means fewer measurements, not a lower dose. Blank means no measurement.';
-      legend.appendChild(note);
+    // The date slider on the marker map is filled from the dates of the
+    // measurements in view. Overview tiles replace that stream, so ask for
+    // the same span and hand it to the existing slider.
+    function refreshDateSlider() {
+      if (typeof syncDateSliderToMarkerRange !== 'function' || typeof window.__setDateSliderVisibility !== 'function') return;
+      var q = boundsQuery();
+      if (q === lastSpan) return;
+      lastSpan = q;
+      var token = ++spanToken;
+      fetch('/tiles/aggregate/span?' + q).then(function (r) { return r.ok ? r.json() : null; }).then(function (span) {
+        if (token !== spanToken || !tilesWanted()) return;
+        if (!span || !span.ok) {
+          syncDateSliderToMarkerRange({ hasHistoricalMarkers: false });
+          return;
+        }
+        syncDateSliderToMarkerRange({ minTs: span.min, maxTs: span.max, hasHistoricalMarkers: true });
+      }).catch(function () {});
     }
 
     // Point markers and the overview tiles are exclusive. Entering the overview
@@ -85,8 +95,7 @@
 
     function showTiles() {
       dropPointLayer();
-      ensureNote();
-      if (note) note.style.display = '';
+      refreshDateSlider();
       var url = tileURL();
       if (!layer) {
         layer = L.tileLayer(url, {
@@ -122,7 +131,7 @@
         sparse.clearLayers();
         map.removeLayer(sparse);
       }
-      if (note) note.style.display = 'none';
+      lastSpan = '';
     }
 
     var lastSparse = '';

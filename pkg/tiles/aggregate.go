@@ -277,6 +277,43 @@ func (a *Aggregate) Probe(ctx context.Context, lat, lon float64, z int, from, to
 	}, nil
 }
 
+// DateSpan is the earliest and latest stored measurement inside bounds.
+// Live sensors use a negative speed and are excluded, which is the same
+// set the map's date slider measures while it is drawing markers.
+type DateSpan struct {
+	Min int64 `json:"min"`
+	Max int64 `json:"max"`
+	OK  bool  `json:"ok"`
+}
+
+// DateSpan returns the date slider range for a viewport. It ignores any
+// date the user has already picked: on the marker map that range is taken
+// from every stored measurement in view, and the chosen filter is applied
+// afterwards.
+func (a *Aggregate) DateSpan(ctx context.Context, bounds Bounds) (DateSpan, error) {
+	if a == nil || a.DB == nil {
+		return DateSpan{}, fmt.Errorf("tiles: aggregate database is not configured")
+	}
+	query, args := dateSpanQuery(a.DBType, bounds)
+	var span DateSpan
+	err := a.DB.WithWebRead(ctx, func(jobCtx context.Context, conn *sql.DB) error {
+		var min, max sql.NullInt64
+		if err := conn.QueryRowContext(jobCtx, query, args...).Scan(&min, &max); err != nil {
+			return fmt.Errorf("tiles: date span: %w", err)
+		}
+		if min.Valid && max.Valid {
+			span.Min = min.Int64
+			span.Max = max.Int64
+			span.OK = true
+		}
+		return nil
+	})
+	if err != nil {
+		return DateSpan{}, err
+	}
+	return span, nil
+}
+
 // Load reads zoom=0 points inside bounds through the web-read lane.
 // The predicate is zoom plus a latitude/longitude range so the existing
 // (zoom, lat, lon) btree can bound the scan. Date bounds and the speed
@@ -348,6 +385,23 @@ WHERE zoom = %s AND lat BETWEEN %s AND %s AND lon BETWEEN %s AND %s`,
 		q += " AND date <= " + p
 	}
 	q = appendSpeed(q, cleanSpeed(speed), ph, &args)
+	return q, args
+}
+
+// dateSpanQuery matches the rows observeMarkerDateRange accepts: zoom 0,
+// inside the viewport, with a date, and not a live sensor.
+func dateSpanQuery(dbType string, b Bounds) (string, []any) {
+	args := []any{0, b.MinLat, b.MaxLat, b.MinLon, b.MaxLon}
+	ph := func(i int) string {
+		if strings.EqualFold(dbType, "pgx") {
+			return fmt.Sprintf("$%d", i)
+		}
+		return "?"
+	}
+	q := fmt.Sprintf(`SELECT MIN(date), MAX(date) FROM markers
+WHERE zoom = %s AND lat BETWEEN %s AND %s AND lon BETWEEN %s AND %s
+AND date IS NOT NULL AND COALESCE(speed, 0) >= 0`,
+		ph(1), ph(2), ph(3), ph(4), ph(5))
 	return q, args
 }
 

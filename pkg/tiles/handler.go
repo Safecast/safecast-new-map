@@ -44,17 +44,21 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /tiles/{path...}", s.serve)
 }
 
-// serve dispatches tile images, the click probe, and the live-sensor overlay.
+// serve dispatches tile images, the click probe, the date-slider span, and the live-sensor overlay.
 //
 // @Summary     Radiation map tile
-// @Description Serves an aggregated PNG for one XYZ tile, a probe of the winning measurement, or the current realtime markers in a viewport.
+// @Description Serves an aggregated PNG for one XYZ tile, a probe of the winning measurement, the min and max measurement dates in a viewport, or the current realtime markers in a viewport.
 // @Tags        map
 // @Produce     image/png
-// @Param       path path string true "aggregate/{z}/{x}/{y}.png, aggregate/probe, or live"
+// @Param       path path string true "aggregate/{z}/{x}/{y}.png, aggregate/probe, aggregate/span, or live"
 // @Param       from query int false "Start unix time, quantized to the UTC day"
 // @Param       to query int false "End unix time, quantized to the UTC day"
 // @Param       speed query string false "Speed bands: a plane, c car, w walk, combined as cw"
-// @Success     200 {string} string "PNG tile, probe JSON, or realtime JSON"
+// @Param       minLat query number false "Southern boundary for aggregate/span and live"
+// @Param       minLon query number false "Western boundary for aggregate/span and live"
+// @Param       maxLat query number false "Northern boundary for aggregate/span and live"
+// @Param       maxLon query number false "Eastern boundary for aggregate/span and live"
+// @Success     200 {string} string "PNG tile, probe JSON, date-span JSON, or realtime JSON"
 // @Failure     400 {string} string "Bad coordinates or time window"
 // @Failure     404 {string} string "Unknown processor"
 // @Failure     500 {string} string "Render failed"
@@ -72,6 +76,10 @@ func (s *Service) serve(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(parts) == 2 && parts[1] == "probe" {
 		s.serveProbe(w, r, parts[0])
+		return
+	}
+	if len(parts) == 2 && parts[1] == "span" {
+		s.serveSpan(w, r, parts[0])
 		return
 	}
 	if len(parts) == 4 && strings.HasSuffix(parts[3], ".png") {
@@ -129,6 +137,30 @@ func (s *Service) serveProbe(w http.ResponseWriter, r *http.Request, name string
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	_ = json.NewEncoder(w).Encode(hit)
+}
+
+func (s *Service) serveSpan(w http.ResponseWriter, r *http.Request, name string) {
+	if name != "aggregate" || s.agg == nil {
+		http.NotFound(w, r)
+		return
+	}
+	q := r.URL.Query()
+	minLat, err1 := strconv.ParseFloat(q.Get("minLat"), 64)
+	minLon, err2 := strconv.ParseFloat(q.Get("minLon"), 64)
+	maxLat, err3 := strconv.ParseFloat(q.Get("maxLat"), 64)
+	maxLon, err4 := strconv.ParseFloat(q.Get("maxLon"), 64)
+	if err1 != nil || err2 != nil || err3 != nil || err4 != nil {
+		http.Error(w, "minLat, minLon, maxLat, and maxLon are required", http.StatusBadRequest)
+		return
+	}
+	span, err := s.agg.DateSpan(r.Context(), Bounds{MinLat: minLat, MinLon: minLon, MaxLat: maxLat, MaxLon: maxLon})
+	if err != nil {
+		http.Error(w, "date span failed", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	_ = json.NewEncoder(w).Encode(span)
 }
 
 func (s *Service) serveLive(w http.ResponseWriter, r *http.Request) {
