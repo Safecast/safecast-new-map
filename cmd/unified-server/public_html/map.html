@@ -3718,6 +3718,8 @@ function setStoredUserCenter(lat, lon) {
 }
     </script>
 
+    <script src="/js/radiation-tiles.js"></script>
+
     <!-- Map initialization and markers -->
     <script>
       var map;
@@ -4802,6 +4804,10 @@ document.addEventListener('DOMContentLoaded', function () {
     layers: [startLayer],           // only one base layer
     preferCanvas: true,             // PERFORMANCE: Use Canvas renderer instead of SVG for much faster rendering with many markers
   });
+
+  if (typeof installRadiationTiles === 'function') {
+    installRadiationTiles(map);
+  }
 
   // Layer control
   var baseLayers = {

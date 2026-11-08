@@ -46,6 +46,7 @@ import (
 	"safecast-new-map/pkg/logger"
 	safecastfetcher "safecast-new-map/pkg/safecast-fetcher"
 	safecastrealtime "safecast-new-map/pkg/safecast-realtime"
+	"safecast-new-map/pkg/tiles"
 )
 
 // content bundles the UI and the license texts so single-file binaries still
@@ -61,6 +62,7 @@ var doseData database.Data
 var domain = flag.String("domain", "", "Serve HTTPS on 80/443 via Let's Encrypt when a domain is provided.")
 var dbType = flag.String("db-type", "pgx", "Database driver: pgx (PostgreSQL, default), sqlite, chai, duckdb, or clickhouse")
 var dbPath = flag.String("db-path", "", "Filesystem path for chai/sqlite/duckdb databases; defaults to the working directory.")
+var tileCacheDir = flag.String("tile-cache-dir", "tile-cache", "Directory for rendered overview tiles. This is a cache, not the source database.")
 var dbConn = flag.String("db-conn", "", "Connection URI for network databases.\n  PostgreSQL: postgres://user:pass@host:5432/<database>?sslmode=verify-full\n  ClickHouse: clickhouse://user:pass@host:9000/<database>?secure=true")
 var port = flag.Int("port", 8765, "Port for running the HTTP server when not using -domain.")
 var version = flag.Bool("version", false, "Show the application version")
@@ -1180,9 +1182,16 @@ func main() {
 		}
 	}
 
+	tileSvc, err := tiles.New(db, *dbType, *tileCacheDir)
+	if err != nil {
+		log.Fatalf("tile cache: %v", err)
+	}
+	tiles.Use(tileSvc)
+
 	httpapi.Register(http.DefaultServeMux, httpapi.RegisterConfig{
 		WebServer:                         webServer,
 		APIHandler:                        apiHandler,
+		Tiles:                             tileSvc,
 		AuthManager:                       authManager,
 		DB:                                db,
 		AdminPassword:                     *adminPassword,

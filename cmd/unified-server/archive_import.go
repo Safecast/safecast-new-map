@@ -14,6 +14,7 @@ import (
 
 	"safecast-new-map/pkg/database"
 	"safecast-new-map/pkg/httpapi"
+	"safecast-new-map/pkg/tiles"
 )
 
 // =====================
@@ -857,7 +858,17 @@ func processAndStoreMarkersWithContext(
 	tileCache.Purge() // Clear all cached entries
 	tileCacheMu.Unlock()
 
+	// Drop only the overview tiles this upload can change. The call lives in
+	// pkg/tiles; a distant cached tile stays as it was.
+	if err := tiles.InvalidateBounds(tiles.Bounds{
+		MinLat: bbox.MinLat,
+		MinLon: bbox.MinLon,
+		MaxLat: bbox.MaxLat,
+		MaxLon: bbox.MaxLon,
+	}); err != nil {
+		logT(trackID, "Store", "tile cache invalidate: %v", err)
+	}
+
 	logT(trackID, "Store", "✔ stored (new %d markers)", len(allZoom))
 	return bbox, trackID, nil
 }
-

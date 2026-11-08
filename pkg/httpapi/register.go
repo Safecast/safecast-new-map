@@ -70,7 +70,15 @@ type RegisterConfig struct {
 	AdminQAEmbeddingsByIDHandler     http.HandlerFunc
 	AdminQAEmbeddingsHandler         http.HandlerFunc
 
+	// Tiles mounts the overview radiation tiles. Nil leaves the map on the marker stream.
+	Tiles TileRouter
+
 	Logf func(string, ...any)
+}
+
+// TileRouter mounts overview tile routes. pkg/tiles.Service implements it.
+type TileRouter interface {
+	Register(*http.ServeMux)
 }
 
 // Register attaches all routes to mux: first web and core API routes from the
@@ -81,6 +89,9 @@ func Register(mux *http.ServeMux, cfg RegisterConfig) {
 	}
 	if cfg.APIHandler != nil {
 		cfg.APIHandler.Register(mux)
+	}
+	if cfg.Tiles != nil {
+		cfg.Tiles.Register(mux)
 	}
 	registerAuthAndAdminRoutes(mux, cfg)
 }
