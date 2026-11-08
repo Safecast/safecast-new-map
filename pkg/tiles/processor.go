@@ -13,9 +13,10 @@ var ErrUnknownProcessor = errors.New("tiles: unknown processor")
 
 // Request is one tile plus the filters that belong in the cache key.
 // From and To are unix seconds. Zero means that side of the window is open.
-// Speed is a slot for a later walk/drive/fly split. The aggregate processor
-// records it in the key and still reads every speed, because the overview
-// map does not filter by speed yet.
+// Speed selects the same bands as the map's speed checkboxes:
+// "a" is at least 200 km/h, "c" is 7–200 km/h, "w" is below 7 km/h.
+// Letters combine ("cw" is the map default: cars and pedestrians, no planes).
+// "all" leaves the speed column unconstrained. "none" matches no row.
 type Request struct {
 	Tile  TileID
 	From  int64
@@ -68,18 +69,39 @@ func normalizeRequest(req Request) Request {
 }
 
 func cleanSpeed(s string) string {
-	if s == "" {
+	if s == "" || s == "all" {
 		return "all"
 	}
-	if len(s) > 16 {
-		return "all"
+	if s == "none" {
+		return "none"
 	}
+	var plane, car, walk bool
 	for _, r := range s {
-		if (r < 'a' || r > 'z') && (r < '0' || r > '9') {
+		switch r {
+		case 'a':
+			plane = true
+		case 'c':
+			car = true
+		case 'w':
+			walk = true
+		default:
 			return "all"
 		}
 	}
-	return s
+	out := ""
+	if plane {
+		out += "a"
+	}
+	if car {
+		out += "c"
+	}
+	if walk {
+		out += "w"
+	}
+	if out == "" {
+		return "none"
+	}
+	return out
 }
 
 func cacheKey(name, version string, req Request) string {

@@ -57,14 +57,17 @@ func TestHandlerAggregatePNGAndProbe(t *testing.T) {
 	if !ok {
 		t.Fatal("pixel")
 	}
-	assertColor(t, img, x, y, 0.5)
-	nx := x + 1
-	if nx >= TileSize {
-		nx = x - 1
+	assertPixel(t, img, x, y, 0.5, quantizeAlpha(alphaForCount(3)))
+	originX := x / CellPixels * CellPixels
+	originY := y / CellPixels * CellPixels
+	assertPixel(t, img, originX+CellPixels-1, originY, 0.5, quantizeAlpha(alphaForCount(3)))
+	nextX := originX + CellPixels
+	if nextX >= TileSize {
+		nextX = originX - 1
 	}
-	_, _, _, a := img.At(nx, y).RGBA()
+	_, _, _, a := img.At(nextX, originY).RGBA()
 	if a != 0 {
-		t.Fatal("neighbor pixel is not transparent")
+		t.Fatal("pixel outside the cell is not transparent")
 	}
 
 	probeURL := "/tiles/aggregate/probe?lat=35.6&lon=139.7&z=12&from=" + strconv.FormatInt(inside, 10) + "&to=" + strconv.FormatInt(inside, 10)
@@ -113,6 +116,33 @@ func TestWarmTileIsServedFromCache(t *testing.T) {
 	}
 }
 
+func TestZoom13TileIsServed(t *testing.T) {
+	if MaxOverviewZoom != 13 {
+		t.Fatalf("overview stops at zoom %d, want 13", MaxOverviewZoom)
+	}
+	db := openTileDB(t)
+	insertPoint(t, db, 1, 0.4, 1_700_000_000, 35.6, 139.7, "road", false)
+	svc, err := New(db, "sqlite", t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	mux := http.NewServeMux()
+	svc.Register(mux)
+	id, ok := TileAt(35.6, 139.7, 13)
+	if !ok {
+		t.Fatal("TileAt")
+	}
+	url := "/tiles/aggregate/" + strconv.Itoa(id.Z) + "/" + strconv.Itoa(id.X) + "/" + strconv.Itoa(id.Y) + ".png"
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, url, nil))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("zoom 13 status %d %s", rr.Code, rr.Body.String())
+	}
+	if rr.Header().Get("Content-Type") != "image/png" {
+		t.Fatalf("content type %q", rr.Header().Get("Content-Type"))
+	}
+}
+
 type countingAggregate struct {
 	Aggregate
 	calls *int
@@ -126,12 +156,83 @@ func (c *countingAggregate) Render(ctx context.Context, req Request) (Result, er
 	return c.Aggregate.Render(ctx, req)
 }
 
-func assertColor(t *testing.T, img image.Image, x, y int, dose float64) {
+func assertPixel(t *testing.T, img image.Image, x, y int, dose float64, alpha uint8) {
 	t.Helper()
-	pr, pg, pb, pa := img.At(x, y).RGBA()
+	pr, pg, pb, pa := straight(img.At(x, y))
 	wantR, wantG, wantB := ColorForDose(dose)
-	if pa>>8 != 255 || uint8(pr>>8) != wantR || uint8(pg>>8) != wantG || uint8(pb>>8) != wantB {
-		t.Fatalf("pixel rgba(%d,%d,%d,%d), want rgb(%d,%d,%d) opaque", pr>>8, pg>>8, pb>>8, pa>>8, wantR, wantG, wantB)
+	if pr != wantR || pg != wantG || pb != wantB || pa != alpha {
+		t.Fatalf("pixel rgba(%d,%d,%d,%d), want rgb(%d,%d,%d) a=%d", pr, pg, pb, pa, wantR, wantG, wantB, alpha)
+	}
+}
+
+func TestSpeedFilterDropsAirplanes(t *testing.T) {
+	db := openTileDB(t)
+	const lat, lon = 35.6, 139.7
+	insertSpeed := func(id int, dose, speed float64, track string, nullSpeed bool) {
+		t.Helper()
+		var sp any = speed
+		if nullSpeed {
+			sp = nil
+		}
+		_, err := db.DB.ExecContext(context.Background(),
+			`INSERT INTO markers (id, doseRate, date, lon, lat, countRate, zoom, speed, trackID, has_spectrum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			id, dose, int64(1_700_000_000), lon, lat, 1.0, 0, sp, track, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	insertSpeed(1, 0.10, 0.5, "walk", false)
+	insertSpeed(2, 0.40, 10, "car", false)
+	insertSpeed(3, 5.00, 80, "plane", false)
+	insertSpeed(4, 0.15, 0, "blank", true)
+	insertSpeed(5, 9.00, -1, "live", false)
+
+	svc, err := New(db, "sqlite", t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	mux := http.NewServeMux()
+	svc.Register(mux)
+	id, ok := TileAt(lat, lon, 12)
+	if !ok {
+		t.Fatal("TileAt")
+	}
+	fetch := func(speed string) image.Image {
+		t.Helper()
+		url := "/tiles/aggregate/" + strconv.Itoa(id.Z) + "/" + strconv.Itoa(id.X) + "/" + strconv.Itoa(id.Y) + ".png?speed=" + speed
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, url, nil))
+		if rr.Code != http.StatusOK {
+			t.Fatalf("speed %s status %d %s", speed, rr.Code, rr.Body.String())
+		}
+		img, err := png.Decode(rr.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return img
+	}
+	x, y, ok := Pixel(lat, lon, id)
+	if !ok {
+		t.Fatal("pixel")
+	}
+	// Default map filters: cars and pedestrians. The plane's 5 µSv/h must not win.
+	assertPixel(t, fetch("cw"), x, y, 0.40, quantizeAlpha(alphaForCount(3)))
+	assertPixel(t, fetch("a"), x, y, 5.00, quantizeAlpha(alphaForCount(1)))
+	// A missing speed is walking, so it beats the 0.10 walking sample.
+	assertPixel(t, fetch("w"), x, y, 0.15, quantizeAlpha(alphaForCount(2)))
+	_, _, _, clear := straight(fetch("none").At(x, y))
+	if clear != 0 {
+		t.Fatal("speed=none still painted a cell")
+	}
+
+	pr := httptest.NewRecorder()
+	mux.ServeHTTP(pr, httptest.NewRequest(http.MethodGet, "/tiles/aggregate/probe?lat=35.6&lon=139.7&z=12&speed=cw", nil))
+	var hit ProbeHit
+	if err := json.Unmarshal(pr.Body.Bytes(), &hit); err != nil {
+		t.Fatal(err)
+	}
+	if !hit.Found || hit.ID != 2 || hit.DoseRate != 0.40 || hit.Count != 3 {
+		t.Fatalf("probe %+v", hit)
 	}
 }
 

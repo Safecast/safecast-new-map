@@ -53,7 +53,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 // @Param       path path string true "aggregate/{z}/{x}/{y}.png, aggregate/probe, or live"
 // @Param       from query int false "Start unix time, quantized to the UTC day"
 // @Param       to query int false "End unix time, quantized to the UTC day"
-// @Param       speed query string false "Speed slot, currently recorded and not applied"
+// @Param       speed query string false "Speed bands: a plane, c car, w walk, combined as cw"
 // @Success     200 {string} string "PNG tile, probe JSON, or realtime JSON"
 // @Failure     400 {string} string "Bad coordinates or time window"
 // @Failure     404 {string} string "Unknown processor"
@@ -116,12 +116,12 @@ func (s *Service) serveProbe(w http.ResponseWriter, r *http.Request, name string
 		http.Error(w, "lat, lon, and z are required", http.StatusBadRequest)
 		return
 	}
-	from, to, _, err := filters(r)
+	from, to, speed, err := filters(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	hit, err := s.agg.Probe(r.Context(), lat, lon, z, QuantizeFrom(from), QuantizeTo(to))
+	hit, err := s.agg.Probe(r.Context(), lat, lon, z, QuantizeFrom(from), QuantizeTo(to), speed)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

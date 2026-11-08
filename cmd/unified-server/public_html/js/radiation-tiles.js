@@ -1,8 +1,8 @@
-// Overview radiation tiles. Below zoom 13 the map paints one PNG per XYZ tile
-// instead of a Leaflet marker per measurement. Close zoom, track view, spectra,
+// Overview radiation tiles. Through zoom 13 the map paints one PNG per XYZ tile
+// instead of a Leaflet marker per measurement. Closer zoom, track view, spectra,
 // and realtime sensors stay on the existing marker path.
 (function () {
-  var POINT_ZOOM = 13;
+  var POINT_ZOOM = 14;
 
   function tilesWanted() {
     if (window.isTrackView || window.currentTrackID || window.currentTrackIDs) return false;
@@ -11,15 +11,33 @@
     return true;
   }
 
-  function dateQuery() {
-    if (typeof loadDateRangeState !== 'function') return '';
-    var range = loadDateRangeState();
-    if (!range || range.length < 2 || range[0] == null || range[1] == null) return '';
-    return '?from=' + encodeURIComponent(range[0]) + '&to=' + encodeURIComponent(range[1]);
+  function speedToken() {
+    // Same bands as the point layer. Planes are off unless the user checks them,
+    // because those readings are higher and would otherwise paint the overview.
+    if (typeof loadSpeedFilterState !== 'function') return 'cw';
+    var st = loadSpeedFilterState();
+    var s = '';
+    if (st.plane) s += 'a';
+    if (st.car) s += 'c';
+    if (st.ped) s += 'w';
+    return s || 'none';
+  }
+
+  function tileQuery() {
+    var parts = [];
+    if (typeof loadDateRangeState === 'function') {
+      var range = loadDateRangeState();
+      if (range && range.length >= 2 && range[0] != null && range[1] != null) {
+        parts.push('from=' + encodeURIComponent(range[0]));
+        parts.push('to=' + encodeURIComponent(range[1]));
+      }
+    }
+    parts.push('speed=' + speedToken());
+    return '?' + parts.join('&');
   }
 
   function tileURL() {
-    return '/tiles/aggregate/{z}/{x}/{y}.png' + dateQuery();
+    return '/tiles/aggregate/{z}/{x}/{y}.png' + tileQuery();
   }
 
   function doseColor(dose) {
@@ -47,12 +65,26 @@
       if (!legend || note) return;
       note = document.createElement('div');
       note.id = 'radiation-tile-note';
-      note.style.cssText = 'font-size:11px;line-height:1.3;padding:4px 6px 6px;max-width:160px;';
-      note.textContent = 'Highest measurement in each pixel. Blank means no measurement at this zoom.';
+      note.style.cssText = 'font-size:11px;line-height:1.3;padding:4px 6px 6px;max-width:190px;';
+      note.textContent = 'Color is the highest dose in each square. Fainter means fewer measurements, not a lower dose. Blank means no measurement.';
       legend.appendChild(note);
     }
 
+    // Point markers and the overview tiles are exclusive. Entering the overview
+    // drops whatever the marker stream already drew, including markers from a
+    // closer zoom. Leaving it removes the tiles before those markers return.
+    function dropPointLayer() {
+      window.lastViewportKey = null;
+      if (typeof window.markerLoadToken === 'number') window.markerLoadToken++;
+      if (typeof closeMarkerStreams === 'function') closeMarkerStreams();
+      if (typeof cancelPendingFlush === 'function') cancelPendingFlush();
+      if (typeof clearRenderedMarkers === 'function') clearRenderedMarkers();
+    }
+
+    var layerZoom = null;
+
     function showTiles() {
+      dropPointLayer();
       ensureNote();
       if (note) note.style.display = '';
       var url = tileURL();
@@ -60,17 +92,23 @@
         layer = L.tileLayer(url, {
           minZoom: 0,
           maxZoom: POINT_ZOOM - 1,
-          maxNativeZoom: POINT_ZOOM - 1,
           opacity: 1,
           zIndex: 250,
-          updateWhenIdle: false
+          updateWhenIdle: true,
+          updateWhenZooming: false,
+          keepBuffer: 0
         });
-        layer._radiationQuery = dateQuery();
-      } else if (layer._radiationQuery !== dateQuery()) {
-        layer._radiationQuery = dateQuery();
+        layer._radiationQuery = tileQuery();
+      } else if (layer._radiationQuery !== tileQuery()) {
+        layer._radiationQuery = tileQuery();
         layer.setUrl(url);
       }
-      if (!map.hasLayer(layer)) layer.addTo(map);
+      var already = map.hasLayer(layer);
+      if (!already) layer.addTo(map);
+      // A zoom change can leave the previous zoom's tiles scaled in place,
+      // which shows up as a hard-edged block of the wrong size.
+      if (already && layerZoom !== map.getZoom()) layer.redraw();
+      layerZoom = map.getZoom();
       if (!map.hasLayer(sparse)) sparse.addTo(map);
       refreshSparse();
       var loading = document.getElementById('loadingOverlay');
@@ -79,6 +117,7 @@
 
     function hideTiles() {
       if (layer && map.hasLayer(layer)) map.removeLayer(layer);
+      layerZoom = null;
       if (map.hasLayer(sparse)) {
         sparse.clearLayers();
         map.removeLayer(sparse);
@@ -149,10 +188,14 @@
       if (target && target.closest && target.closest('.leaflet-marker-icon, .leaflet-interactive')) {
         if (target.closest('.leaflet-marker-icon')) return;
       }
-      var url = '/tiles/aggregate/probe?lat=' + ev.latlng.lat + '&lon=' + ev.latlng.lng + '&z=' + map.getZoom() + dateQuery().replace('?', '&');
+      var url = '/tiles/aggregate/probe?lat=' + ev.latlng.lat + '&lon=' + ev.latlng.lng + '&z=' + map.getZoom() + tileQuery().replace('?', '&');
       fetch(url).then(function (r) { return r.ok ? r.json() : null; }).then(function (hit) {
         if (hit && hit.found && hit.trackID && typeof viewTrack === 'function') viewTrack(hit.trackID);
       }).catch(function () {});
+    });
+
+    map.on('zoom', function () {
+      if (map.getZoom() >= POINT_ZOOM) hideTiles();
     });
 
     window.updateMarkers = function () {

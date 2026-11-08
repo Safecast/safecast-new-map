@@ -101,7 +101,7 @@ func TestQuantizeDay(t *testing.T) {
 	next := QuantizeFrom(afternoon) + 24*60*60
 	a := cacheKey("aggregate", "1", normalizeRequest(Request{Tile: TileID{Z: 1, X: 1, Y: 1}, From: afternoon, Speed: "all"}))
 	b := cacheKey("aggregate", "1", normalizeRequest(Request{Tile: TileID{Z: 1, X: 1, Y: 1}, From: next, Speed: "all"}))
-	c := cacheKey("aggregate", "1", normalizeRequest(Request{Tile: TileID{Z: 1, X: 1, Y: 1}, From: afternoon, Speed: "walk"}))
+	c := cacheKey("aggregate", "1", normalizeRequest(Request{Tile: TileID{Z: 1, X: 1, Y: 1}, From: afternoon, Speed: "a"}))
 	d := cacheKey("aggregate", "2", normalizeRequest(Request{Tile: TileID{Z: 1, X: 1, Y: 1}, From: afternoon, Speed: "all"}))
 	if a == b || a == c || a == d {
 		t.Fatalf("cache keys collided: %s %s %s %s", a, b, c, d)
