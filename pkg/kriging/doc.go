@@ -35,21 +35,10 @@
 //
 //	go test ./pkg/kriging/
 //
-// # Visual check, synthetic field
+// # Visual check
 //
 // Restart the server after a change; map.html is embedded in the binary.
-//
-//	go run ./cmd/unified-server -db-type sqlite -db-path ./dev.db
-//
-// Open http://localhost:8765/?kriging=synthetic and turn on "Radiation estimate".
-// The map zooms to a fake track. Color should follow that track, fade within a
-// few hundred meters, and stay blank in the empty northeast. Pan slightly: the
-// shared edge should not jump. Turn the control off and the base map is unchanged.
-// The synthetic flag does not write to the database.
-//
-// # Visual check, stored measurements
-//
-// Open http://localhost:8765/ against a database that has zoom = 0 rows and zoom
-// into a surveyed area until the overlay draws. Gaps between tracks stay blank.
+// Open the map against a database that has zoom = 0 rows and zoom into a
+// surveyed area until the overlay draws. Gaps between tracks stay blank.
 // Markers stay clickable above the color.
 package kriging

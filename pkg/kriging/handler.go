@@ -20,19 +20,17 @@ const ResponseNote = "Suppressed cells have too little independent support to dr
 
 // Handler serves the prediction grid and the map overlay script.
 type Handler struct {
-	real      *Predictor
-	synthetic *Predictor
+	real *Predictor
 }
 
 // Register attaches GET /api/kriging/grid and GET /kriging/overlay.js.
-// db may be nil; the synthetic source still answers.
+// A nil database answers the grid with 503 until a database is configured.
 func Register(mux *http.ServeMux, db *database.Database) {
 	if mux == nil {
 		return
 	}
 	h := &Handler{
-		real:      NewPredictor(NewDBSource(db), DefaultModel()),
-		synthetic: NewPredictor(SyntheticSource{}, DefaultModel()),
+		real: NewPredictor(NewDBSource(db), DefaultModel()),
 	}
 	mux.HandleFunc("/api/kriging/grid", h.ServeGrid)
 	mux.HandleFunc("/kriging/overlay.js", h.ServeOverlay)
@@ -53,7 +51,7 @@ func (h *Handler) ServeOverlay(w http.ResponseWriter, r *http.Request) {
 // ServeGrid predicts a local log-dose field for one viewport.
 //
 // @Summary     Local radiation kriging grid
-// @Description Ordinary kriging of log dose rate for a small viewport. Returns a median in µSv/h and the latent log-variance. Suppressed cells must not be drawn. Viewports wider than 20 km are refused instead of subsampled. synthetic=1 uses a fixed fake track and does not read the database.
+// @Description Ordinary kriging of log dose rate for a small viewport. Returns a median in µSv/h and the latent log-variance. Suppressed cells must not be drawn. Viewports wider than 20 km are refused instead of subsampled.
 // @Tags        map
 // @Produce     json
 // @Param       minLat    query number true  "Southern boundary"
@@ -63,7 +61,6 @@ func (h *Handler) ServeOverlay(w http.ResponseWriter, r *http.Request) {
 // @Param       time      query integer false "Prediction time, unix seconds. Defaults to now."
 // @Param       cols      query integer false "Grid columns, 1 to 48"
 // @Param       rows      query integer false "Grid rows, 1 to 48"
-// @Param       synthetic query boolean false "Use the built-in synthetic track"
 // @Success     200 {object} map[string]interface{} "Prediction grid"
 // @Failure     400 {object} map[string]string "Invalid parameters"
 // @Failure     422 {object} map[string]string "Viewport too wide or too many raw observations"
@@ -95,11 +92,7 @@ func (h *Handler) ServeGrid(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid rows"})
 		return
 	}
-	synthetic := q.Get("synthetic") == "1" || q.Get("synthetic") == "true"
 	predictor := h.real
-	if synthetic {
-		predictor = h.synthetic
-	}
 	if predictor == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "kriging is not configured"})
 		return
@@ -112,18 +105,14 @@ func (h *Handler) ServeGrid(w http.ResponseWriter, r *http.Request) {
 		Rows:     rows,
 	})
 	if err != nil {
-		h.writePredictError(w, err, synthetic)
+		h.writePredictError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, gridPayload(grid, predictor.Model, synthetic))
+	writeJSON(w, http.StatusOK, gridPayload(grid, predictor.Model))
 }
 
-func (h *Handler) writePredictError(w http.ResponseWriter, err error, synthetic bool) {
+func (h *Handler) writePredictError(w http.ResponseWriter, err error) {
 	body := map[string]any{"error": err.Error()}
-	if synthetic {
-		view := SyntheticView()
-		body["syntheticView"] = view
-	}
 	switch {
 	case errors.Is(err, ErrInvalidBounds):
 		writeJSON(w, http.StatusBadRequest, body)
@@ -142,7 +131,7 @@ func (h *Handler) writePredictError(w http.ResponseWriter, err error, synthetic 
 	}
 }
 
-func gridPayload(grid Grid, model CovarianceModel, synthetic bool) map[string]any {
+func gridPayload(grid Grid, model CovarianceModel) map[string]any {
 	name, spatial, temporal, sill, nugget := modelMeta(model)
 	payload := map[string]any{
 		"predictionTime":            grid.PredictionTime,
@@ -164,9 +153,6 @@ func gridPayload(grid Grid, model CovarianceModel, synthetic bool) map[string]an
 		"cols":                      grid.Cols,
 		"rows":                      grid.Rows,
 		"cells":                     grid.Cells,
-	}
-	if synthetic {
-		payload["syntheticView"] = SyntheticView()
 	}
 	return payload
 }
