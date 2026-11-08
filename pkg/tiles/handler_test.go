@@ -116,6 +116,56 @@ func TestWarmTileIsServedFromCache(t *testing.T) {
 	}
 }
 
+func TestDateSpanIgnoresLiveAndOutsidePoints(t *testing.T) {
+	db := openTileDB(t)
+	early := time.Date(2019, 6, 1, 0, 0, 0, 0, time.UTC).Unix()
+	late := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC).Unix()
+	insertPoint(t, db, 1, 0.1, early, 35.6, 139.7, "road", false)
+	insertPoint(t, db, 2, 0.2, late, 35.61, 139.71, "road", false)
+	// A live sensor is older than the stored points and must not move the slider.
+	_, err := db.DB.ExecContext(context.Background(),
+		`INSERT INTO markers (id, doseRate, date, lon, lat, countRate, zoom, speed, trackID, has_spectrum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		3, 0.3, early-86_400, 139.7, 35.6, 1.0, 0, -1.0, "live", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	insertPoint(t, db, 4, 0.4, late+86_400, 10, 10, "elsewhere", false)
+
+	svc, err := New(db, "sqlite", t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	mux := http.NewServeMux()
+	svc.Register(mux)
+
+	url := "/tiles/aggregate/span?minLat=35&minLon=139&maxLat=36&maxLon=140"
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, url, nil))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status %d %s", rr.Code, rr.Body.String())
+	}
+	var span DateSpan
+	if err := json.Unmarshal(rr.Body.Bytes(), &span); err != nil {
+		t.Fatal(err)
+	}
+	if !span.OK || span.Min != early || span.Max != late {
+		t.Fatalf("span %+v, want %d..%d", span, early, late)
+	}
+
+	empty := httptest.NewRecorder()
+	mux.ServeHTTP(empty, httptest.NewRequest(http.MethodGet, "/tiles/aggregate/span?minLat=1&minLon=1&maxLat=2&maxLon=2", nil))
+	if empty.Code != http.StatusOK {
+		t.Fatalf("empty status %d", empty.Code)
+	}
+	var none DateSpan
+	if err := json.Unmarshal(empty.Body.Bytes(), &none); err != nil {
+		t.Fatal(err)
+	}
+	if none.OK {
+		t.Fatalf("empty viewport reported a span: %+v", none)
+	}
+}
+
 func TestZoom13TileIsServed(t *testing.T) {
 	if MaxOverviewZoom != 13 {
 		t.Fatalf("overview stops at zoom %d, want 13", MaxOverviewZoom)
