@@ -7,7 +7,7 @@ const (
 	TileSize = 256
 	// PointZoom is the first zoom at which the map draws individual markers.
 	// Overview tiles are served only below this zoom.
-	PointZoom = 13
+	PointZoom = 14
 	// MaxOverviewZoom is the finest cached overview tile.
 	MaxOverviewZoom = PointZoom - 1
 )

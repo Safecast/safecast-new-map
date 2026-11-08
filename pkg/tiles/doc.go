@@ -4,7 +4,10 @@
 // A tile is a Web Mercator XYZ square, the same grid Leaflet already uses for
 // the base map. A processor turns the measurements inside that square into
 // bytes. The aggregate processor paints the hottest dose in each pixel and
-// leaves unsampled pixels transparent. Another processor can be registered
+// leaves unsampled pixels transparent. Cells are a global Web Mercator grid
+// whose geographic size halves at each zoom. Color is the hottest dose in
+// the cell. Opacity is the observation count on a logarithmic scale, so a
+// single reading stays faint. Another processor can be registered
 // later without changing the cache, the HTTP routes, or the browser layer.
 //
 // This package does not import or copy a kriging implementation. The processor

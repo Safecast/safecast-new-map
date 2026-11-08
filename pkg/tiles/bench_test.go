@@ -199,7 +199,7 @@ func reportTile(t *testing.T, agg *Aggregate, name string, id TileID) {
 		t.Fatalf("%s bounds", name)
 	}
 	start := time.Now()
-	points, err := agg.Load(context.Background(), bounds, 0, 0)
+	points, err := agg.Load(context.Background(), bounds, 0, 0, "all")
 	if err != nil {
 		t.Fatalf("%s load: %v", name, err)
 	}
