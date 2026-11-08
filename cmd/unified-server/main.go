@@ -552,19 +552,28 @@ func main() {
 			log.Printf("DB close: %v", closeErr)
 		}
 	}()
-	if err = db.InitSchema(dbCfg); err != nil {
-		log.Fatalf("DB schema: %v", err)
-	}
-	if strings.EqualFold(driverName, "pgx") {
-		db.SyncPostgreSQLSequence(context.Background(), log.Printf)
-	}
-	queueDuckDBMaintenanceAfterImport(driverName, db, log.Printf, "startup")
+	if db.ReadOnly {
+		// The live schema is already in place. These statements CREATE, INSERT,
+		// and reindex, which a read-only session rejects before the map can listen.
+		log.Printf("database session is read-only; skipping schema setup, seeds, and index builds")
+		if strings.TrimSpace(*importTGZURLFlag) != "" || strings.TrimSpace(*importTGZFileFlag) != "" || *safecastFetcherEnabled {
+			log.Fatalf("read-only database session cannot import or fetch data")
+		}
+	} else {
+		if err = db.InitSchema(dbCfg); err != nil {
+			log.Fatalf("DB schema: %v", err)
+		}
+		if strings.EqualFold(driverName, "pgx") {
+			db.SyncPostgreSQLSequence(context.Background(), log.Printf)
+		}
+		queueDuckDBMaintenanceAfterImport(driverName, db, log.Printf, "startup")
 
-	// Seed translations into DB if empty. Tour step seeding also inserts
-	// tour.<step_key>.text rows, so run it before loading translations so the
-	// in-memory map picks up the new keys on first boot.
-	seedTranslationsDB(content, "public_html/translations.json")
-	seedTourStepsDB()
+		// Seed translations into DB if empty. Tour step seeding also inserts
+		// tour.<step_key>.text rows, so run it before loading translations so the
+		// in-memory map picks up the new keys on first boot.
+		seedTranslationsDB(content, "public_html/translations.json")
+		seedTourStepsDB()
+	}
 	loadTranslationsFromDB()
 
 	// Initialize authentication system if configured
@@ -1276,16 +1285,18 @@ func main() {
 		}()
 	}
 
-	// асинхронные индексы в бд без блокирования основного процесса начало
-	ctxIdx, cancelIdx := context.WithCancel(context.Background())
-	defer cancelIdx()
-	// Пояснение в лог: что делаем и почему это не блокирует сервер
-	log.Printf("⏳ background index build scheduled (engine=%s). Listeners are up; pages may be slower until indexes are ready.", dbCfg.DBType)
-	// Запуск асинхронной индексации с прогрессом
-	db.EnsureIndexesAsync(ctxIdx, dbCfg, func(format string, args ...any) {
-		log.Printf(format, args...)
-	})
-	// асинхронные индексы в бд без блокирования основного процесса конец
+	if !db.ReadOnly {
+		// асинхронные индексы в бд без блокирования основного процесса начало
+		ctxIdx, cancelIdx := context.WithCancel(context.Background())
+		defer cancelIdx()
+		// Пояснение в лог: что делаем и почему это не блокирует сервер
+		log.Printf("⏳ background index build scheduled (engine=%s). Listeners are up; pages may be slower until indexes are ready.", dbCfg.DBType)
+		// Запуск асинхронной индексации с прогрессом
+		db.EnsureIndexesAsync(ctxIdx, dbCfg, func(format string, args ...any) {
+			log.Printf(format, args...)
+		})
+		// асинхронные индексы в бд без блокирования основного процесса конец
+	}
 
 	// 6. Держим main-goroutine живой
 	select {}

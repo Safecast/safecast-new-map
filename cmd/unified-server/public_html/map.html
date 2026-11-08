@@ -4999,7 +4999,6 @@ document.addEventListener('DOMContentLoaded', function () {
     SafecastKriging.attach(map, {
       translate: translate,
       color: getGradientColor,
-      synthetic: new URLSearchParams(window.location.search).get('kriging') === 'synthetic',
       getPredictionTime: function () {
         var range = loadDateRangeState();
         if (range && range.length === 2 && isFinite(range[1])) {
@@ -9014,12 +9013,6 @@ function updateUrl() {
   const showParam = new URLSearchParams(window.location.search).get('show');
   if (showParam) {
     newUrl += `&show=${encodeURIComponent(showParam)}`;
-  }
-
-  // Keep the synthetic kriging flag so a reload still uses the fake track.
-  const krigingParam = new URLSearchParams(window.location.search).get('kriging');
-  if (krigingParam === 'synthetic') {
-    newUrl += '&kriging=synthetic';
   }
 
   window.history.replaceState({}, '', newUrl);

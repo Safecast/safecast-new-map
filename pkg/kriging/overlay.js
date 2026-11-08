@@ -5,7 +5,6 @@
   'use strict';
 
   var enabled = false;
-  var fittedSynthetic = false;
   var mapRef = null;
   var optsRef = null;
   var canvas = null;
@@ -139,7 +138,6 @@
     params.set('time', String(predictionTime()));
     params.set('cols', String(Math.max(8, Math.min(48, Math.round(size.x / 16)))));
     params.set('rows', String(Math.max(8, Math.min(48, Math.round(size.y / 16)))));
-    if (optsRef && optsRef.synthetic) params.set('synthetic', '1');
 
     fetch('/api/kriging/grid?' + params.toString(), { signal: signal })
       .then(function (res) {
@@ -153,14 +151,6 @@
         if (data.refusal) {
           clearCanvas();
           setStatus(text('kriging_zoom_in'));
-          if (optsRef && optsRef.synthetic && !fittedSynthetic && data.syntheticView) {
-            fittedSynthetic = true;
-            var view = data.syntheticView;
-            mapRef.fitBounds(
-              [[view.minLat, view.minLon], [view.maxLat, view.maxLon]],
-              { padding: [24, 24], maxZoom: 16 }
-            );
-          }
           return;
         }
         if (msg.status !== 200 || !data.cells) {

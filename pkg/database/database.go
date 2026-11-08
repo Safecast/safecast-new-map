@@ -27,6 +27,9 @@ type Database struct {
 	upkeep      *duckDBMaintenance  // Coordinates background maintenance for DuckDB so imports end with a compact file
 	duckTempDir string              // Per-database temp directory rooted beside the database file so spills stay colocated
 	duckCleanup func() error        // Cleanup hook that removes the temp directory when the process shuts down
+	// ReadOnly is true when PostgreSQL reports transaction_read_only=on.
+	// Startup must not create schema, seed rows, or build indexes on this connection.
+	ReadOnly bool
 }
 
 // realtimeConverter is configured by the safecastrealtime package to translate
@@ -154,21 +157,11 @@ func NewDatabase(config Config) (*Database, error) {
 		}
 		cancel()
 	case "pgx":
-		// PostgreSQL benefits from multiple concurrent connections. Set pool size to
-		// 4×CPU cores (increased from 2×CPU for better throughput under concurrent load).
-		// This enables better multithreading, parallel query execution, and handles
-		// concurrent map tile requests without connection exhaustion.
-		maxConns := runtime.NumCPU() * 4
-		if maxConns < 16 {
-			maxConns = 16 // Minimum 16 connections for better concurrency
-		}
-		db.SetMaxOpenConns(maxConns)
-		db.SetMaxIdleConns(maxConns)
-		// Connection lifetime: recycle after 5 minutes to handle server-side changes
+		// Pool size is chosen after Ping, once we know if the session is read-only.
+		// Connection lifetime: recycle after 5 minutes to handle server-side changes.
 		db.SetConnMaxLifetime(5 * time.Minute)
-		// Idle timeout: return connections to pool after 2 minutes of inactivity
+		// Idle timeout: return connections to pool after 2 minutes of inactivity.
 		db.SetConnMaxIdleTime(2 * time.Minute)
-		log.Printf("PostgreSQL connection pool tuned: MaxOpenConns=%d (4×%d CPU cores), idle_timeout=2m, lifetime=5m", maxConns, runtime.NumCPU())
 	case "clickhouse":
 		// ClickHouse benefits from parallel connections for concurrent queries.
 		// Configure pool for efficient handling of simultaneous map tile requests.
@@ -212,7 +205,27 @@ func NewDatabase(config Config) (*Database, error) {
 		progressStop()
 	}
 
-	log.Printf("Using database driver: %s with DSN: %s", driverName, dsn)
+	// A read-only development session must not open the live server's full pool.
+	// The check runs after Ping because transaction_read_only is a property of
+	// the connected role, not only of the DSN.
+	var readOnly bool
+	if driverName == "pgx" {
+		readOnly = postgresSessionReadOnly(db)
+		maxConns := runtime.NumCPU() * 4
+		if maxConns < 16 {
+			maxConns = 16
+		}
+		if readOnly {
+			maxConns = 2
+			log.Printf("PostgreSQL session is read-only; MaxOpenConns=%d", maxConns)
+		} else {
+			log.Printf("PostgreSQL connection pool tuned: MaxOpenConns=%d (4×%d CPU cores), idle_timeout=2m, lifetime=5m", maxConns, runtime.NumCPU())
+		}
+		db.SetMaxOpenConns(maxConns)
+		db.SetMaxIdleConns(maxConns)
+	}
+
+	log.Printf("Using database driver: %s with DSN: %s", driverName, redactDSN(dsn))
 
 	// Bootstrap ID generator from the highest ID across tables so each row
 	// receives a unique primary key. We query both markers and realtime data
@@ -249,6 +262,7 @@ func NewDatabase(config Config) (*Database, error) {
 		pipeline:    pipeline,
 		duckTempDir: duckTempDir,
 		duckCleanup: duckCleanup,
+		ReadOnly:    readOnly,
 	}
 
 	if driverName == "duckdb" {
@@ -258,6 +272,21 @@ func NewDatabase(config Config) (*Database, error) {
 	}
 
 	return databaseInstance, nil
+}
+
+// postgresSessionReadOnly reports whether this connection cannot write.
+// PostgreSQL answers "on" when the DSN sets default_transaction_read_only or
+// the role itself is read-only. A failed check stays false so a normal server
+// still initializes its schema.
+func postgresSessionReadOnly(db *sql.DB) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	var value string
+	if err := db.QueryRowContext(ctx, "SHOW transaction_read_only").Scan(&value); err != nil {
+		log.Printf("transaction_read_only check skipped: %v", err)
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(value), "on")
 }
 
 // startDuckDBStartupProgress logs periodic startup telemetry while DuckDB opens a

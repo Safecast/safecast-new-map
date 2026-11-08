@@ -5,20 +5,22 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"strings"
 	"testing"
 )
 
-func TestSyntheticGridHasSupportedAndBlankCells(t *testing.T) {
-	nowUnix = func() int64 { return 1_700_000_000 }
-	h := &Handler{synthetic: NewPredictor(SyntheticSource{}, DefaultModel())}
-	view := SyntheticView()
-	url := "/api/kriging/grid?synthetic=1&cols=6&rows=6&time=1700000000" +
-		"&minLat=" + format(view.MinLat) +
-		"&minLon=" + format(view.MinLon) +
-		"&maxLat=" + format(view.MaxLat) +
-		"&maxLon=" + format(view.MaxLon)
+func TestGridHasSupportedAndBlankCells(t *testing.T) {
+	// Points sit in the southwest of a small box. The northeast is farther than
+	// the practical range, so those cells stay blank.
+	when := int64(1_700_000_000)
+	var obs []Observation
+	for i := 0; i < 12; i++ {
+		obs = append(obs, Observation{
+			Lat: 0.001, Lon: 0.001 + float64(i)*0.0002, TimeUnix: when, DoseRate: 0.15, TrackID: "t",
+		})
+	}
+	h := &Handler{real: NewPredictor(memorySource{obs: obs}, DefaultModel())}
+	url := "/api/kriging/grid?cols=6&rows=6&time=1700000000&minLat=0&minLon=0&maxLat=0.02&maxLon=0.02"
 	rec := httptest.NewRecorder()
 	h.ServeGrid(rec, httptest.NewRequest(http.MethodGet, url, nil))
 	if rec.Code != http.StatusOK {
@@ -30,7 +32,6 @@ func TestSyntheticGridHasSupportedAndBlankCells(t *testing.T) {
 		CandidateCount int    `json:"candidateCount"`
 		Note           string `json:"note"`
 		Cells          []Cell `json:"cells"`
-		SyntheticView  Bounds `json:"syntheticView"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
@@ -38,8 +39,8 @@ func TestSyntheticGridHasSupportedAndBlankCells(t *testing.T) {
 	if body.Model != ModelName || body.ValueUnit != "uSv/h" || body.CandidateCount < 10 {
 		t.Fatalf("unexpected meta: %+v", body)
 	}
-	if body.Note == "" || body.SyntheticView.MaxLat <= body.SyntheticView.MinLat {
-		t.Fatal("missing note or synthetic view")
+	if body.Note == "" {
+		t.Fatal("missing note")
 	}
 	drawn, blank := 0, 0
 	for _, cell := range body.Cells {
@@ -58,15 +59,15 @@ func TestSyntheticGridHasSupportedAndBlankCells(t *testing.T) {
 }
 
 func TestGridRefusesEmptyAndHugeBox(t *testing.T) {
-	h := &Handler{synthetic: NewPredictor(SyntheticSource{}, DefaultModel())}
+	h := &Handler{real: NewPredictor(memorySource{}, DefaultModel())}
 	rec := httptest.NewRecorder()
-	h.ServeGrid(rec, httptest.NewRequest(http.MethodGet, "/api/kriging/grid?synthetic=1&minLat=1&minLon=0&maxLat=1&maxLon=1", nil))
+	h.ServeGrid(rec, httptest.NewRequest(http.MethodGet, "/api/kriging/grid?minLat=1&minLon=0&maxLat=1&maxLon=1", nil))
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("empty box status %d body %s", rec.Code, rec.Body.String())
 	}
 
 	rec = httptest.NewRecorder()
-	h.ServeGrid(rec, httptest.NewRequest(http.MethodGet, "/api/kriging/grid?synthetic=1&minLat=0&minLon=0&maxLat=10&maxLon=10", nil))
+	h.ServeGrid(rec, httptest.NewRequest(http.MethodGet, "/api/kriging/grid?minLat=0&minLon=0&maxLat=10&maxLon=10", nil))
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("huge box status %d body %s", rec.Code, rec.Body.String())
 	}
@@ -106,8 +107,4 @@ func TestOverlayScript(t *testing.T) {
 	if !strings.Contains(rec.Header().Get("Content-Type"), "javascript") {
 		t.Fatalf("content type %s", rec.Header().Get("Content-Type"))
 	}
-}
-
-func format(v float64) string {
-	return strconv.FormatFloat(v, 'f', -1, 64)
 }

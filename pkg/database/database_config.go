@@ -33,6 +33,26 @@ func normalizeDBType(dbType string) string {
 	}
 }
 
+// redactDSN hides a password embedded in a URL so startup logs can name the
+// database without recording credentials. File paths and URLs without a
+// password are returned unchanged. An unparseable DSN is omitted rather than
+// logged raw, because that string may still contain a password.
+func redactDSN(dsn string) string {
+	parsed, err := url.Parse(dsn)
+	if err != nil {
+		return "unparsed"
+	}
+	if parsed.User == nil {
+		return dsn
+	}
+	username := parsed.User.Username()
+	if _, ok := parsed.User.Password(); !ok {
+		return dsn
+	}
+	parsed.User = url.UserPassword(username, "redacted")
+	return parsed.String()
+}
+
 // ClickHouseDSNFromConfig assembles a DSN understood by the lightweight HTTP driver.
 func ClickHouseDSNFromConfig(cfg Config) string {
 	if trimmed := strings.TrimSpace(cfg.DBConn); trimmed != "" {

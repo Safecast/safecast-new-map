@@ -28,8 +28,7 @@ type DBSource struct {
 	MaxObservations int
 }
 
-// NewDBSource adapts a database. A nil database fails at query time so the
-// synthetic source can still be registered.
+// NewDBSource adapts a database. A nil database fails at query time.
 func NewDBSource(db *database.Database) *DBSource {
 	return &DBSource{DB: db, MaxObservations: DefaultMaxObservations}
 }
