@@ -5458,7 +5458,7 @@ function getTooltipContent(marker) {
 const trackInfoCache = new Map();
 function isSafecastDevice(detector, username) {
   // CzechRad firmware reports itself as "bGeigie-xxxx (x.x.xCzechRad)" — explicitly not Safecast.
-  if (/czechrad|suro\.cz|radiacode|^rc-/i.test((detector || '') + ' ' + (username || ''))) return false;
+  if (/czechrad|radiacode|^rc-/i.test((detector || '') + ' ' + (username || ''))) return false;
   return /bgeigie|nano|zen/i.test(detector || '');
 }
 function getTrackInfoHtml(trackID) {
