@@ -1215,6 +1215,7 @@ func (h *Handler) buildTrackDataJSON(ctx context.Context, trackID string) ([]byt
 		TrackID     string                    `json:"trackID"`
 		TrackIndex  int64                     `json:"trackIndex"`
 		APIURL      string                    `json:"apiURL"`
+		Upload      map[string]interface{}    `json:"upload,omitempty"`
 		FirstID     int64                     `json:"firstID"`
 		LastID      int64                     `json:"lastID"`
 		MarkerCount int64                     `json:"markerCount"`
@@ -1229,6 +1230,47 @@ func (h *Handler) buildTrackDataJSON(ctx context.Context, trackID string) ([]byt
 		MarkerCount: summary.MarkerCount,
 		Markers:     markers,
 		Disclaimers: trackjson.Disclaimers,
+	}
+	if info, ierr := h.DB.GetTrackInfo(ctx, trackID); ierr == nil && info.Found {
+		deviceType := "unsupported"
+		if database.IsSafecastDevice(info.Detector, info.Username) {
+			deviceType = "supported"
+		}
+		up := map[string]interface{}{
+			"uploader":          info.Username,
+			"simplemapUploader": info.SimplemapUser,
+			"device":            info.Detector,
+			"device_type":       deviceType,
+			"originalFilename":  info.Filename,
+			"fileType":          info.FileType,
+			"name":              info.Name,
+			"comment":           info.Comment,
+			"sourceURL":         info.SourceURL,
+		}
+		importID := info.ImportID
+		if importID == "" && info.Source == "safecast-api" {
+			importID = info.SourceID
+		}
+		if importID != "" {
+			up["safecastImportID"] = importID
+			up["safecastImportURL"] = "https://api.safecast.org/en-US/bgeigie_imports/" + importID
+		}
+		if info.Source != "" {
+			up["source"] = info.Source
+		}
+		if info.RecordingDate > 0 {
+			up["recordingDateUTC"] = time.Unix(info.RecordingDate, 0).UTC().Format(time.RFC3339)
+		}
+		if info.UploadedAt > 0 {
+			up["uploadedUTC"] = time.Unix(info.UploadedAt, 0).UTC().Format(time.RFC3339)
+		}
+		if info.Source == "user-upload" && info.UploadIP != "" {
+			up["uploadIP"] = info.UploadIP
+		}
+		if deviceType == "unsupported" {
+			up["note"] = "3rd party device (not a Safecast bGeigie Nano/Zen)."
+		}
+		resp.Upload = up
 	}
 
 	data, err := encodeJSON(resp)
