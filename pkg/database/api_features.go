@@ -31,7 +31,7 @@ type TrackInfo struct {
 // CzechRad firmware reports itself as a bGeigie, and Radiacode is not a Safecast device.
 func IsSafecastDevice(detector, username string) bool {
 	combined := strings.ToLower(detector + " " + username)
-	for _, bad := range []string{"czechrad", "suro.cz", "radiacode"} {
+	for _, bad := range []string{"czechrad", "radiacode"} {
 		if strings.Contains(combined, bad) {
 			return false
 		}
