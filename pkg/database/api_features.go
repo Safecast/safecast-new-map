@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"path/filepath"
 	"strings"
 )
 
@@ -13,7 +14,33 @@ type TrackInfo struct {
 	Detector      string
 	RecordingDate int64
 	SourceURL     string
+	Filename      string
+	FileType      string
+	Name          string
+	Comment       string
+	UploadedAt    int64
+	Source        string
+	SourceID      string
+	ImportID      string
+	SimplemapUser string
+	UploadIP      string
 	Found         bool
+}
+
+// IsSafecastDevice reports whether a track came from a Safecast bGeigie (Nano/Zen).
+// CzechRad firmware reports itself as a bGeigie, and Radiacode is not a Safecast device.
+func IsSafecastDevice(detector, username string) bool {
+	combined := strings.ToLower(detector + " " + username)
+	for _, bad := range []string{"czechrad", "suro.cz", "radiacode"} {
+		if strings.Contains(combined, bad) {
+			return false
+		}
+	}
+	if strings.HasPrefix(strings.ToLower(strings.TrimSpace(detector)), "rc-") {
+		return false
+	}
+	d := strings.ToLower(detector)
+	return strings.Contains(d, "bgeigie") || strings.Contains(d, "nano") || strings.Contains(d, "zen")
 }
 
 // GetTrackInfo returns username/detector/date/sourceURL metadata for a track upload.
@@ -28,16 +55,25 @@ func (db *Database) GetTrackInfo(ctx context.Context, trackID string) (TrackInfo
 	case "pgx", "duckdb":
 		query = `SELECT COALESCE(username, ''), COALESCE(detector, ''),
 		         COALESCE(EXTRACT(EPOCH FROM recording_date)::BIGINT, 0),
-		         COALESCE(source_url, '')
+		         COALESCE(source_url, ''), COALESCE(filename, ''), COALESCE(file_type, ''),
+		         COALESCE(name, ''), COALESCE(comment, ''),
+		         COALESCE(EXTRACT(EPOCH FROM created_at)::BIGINT, 0),
+		         COALESCE(source, ''), COALESCE(source_id, ''), COALESCE(safecast_import_id, ''),
+		         COALESCE((SELECT usr.username FROM users usr WHERE usr.id::text = uploads.internal_user_id), ''),
+		         COALESCE(upload_ip, '')
 		         FROM uploads WHERE track_id = $1 LIMIT 1`
 	default:
 		query = `SELECT COALESCE(username, ''), COALESCE(detector, ''),
 		         COALESCE(recording_date, 0),
-		         COALESCE(source_url, '')
+		         COALESCE(source_url, ''), COALESCE(filename, ''), COALESCE(file_type, ''),
+		         COALESCE(name, ''), COALESCE(comment, ''), COALESCE(created_at, 0),
+		         COALESCE(source, ''), COALESCE(source_id, ''), COALESCE(safecast_import_id, ''),
+		         COALESCE((SELECT usr.username FROM users usr WHERE CAST(usr.id AS TEXT) = uploads.internal_user_id), ''),
+		         COALESCE(upload_ip, '')
 		         FROM uploads WHERE track_id = ? LIMIT 1`
 	}
 
-	err := db.DB.QueryRowContext(ctx, query, trackID).Scan(&out.Username, &out.Detector, &out.RecordingDate, &out.SourceURL)
+	err := db.DB.QueryRowContext(ctx, query, trackID).Scan(&out.Username, &out.Detector, &out.RecordingDate, &out.SourceURL, &out.Filename, &out.FileType, &out.Name, &out.Comment, &out.UploadedAt, &out.Source, &out.SourceID, &out.ImportID, &out.SimplemapUser, &out.UploadIP)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return out, nil
@@ -45,6 +81,13 @@ func (db *Database) GetTrackInfo(ctx context.Context, trackID string) (TrackInfo
 		return out, fmt.Errorf("query track info: %w", err)
 	}
 	out.Found = true
+	// Radiacode files carry no detector name; infer it from the file extension.
+	if strings.TrimSpace(out.Detector) == "" {
+		switch strings.ToLower(filepath.Ext(out.Filename)) {
+		case ".rctrk", ".rcspg", ".rcxml":
+			out.Detector = "Radiacode (" + strings.ToLower(filepath.Ext(out.Filename)) + " file)"
+		}
+	}
 	return out, nil
 }
 
@@ -99,3 +142,4 @@ func (db *Database) GetTrackBounds(ctx context.Context, trackID string) (Bounds,
 	out.MaxLon = maxLon.Float64
 	return out, true, nil
 }
+
