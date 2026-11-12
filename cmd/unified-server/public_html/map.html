@@ -5433,7 +5433,7 @@ function createDateRangeSlider(){
         </div>
         <div><strong>${translate('speed')}:</strong> ${speedText}</div>
         ${dateHtml}
-        ${getTrackInfoHtml(marker.trackID) ? '<div style="color: var(--text-muted, #999); font-size: 0.9em;">' + getTrackInfoHtml(marker.trackID) + '</div>' : ''}
+        ${getTrackInfoHtml(marker.trackID)}
         <div style="margin-top:4px">
           <!-- clicking the link switches to track mode -->
           <a href="#" class="track-link" data-track="${marker.trackID}" style="font-weight:bold;">
@@ -5456,19 +5456,36 @@ function getTooltipContent(marker) {
 
 // Track upload info cache (uploader name, detector)
 const trackInfoCache = new Map();
+function isSafecastDevice(detector, username) {
+  // CzechRad firmware reports itself as "bGeigie-xxxx (x.x.xCzechRad)" — explicitly not Safecast.
+  if (/czechrad|suro\.cz|radiacode|^rc-/i.test((detector || '') + ' ' + (username || ''))) return false;
+  return /bgeigie|nano|zen/i.test(detector || '');
+}
 function getTrackInfoHtml(trackID) {
   const info = trackInfoCache.get(trackID);
   if (!info) return '';
-  const parts = [];
-  if (info.username) parts.push('By: ' + info.username);
-  if (info.detector) parts.push(info.detector);
-  return parts.length ? parts.join(' \u2022 ') : '';
+  const esc = (v) => escapeHtml(String(v));
+  const det = info.detector || '';
+  const bad = det && (info.device_type ? info.device_type === 'unsupported' : !isSafecastDevice(det, info.username));
+  let h = '<div style="margin-top:4px;padding:4px 6px;border-radius:4px;font-size:0.9em;' +
+    (bad ? 'border-left:3px solid #9e9e9e;background:rgba(128,128,128,0.15);' : 'color:var(--text-muted, #999);') + '">';
+  h += '<div><strong>Device:</strong> ' + (det ? esc(det) : 'Unknown') + '</div>';
+  if (info.username) h += '<div>By: ' + esc(info.username) + '</div>';
+  if (info.simplemapUser) h += '<div>Uploaded to Simplemap by: ' + esc(info.simplemapUser) + '</div>';
+  if (info.sourceURL && /^https?:\/\//i.test(info.sourceURL)) {
+    h += '<div><a href="' + esc(info.sourceURL) + '" target="_blank" rel="noopener" style="' +
+      '' + '">Original log file</a></div>';
+  }
+  h += '<div><a href="/api/track/' + encodeURIComponent(trackID) + '.json" target="_blank" rel="noopener" style="' +
+    '' + '">Log with metadata (JSON)</a></div>';
+  if (bad) h += '<div><em>3rd party device</em></div>';
+  return h + '</div>';
 }
-function prefetchTrackInfo(trackID) {
+function prefetchTrackInfo(trackID, onLoaded) {
   if (!trackID || trackInfoCache.has(trackID)) return;
   fetch('/api/track-info/' + trackID)
     .then(r => r.json())
-    .then(data => { trackInfoCache.set(trackID, data); })
+    .then(data => { trackInfoCache.set(trackID, data); if (onLoaded) onLoaded(); })
     .catch(() => {});
 }
 
@@ -6027,7 +6044,10 @@ function createMarkerFromData(m, zoom) {
     } else {
       // Full interaction: tooltip on hover, click to view track
       marker.on('mouseover', function() {
-        prefetchTrackInfo(m.trackID);
+        const self = this;
+        prefetchTrackInfo(m.trackID, function() {
+          if (self._tooltip) self.setTooltipContent(getTooltipContent(m));
+        });
         const content = getTooltipContent(m);
         if (!this._tooltip) {
           this.bindTooltip(content, {
@@ -6035,6 +6055,20 @@ function createMarkerFromData(m, zoom) {
             className:'custom-tooltip',
             offset:[0,-8],
             interactive:true
+          });
+          // Keep tooltip open while the cursor moves onto it (so links are clickable)
+          this.off('mouseout', this.closeTooltip, this);
+          let closeTimer = null;
+          const self2 = this;
+          const scheduleClose = () => { clearTimeout(closeTimer); closeTimer = setTimeout(() => self2.closeTooltip(), 400); };
+          this.on('mouseout', scheduleClose);
+          this.on('mouseover', () => clearTimeout(closeTimer));
+          this.on('tooltipopen', (e) => {
+            const el = e.tooltip.getElement();
+            if (!el || el._holdBound) return;
+            el._holdBound = true;
+            el.addEventListener('mouseenter', () => clearTimeout(closeTimer));
+            el.addEventListener('mouseleave', scheduleClose);
           });
           this.openTooltip();
         } else {
