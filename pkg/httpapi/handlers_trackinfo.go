@@ -4,6 +4,8 @@ package httpapi
 import (
 	"net/http"
 	"strings"
+
+	"safecast-new-map/pkg/database"
 )
 
 // trackInfo returns metadata for a track.
@@ -37,9 +39,15 @@ func (s *Server) trackInfo(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]interface{}{"trackID": trackID})
 		return
 	}
+	deviceType := "unsupported"
+	if database.IsSafecastDevice(info.Detector, info.Username) {
+		deviceType = "supported"
+	}
 	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"device_type":   deviceType,
 		"trackID":       trackID,
 		"username":      info.Username,
+		"simplemapUser": info.SimplemapUser,
 		"detector":      info.Detector,
 		"recordingDate": info.RecordingDate,
 		"sourceURL":     info.SourceURL,
