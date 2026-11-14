@@ -93,16 +93,29 @@
 
     var layerZoom = null;
 
-    function showTiles() {
-      dropPointLayer();
-      refreshDateSlider();
-      var url = tileURL();
+    // The vector basemap paints the dose raster inside its own style, between
+    // land colors and the reference lines. This Leaflet layer is only the
+    // fallback used when that basemap cannot be loaded.
+    function vectorBasemap() {
+      return window.safecastBasemap && window.safecastBasemap.status !== 'fallback';
+    }
+
+    function radiationPane() {
+      if (!map.getPane('safecast-radiation')) {
+        var pane = map.createPane('safecast-radiation');
+        pane.style.zIndex = '350';
+        pane.style.pointerEvents = 'none';
+      }
+      return 'safecast-radiation';
+    }
+
+    function showLeafletTiles(url) {
       if (!layer) {
         layer = L.tileLayer(url, {
+          pane: radiationPane(),
           minZoom: 0,
           maxZoom: POINT_ZOOM - 1,
           opacity: 1,
-          zIndex: 250,
           updateWhenIdle: true,
           updateWhenZooming: false,
           keepBuffer: 0
@@ -118,6 +131,18 @@
       // which shows up as a hard-edged block of the wrong size.
       if (already && layerZoom !== map.getZoom()) layer.redraw();
       layerZoom = map.getZoom();
+    }
+
+    function showTiles() {
+      dropPointLayer();
+      refreshDateSlider();
+      var url = tileURL();
+      if (vectorBasemap()) {
+        if (layer && map.hasLayer(layer)) map.removeLayer(layer);
+        window.safecastBasemap.setRadiation(url, true);
+      } else {
+        showLeafletTiles(url);
+      }
       if (!map.hasLayer(sparse)) sparse.addTo(map);
       refreshSparse();
       var loading = document.getElementById('loadingOverlay');
@@ -125,6 +150,7 @@
     }
 
     function hideTiles() {
+      if (window.safecastBasemap) window.safecastBasemap.setRadiation(tileURL(), false);
       if (layer && map.hasLayer(layer)) map.removeLayer(layer);
       layerZoom = null;
       if (map.hasLayer(sparse)) {

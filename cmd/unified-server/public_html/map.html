@@ -10,6 +10,8 @@
     <link rel="stylesheet" href="/static/leaflet.css">
     <link rel="stylesheet" href="/static/nouislider.min.css">
     
+    <!-- MapLibre draws the street basemap so reference lines can sit above radiation. -->
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
     <!-- Leaflet MarkerCluster CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
@@ -193,27 +195,25 @@ body, html {
           color-scheme: dark; /* Force dark scheme when manually selected */
         }
 
-        /* Invert OSM light tiles to approximate a dark basemap (CARTO dark_all now requires an API key) */
-        :root[data-theme='dark'] .leaflet-tile-pane {
+        /* Raster fallback only. The vector basemap has its own dark style, and
+           dose colors must not be hue-rotated. */
+        html[data-basemap='raster'][data-theme='dark'] .leaflet-tile-pane {
            filter: invert(0.9) hue-rotate(180deg) brightness(0.95) contrast(0.9);
         }
 
-        @media (prefers-color-scheme: dark) {
-          .leaflet-tile-pane {
-            filter: invert(0.9) hue-rotate(180deg) brightness(0.95) contrast(0.9);
-          }
-        }
-        
-        /* Ensure filter is removed if forcibly switched to light mode */
-        :root[data-theme='light'] .leaflet-tile-pane {
+        html[data-basemap='raster'][data-theme='light'] .leaflet-tile-pane {
            filter: brightness(0.95) contrast(0.7);
         }
 
-        @media (prefers-color-scheme: light) {
-          .leaflet-tile-pane {
-             /* Subtle darkening for light mode */
-             filter: brightness(0.95) contrast(0.7);
-          }
+        /* The GL canvas is the basemap. Clicks and drags stay on Leaflet. */
+        .leaflet-gl-layer,
+        .leaflet-gl-layer canvas {
+          pointer-events: none !important;
+        }
+
+        .maplibregl-ctrl-logo,
+        .maplibregl-ctrl-attrib {
+          display: none !important;
         }
 
         /* Theme toggle switch */
@@ -2694,6 +2694,8 @@ body, html {
 
     <!-- Load Leaflet JavaScript library -->
     <script src="/static/leaflet.js"></script>
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+    <script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js"></script>
     
     <!-- Leaflet MarkerCluster plugin -->
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
@@ -3718,6 +3720,7 @@ function setStoredUserCenter(lat, lon) {
 }
     </script>
 
+    <script src="/js/reference-basemap.js"></script>
     <script src="/js/radiation-tiles.js"></script>
 
     <!-- Map initialization and markers -->
@@ -4775,22 +4778,28 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // Initialize layers and auto theme switch
-  const media = window.matchMedia('(prefers-color-scheme: dark)');
   const osmLight = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-  window.osmLight = osmLight; // expose for theme toggle
   // Google tiles always use satellite imagery for consistent look
   const googleSat   = 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}';
+  // Empty groups keep the layer control and hasLayer checks. The visible
+  // streets or imagery are painted by the reference basemap, with dose
+  // colors between the land and the labels. Raster tiles are the fallback.
+  const useVectorBasemap = typeof maplibregl !== 'undefined' && typeof L.maplibreGL === 'function';
 
-  osmLayer = L.tileLayer(osmLight, {
-    maxZoom: 18,
-    attribution: '&copy; OSM contributors'
-  });
-
-  // Use the same satellite layer regardless of theme
-  googleSatellite = L.tileLayer(googleSat, {
-    maxZoom: 20,
-    attribution: '&copy; Google'
-  });
+  if (useVectorBasemap) {
+    osmLayer = L.layerGroup();
+    googleSatellite = L.layerGroup();
+  } else {
+    document.documentElement.dataset.basemap = 'raster';
+    osmLayer = L.tileLayer(osmLight, {
+      maxZoom: 18,
+      attribution: '&copy; OSM contributors'
+    });
+    googleSatellite = L.tileLayer(googleSat, {
+      maxZoom: 20,
+      attribution: '&copy; Google'
+    });
+  }
 
   // right after creating osmLayer and googleSatellite
   const urlParams       = new URLSearchParams(window.location.search);
@@ -4804,6 +4813,9 @@ document.addEventListener('DOMContentLoaded', function () {
     preferCanvas: true,             // PERFORMANCE: Use Canvas renderer instead of SVG for much faster rendering with many markers
   });
 
+  if (useVectorBasemap && typeof installReferenceBasemap === 'function') {
+    installReferenceBasemap(map, { osmURL: osmLight, satelliteURL: googleSat });
+  }
   if (typeof installRadiationTiles === 'function') {
     installRadiationTiles(map);
   }
@@ -4856,6 +4868,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Update URL on map changes
   map.on('baselayerchange', updateUrl);
+  map.on('baselayerchange', function () {
+    if (window.safecastBasemap && window.safecastBasemap.syncBase) window.safecastBasemap.syncBase();
+  });
   map.on('moveend', updateUrl);
   map.on('zoomend', updateUrl);
 
@@ -8506,6 +8521,8 @@ function setBaseLayer(layerName) {
     if (map.hasLayer(googleSatellite))     map.removeLayer(googleSatellite);
     if (!map.hasLayer(osmLayer))           osmLayer.addTo(map);
   }
+  // addLayer does not emit baselayerchange, so the imagery switch is explicit.
+  if (window.safecastBasemap && window.safecastBasemap.syncBase) window.safecastBasemap.syncBase();
 }
 
 // markShortLinkFocusReady flips the readiness flag once the user keeps the
@@ -9926,16 +9943,17 @@ function selectHomeSearchResult(result, query) {
     <!-- Theme toggle script -->
     <script>
       // Synchronize UI theme with map tiles and remember the choice for the session.
-      // Dark mode reuses the OSM light tiles and darkens them via CSS filter on .leaflet-tile-pane
-      // (CARTO's dark_all tile endpoint now requires an API key).
+      // The vector basemap swaps in a dark style. The hue-rotate filter remains
+      // only for the raster fallback, where it must not touch dose colors.
       document.addEventListener('DOMContentLoaded', function () {
         var sw = document.getElementById('themeSwitch');
         if (!sw) return;
         var media = window.matchMedia('(prefers-color-scheme: dark)');
 
         function applyTheme(theme) {
-          document.documentElement.dataset.theme = theme; // switch CSS variables + tile filter
+          document.documentElement.dataset.theme = theme; // switch CSS variables
           sw.checked = theme === 'dark';
+          if (window.safecastBasemap && window.safecastBasemap.setTheme) window.safecastBasemap.setTheme(theme);
         }
 
         var storedTheme = sessionStorage.getItem('themePreference');
