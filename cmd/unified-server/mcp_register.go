@@ -703,8 +703,8 @@ func RegisterMCP() {
 	mcpURL := fmt.Sprintf("http://localhost:%s/mcp-http", mcpPort)
 
 	if apiKey != "" {
-		chatLimits, chatMaxBody := newChatLimiterFromEnv()
-		chatHandler := withChatLimits(chatLimits, chatMaxBody, handleWebChat(mcpURL, apiKey, model))
+		chatLimits, chatMaxBody, chatOriginSecret := newChatLimiterFromEnv()
+		chatHandler := withChatLimits(chatLimits, chatMaxBody, chatOriginSecret, handleWebChat(mcpURL, apiKey, model))
 		registerCompanionRoutes(companionRoutesConfig{
 			MainMux:     http.DefaultServeMux,
 			MCPMux:      mux,

@@ -122,7 +122,7 @@ func TestChatClientKeyPrefersCloudFrontViewerAddress(t *testing.T) {
 			r.Header.Set("CloudFront-Viewer-Address", c.viewer)
 		}
 		r.Header.Set("X-Forwarded-For", c.xff)
-		if got := chatClientKey(r); got != c.want {
+		if got := chatClientKey(r, ""); got != c.want {
 			t.Errorf("viewer=%q xff=%q: got %q want %q", c.viewer, c.xff, got, c.want)
 		}
 	}
@@ -131,7 +131,7 @@ func TestChatClientKeyPrefersCloudFrontViewerAddress(t *testing.T) {
 func TestWithChatLimitsReturns429WithErrorChunk(t *testing.T) {
 	l, _ := newTestLimiter(1, 0, 0)
 	calls := 0
-	h := withChatLimits(l, 1024, func(w http.ResponseWriter, r *http.Request) {
+	h := withChatLimits(l, 1024, "", func(w http.ResponseWriter, r *http.Request) {
 		calls++
 		w.WriteHeader(http.StatusOK)
 	})
@@ -164,7 +164,7 @@ func TestWithChatLimitsPassesPreflight(t *testing.T) {
 	l, _ := newTestLimiter(1, 1, 1)
 	l.allow("x") // use up the global cap
 	called := false
-	h := withChatLimits(l, 1024, func(w http.ResponseWriter, r *http.Request) { called = true })
+	h := withChatLimits(l, 1024, "", func(w http.ResponseWriter, r *http.Request) { called = true })
 	h(httptest.NewRecorder(), httptest.NewRequest(http.MethodOptions, "/chat", nil))
 	if !called {
 		t.Fatal("OPTIONS preflight should reach the handler without using a slot")
@@ -174,11 +174,72 @@ func TestWithChatLimitsPassesPreflight(t *testing.T) {
 func TestWithChatLimitsCapsBodySize(t *testing.T) {
 	l, _ := newTestLimiter(0, 0, 0)
 	var readErr error
-	h := withChatLimits(l, 16, func(w http.ResponseWriter, r *http.Request) {
+	h := withChatLimits(l, 16, "", func(w http.ResponseWriter, r *http.Request) {
 		_, readErr = io.ReadAll(r.Body)
 	})
 	h(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/chat", strings.NewReader(strings.Repeat("x", 100))))
 	if readErr == nil {
 		t.Fatal("reading a body over the cap should fail")
+	}
+}
+
+func TestChatClientKeyWithOriginSecret(t *testing.T) {
+	const secret = "s3cret"
+	mk := func(sent string) *http.Request {
+		r := httptest.NewRequest(http.MethodPost, "/chat", nil)
+		r.RemoteAddr = "127.0.0.1:40000" // nginx
+		r.Header.Set("CloudFront-Viewer-Address", "203.0.113.7:51234")
+		r.Header.Set("X-Forwarded-For", "198.51.100.1")
+		if sent != "" {
+			r.Header.Set("X-Origin-Secret", sent)
+		}
+		return r
+	}
+	if got := chatClientKey(mk(secret), secret); got != "203.0.113.7" {
+		t.Errorf("with the right secret: got %q, want the CloudFront viewer address", got)
+	}
+	for _, sent := range []string{"", "wrong"} {
+		if got := chatClientKey(mk(sent), secret); got != "127.0.0.1" {
+			t.Errorf("secret %q: got %q, want the TCP peer (headers not trusted)", sent, got)
+		}
+	}
+}
+
+func TestChatClientKeyNormalizesAndRejectsJunk(t *testing.T) {
+	r := httptest.NewRequest(http.MethodPost, "/chat", nil)
+	r.RemoteAddr = "192.0.2.10:1234"
+	r.Header.Set("X-Forwarded-For", strings.Repeat("A", 5000))
+	if got := chatClientKey(r, ""); got != "192.0.2.10" {
+		t.Errorf("non-IP header value should fall back to RemoteAddr, got %q", got)
+	}
+	r.Header.Set("X-Forwarded-For", "2001:0db8:0000:0000:0000:0000:0000:0001")
+	if got := chatClientKey(r, ""); got != "2001:db8::1" {
+		t.Errorf("IPv6 should be canonical, got %q", got)
+	}
+}
+
+func TestChatLimiterBoundsTrackedClients(t *testing.T) {
+	l, _ := newTestLimiter(1, 0, 0)
+	l.maxClients = 3
+	for _, k := range []string{"a", "b", "c", "d", "e", "f"} {
+		l.allow(k)
+	}
+	if len(l.clients) > l.maxClients+1 { // +1 for the shared overflow bucket
+		t.Fatalf("tracked %d clients, cap is %d", len(l.clients), l.maxClients)
+	}
+	// New clients past the cap share the overflow bucket's limit.
+	if ok, _, _ := l.allow("g"); ok {
+		t.Fatal("overflow bucket should already be at its per-minute limit")
+	}
+}
+
+func TestChatLimiterGlobalBlockDoesNotTrackClients(t *testing.T) {
+	l, _ := newTestLimiter(0, 0, 1)
+	l.allow("a")
+	for i := 0; i < 50; i++ {
+		l.allow(strings.Repeat("x", i+1))
+	}
+	if len(l.clients) != 1 {
+		t.Fatalf("blocked requests created %d client entries", len(l.clients)-1)
 	}
 }
