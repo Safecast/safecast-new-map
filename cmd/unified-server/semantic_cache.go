@@ -29,6 +29,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -294,7 +295,7 @@ func storeQAEmbeddingAsync(ctx context.Context, embeddingChatID int64, question,
 		if err != nil {
 			return
 		}
-		id := time.Now().UnixMilli() // UnixNano exceeds JS MAX_SAFE_INTEGER
+		id := newQAID()
 		if _, err := duckDB.Exec(
 			`INSERT INTO qa_embeddings (id, chat_id, question, answer, embedding, feedback_score, used_count, status, lang)
 			 VALUES (?, ?, ?, ?, ?, 0, 0, 'pending', ?)`,
@@ -363,7 +364,7 @@ func extractLocationKnowledge(chatID int64) {
 	if math.Abs(lat) > 90 || math.Abs(lon) > 180 {
 		return
 	}
-	id := time.Now().UnixMilli() // UnixNano exceeds JS MAX_SAFE_INTEGER
+	id := newQAID()
 	if _, err := duckDB.Exec(
 		`INSERT INTO location_knowledge (id, lat, lon, radius_m, note, source_chat_id) VALUES (?, ?, ?, 1000, ?, ?)`,
 		id, lat, lon, answer, chatID,
@@ -446,4 +447,27 @@ func enrichSystemPrompt(base string, ragContext, locationKnowledge string) strin
 		return base
 	}
 	return prefix.String() + base
+}
+
+// lastQAID backs newQAID.
+var lastQAID atomic.Int64
+
+// newQAID returns a unique ID for chat exchanges, qa_embeddings rows and
+// location_knowledge rows. IDs were time.Now().UnixMilli(), so two answers
+// finishing in the same millisecond shared an ID: approving one approved
+// both, feedback hit both, and a location note could join to the wrong
+// answer. This stays millisecond-based (below JS MAX_SAFE_INTEGER, roughly
+// ordered by time) but never repeats within the process.
+func newQAID() int64 {
+	for {
+		now := time.Now().UnixMilli()
+		last := lastQAID.Load()
+		next := now
+		if next <= last {
+			next = last + 1
+		}
+		if lastQAID.CompareAndSwap(last, next) {
+			return next
+		}
+	}
 }
