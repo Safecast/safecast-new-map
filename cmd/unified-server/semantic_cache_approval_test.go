@@ -5,6 +5,7 @@ package main
 import (
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -89,4 +90,32 @@ func TestAdminAddedLocationNotesAreUsed(t *testing.T) {
 	if notes := getLocationKnowledge(); !strings.Contains(notes, "Admin note") {
 		t.Fatalf("admin-added note missing: %q", notes)
 	}
+}
+
+func TestNewQAIDIsUniqueAndJSSafe(t *testing.T) {
+	seen := make(map[int64]bool)
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	for g := 0; g < 8; g++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := 0; i < 2000; i++ {
+				id := newQAID()
+				mu.Lock()
+				if seen[id] {
+					mu.Unlock()
+					t.Errorf("duplicate id %d", id)
+					return
+				}
+				seen[id] = true
+				mu.Unlock()
+				if id > 1<<53 {
+					t.Errorf("id %d exceeds JS MAX_SAFE_INTEGER", id)
+					return
+				}
+			}
+		}()
+	}
+	wg.Wait()
 }
