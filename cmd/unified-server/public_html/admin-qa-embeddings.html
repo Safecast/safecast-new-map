@@ -89,6 +89,7 @@
     .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.8em; font-weight: 600; }
     .badge-active   { background: #4CAF50; color: white; }
     .badge-demoted  { background: #FF9800; color: white; }
+    .badge-pending  { background: #607D8B; color: white; }
     .badge-archived { background: #9E9E9E; color: white; }
     .badge-lang     { background: var(--tab-active-bg); color: white; }
     .score-pos { color: #4CAF50; font-weight: 600; }
@@ -233,7 +234,10 @@ function scoreClass(n) {
 }
 
 function statusBadge(s) {
-  const cls = s === 'demoted' ? 'badge-demoted' : (s === 'archived' ? 'badge-archived' : 'badge-active');
+  const cls = s === 'demoted' ? 'badge-demoted'
+    : s === 'archived' ? 'badge-archived'
+    : s === 'pending' ? 'badge-pending'
+    : 'badge-active';
   return `<span class="badge ${cls}">${escapeHtml(s)}</span>`;
 }
 
@@ -317,7 +321,7 @@ function renderTable(json) {
       <td class="col-date">${fmtDate(row.last_used_at)}</td>
       <td class="col-actions">
         <button class="btn-view"    onclick="viewRow(${row.id})"           title="View">👁</button>
-        <button class="btn-promote" onclick="doAction(${row.id}, 'promote')" title="Promote (+1)">⬆</button>
+        <button class="btn-promote" onclick="doAction(${row.id}, 'promote')" title="Approve for reuse (+1)">⬆</button>
         <button class="btn-demote"  onclick="doAction(${row.id}, 'demote')"  title="Demote (-1)">⬇</button>
         ${restoreOrArchive}
       </td>`;
