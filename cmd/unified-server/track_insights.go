@@ -176,6 +176,7 @@ func locationNotesInBbox(bounds database.Bounds, trackID string) []trackLocation
 		 FROM location_knowledge lk
 		 LEFT JOIN qa_embeddings qe ON qe.chat_id = lk.source_chat_id
 		 WHERE lk.lat BETWEEN ? AND ? AND lk.lon BETWEEN ? AND ?
+		   AND `+approvedLocationNoteSQL+`
 		 ORDER BY feedback_score DESC, lk.created_at DESC LIMIT 20`,
 		bounds.MinLat, bounds.MaxLat, bounds.MinLon, bounds.MaxLon,
 	)
