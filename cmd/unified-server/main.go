@@ -868,7 +868,7 @@ func main() {
 				return
 			}
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			tmpl.Execute(w, nil)
+			tmpl.Execute(w, struct{ Lang string }{Lang: lang})
 		}
 
 		resetPasswordPageHandler = func(w http.ResponseWriter, r *http.Request) {
