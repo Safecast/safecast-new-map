@@ -315,7 +315,7 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 		var answerText strings.Builder
 
 		// Assign a stable ID for this exchange (used by both chat_questions and qa_embeddings).
-		embeddingChatID := time.Now().UnixMilli() // UnixNano exceeds JS MAX_SAFE_INTEGER
+		embeddingChatID := newQAID()
 
 		// --- Semantic cache + RAG layer (requires OPENAI_API_KEY) ---
 		embedding, embErr := getEmbedding(ctx, chatReq.Message)
@@ -547,10 +547,19 @@ func handleFeedback() http.HandlerFunc {
 			writeError(w, http.StatusBadRequest, "invalid request: chat_id required")
 			return
 		}
+		byAdmin := isAdminRequest(r)
+		if !byAdmin && !firstVote(req.ChatID, chatClientKey(r, os.Getenv("CHAT_ORIGIN_SECRET"))) {
+			// Repeat vote from the same client: acknowledge, don't count.
+			writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+			return
+		}
 		if err := RecordFeedback(req.ChatID, req.Score); err != nil {
 			log.Printf("feedback error: %v", err)
 			writeError(w, http.StatusInternalServerError, "failed to record feedback")
 			return
+		}
+		if req.Score > 0 {
+			maybeAutoApprove(req.ChatID, byAdmin)
 		}
 		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 	}

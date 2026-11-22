@@ -6,9 +6,16 @@
 //     user feedback → return the cached answer immediately (no LLM call).
 //  3. Otherwise inject the top-k most similar past Q&A pairs plus any curated
 //     location knowledge into the system prompt as RAG context.
-//  4. After the LLM responds, store the new Q&A + embedding asynchronously.
+//  4. After the LLM responds, store the new Q&A + embedding asynchronously,
+//     with status 'pending'. Pending rows are never reused: an admin must
+//     approve them (Promote or Restore in /admin/qa-embeddings, which sets
+//     status 'active') before they can be served as cached answers, injected
+//     as RAG context, or used as location knowledge. Without this, anyone
+//     could ask a question, thumbs-up the reply, and have it served to other
+//     visitors or injected into their prompts.
 //  5. When the user gives thumbs-up, increment feedback_score; if coordinates
-//     are detected in the answer, also populate location_knowledge.
+//     are detected in the answer, also populate location_knowledge (used only
+//     once the source answer is approved).
 
 package main
 
@@ -22,6 +29,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -228,13 +236,23 @@ func buildRAGContext(embedding []float32) string {
 	return sb.String()
 }
 
+// approvedLocationNoteSQL limits location_knowledge rows (aliased lk, with
+// qa_embeddings LEFT JOINed as qe on source_chat_id) to notes an admin added
+// directly or whose source answer is approved. Legacy rows with no status
+// count as approved, matching loadQAEmbeddings.
+const approvedLocationNoteSQL = `(lk.source_chat_id IS NULL OR (qe.chat_id IS NOT NULL AND COALESCE(qe.status, 'active') = 'active'))`
+
 // getLocationKnowledge returns curated geographic notes from location_knowledge.
-// Currently returns all notes (capped at 20); future: filter by detected coordinates.
+// Currently returns approved notes (capped at 20); future: filter by detected coordinates.
 func getLocationKnowledge() string {
 	if !duckDBAvailable() {
 		return ""
 	}
-	rows, err := duckDB.Query(`SELECT note FROM location_knowledge ORDER BY created_at DESC LIMIT 20`)
+	rows, err := duckDB.Query(`SELECT lk.note
+		 FROM location_knowledge lk
+		 LEFT JOIN qa_embeddings qe ON qe.chat_id = lk.source_chat_id
+		 WHERE ` + approvedLocationNoteSQL + `
+		 ORDER BY lk.created_at DESC LIMIT 20`)
 	if err != nil {
 		return ""
 	}
@@ -277,10 +295,10 @@ func storeQAEmbeddingAsync(ctx context.Context, embeddingChatID int64, question,
 		if err != nil {
 			return
 		}
-		id := time.Now().UnixMilli() // UnixNano exceeds JS MAX_SAFE_INTEGER
+		id := newQAID()
 		if _, err := duckDB.Exec(
 			`INSERT INTO qa_embeddings (id, chat_id, question, answer, embedding, feedback_score, used_count, status, lang)
-			 VALUES (?, ?, ?, ?, ?, 0, 0, 'active', ?)`,
+			 VALUES (?, ?, ?, ?, ?, 0, 0, 'pending', ?)`,
 			id, embeddingChatID, question, answer, string(embJSON), lang,
 		); err != nil {
 			log.Printf("store qa_embedding: %v", err)
@@ -346,7 +364,7 @@ func extractLocationKnowledge(chatID int64) {
 	if math.Abs(lat) > 90 || math.Abs(lon) > 180 {
 		return
 	}
-	id := time.Now().UnixMilli() // UnixNano exceeds JS MAX_SAFE_INTEGER
+	id := newQAID()
 	if _, err := duckDB.Exec(
 		`INSERT INTO location_knowledge (id, lat, lon, radius_m, note, source_chat_id) VALUES (?, ?, ?, 1000, ?, ?)`,
 		id, lat, lon, answer, chatID,
@@ -429,4 +447,27 @@ func enrichSystemPrompt(base string, ragContext, locationKnowledge string) strin
 		return base
 	}
 	return prefix.String() + base
+}
+
+// lastQAID backs newQAID.
+var lastQAID atomic.Int64
+
+// newQAID returns a unique ID for chat exchanges, qa_embeddings rows and
+// location_knowledge rows. IDs were time.Now().UnixMilli(), so two answers
+// finishing in the same millisecond shared an ID: approving one approved
+// both, feedback hit both, and a location note could join to the wrong
+// answer. This stays millisecond-based (below JS MAX_SAFE_INTEGER, roughly
+// ordered by time) but never repeats within the process.
+func newQAID() int64 {
+	for {
+		now := time.Now().UnixMilli()
+		last := lastQAID.Load()
+		next := now
+		if next <= last {
+			next = last + 1
+		}
+		if lastQAID.CompareAndSwap(last, next) {
+			return next
+		}
+	}
 }
