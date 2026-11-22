@@ -547,10 +547,19 @@ func handleFeedback() http.HandlerFunc {
 			writeError(w, http.StatusBadRequest, "invalid request: chat_id required")
 			return
 		}
+		byAdmin := isAdminRequest(r)
+		if !byAdmin && !firstVote(req.ChatID, chatClientKey(r, os.Getenv("CHAT_ORIGIN_SECRET"))) {
+			// Repeat vote from the same client: acknowledge, don't count.
+			writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+			return
+		}
 		if err := RecordFeedback(req.ChatID, req.Score); err != nil {
 			log.Printf("feedback error: %v", err)
 			writeError(w, http.StatusInternalServerError, "failed to record feedback")
 			return
+		}
+		if req.Score > 0 {
+			maybeAutoApprove(req.ChatID, byAdmin)
 		}
 		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 	}
