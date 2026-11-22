@@ -175,8 +175,9 @@ func createDuckDBSchema() error {
 		)`,
 		// Semantic cache: stores embeddings + user feedback for past Q&A pairs.
 		// embedding is stored as a JSON array of float32 values (VARCHAR).
-		// status: 'active' | 'demoted' | 'archived' — only 'active' rows are
-		// eligible for cache hits / RAG retrieval. used_count and last_used_at
+		// status: 'pending' | 'active' | 'demoted' | 'archived' — only 'active'
+		// rows are eligible for cache hits / RAG retrieval. New rows start as
+		// 'pending' until an admin approves them. used_count and last_used_at
 		// power popularity sorting in the admin tab. lang scopes lookups so a
 		// Japanese question never matches an English cached answer.
 		`CREATE TABLE IF NOT EXISTS qa_embeddings (
