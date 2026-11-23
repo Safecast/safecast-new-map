@@ -12,7 +12,7 @@ type RequestKind int
 
 const (
 	RequestGeneral RequestKind = iota // Inexpensive metadata; still queued per IP.
-	RequestHeavy                       // Streams large payloads; cooldown applied after each.
+	RequestHeavy                      // Streams large payloads; cooldown applied after each.
 )
 
 // RateLimiter coordinates per-IP request sequencing. Each IP has its own worker;
@@ -74,7 +74,7 @@ func NewRateLimiter(heavyCooldown time.Duration) *RateLimiter {
 		heavyBurst:    8,
 		noticeFloor:   50 * time.Millisecond,
 		requests:      make(chan keyedRequest),
-		now:            time.Now,
+		now:           time.Now,
 	}
 	go limiter.loop()
 	return limiter
