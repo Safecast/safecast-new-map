@@ -21,7 +21,7 @@ type WebConfig struct {
 	DefaultLon              float64
 	DefaultZoom             int
 	DefaultLayer            string
-	AutoLocateDefault       bool   // If true, /api/geoip returns client lat/lon.
+	AutoLocateDefault       bool // If true, /api/geoip returns client lat/lon.
 	SupportEmail            string
 	CompileVersion          string
 	DBType                  string
