@@ -1427,6 +1427,10 @@ body, html {
           opacity: 1;
         }
 
+        .home-tour-link {
+          margin-top: 12px;
+        }
+
         /* Leaflet controls use theme variables so colors follow the current theme */
         .leaflet-control-layers,
         .leaflet-control-layers-toggle,
@@ -1929,7 +1933,7 @@ body, html {
         }
         #tutorial-overlay.visible { display: flex; }
         #tutorial-modal {
-          background: var(--control-bg, #ffffff);
+          background: var(--modal-bg, #ffffff);
           color: var(--modal-text, #333333);
           width: 100%; max-width: 480px; border-radius: 8px;
           padding: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
@@ -1993,7 +1997,7 @@ body, html {
         }
         #story-wall-modal.visible { display: flex; }
         .story-wall-content {
-          background: var(--control-bg, #ffffff); color: var(--modal-text, #333333);
+          background: var(--modal-bg, #ffffff); color: var(--modal-text, #333333);
           width: 90%; max-width: 900px; border-radius: 8px; padding: 40px;
           box-shadow: 0 4px 20px rgba(0,0,0,0.5);
           font-family: var(--font-family-base, sans-serif);
@@ -2133,6 +2137,7 @@ body, html {
         </button>
         
         <a id="homeSkipLink" class="home-skip-link">{{translate "home_explore_global"}}</a>
+        <a id="homeTourLink" class="home-skip-link home-tour-link" href="#">{{translate "home_how_to_read"}}</a>
       </div>
     </div>
 
@@ -2325,11 +2330,11 @@ body, html {
 <!-- Tutorial welcome overlay -->
 <div id="tutorial-overlay">
   <div id="tutorial-modal">
-    <h2>You're looking at real radiation data...</h2>
-    <p>Safecast provides open, crowdsourced radiation data collected globally by volunteers. Would you like a quick tour on how to read the map and understand the readings?</p>
+    <h2>{{translate "tutorial_title"}}</h2>
+    <p>{{translate "tutorial_body"}}</p>
     <div class="tutorial-buttons">
-      <button id="btn-start-tour">Show me how to read this</button>
-      <button id="btn-dismiss-tour">Explore on my own</button>
+      <button id="btn-start-tour">{{translate "tutorial_start"}}</button>
+      <button id="btn-dismiss-tour">{{translate "tutorial_dismiss"}}</button>
     </div>
   </div>
 </div>
@@ -9433,7 +9438,19 @@ function initializeHomeOverlay() {
       dismissHomeOverlay();
     });
   }
-  
+
+  // "How do I read this map?" - close the welcome card, then open the tour
+  const homeTourLink = document.getElementById('homeTourLink');
+  if (homeTourLink) {
+    homeTourLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      dismissHomeOverlay();
+      if (typeof window.safecastStartTutorial === 'function') {
+        window.safecastStartTutorial();
+      }
+    });
+  }
+
   // Close results when clicking outside
   document.addEventListener('click', function(e) {
     if (homeSearchResults && !homeSearchInput.contains(e.target) && !homeSearchResults.contains(e.target)) {
@@ -12180,11 +12197,15 @@ function selectHomeSearchResult(result, query) {
     }
 
     // --- Button wiring ---
-    document.getElementById('btn-start-tour').addEventListener('click', function() {
+    function startTutorialFlow() {
       hideTutorial();
       loadStories();
       showStoryWall();
-    });
+    }
+    // Used by the "How do I read this map?" link on the welcome card
+    window.safecastStartTutorial = startTutorialFlow;
+
+    document.getElementById('btn-start-tour').addEventListener('click', startTutorialFlow);
 
     document.getElementById('btn-dismiss-tour').addEventListener('click', function() {
       hideTutorial();
@@ -12222,7 +12243,20 @@ function selectHomeSearchResult(result, query) {
         loadTourSteps().then(startTour);
       }, 1000);
     } else if (!localStorage.getItem(STORAGE_KEY)) {
-      setTimeout(showTutorial, 1000);
+      setTimeout(function() {
+        // Only one first-visit popup at a time. When the welcome card is
+        // showing, it already offers "How do I read this map?", so don't
+        // stack the tour prompt on top of it. The "?" button still opens it.
+        var welcomeShowing = typeof homeOverlayDismissed !== 'undefined' &&
+          !homeOverlayDismissed &&
+          typeof shouldShowHomeOverlay === 'function' &&
+          shouldShowHomeOverlay();
+        if (welcomeShowing) {
+          localStorage.setItem(STORAGE_KEY, '1');
+          return;
+        }
+        showTutorial();
+      }, 1000);
     }
   })();
   </script>
