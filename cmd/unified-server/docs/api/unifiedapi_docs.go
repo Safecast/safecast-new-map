@@ -3258,6 +3258,12 @@ const docTemplateunifiedapi = `{
                             "type": "string"
                         }
                     },
+                    "429": {
+                        "description": "Too many feedback requests",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
                     "500": {
                         "description": "Failed to record feedback",
                         "schema": {

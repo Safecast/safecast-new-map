@@ -523,6 +523,7 @@ func handleWebChat(mcpURL, apiKey, model string) http.HandlerFunc {
 // @Success     200 {object} map[string]bool "ok: true"
 // @Failure     400 {string} string "Invalid request — chat_id required"
 // @Failure     405 {string} string "Method not allowed"
+// @Failure     429 {string} string "Too many feedback requests"
 // @Failure     500 {string} string "Failed to record feedback"
 // @Router      /feedback [post]
 func handleFeedback() http.HandlerFunc {
@@ -539,6 +540,12 @@ func handleFeedback() http.HandlerFunc {
 			return
 		}
 
+		byAdmin := isAdminRequest(r)
+		clientKey := chatClientKey(r, os.Getenv("CHAT_ORIGIN_SECRET"))
+		if !byAdmin && !allowFeedback(feedbackLimiter(), w, r, clientKey) {
+			return
+		}
+
 		var req struct {
 			ChatID int64 `json:"chat_id"`
 			Score  int   `json:"score"`
@@ -547,8 +554,11 @@ func handleFeedback() http.HandlerFunc {
 			writeError(w, http.StatusBadRequest, "invalid request: chat_id required")
 			return
 		}
-		byAdmin := isAdminRequest(r)
-		if !byAdmin && !firstVote(req.ChatID, chatClientKey(r, os.Getenv("CHAT_ORIGIN_SECRET"))) {
+		if req.Score != 1 && req.Score != -1 {
+			writeError(w, http.StatusBadRequest, "invalid request: score must be 1 or -1")
+			return
+		}
+		if !byAdmin && !firstVote(req.ChatID, clientKey) {
 			// Repeat vote from the same client: acknowledge, don't count.
 			writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 			return
@@ -702,6 +712,8 @@ func RegisterMCP() {
 
 	// Register Swagger docs
 	registerSwaggerDocs(mux)
+
+	logAutoApproveMode()
 
 	// Web Chat routes
 	apiKey := os.Getenv("ANTHROPIC_API_KEY")
