@@ -52,3 +52,7 @@ API users_*.csv
 
 # Local Cursor rules (only one developer uses Cursor)
 .cursor/rules/
+
+# local-only
+.local-audit/
+.vscode/
