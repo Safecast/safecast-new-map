@@ -102,7 +102,7 @@ jobs:
 
 # ---------- DUCKDB linux/amd64: dedicated job for deploy artifact ----------
   build_linux_duckdb:
-    if: github.server_url == 'https://github.com'
+    if: github.server_url == 'https://github.com' && (contains(toJson(github.event.head_commit.message), 'stable release') || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
