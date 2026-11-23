@@ -2798,7 +2798,7 @@ const docTemplateunifiedapi = `{
         },
         "/api/update-coordinates": {
             "post": {
-                "description": "Admin-only endpoint that updates all marker coordinates for a track.",
+                "description": "Updates all marker coordinates for a track. Requires admin Basic Auth or session ownership of the upload.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2837,8 +2837,8 @@ const docTemplateunifiedapi = `{
                             }
                         }
                     },
-                    "401": {
-                        "description": "Unauthorized",
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -4711,6 +4711,12 @@ const docTemplateunifiedapi = `{
                 },
                 "requires_password_setup": {
                     "type": "boolean"
+                },
+                "safecast_api_key": {
+                    "type": "string"
+                },
+                "safecast_user_id": {
+                    "type": "string"
                 },
                 "updated_at": {
                     "type": "integer"
