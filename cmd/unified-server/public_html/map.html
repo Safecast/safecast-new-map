@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ .Lang }}">
   <head>
     <!-- Set metadata and link CSS -->
     <meta charset="UTF-8">
@@ -8922,6 +8922,7 @@ function loadMapFromUrl() {
   const langParam = params.get('lang');
   if (langParam && translations[langParam]) {
     currentLang = langParam;
+    document.documentElement.lang = langParam;
   }
 
   /* unit (coloring) from URL or local storage */
