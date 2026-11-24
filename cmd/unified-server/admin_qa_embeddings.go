@@ -143,7 +143,7 @@ func adminQAEmbeddingsListHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		results = append(results, map[string]interface{}{
-			"id":             id,
+			"id":             strconv.FormatInt(id, 10), // string: legacy ids exceed JS 2^53
 			"chat_id":        chatID,
 			"question":       question,
 			"feedback_score": feedbackScore,
@@ -218,7 +218,7 @@ func adminQAEmbeddingsDetailHandler(w http.ResponseWriter, r *http.Request, id i
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"id":              dbID,
+		"id":              strconv.FormatInt(dbID, 10),
 		"chat_id":         chatID,
 		"question":        question,
 		"answer":          answer,

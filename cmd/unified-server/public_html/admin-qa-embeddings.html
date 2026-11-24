@@ -70,7 +70,7 @@
     .col-sel       { width: 34px; text-align: center; }
     .bulk-bar { display: none; gap: 8px; align-items: center; margin-bottom: 10px; padding: 8px 12px; background: var(--bg-card); border: 1px solid var(--tab-active-bg); border-radius: var(--btn-border-radius); flex-wrap: wrap; }
     .bulk-bar.visible { display: flex; }
-    .bulk-bar button { border: none; color: white; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+    .bulk-bar button { border: none; color: white; padding: 0 12px; height: 32px; line-height: 32px; font-size: 14px; border-radius: 4px; cursor: pointer; }
     .col-id        { width: 110px; }
     .col-question  { max-width: 460px; }
     .col-question-text { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
@@ -330,10 +330,10 @@ function renderTable(json) {
     const tr = document.createElement('tr');
     const isArchived = row.status === 'archived';
     const restoreOrArchive = isArchived
-      ? `<button class="btn-restore" onclick="doAction(${row.id}, 'restore')" title="Restore">⤴</button>`
-      : `<button class="btn-archive" onclick="doAction(${row.id}, 'archive')" title="Archive">🗑</button>`;
+      ? `<button class="btn-restore" onclick="doAction('${row.id}', 'restore')" title="Restore">⤴</button>`
+      : `<button class="btn-archive" onclick="doAction('${row.id}', 'archive')" title="Archive">🗑</button>`;
     tr.innerHTML = `
-      <td class="col-sel"><input type="checkbox" class="row-sel" data-id="${row.id}" ${selected.has(row.id) ? 'checked' : ''} onchange="toggleRow(${row.id}, this.checked)"></td>
+      <td class="col-sel"><input type="checkbox" class="row-sel" data-id="${row.id}" ${selected.has(String(row.id)) ? 'checked' : ''} onchange="toggleRow('${row.id}', this.checked)"></td>
       <td class="col-id">${row.id}</td>
       <td class="col-question">
         <div class="col-question-text" title="${escapeHtml(row.question)}">${escapeHtml(row.question)}</div>
@@ -346,9 +346,9 @@ function renderTable(json) {
       <td class="col-date">${fmtDate(row.created_at)}</td>
       <td class="col-date">${fmtDate(row.last_used_at)}</td>
       <td class="col-actions">
-        <button class="btn-view"    onclick="viewRow(${row.id})"           title="View / edit">✎</button>
-        <button class="btn-promote" onclick="doAction(${row.id}, 'promote')" title="Approve for reuse (+1)">⬆</button>
-        <button class="btn-demote"  onclick="doAction(${row.id}, 'demote')"  title="Demote (-1)">⬇</button>
+        <button class="btn-view"    onclick="viewRow('${row.id}')"           title="View / edit">✎</button>
+        <button class="btn-promote" onclick="doAction('${row.id}', 'promote')" title="Approve for reuse (+1)">⬆</button>
+        <button class="btn-demote"  onclick="doAction('${row.id}', 'demote')"  title="Demote (-1)">⬇</button>
         ${restoreOrArchive}
       </td>`;
     tbody.appendChild(tr);
@@ -490,7 +490,7 @@ function updateBulkBar() {
 }
 function toggleRow(id, on) { on ? selected.add(id) : selected.delete(id); updateBulkBar(); }
 function toggleAll(on) {
-  document.querySelectorAll('.row-sel').forEach(b => { b.checked = on; toggleRow(Number(b.dataset.id), on); });
+  document.querySelectorAll('.row-sel').forEach(b => { b.checked = on; toggleRow(b.dataset.id, on); });
 }
 function clearSelection() { selected.clear(); document.querySelectorAll('.row-sel').forEach(b => b.checked = false); updateBulkBar(); }
 
