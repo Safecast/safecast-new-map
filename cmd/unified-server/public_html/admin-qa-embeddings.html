@@ -140,6 +140,7 @@
 <div class="controls">
   <select id="statusFilter" onchange="onFilterChange()">
     <option value="">All statuses</option>
+    <option value="!archived">Not archived</option>
   </select>
   <select id="langFilter" onchange="onFilterChange()">
     <option value="">All languages</option>
@@ -317,7 +318,7 @@ async function fetchData() {
 function populateFilters(json) {
   const statusSel = document.getElementById('statusFilter');
   const langSel = document.getElementById('langFilter');
-  if (statusSel.options.length <= 1 && Array.isArray(json.statuses)) {
+  if (statusSel.options.length <= 2 && Array.isArray(json.statuses)) {
     json.statuses.forEach(s => {
       const o = document.createElement('option');
       o.value = s; o.textContent = s || '(none)';
