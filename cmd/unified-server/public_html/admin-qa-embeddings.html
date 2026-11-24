@@ -141,6 +141,10 @@
   <select id="statusFilter" onchange="onFilterChange()">
     <option value="">All statuses</option>
     <option value="!archived">Not archived</option>
+    <option value="pending">pending</option>
+    <option value="active">active</option>
+    <option value="demoted">demoted</option>
+    <option value="archived">archived</option>
   </select>
   <select id="langFilter" onchange="onFilterChange()">
     <option value="">All languages</option>
@@ -318,8 +322,9 @@ async function fetchData() {
 function populateFilters(json) {
   const statusSel = document.getElementById('statusFilter');
   const langSel = document.getElementById('langFilter');
-  if (statusSel.options.length <= 2 && Array.isArray(json.statuses)) {
+  if (Array.isArray(json.statuses)) {
     json.statuses.forEach(s => {
+      if ([...statusSel.options].some(x => x.value === s)) return;
       const o = document.createElement('option');
       o.value = s; o.textContent = s || '(none)';
       statusSel.appendChild(o);
