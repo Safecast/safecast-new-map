@@ -1172,6 +1172,8 @@ func main() {
 			switch {
 			case len(parts) == 1 && r.Method == http.MethodGet:
 				adminQAEmbeddingsDetailHandler(w, r, id)
+			case len(parts) == 1 && r.Method == http.MethodPut:
+				adminQAEmbeddingsEditHandler(w, r, id)
 			case len(parts) == 2 && r.Method == http.MethodPost:
 				adminQAEmbeddingsActionHandler(w, r, id, parts[1])
 			default:

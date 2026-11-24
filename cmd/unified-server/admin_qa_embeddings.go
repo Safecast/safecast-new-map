@@ -3,6 +3,7 @@
 // Routes (wired in main.go):
 //   GET  /api/admin/qa-embeddings                  → searchable/sortable list
 //   GET  /api/admin/qa-embeddings/{id}             → full row including answer
+//   PUT  /api/admin/qa-embeddings/{id}             → correct the answer text (see below)
 //   POST /api/admin/qa-embeddings/{id}/promote     → feedback_score += 1, status='active'
 //   POST /api/admin/qa-embeddings/{id}/demote      → feedback_score -= 1, status='demoted'
 //   POST /api/admin/qa-embeddings/{id}/archive     → status='archived' (audit-only)
@@ -111,7 +112,8 @@ func adminQAEmbeddingsListHandler(w http.ResponseWriter, r *http.Request) {
 		       COALESCE(status, 'active') AS status,
 		       COALESCE(lang, '')         AS lang,
 		       created_at,
-		       LENGTH(answer)             AS answer_len
+		       LENGTH(answer)             AS answer_len,
+		       COALESCE(corrected, false) AS corrected
 		FROM qa_embeddings %s
 		ORDER BY %s %s NULLS LAST
 		LIMIT %d OFFSET %d`,
@@ -134,8 +136,9 @@ func adminQAEmbeddingsListHandler(w http.ResponseWriter, r *http.Request) {
 			feedbackScore, usedCount int
 			lastUsedAt, createdAt    interface{}
 			answerLen                int
+			corrected                bool
 		)
-		if err := rows.Scan(&id, &chatID, &question, &feedbackScore, &usedCount, &lastUsedAt, &status, &lang, &createdAt, &answerLen); err != nil {
+		if err := rows.Scan(&id, &chatID, &question, &feedbackScore, &usedCount, &lastUsedAt, &status, &lang, &createdAt, &answerLen, &corrected); err != nil {
 			log.Printf("admin qa-embeddings scan error: %v", err)
 			continue
 		}
@@ -150,6 +153,7 @@ func adminQAEmbeddingsListHandler(w http.ResponseWriter, r *http.Request) {
 			"lang":           lang,
 			"created_at":     createdAt,
 			"answer_len":     answerLen,
+			"corrected":      corrected,
 		})
 	}
 
@@ -194,7 +198,8 @@ func adminQAEmbeddingsDetailHandler(w http.ResponseWriter, r *http.Request, id i
 	row := duckDB.QueryRow(`
 		SELECT id, chat_id, question, answer, feedback_score,
 		       COALESCE(used_count, 0), last_used_at,
-		       COALESCE(status, 'active'), COALESCE(lang, ''), created_at
+		       COALESCE(status, 'active'), COALESCE(lang, ''), created_at,
+		       COALESCE(corrected, false), COALESCE(original_answer, ''), COALESCE(correction_note, '')
 		FROM qa_embeddings WHERE id = ?`, id)
 
 	var (
@@ -203,24 +208,29 @@ func adminQAEmbeddingsDetailHandler(w http.ResponseWriter, r *http.Request, id i
 		status, lang             string
 		feedbackScore, usedCount int
 		lastUsedAt, createdAt    interface{}
+		corrected                bool
+		originalAnswer, note     string
 	)
-	if err := row.Scan(&dbID, &chatID, &question, &answer, &feedbackScore, &usedCount, &lastUsedAt, &status, &lang, &createdAt); err != nil {
+	if err := row.Scan(&dbID, &chatID, &question, &answer, &feedbackScore, &usedCount, &lastUsedAt, &status, &lang, &createdAt, &corrected, &originalAnswer, &note); err != nil {
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"id":             dbID,
-		"chat_id":        chatID,
-		"question":       question,
-		"answer":         answer,
-		"feedback_score": feedbackScore,
-		"used_count":     usedCount,
-		"last_used_at":   lastUsedAt,
-		"status":         status,
-		"lang":           lang,
-		"created_at":     createdAt,
+		"id":              dbID,
+		"chat_id":         chatID,
+		"question":        question,
+		"answer":          answer,
+		"feedback_score":  feedbackScore,
+		"used_count":      usedCount,
+		"last_used_at":    lastUsedAt,
+		"status":          status,
+		"lang":            lang,
+		"created_at":      createdAt,
+		"corrected":       corrected,
+		"original_answer": originalAnswer,
+		"correction_note": note,
 	})
 }
 
@@ -276,4 +286,90 @@ func writeQAJSONError(w http.ResponseWriter, err error) {
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"error": fmt.Sprintf("Query failed: %v", err),
 	})
+}
+
+// summarizeCorrection describes what changed between two answers: the common
+// word prefix/suffix is dropped and the differing middle is reported as
+// "removed → added". Cheap and deterministic (no LLM call); the result is
+// injected into the prompt of similar future questions as the "improvement
+// rule" so the model repeats the fix, not the original mistake.
+func summarizeCorrection(oldAns, newAns string) string {
+	a, b := strings.Fields(oldAns), strings.Fields(newAns)
+	p := 0
+	for p < len(a) && p < len(b) && a[p] == b[p] {
+		p++
+	}
+	s := 0
+	for s < len(a)-p && s < len(b)-p && a[len(a)-1-s] == b[len(b)-1-s] {
+		s++
+	}
+	clip := func(w []string) string {
+		t := strings.Join(w, " ")
+		if r := []rune(t); len(r) > 200 {
+			t = string(r[:200]) + "…"
+		}
+		return t
+	}
+	removed, added := clip(a[p:len(a)-s]), clip(b[p:len(b)-s])
+	switch {
+	case removed == "" && added == "":
+		return ""
+	case removed == "":
+		return fmt.Sprintf("added: %q", added)
+	case added == "":
+		return fmt.Sprintf("removed: %q", removed)
+	}
+	return fmt.Sprintf("replaced %q with %q", removed, added)
+}
+
+// adminQAEmbeddingsEditHandler corrects a cached answer.
+// PUT /api/admin/qa-embeddings/{id}  body: {"answer": "..."}
+//
+// Improvement rule: an edited row keeps its original_answer, records a
+// correction_note, becomes status 'active' with score >= 1 (so it is served on
+// cache hits, at the looser correctedHitThreshold) and is ranked first, labelled
+// as admin-corrected, in RAG context for similar questions. The question and its
+// embedding are unchanged, so similarity matching keeps working.
+func adminQAEmbeddingsEditHandler(w http.ResponseWriter, r *http.Request, id int64) {
+	if !duckDBAvailable() {
+		http.Error(w, "Analytics database not available", http.StatusServiceUnavailable)
+		return
+	}
+	var body struct {
+		Answer string `json:"answer"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&body); err != nil || strings.TrimSpace(body.Answer) == "" {
+		http.Error(w, "answer required", http.StatusBadRequest)
+		return
+	}
+	newAns := strings.TrimSpace(body.Answer)
+
+	var cur, orig string
+	if err := duckDB.QueryRow(
+		`SELECT answer, COALESCE(original_answer, '') FROM qa_embeddings WHERE id = ?`, id,
+	).Scan(&cur, &orig); err != nil {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+	if newAns == cur {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "changed": false})
+		return
+	}
+	if orig == "" {
+		orig = cur // keep the very first version across repeated edits
+	}
+	note := summarizeCorrection(orig, newAns)
+
+	if _, err := duckDB.Exec(`UPDATE qa_embeddings
+		SET answer = ?, original_answer = ?, correction_note = ?, corrected = true,
+		    corrected_at = now(), status = 'active',
+		    feedback_score = GREATEST(COALESCE(feedback_score, 0), 1)
+		WHERE id = ?`, newAns, orig, note, id); err != nil {
+		log.Printf("admin qa-embeddings edit error: %v", err)
+		writeQAJSONError(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "changed": true, "correction_note": note})
 }

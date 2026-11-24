@@ -221,6 +221,10 @@ func createDuckDBSchema() error {
 		`ALTER TABLE qa_embeddings ADD COLUMN IF NOT EXISTS last_used_at TIMESTAMPTZ`,
 		`ALTER TABLE qa_embeddings ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'active'`,
 		`ALTER TABLE qa_embeddings ADD COLUMN IF NOT EXISTS lang VARCHAR DEFAULT ''`,
+		`ALTER TABLE qa_embeddings ADD COLUMN IF NOT EXISTS corrected BOOLEAN DEFAULT false`,
+		`ALTER TABLE qa_embeddings ADD COLUMN IF NOT EXISTS original_answer VARCHAR`,
+		`ALTER TABLE qa_embeddings ADD COLUMN IF NOT EXISTS correction_note VARCHAR`,
+		`ALTER TABLE qa_embeddings ADD COLUMN IF NOT EXISTS corrected_at TIMESTAMPTZ`,
 	}
 	for _, m := range migrations {
 		if _, err := duckDB.Exec(m); err != nil {
