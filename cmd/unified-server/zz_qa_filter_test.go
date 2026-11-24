@@ -30,7 +30,7 @@ func TestQAColumnFilters(t *testing.T) {
 	}
 	for url, want := range map[string]int{
 		"/x": 2, "/x?f_question=track": 1, "/x?f_answer=japan": 1, "/x?f_status=pend": 1,
-		"/x?f_id=17753": 1, "/x?f_question=track&f_status=pend": 0, "/x?sort=answer&order=asc": 2,
+		"/x?f_id=17753": 1, "/x?status=!archived": 2, "/x?f_question=track&f_status=pend": 0, "/x?sort=answer&order=asc": 2,
 	} {
 		w := httptest.NewRecorder()
 		adminQAEmbeddingsListHandler(w, httptest.NewRequest("GET", url, nil))

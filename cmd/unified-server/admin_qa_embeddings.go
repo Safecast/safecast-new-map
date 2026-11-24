@@ -73,7 +73,9 @@ func adminQAEmbeddingsListHandler(w http.ResponseWriter, r *http.Request) {
 		conditions = append(conditions, "(question ILIKE ? OR answer ILIKE ?)")
 		args = append(args, "%"+search+"%", "%"+search+"%")
 	}
-	if statusFilter != "" {
+	if statusFilter == "!archived" {
+		conditions = append(conditions, "COALESCE(status, 'active') <> 'archived'")
+	} else if statusFilter != "" {
 		conditions = append(conditions, "COALESCE(status, 'active') = ?")
 		args = append(args, statusFilter)
 	}
