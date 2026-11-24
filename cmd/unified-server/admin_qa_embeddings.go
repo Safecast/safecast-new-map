@@ -28,7 +28,7 @@ import (
 // `embedding` is intentionally excluded — it's neither sortable nor sent to
 // the client (large, opaque to humans).
 var qaEmbeddingsColumns = []string{
-	"id", "chat_id", "question", "feedback_score",
+	"id", "chat_id", "question", "answer", "feedback_score",
 	"used_count", "last_used_at", "status", "lang", "created_at",
 }
 
@@ -81,6 +81,25 @@ func adminQAEmbeddingsListHandler(w http.ResponseWriter, r *http.Request) {
 		conditions = append(conditions, "COALESCE(lang, '') = ?")
 		args = append(args, langFilter)
 	}
+	// Per-column "contains" filters (f_<col>), matched server-side across all
+	// rows so they work with pagination. Expressions are fixed (never built
+	// from user input); only the pattern is a bound parameter.
+	for key, expr := range map[string]string{
+		"f_id":        "CAST(id AS VARCHAR)",
+		"f_question":  "question",
+		"f_answer":    "answer",
+		"f_score":     "CAST(COALESCE(feedback_score, 0) AS VARCHAR)",
+		"f_used":      "CAST(COALESCE(used_count, 0) AS VARCHAR)",
+		"f_status":    "COALESCE(status, 'active')",
+		"f_lang":      "COALESCE(lang, '')",
+		"f_created":   "CAST(created_at AS VARCHAR)",
+		"f_last_used": "CAST(last_used_at AS VARCHAR)",
+	} {
+		if v := strings.TrimSpace(r.URL.Query().Get(key)); v != "" {
+			conditions = append(conditions, expr+" ILIKE ?")
+			args = append(args, "%"+v+"%")
+		}
+	}
 	switch scoreFilter {
 	case "pos":
 		conditions = append(conditions, "COALESCE(feedback_score, 0) > 0")
@@ -113,6 +132,7 @@ func adminQAEmbeddingsListHandler(w http.ResponseWriter, r *http.Request) {
 		       COALESCE(lang, '')         AS lang,
 		       created_at,
 		       LENGTH(answer)             AS answer_len,
+		       SUBSTR(answer, 1, 160)     AS answer_preview,
 		       COALESCE(corrected, false) AS corrected
 		FROM qa_embeddings %s
 		ORDER BY %s %s NULLS LAST
@@ -137,8 +157,9 @@ func adminQAEmbeddingsListHandler(w http.ResponseWriter, r *http.Request) {
 			lastUsedAt, createdAt    interface{}
 			answerLen                int
 			corrected                bool
+			answerPreview            string
 		)
-		if err := rows.Scan(&id, &chatID, &question, &feedbackScore, &usedCount, &lastUsedAt, &status, &lang, &createdAt, &answerLen, &corrected); err != nil {
+		if err := rows.Scan(&id, &chatID, &question, &feedbackScore, &usedCount, &lastUsedAt, &status, &lang, &createdAt, &answerLen, &answerPreview, &corrected); err != nil {
 			log.Printf("admin qa-embeddings scan error: %v", err)
 			continue
 		}
@@ -153,6 +174,7 @@ func adminQAEmbeddingsListHandler(w http.ResponseWriter, r *http.Request) {
 			"lang":           lang,
 			"created_at":     createdAt,
 			"answer_len":     answerLen,
+			"answer_preview": answerPreview,
 			"corrected":      corrected,
 		})
 	}
