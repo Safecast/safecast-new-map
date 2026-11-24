@@ -67,6 +67,10 @@
     .sortable.asc::after  { content: '\25B2'; opacity: 1; }
     .sortable.desc::after { content: '\25BC'; opacity: 1; }
 
+    .col-sel       { width: 34px; text-align: center; }
+    .bulk-bar { display: none; gap: 8px; align-items: center; margin-bottom: 10px; padding: 8px 12px; background: var(--bg-card); border: 1px solid var(--tab-active-bg); border-radius: var(--btn-border-radius); flex-wrap: wrap; }
+    .bulk-bar.visible { display: flex; }
+    .bulk-bar button { border: none; color: white; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
     .col-id        { width: 110px; }
     .col-question  { max-width: 460px; }
     .col-question-text { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
@@ -91,6 +95,9 @@
     .badge-demoted  { background: #FF9800; color: white; }
     .badge-pending  { background: #607D8B; color: white; }
     .badge-archived { background: #9E9E9E; color: white; }
+    .badge-corrected { background: #7B1FA2; color: white; margin-left: 4px; }
+    .modal textarea { width: 100%; min-height: 220px; margin-top: 4px; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font: inherit; line-height: 1.5; resize: vertical; }
+    .modal .btn-save { background: #4CAF50; color: white; border: none; padding: 10px 24px; border-radius: var(--btn-border-radius); cursor: pointer; }
     .badge-lang     { background: var(--tab-active-bg); color: white; }
     .score-pos { color: #4CAF50; font-weight: 600; }
     .score-neg { color: #f44336; font-weight: 600; }
@@ -146,11 +153,21 @@
   <span class="summary" id="summary"></span>
 </div>
 
+<div class="bulk-bar" id="bulkBar">
+  <strong id="bulkCount">0 selected</strong>
+  <button style="background:#4CAF50" onclick="bulkAction('promote')">⬆ Approve / Promote</button>
+  <button style="background:#FF9800" onclick="bulkAction('demote')">⬇ Demote</button>
+  <button style="background:#9E9E9E" onclick="bulkAction('archive')">🗑 Archive</button>
+  <button style="background:#2196F3" onclick="bulkAction('restore')">⤴ Restore</button>
+  <button style="background:#607D8B" onclick="clearSelection()">Clear</button>
+</div>
+
 <div class="table-wrap">
   <div class="loading" id="loading">Loading...</div>
   <table id="dataTable" style="display:none">
     <thead>
       <tr>
+        <th class="col-sel"><input type="checkbox" id="selAll" onchange="toggleAll(this.checked)" title="Select all on this page"></th>
         <th class="col-id sortable" onclick="sortBy('id')">ID</th>
         <th class="col-question">Question</th>
         <th class="col-score sortable" onclick="sortBy('feedback_score')">Score</th>
@@ -175,11 +192,18 @@
     <div class="field-label">Question</div>
     <div class="field-value" id="modalQuestion"></div>
     <div class="field-label">Answer</div>
-    <div class="field-value" id="modalAnswer"></div>
+    <textarea id="modalAnswer"></textarea>
+    <div id="modalOrigWrap" style="display:none">
+      <div class="field-label">Original answer (before correction)</div>
+      <div class="field-value" id="modalOrig"></div>
+      <div class="field-label">Correction note (used as an improvement rule for similar questions)</div>
+      <div class="field-value" id="modalNote"></div>
+    </div>
     <div class="field-label">Metadata</div>
     <div class="field-value" id="modalMeta" style="font-family: monospace; font-size: 0.85em;"></div>
     <div class="btn-row">
       <button class="btn-cancel" onclick="closeModal()">Close</button>
+      <button class="btn-save" onclick="saveEdit()">Save correction</button>
     </div>
   </div>
 </div>
@@ -301,6 +325,7 @@ function renderTable(json) {
   }
 
   document.getElementById('dataTable').style.display = 'table';
+  updateBulkBar();
   json.data.forEach(row => {
     const tr = document.createElement('tr');
     const isArchived = row.status === 'archived';
@@ -308,6 +333,7 @@ function renderTable(json) {
       ? `<button class="btn-restore" onclick="doAction(${row.id}, 'restore')" title="Restore">⤴</button>`
       : `<button class="btn-archive" onclick="doAction(${row.id}, 'archive')" title="Archive">🗑</button>`;
     tr.innerHTML = `
+      <td class="col-sel"><input type="checkbox" class="row-sel" data-id="${row.id}" ${selected.has(row.id) ? 'checked' : ''} onchange="toggleRow(${row.id}, this.checked)"></td>
       <td class="col-id">${row.id}</td>
       <td class="col-question">
         <div class="col-question-text" title="${escapeHtml(row.question)}">${escapeHtml(row.question)}</div>
@@ -315,12 +341,12 @@ function renderTable(json) {
       </td>
       <td class="col-score ${scoreClass(row.feedback_score)}">${row.feedback_score > 0 ? '+' : ''}${row.feedback_score}</td>
       <td class="col-used">${row.used_count}</td>
-      <td class="col-status">${statusBadge(row.status)}</td>
+      <td class="col-status">${statusBadge(row.status)}${row.corrected ? '<span class="badge badge-corrected" title="Answer corrected by admin">fixed</span>' : ''}</td>
       <td class="col-lang">${row.lang ? `<span class="badge badge-lang">${escapeHtml(row.lang)}</span>` : '<span style="color: var(--text-muted)">—</span>'}</td>
       <td class="col-date">${fmtDate(row.created_at)}</td>
       <td class="col-date">${fmtDate(row.last_used_at)}</td>
       <td class="col-actions">
-        <button class="btn-view"    onclick="viewRow(${row.id})"           title="View">👁</button>
+        <button class="btn-view"    onclick="viewRow(${row.id})"           title="View / edit">✎</button>
         <button class="btn-promote" onclick="doAction(${row.id}, 'promote')" title="Approve for reuse (+1)">⬆</button>
         <button class="btn-demote"  onclick="doAction(${row.id}, 'demote')"  title="Demote (-1)">⬇</button>
         ${restoreOrArchive}
@@ -401,7 +427,11 @@ async function viewRow(id) {
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const r = await resp.json();
     document.getElementById('modalQuestion').textContent = r.question || '';
-    document.getElementById('modalAnswer').textContent = r.answer || '';
+    document.getElementById('modalAnswer').value = r.answer || '';
+    editingId = r.id;
+    document.getElementById('modalOrigWrap').style.display = r.corrected ? 'block' : 'none';
+    document.getElementById('modalOrig').textContent = r.original_answer || '';
+    document.getElementById('modalNote').textContent = r.correction_note || '';
     document.getElementById('modalMeta').textContent = JSON.stringify({
       id: r.id,
       chat_id: r.chat_id,
@@ -418,6 +448,23 @@ async function viewRow(id) {
   }
 }
 
+let editingId = null;
+async function saveEdit() {
+  if (editingId == null) return;
+  try {
+    const resp = await fetch('/api/admin/qa-embeddings/' + editingId + PASSWORD_QS, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answer: document.getElementById('modalAnswer').value })
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    closeModal();
+    fetchData();
+  } catch (e) {
+    alert('Save failed: ' + e.message);
+  }
+}
+
 function closeModal() {
   document.getElementById('modalOverlay').classList.remove('visible');
 }
@@ -431,6 +478,33 @@ async function doAction(id, action) {
   } catch (e) {
     alert('Action failed: ' + e.message);
   }
+}
+
+const selected = new Set();
+
+function updateBulkBar() {
+  document.getElementById('bulkCount').textContent = selected.size + ' selected';
+  document.getElementById('bulkBar').classList.toggle('visible', selected.size > 0);
+  const boxes = document.querySelectorAll('.row-sel');
+  document.getElementById('selAll').checked = boxes.length > 0 && [...boxes].every(b => b.checked);
+}
+function toggleRow(id, on) { on ? selected.add(id) : selected.delete(id); updateBulkBar(); }
+function toggleAll(on) {
+  document.querySelectorAll('.row-sel').forEach(b => { b.checked = on; toggleRow(Number(b.dataset.id), on); });
+}
+function clearSelection() { selected.clear(); document.querySelectorAll('.row-sel').forEach(b => b.checked = false); updateBulkBar(); }
+
+async function bulkAction(action) {
+  const ids = [...selected];
+  if (!ids.length) return;
+  if (action === 'archive' && !confirm('Archive ' + ids.length + ' Q&A rows?')) return;
+  const results = await Promise.allSettled(ids.map(id =>
+    fetch('/api/admin/qa-embeddings/' + id + '/' + action + PASSWORD_QS, { method: 'POST' })
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); })));
+  const failed = results.filter(r => r.status === 'rejected').length;
+  if (failed) alert(failed + ' of ' + ids.length + ' failed');
+  selected.clear();
+  fetchData();
 }
 
 renderAdminTabs();

@@ -42,6 +42,12 @@ const (
 	ragContextThreshold = float32(0.50)
 	// ragTopK: maximum number of similar Q&A pairs to inject.
 	ragTopK = 3
+	// correctedHitThreshold: admin-corrected answers are authoritative, so
+	// they are served for slightly looser paraphrases than ordinary entries
+	// (the track-ID / shared-token gates still apply).
+	correctedHitThreshold = float32(0.75)
+	// correctedRAGBoost ranks corrected answers ahead of ordinary ones in RAG.
+	correctedRAGBoost = float32(0.25)
 	// minSharedTokenRatio: without an explicit track-ID anchor, a cache hit
 	// also requires this fraction of the query's tokens to appear in the
 	// candidate's cached question. Feature-hash cosine alone is too
@@ -91,14 +97,16 @@ func sharedTokenRatio(a, b string) float32 {
 
 // qaEntry is a row from qa_embeddings.
 type qaEntry struct {
-	ID            int64 // internal row id (time.Now().UnixNano())
-	ChatID        int64 // chat_id sent to the frontend for feedback linkage
-	Question      string
-	Answer        string
-	Embedding     []float32
-	FeedbackScore int
-	Status        string // 'active' | 'demoted' | 'archived'
-	Lang          string // IETF language tag; empty = legacy/unknown
+	ID             int64 // internal row id (time.Now().UnixNano())
+	ChatID         int64 // chat_id sent to the frontend for feedback linkage
+	Question       string
+	Answer         string
+	Embedding      []float32
+	FeedbackScore  int
+	Status         string // 'active' | 'demoted' | 'archived'
+	Lang           string // IETF language tag; empty = legacy/unknown
+	Corrected      bool   // answer was hand-fixed by an admin
+	CorrectionNote string // what the admin changed (see summarizeCorrection)
 }
 
 // trackIDRegexp matches 5–10 character alphanumeric track IDs as whole words.
@@ -166,12 +174,17 @@ func checkSemanticCache(embedding []float32, question, trackID, lang string) (an
 		} else if sharedTokenRatio(question, entries[i].Question) < minSharedTokenRatio {
 			continue // no track anchor and not enough real token overlap
 		}
-		if s := cosineSimilarity(embedding, entries[i].Embedding); s > bestScore {
+		s := cosineSimilarity(embedding, entries[i].Embedding)
+		need := cacheHitThreshold
+		if entries[i].Corrected {
+			need = correctedHitThreshold
+		}
+		if s >= need && s > bestScore {
 			bestScore = s
 			best = &entries[i]
 		}
 	}
-	if bestScore >= cacheHitThreshold && best != nil {
+	if best != nil {
 		// Bump usage stats so the admin tab can sort by popularity. Failure
 		// here is non-fatal — the cache hit still serves correctly.
 		if _, err := duckDB.Exec(
@@ -204,6 +217,9 @@ func buildRAGContext(embedding []float32) string {
 	var candidates []scored
 	for i := range entries {
 		if s := cosineSimilarity(embedding, entries[i].Embedding); s >= ragContextThreshold {
+			if entries[i].Corrected {
+				s += correctedRAGBoost // rank admin-fixed answers first
+			}
 			candidates = append(candidates, scored{&entries[i], s})
 		}
 	}
@@ -230,6 +246,14 @@ func buildRAGContext(embedding []float32) string {
 		ans := c.e.Answer
 		if len(ans) > 500 {
 			ans = ans[:500] + "…"
+		}
+		if c.e.Corrected {
+			sb.WriteString(fmt.Sprintf("Q: %s\nA (ADMIN-CORRECTED, authoritative — follow this over your own assumptions): %s\n", c.e.Question, ans))
+			if c.e.CorrectionNote != "" {
+				sb.WriteString("Correction: " + c.e.CorrectionNote + "\n")
+			}
+			sb.WriteString("\n")
+			continue
 		}
 		sb.WriteString(fmt.Sprintf("Q: %s\nA: %s\n\n", c.e.Question, ans))
 	}
@@ -380,7 +404,8 @@ func loadQAEmbeddingsForTrack(trackID string) ([]qaEntry, error) {
 	like := "%" + trackID + "%"
 	rows, err := duckDB.Query(
 		`SELECT id, chat_id, question, answer, embedding, feedback_score,
-		        COALESCE(status, 'active'), COALESCE(lang, '')
+		        COALESCE(status, 'active'), COALESCE(lang, ''),
+		        COALESCE(corrected, false), COALESCE(correction_note, '')
 		 FROM qa_embeddings
 		 WHERE feedback_score > 0
 		   AND COALESCE(status, 'active') = 'active'
@@ -399,7 +424,8 @@ func loadQAEmbeddingsForTrack(trackID string) ([]qaEntry, error) {
 // Demoted/archived rows are always excluded.
 func loadQAEmbeddings(positiveOnly bool) ([]qaEntry, error) {
 	query := `SELECT id, chat_id, question, answer, embedding, feedback_score,
-	                 COALESCE(status, 'active'), COALESCE(lang, '')
+	                 COALESCE(status, 'active'), COALESCE(lang, ''),
+	                 COALESCE(corrected, false), COALESCE(correction_note, '')
 	          FROM qa_embeddings
 	          WHERE COALESCE(status, 'active') = 'active'`
 	if positiveOnly {
@@ -420,7 +446,7 @@ func scanQAEntries(rows *sql.Rows) ([]qaEntry, error) {
 	for rows.Next() {
 		var e qaEntry
 		var embJSON string
-		if err := rows.Scan(&e.ID, &e.ChatID, &e.Question, &e.Answer, &embJSON, &e.FeedbackScore, &e.Status, &e.Lang); err != nil {
+		if err := rows.Scan(&e.ID, &e.ChatID, &e.Question, &e.Answer, &embJSON, &e.FeedbackScore, &e.Status, &e.Lang, &e.Corrected, &e.CorrectionNote); err != nil {
 			continue
 		}
 		if err := json.Unmarshal([]byte(embJSON), &e.Embedding); err != nil {
