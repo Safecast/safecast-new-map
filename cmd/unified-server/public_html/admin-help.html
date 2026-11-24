@@ -218,6 +218,7 @@
         <li><a href="#translations">Translations</a></li>
         <li><a href="#tour">Tour Steps</a></li>
         <li><a href="#ai-hints">AI Hints</a></li>
+        <li><a href="#qa-cache">Q&amp;A Cache</a></li>
       </ul>
     </nav>
   </aside>
@@ -428,7 +429,7 @@
               <tr><td>Source Chat</td><td>ID of the original chat_questions row this was derived from.</td></tr>
             </tbody>
           </table>
-          <p>Editable columns: Question, Answer. Delete individual entries or all entries to force the AI to generate fresh answers.</p>
+          <p>This is a read-only overview. To review, correct, approve or archive entries, use the <a href="#qa-cache">Q&amp;A Cache</a> tab.</p>
         </div>
       </div>
 
@@ -648,6 +649,60 @@
 
       <div class="warn"><strong>Important:</strong> Always click <strong>Reload into Memory</strong> after saving changes. Without this step, the running server continues using the previous hints until it is restarted.</div>
       <div class="note"><strong>Note:</strong> The model slug is the key used by the MCP client to route requests to a specific bot. Changing it would require updating the MCP client configuration as well.</div>
+    </section>
+
+    <!-- Q&A CACHE -->
+    <section class="section" id="qa-cache">
+      <h2>Q&amp;A Cache <span class="tab-badge">Tab</span></h2>
+      <p>Curate the semantic answer cache used by the AI assistant. Each entry is a question/answer pair with an embedding. When a new question is similar enough to a stored one, the cached answer is reused instead of calling the AI.</p>
+
+      <h3>Reuse rule</h3>
+      <p>An entry is served from cache only when <strong>all</strong> of these hold: cosine similarity &ge; 0.85, feedback score &ge; 0, status is <em>active</em>, and the language matches the question.</p>
+
+      <h3>Table columns</h3>
+      <table class="col-table">
+        <thead><tr><th>Column</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>ID</td><td>Cache entry ID.</td></tr>
+          <tr><td>Question / Answer</td><td>The stored pair (answer shown as a preview). A <em>fixed</em> badge marks answers corrected by an admin.</td></tr>
+          <tr><td>Score</td><td>Net user/admin feedback. Promote adds 1, demote subtracts 1. Negative scores are never reused.</td></tr>
+          <tr><td>Used</td><td>How many times the entry has been served from cache.</td></tr>
+          <tr><td>Status</td><td><em>pending</em>, <em>active</em>, <em>demoted</em> or <em>archived</em>.</td></tr>
+          <tr><td>Lang</td><td>Language of the question.</td></tr>
+          <tr><td>Created / Last used</td><td>Timestamps.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Status values</h3>
+      <ul>
+        <li><strong>pending</strong> &mdash; Newly stored, awaiting review.</li>
+        <li><strong>active</strong> &mdash; Eligible for reuse (subject to the reuse rule).</li>
+        <li><strong>demoted</strong> &mdash; Marked bad; not reused.</li>
+        <li><strong>archived</strong> &mdash; Kept for audit only; not reused.</li>
+      </ul>
+
+      <h3>Filtering &amp; search</h3>
+      <ul>
+        <li><strong>Toolbar</strong> &mdash; Status (including <em>Not archived</em>), language and score filters, plus a full-text search over question and answer. These filter across all pages on the server.</li>
+        <li><strong>Column filter row</strong> &mdash; Type in the boxes under the headers to narrow the rows on the current page. Click a header to sort.</li>
+      </ul>
+
+      <h3>Actions</h3>
+      <div class="actions-list">
+        <span class="action-pill blue">&#9998; View / edit</span>
+        <span class="action-pill green">&uarr; Promote</span>
+        <span class="action-pill orange">&darr; Demote</span>
+        <span class="action-pill red">Archive</span>
+        <span class="action-pill blue">Restore</span>
+      </div>
+      <ul>
+        <li><strong>View / edit</strong> &mdash; Opens the entry. <em>Save correction</em> replaces the answer, keeps the original for reference, and sets the status to <em>active</em>.</li>
+        <li><strong>Promote</strong> &mdash; Score +1 and status <em>active</em>.</li>
+        <li><strong>Demote</strong> &mdash; Score &minus;1 and status <em>demoted</em>.</li>
+        <li><strong>Archive</strong> &mdash; Status <em>archived</em>. Restore sets it back to <em>active</em>.</li>
+        <li><strong>Bulk actions</strong> &mdash; Tick rows (or the header checkbox for the whole page); a bar appears with Promote, Demote, Archive and Restore for all selected rows.</li>
+      </ul>
+      <div class="note"><strong>Note:</strong> Users can also rate answers in the chat widget; those ratings update the same score.</div>
     </section>
 
   </main>
